@@ -867,6 +867,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let barcodeFocus = -1;
     let filteredProducts = [];
     let tipoEmisionFiscal = "TICKET_NO_FISCAL";
+    let isSearchingClient = false;
 
 function filterProducts(query, type, resultsId) {
 
@@ -2877,6 +2878,7 @@ function setupBarcodeSearchListener() {
 const GestorClientes = {
     lista: [], 
     selectedCustomer: null,
+    isAddingClient: false,
 
     // Referencias al DOM (Mismos IDs de tu HTML)
     ui: {
@@ -2909,41 +2911,56 @@ const GestorClientes = {
         }
     },
 
-    buscarCliente() {
-        const searchValue = this.ui.searchInput.value.trim().toLowerCase();
+    // Variable de control (fuera de la función) para evitar peticiones duplicadas
+
+
+async buscarCliente() {
+    // 1. Bloqueo de seguridad: Si ya hay una búsqueda en curso, ignoramos la nueva
+    if (isSearchingClient) return; 
+
+    const searchValue = this.ui.searchInput.value.trim().toUpperCase();
+    
+    // Resetear la vista antes de buscar
+    this.ui.foundMessage.classList.add('hidden');
+    this.ui.newPrompt.classList.add('hidden');
+    this.ui.addForm.classList.add('hidden');
+    this.selectedCustomer = null;
+
+    if (!searchValue) return;
+
+    isSearchingClient = true; // Activamos el bloqueo
+    console.log(`🔍 Buscando cliente (Local): ${searchValue}`);
+
+    // --- BÚSQUEDA 100% LOCAL (Instantánea) ---
+    // Incluimos lógica flexible para detectar 'V' automática o búsqueda por nombre
+    let clienteEncontrado = this.lista.find(c => {
+        const rifDB = c.rif.toUpperCase();
+        return rifDB === searchValue || 
+               rifDB === ('V' + searchValue) || 
+               c.nombre.toUpperCase().includes(searchValue);
+    });
+
+    // --- Procesamiento del Resultado ---
+    if (clienteEncontrado) {
+        this.selectedCustomer = clienteEncontrado;
         
-        // Resetear la vista
-        this.ui.foundMessage.classList.add('hidden');
-        this.ui.newPrompt.classList.add('hidden');
-        this.ui.addForm.classList.add('hidden');
-        this.selectedCustomer = null;
+        // Sincronización con variables globales para compatibilidad del sistema
+        selectedCustomer = clienteEncontrado;
+        selectedCustomer.name = clienteEncontrado.nombre;
+        selectedCustomer.ci = clienteEncontrado.rif;
+        
+        this.ui.foundName.textContent = clienteEncontrado.nombre;
+        this.ui.foundId.textContent = clienteEncontrado.rif;
+        this.ui.foundMessage.classList.remove('hidden');
+    } else {
+        // Al no depender de Internet, mostramos el prompt de registro inmediatamente
+        console.log("❌ Cliente no está en el PC. Abriendo registro de una vez.");
+        this.ui.newPrompt.classList.remove('hidden');
+        this.ui.newId.value = searchValue; 
+    }
 
-        if (!searchValue) return;
-
-        // Búsqueda en memoria local
-        const clienteEncontrado = this.lista.find(c => 
-            c.rif.toLowerCase() === searchValue || 
-            c.nombre.toLowerCase().includes(searchValue)
-        );
-
-        if (clienteEncontrado) {
-            this.selectedCustomer = clienteEncontrado;
-            
-            // Clonamos a las variables globales para compatibilidad
-            selectedCustomer = clienteEncontrado;
-            selectedCustomer.name = clienteEncontrado.nombre;
-            selectedCustomer.ci = clienteEncontrado.rif;
-            
-            this.ui.foundName.textContent = clienteEncontrado.nombre;
-            this.ui.foundId.textContent = clienteEncontrado.rif;
-            this.ui.foundMessage.classList.remove('hidden');
-        } else {
-            // 🔥 SOLUCIÓN: Si no existe, activamos el aviso para agregarlo
-            this.ui.newPrompt.classList.remove('hidden');
-            // Precargamos el ID que el usuario escribió para ahorrar tiempo
-            this.ui.newId.value = this.ui.searchInput.value.toUpperCase();
-        }
-    },
+    isSearchingClient = false; // Liberamos el bloqueo
+},
 
     limpiarSeleccion() {
         this.selectedCustomer = null;
@@ -2952,88 +2969,92 @@ const GestorClientes = {
     },
 
     mostrarFormulario() {
-        // Ocultamos el aviso de "¿Desea agregarlo?"
         this.ui.newPrompt.classList.add('hidden');
-        // Mostramos el contenedor de los 3 inputs (Nombre, CI, Dirección)
         this.ui.addForm.classList.remove('hidden');
         
-        // Foco automático al nombre para rapidez del cajero
+
         setTimeout(() => this.ui.newName.focus(), 100);
     },
     
     async agregarCliente() {
-    const nombre = this.ui.newName.value.trim();
-    let idInput = this.ui.newId.value.trim().toUpperCase();
-    const direccion = this.ui.newAddress.value.trim() || 'No especificada';
+        // 1. ESCUDO ANTIBLOQUEO: Usamos 'this' para referirnos a la variable del objeto
+        if (this.isAddingClient) return;
 
-    if (!nombre || !idInput) {
-        if (typeof messageBox === 'function') messageBox('Nombre y Cédula/RIF son obligatorios.', 'bg-red-500');
-        return;
-    }
+        const nombre = this.ui.newName.value.trim();
+        let idInput = this.ui.newId.value.trim().toUpperCase();
+        const direccion = this.ui.newAddress.value.trim() || 'No especificada';
 
-    // 🔥 NORMALIZACIÓN: Si el cajero no puso letra, anteponemos 'V' automáticamente
-    // Esto garantiza que el servidor reciba el campo 'rif' con el formato correcto
-    let rifFinal = idInput.replace(/[-\s]/g, '');
-    if (/^\d+$/.test(rifFinal)) {
-        rifFinal = 'V' + rifFinal;
-    }
-
-    if (!validarRIF(rifFinal)) {
-        if (typeof messageBox === 'function') messageBox('El número de identificación no es válido.', 'bg-red-600');
-        this.ui.newId.focus();
-        return;
-    }
-
-    const sesion = await window.nexusAPI.obtenerSesionLocal();
-    const companyId = sesion ? sesion.companyId : 'DEFAULT';
-
-    // OBJETO FORMATEADO SEGÚN EL MODELO DE TU SERVIDOR (MONGOOSE)
-    const nuevoCliente = {
-        rif: rifFinal,
-        nombre: nombre,
-        direccion: direccion,
-        empresa_ID: companyId,
-        fecha_modificacion: new Date().toISOString()
-    };
-
-    // 1. Guardado local prioritario (SQLite)
-    const resultado = await window.nexusAPI.guardarClienteLocal(nuevoCliente);
-
-    if (resultado && !resultado.error) {
-        // Actualizar estado global y UI
-        this.selectedCustomer = nuevoCliente;
-        selectedCustomer = nuevoCliente; 
-        selectedCustomer.name = nuevoCliente.nombre;
-        selectedCustomer.ci = nuevoCliente.rif;
-        
-        this.ui.addForm.classList.add('hidden');
-        this.ui.newName.value = '';
-        this.ui.newId.value = '';
-        this.ui.newAddress.value = '';
-        this.ui.searchInput.value = '';
-
-        // 2. 🌐 SINCRONIZACIÓN GLOBAL (clientes.nexusposgobal.com)
-        try {
-            const response = await fetch('https://clientes.nexusposgobal.com/api/clientes', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(nuevoCliente)
-            });
-
-            if (response.ok) {
-                console.log("☁️ Sincronizado con Xeon Global exitosamente.");
-            } else {
-                const errData = await response.json();
-                console.error("❌ Error 400 del Servidor Xeon:", errData);
-            }
-        } catch (err) {
-            console.warn("📡 Offline: El cliente se sincronizará automáticamente al detectar red.");
+        if (!nombre || !idInput) {
+            if (typeof messageBox === 'function') messageBox('Nombre y Cédula/RIF son obligatorios.', 'bg-red-500');
+            return;
         }
 
-        await this.cargarTodos();
-        if (typeof messageBox === 'function') messageBox(`Cliente registrado con éxito.`, 'bg-green-500');
-    }
-},
+        let rifFinal = idInput.replace(/[-\s]/g, '');
+        if (/^\d+$/.test(rifFinal)) rifFinal = 'V' + rifFinal;
+
+        if (!validarRIF(rifFinal)) {
+            if (typeof messageBox === 'function') messageBox('Identificación no válida.', 'bg-red-600');
+            return;
+        }
+
+        this.isAddingClient = true; // 🔒 Bloqueamos el proceso
+
+        try {
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
+            const companyIdActual = sesion ? sesion.companyId : 'DEFAULT';
+
+            const objetoCliente = {
+                rif: rifFinal,
+                nombre: nombre,
+                direccion: direccion,
+                telefono: "", 
+                correo: "",   
+                empresa_ID: companyIdActual,
+                fecha_modificacion: new Date().toISOString()
+            };
+
+            // 1. Guardado local prioritario (SQLite)
+            const resultado = await window.nexusAPI.guardarClienteLocal(objetoCliente);
+
+            if (resultado && !resultado.error) {
+                // --- ACTUALIZACIÓN VISUAL Y DE MEMORIA ---
+                this.selectedCustomer = objetoCliente;
+                selectedCustomer = objetoCliente; 
+                selectedCustomer.name = objetoCliente.nombre;
+                selectedCustomer.ci = objetoCliente.rif;
+                
+                this.ui.foundName.textContent = objetoCliente.nombre;
+                this.ui.foundId.textContent = objetoCliente.rif;
+                this.ui.foundMessage.classList.remove('hidden');
+
+                // --- LIMPIEZA DE INTERFAZ ---
+                this.ui.addForm.classList.add('hidden');
+                this.ui.newPrompt.classList.add('hidden'); 
+                this.ui.newName.value = '';
+                this.ui.newId.value = '';
+                this.ui.newAddress.value = '';
+                this.ui.searchInput.value = '';
+
+                await this.cargarTodos(); 
+                if (typeof messageBox === 'function') messageBox(`Cliente registrado y seleccionado.`, 'bg-green-500');
+
+                // 2. SINCRONIZACIÓN EN SEGUNDO PLANO
+                fetch('https://clientes.nexusposgobal.com/api/clientes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(objetoCliente)
+                })
+                .then(res => {
+                    if (res.ok) console.log("✅ Cliente sincronizado en Xeon Global.");
+                })
+                .catch(() => console.warn("📡 Modo Offline: Se sincronizará después."));
+            }
+        } catch (err) {
+            console.error("Error al agregar cliente:", err);
+        } finally {
+            this.isAddingClient = false; // 🔓 Liberamos el bloqueo siempre al finalizar
+        }
+    },
 
 configurarEventos() {
         // Captura de elementos
@@ -3086,46 +3107,75 @@ configurarEventos() {
 };
 
 async function sincronizarClientesPendientes() {
-    try {
-        // Ping al dominio global de clientes
-        await fetch('https://clientes.nexusposgobal.com/api/clientes', { method: 'HEAD', mode: 'no-cors' });
-        
-        const clientes = await window.nexusAPI.obtenerClientesLocal();
-        if (!clientes || clientes.length === 0) return;
+    if (!navigator.onLine) return;
 
-        let sincronizados = 0;
-        for (const cliente of clientes) {
+    try {
+        const clientesLocales = await window.nexusAPI.obtenerClientesLocal();
+        if (!clientesLocales || clientesLocales.length === 0) return;
+
+        let subidosNuevos = 0;
+
+        for (const cliente of clientesLocales) {
             try {
+                // 🟢 BLINDAJE: Nos aseguramos de que el RIF tenga la "V" antes de enviar
+                let rifNormalizado = cliente.rif.replace(/[-\s]/g, '').toUpperCase();
+                if (/^\d+$/.test(rifNormalizado)) rifNormalizado = 'V' + rifNormalizado;
+
+                const clienteSeguro = {
+                    rif: rifNormalizado,
+                    nombre: cliente.nombre,
+                    direccion: cliente.direccion || 'No especificada',
+                    telefono: cliente.telefono || '',
+                    correo: cliente.correo || '',
+                    empresa_ID: cliente.empresa_ID || window.companyId || 'DEFAULT',
+                    fecha_modificacion: cliente.fecha_modificacion || new Date().toISOString()
+                };
+
                 const res = await fetch('https://clientes.nexusposgobal.com/api/clientes', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(cliente)
+                    body: JSON.stringify(clienteSeguro)
                 });
-                if (res.ok) sincronizados++;
-            } catch (innerError) { break; }
+
+                if (res.status === 201) {
+                    subidosNuevos++;
+                } 
+                
+            } catch (innerError) {
+                break; 
+            }
         }
 
-        if (sincronizados > 0) {
-            console.log(`🚀 [Motor Sync] ${sincronizados} clientes sincronizados.`);
-            if (typeof messageBox === 'function') messageBox(`Nube actualizada: ${sincronizados} clientes.`, 'bg-blue-600');
+        if (subidosNuevos > 0) {
+            console.log(`🚀 [Motor Sync] ${subidosNuevos} clientes sincronizados.`);
         }
+
     } catch (error) {
-        console.warn("⚠️ Servidor Xeon Clientes no alcanzable en este momento.");
+        console.warn("⚠️ [Motor Sync] Pausado temporalmente.");
     }
 }
 
-// A. Disparador por evento de red
-window.addEventListener('online', () => {
-    console.log("🌐 Red detectada por el sistema operativo...");
-    setTimeout(sincronizarClientesPendientes, 1000); // 5 segundos de gracia
+
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(sincronizarClientesPendientes, 5000);
 });
 
-// B. Vigilancia Activa (Cada 60 segundos por si el evento falla)
+window.addEventListener('online', () => {
+    console.log("🌐 Internet restablecido. Sincronizando datos...");
+    setTimeout(sincronizarClientesPendientes, 1000);
+});
+
 setInterval(() => {
-    if (navigator.onLine) {
-        sincronizarClientesPendientes();
-    }
-}, 60000); 
+    if (navigator.onLine) sincronizarClientesPendientes();
+}, 300000);
+
+
+window.addEventListener('online', () => {
+    console.log("🌐 Red detectada por el sistema operativo...");
+    setTimeout(sincronizarClientesPendientes, 1000); 
+});
+
+
 
 // C. Al arrancar (Fundamental)
 document.addEventListener('DOMContentLoaded', () => {
