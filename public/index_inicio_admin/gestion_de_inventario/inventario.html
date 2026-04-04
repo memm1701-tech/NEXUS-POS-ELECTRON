@@ -1,0 +1,1733 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Inventario</title>
+
+    <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <script src="tailwindcss.js"></script>
+
+    <style>
+body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f3f4f6;
+            margin: 0;
+            padding: 0;
+            width: 100%; 
+        }
+
+        .inventory-container {
+            background-color: transparent; 
+            padding: 20px; 
+            border-radius: 0; 
+            box-shadow: none; 
+            width: 100% !important; 
+            max-width: 100% !important; 
+            box-sizing: border-box;
+            text-align: center;
+            margin: 0; 
+        }
+
+
+        h1 {
+            color: #333;
+            margin-bottom: 25px;
+            font-size: 2.5em; 
+            font-weight: 700;
+            letter-spacing: -1px;
+        }
+
+        .table-section-container h2 {
+    font-size: 1.8em;          /* Un poco más grande que el estándar */
+    font-weight: 800;         /* Negrita extra para resaltar */
+    color: #333;              /* Mismo tono de gris oscuro que el h1 */
+    letter-spacing: -0.5px;   /* Estilo moderno y compacto */
+    margin-bottom: 20px;
+    text-align: left;         /* Alineado a la izquierda como pediste */
+}
+        
+        .form-section {
+    display: block; 
+    margin-bottom: 30px;
+    text-align: left;
+}
+
+.form-grid > div, 
+.stock-options-container > div {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+        .form-section label {
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 5px;
+        }
+        .form-section input[type="text"],
+        .form-section input[type="number"],
+        .form-section select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px; 
+            box-sizing: border-box;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+        .form-section input[type="text"]:focus,
+        .form-section input[type="number"]:focus,
+        .form-section select:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+.form-actions {
+        flex-direction: row; 
+        justify-content: space-between; 
+        gap: 15px;
+        margin-top: 20px;
+        width: 100%; 
+    }
+
+.btn-add-product, .btn-save-product, .btn-cancel-edit {
+    padding: 15px 15px; 
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1em; 
+    cursor: pointer;
+    transition: background-color 0.3s;
+    width: 100%; 
+    box-sizing: border-box; 
+}
+
+        .btn-add-product {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-add-product:hover {
+            background-color: #218838;
+        }
+        
+        .btn-save-product {
+            background-color: #007bff;
+            color: white;
+            display: none; 
+        }
+        .btn-save-product:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-cancel-edit {
+            background-color: #dc3545;
+            color: white;
+            display: none; 
+        }
+        .btn-cancel-edit:hover {
+            background-color: #c82333;
+        }
+
+        .table-actions-container {
+            display: flex; 
+            flex-direction: row; 
+            gap: 5px; 
+            justify-content: center; 
+            align-items: center; 
+            padding: 0; 
+            flex-wrap: nowrap;
+        }
+
+        .btn-edit, .btn-delete {
+            padding:10px 8px; 
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-size: 0.8em; 
+            min-width: 65px; 
+            box-sizing: border-box;
+            text-align: center;
+        }
+        
+        .btn-edit {
+            background-color: #ffc107;
+            color: #333;
+        }
+        .btn-edit:hover {
+            background-color: #e0a800;
+        }
+
+        .btn-delete {
+            background-color: #dc3545; 
+            color: white;
+        }
+        .btn-delete:hover {
+            background-color: #c82333;
+        }
+
+        .table-section-container {
+            margin-top: 30px;
+        }
+        
+        .table-responsive-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch; 
+            border-radius: 8px; 
+        }
+        
+.table-section {
+    width: 100%;
+    min-width: fit-content; 
+    border-collapse: collapse;
+    table-layout: auto; 
+}
+        .table-section th, .table-section td {
+            border: 1px solid #e0e0e0;
+            padding: 10px 8px; 
+            text-align: left;
+            font-size: 0.8em; 
+            white-space: nowrap; 
+        }
+        .table-section th {
+            background-color: #f2f2f2;
+            color: #444;
+            font-weight: 600;
+        }
+        
+        .table-section th:nth-child(1), .table-section td:nth-child(1) { width: 18%;}
+        
+        .table-section th:nth-child(8), .table-section td:nth-child(8) { 
+            width: 150px; 
+            text-align: center;
+            padding: 3px 5px; 
+        }
+        
+        .table-section td:last-child {
+            text-align: center;
+        }
+
+        .table-section th:nth-child(2), .table-section td:nth-child(2) {
+            width: 12%; 
+            max-width: 100px; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            white-space: nowrap; 
+        }
+        .table-section th:nth-child(7), .table-section td:nth-child(7) {
+            width: 15%; 
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+
+.help-icon-container {
+    display: inline-block;
+    position: relative;
+    margin-left: 6px;
+    cursor: help;
+    vertical-align: middle;
+}
+
+.help-icon {
+    background-color: #6c757d;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.help-tooltip {
+    visibility: hidden;
+    width: 240px;
+    background-color: #ffffff;
+    color: #000000;
+    text-align: left;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 10px;
+    position: absolute;
+    z-index: 100;
+    bottom: 125%; 
+    left: 50%;
+    transform: translateX(-50%);
+    box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+    font-weight: normal;
+    font-size: 0.9em;
+    line-height: 1.4;
+}
+
+.help-icon-container:hover .help-tooltip {
+    visibility: visible;
+}
+
+
+.form-main-container {
+    display: flex;
+    flex-direction: column; 
+    gap: 25px;
+    align-items: center;
+    width: 100%;
+}
+
+.inputs-wrapper {
+    width: 100%;
+}
+
+.inputs-wrapper .form-grid {
+    display: grid;
+    grid-template-columns: 1fr; 
+    gap: 15px;
+    width: 100%;
+}
+
+.stock-options-container {
+    display: grid;
+    grid-template-columns: 1fr; 
+    gap: 20px;
+    width: 100%;
+}
+
+@media (min-width: 768px) {
+    .form-main-container {
+        display: flex !important;
+        flex-direction: row !important; 
+        align-items: flex-start;
+        gap: 30px;
+    }
+
+    .image-wrapper {
+        flex: 0 0 250px; 
+    }
+
+    .inputs-wrapper {
+        flex: 1; 
+    }
+
+    .inputs-wrapper .form-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr); 
+        gap: 15px;
+    }
+
+.form-actions {
+        display: flex;
+        flex-direction: row; 
+        gap: 15px;
+        width: 100%; 
+        margin-top: 25px;
+    }
+
+.btn-add-product, .btn-save-product, .btn-cancel-edit {
+        flex: 1; 
+        width: 100%;
+    }
+
+    .scroll-hint {
+        display: none;
+    }
+
+    .stock-options-container {
+        grid-template-columns: repeat(3, 1fr); 
+    }
+}
+
+    </style>
+</head>
+<body>
+    <div id="profit-warning-alert" class="hidden mb-4 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 shadow-sm rounded">
+        <div class="flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+            </svg>
+            <span class="text-base font-bold text-left">RECOMENDACIÓN LEGAL: El margen de ganancia supera el 30% (Límite SUNDDE).</span>
+        </div>
+    </div>
+
+    <div id="delete-confirmation-modal" style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
+        <div style="background-color: white; margin: 15% auto; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); width: 80%; max-width: 400px; text-align: center;">
+            <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
+                <span style="font-size: 24px; color: #ffc107; margin-right: 10px;">⚠️</span>
+                <h3 style="font-size: 1.2em; font-weight: 700; color: #333;">Confirmación Requerida</h3>
+            </div>
+            <p id="modal-product-message" style="margin-bottom: 20px; font-size: 1em; color: #666;"></p>
+            <div style="display: flex; justify-content: space-around; gap: 10px;">
+                <button id="modal-confirm-delete-btn" style="padding: 10px 20px; border: none; border-radius: 6px; background-color: #dc3545; color: white; cursor: pointer;">Sí, Deshabilitar Permanentemente</button>
+                <button id="modal-cancel-delete-btn" style="padding: 10px 20px; border: 1px solid #ccc; border-radius: 6px; background-color: #f8f9fa; color: #333; cursor: pointer;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <main>
+        <div class="inventory-container">
+            <h1>Gestión de Productos</h1>
+            
+            <div class="form-section">
+                <div class="form-main-container">
+                    <div class="image-wrapper">
+                        <div id="product-img-box" style="width: 250px; height: 250px; border-radius: 20px; border: 2px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #fff;">
+                            <img id="img-display" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                            <span id="img-placeholder" style="color: #94a3b8; font-size: 60px;">+</span>
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-top: 12px; justify-content: center;">
+                            <label for="file-input" style="padding: 8px 15px; background: #28a745; color: white; border-radius: 8px; font-size: 11px; cursor: pointer; font-weight: bold; text-transform: uppercase;">Cambiar</label>
+                            <input type="file" id="file-input" accept="image/*" style="display: none;">
+                            <button type="button" id="btn-remove-img" style="padding: 8px 15px; background: #dc3545; color: white; border-radius: 8px; font-size: 11px; font-weight: bold; text-transform: uppercase; display: none;">Eliminar</button>
+                        </div>
+                    </div>
+
+                    <div class="inputs-wrapper">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-left">
+                            <div>
+                                <label for="product-name">Nombre del Producto:</label>
+                                <input type="text" id="product-name" placeholder="Ej: Arroz, Tomate..." required>
+                            </div>
+                            <div>
+                                <label for="product-buy-price">Precio De Compra:</label>
+                                <input type="number" id="product-buy-price" placeholder="Ej: 20.00" step="0.01" required>
+                            </div>
+                            <div>
+                                <label for="product-profit-percentage">Ganancia Deseada (%):</label>
+                                <input type="number" id="product-profit-percentage" placeholder="Ej: 30" min="0" required>
+                            </div>
+                            <div>
+                                <label for="product-price">Base Imponible(P. venta):</label>
+                                <input type="number" id="product-price" placeholder="Ej: 35.00" step="0.01" required>
+                            </div>
+                            <div>
+                                <label for="product-category">Categoría:</label>
+                                <select id="product-category" required>
+                                    <option value="">Selecciona una categoría...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="product-code">Código de Barras:</label>
+                                <input type="text" id="product-code" placeholder="Ej: 7701234567890">
+                            </div>
+                            <div>
+                                <label for="product-currency">Moneda de Registro:</label>
+                                <select id="product-currency" required>
+                                    <option value="BS">Bolívares (BS)</option>
+                                    <option value="USD">Dólares (USD)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="product-tax-type">Tipo de Alícuota (IVA):</label>
+                                <select id="product-tax-type" class="text-base" required>
+                                    <option value="16">G (General) - 16%</option>
+                                    <option value="0">E (Exento) - 0%</option>
+                                    <option value="8">R (Reducida) - 8%</option>
+                                    <option value="31">A (Adicional) - 31%</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="product-unit-select">Unidad de Venta:</label>
+                                <select id="product-unit-select" class="text-base" required>
+                                    <option value="UN">Unidad (UN)</option>
+                                    <option value="KG">Kilogramos (KG)</option>
+                                    <option value="G">Gramos (G)</option>
+                                    <option value="L">Litros (L)</option>
+                                    <option value="M">Metros (M)</option>
+                                </select>
+                            </div>
+                        </div> <div class="stock-toggle" id="stock-toggle-btn" style="display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; margin: 20px 0 10px 0; width: 100%;">
+                            <span style="font-weight: bold; color: #555;">Opciones de Stock</span>
+                            <span id="stock-arrow" style="transition: transform 0.3s;">▼</span>
+                        </div>
+
+                        <div id="stock-container" style="display: none; width: 100%; margin-top: 10px;">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-left w-full">
+                                <div>
+                                    <label for="stock-branch">Sucursal de Destino:</label>
+                                    <select id="stock-branch" style="width: 100%;">
+                                        <option value="">Seleccione una sucursal...</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="stock-unit-conversion">Unidad de Empaque:</label>
+                                    <select id="stock-unit-conversion" style="width: 100%;" disabled>
+                                        <option value="">Buscando empaque...</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="stock-current">Stock Actual:</label>
+                                    <input type="number" id="stock-current" readonly style="background-color: #f8f9fa; width: 100%;">
+                                </div>
+                                <div>
+                                    <label for="stock-quantity-units">Cantidad a entrar:</label>
+                                    <input type="number" id="stock-quantity-units" placeholder="Ej: 10" style="width: 100%;">
+                                </div>
+                                <div>
+                                    <label for="stock-total-add">Stock Total a Sumar:</label>
+                                    <input type="number" id="stock-total-add" readonly style="background-color: #e9ecef; width: 100%;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-actions" style="margin-top: 25px; display: flex; gap: 10px; justify-content: center;">
+                            <button class="btn-add-product" id="btn-add-product">Añadir Producto</button>
+                            <button class="btn-save-product" id="btn-save-product" style="display:none;">Guardar Cambios</button>
+                            <button class="btn-cancel-edit" id="btn-cancel-edit" style="display:none;">Cancelar Edición</button>
+                        </div>
+                    </div> </div> 
+            </div> 
+            
+            <hr class="my-6">
+
+            <div class="table-section-container">
+                <h2 style="font-size: 1.8em; font-weight: 800; color: #333; letter-spacing: -0.5px; text-align: left;">Productos Disponibles</h2>
+                <div class="search-bar-container" style="margin-bottom: 20px; text-align: left;">
+                    <label for="product-search" style="font-weight: bold; color: #555; display: block; margin-bottom: 5px;">Buscar Producto:</label>
+                    <input type="text" id="product-search" placeholder="Escribe el nombre, categoría o código del producto..." style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 1em;">
+                </div>
+                
+                <p class="scroll-hint">➡️ Desliza horizontalmente la tabla para ver todos los datos.</p>
+
+                <div class="table-responsive-wrapper">
+                    <table class="table-section">
+                        <thead>
+                           <tr>
+                                <th>Nombre</th>
+                                <th>Categoría</th>
+                                <th>Unidad</th>
+                                <th>P. Compra</th>
+                                <th style="text-align: center;">% Ganancia</th>
+                                <th>Base Imponible(P.Venta)</th>
+                                <th>Ganancia (Por producto)</th>
+                                <th>IVA</th>
+                                <th>Código</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-table-body"></tbody>
+                    </table>
+                </div>
+            </div> 
+        </div> 
+    </main>
+</body>
+
+
+<script type="module">
+
+    const SERVER_URL = "http://192.168.0.113:3000";
+    const LOCAL_URL = "http://localhost:3000";
+    const SERVER_URL_CATEGORY = "http://192.168.0.113:3001";
+
+    
+    let companyId = window.currentCompanyId || localStorage.getItem('companyId');
+    let editingProductId = null;
+    let allProducts = [];
+    let currentPackingFactor = 1; 
+
+    if (!companyId) {
+    console.warn("⚠️ Advertencia: No se encontró el companyId. Es posible que el módulo local falle.");
+}
+
+    let productBase64 = "";
+    const searchInput = document.getElementById('product-search');
+        if (searchInput) {
+        searchInput.addEventListener('input', filterProducts);
+    }
+    const stockBranchSelect = document.getElementById('stock-branch');
+    const stockCurrentInput = document.getElementById('stock-current');
+    const btnAdd = document.getElementById('btn-add-product');
+    const btnSave = document.getElementById('btn-save-product');
+    const btnCancel = document.getElementById('btn-cancel-edit');
+    const productNameInput = document.getElementById('product-name');
+    const productPriceInput = document.getElementById('product-price');
+    const productBuyPriceInput = document.getElementById('product-buy-price');
+    const productProfitPercentageInput = document.getElementById('product-profit-percentage');
+    const productCategorySelect = document.getElementById('product-category');
+    const productCurrencySelect = document.getElementById('product-currency');
+    const selectedUnitSelect = document.getElementById('packaging-unit');
+    const productCodeInput = document.getElementById('product-code');
+    const deleteModal = document.getElementById('delete-confirmation-modal');
+    const modalMessage = document.getElementById('modal-product-message');
+    const modalConfirmBtn = document.getElementById('modal-confirm-delete-btn');
+    const modalCancelBtn = document.getElementById('modal-cancel-delete-btn');
+    
+    let productToDelete = null; 
+    window.categoryMap = {};
+    
+    const stockToggleBtn = document.getElementById('stock-toggle-btn');
+    const stockContainer = document.getElementById('stock-container');
+    const stockArrow = document.getElementById('stock-arrow');
+    const stockUnitConversion = document.getElementById('stock-unit-conversion');
+    const stockQuantityUnitsInput = document.getElementById('stock-quantity-units');
+    const stockTotalAddInput = document.getElementById('stock-total-add');
+    stockToggleBtn.addEventListener('click', () => {
+        const isHidden = stockContainer.style.display === 'none';
+        stockContainer.style.display = isHidden ? 'grid' : 'none';
+        stockArrow.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+    });
+
+    modalCancelBtn.addEventListener('click', () => {
+        deleteModal.style.display = 'none';
+        productToDelete = null;
+    });
+
+
+// Disparadores para actualizar el precio en tiempo real
+    if (productBuyPriceInput) {
+        productBuyPriceInput.addEventListener('input', calcularPrecios);
+    }
+    if (productProfitPercentageInput) {
+        productProfitPercentageInput.addEventListener('input', calcularPrecios);
+    }
+
+    modalConfirmBtn.addEventListener('click', () => {
+        if (productToDelete && companyId) {
+            confirmDeleteAction(companyId, productToDelete.docId, productToDelete.name);
+        }
+        deleteModal.style.display = 'none'; 
+    });
+
+
+async function loadCategories() {
+    const productCategorySelect = document.getElementById('product-category');
+    if (!productCategorySelect) return;
+
+    try {
+        // 1. Instanciamos la API local de Electron
+        const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+        if (!api) {
+            console.warn("⏳ NexusAPI no está disponible aún.");
+            return;
+        }
+
+        console.log("📂 Inventario: Cargando categorías desde la base de datos local (SQLite)...");
+        
+        // 2. Llamada directa y única a SQLite (Sin pasar por el Xeon)
+        const categories = await api.obtenerCategoriasLocal();
+
+        // 3. Limpiar Select y el Mapa Global
+        productCategorySelect.innerHTML = '<option value="">Selecciona una categoría...</option>';
+        window.categoryMap = {};
+
+        // 4. Poblar la interfaz con los datos locales
+        if (categories && categories.length > 0) {
+            categories.forEach(cat => {
+                const option = document.createElement('option');
+                // En la tabla SQLite local, la llave primaria se llama 'id'
+                option.value = cat.id; 
+                option.textContent = cat.nombre || cat.name;
+                productCategorySelect.appendChild(option);
+
+                // Llenamos el mapa para que la tabla de productos sepa traducir el ID al Nombre
+                window.categoryMap[cat.id] = cat.nombre || cat.name;
+            });
+            console.log(`✅ ${categories.length} categorías cargadas localmente.`);
+        } else {
+            console.warn("⚠️ No se encontraron categorías en la base de datos local.");
+        }
+
+        // 5. Refrescar la interfaz de usuario (Tabla y Buscador)
+        if (typeof renderProducts === 'function' && typeof allProducts !== 'undefined' && allProducts.length > 0) {
+            renderProducts(allProducts);
+        } else if (typeof filterProducts === 'function') {
+            filterProducts();
+        }
+
+    } catch (error) {
+        console.error("❌ Error al cargar categorías locales en inventario:", error);
+    }
+}
+
+function calcularPrecios() {
+    const valorCosto = productBuyPriceInput.value;
+    const valorPorcentaje = productProfitPercentageInput.value;
+    const alertBox = document.getElementById('profit-warning-alert');
+    
+    if (!alertBox) return;
+
+    if (valorCosto !== "" && valorPorcentaje !== "") {
+        const costo = parseFloat(valorCosto) || 0;
+        const porcentaje = parseFloat(valorPorcentaje) || 0;
+        const baseImponible = costo * (1 + (porcentaje / 100));
+        productPriceInput.value = baseImponible.toFixed(2);
+        if (porcentaje > 30) {
+            alertBox.classList.remove('hidden');
+        } else {
+            alertBox.classList.add('hidden');
+        }
+    } else {
+        productPriceInput.value = "";
+        alertBox.classList.add('hidden');
+    }
+}
+
+   
+async function checkLocalSession() {
+    const session = await window.nexusAPI.obtenerSesionLocal();
+    if (session) {
+        // Usamos la variable global
+        companyId = session.companyId; 
+        
+        if (typeof loadInventory === 'function') cargarProductosDesdeLocal();
+    } else {
+        window.location.href = 'login.html';
+    }
+}
+
+async function descargarYValidarProductos() {
+    // 1. Verificación rápida del navegador
+    if (!navigator.onLine) {
+        console.log("📴 Modo Offline detectado por el navegador.");
+        cargarProductosDesdeLocal();
+        return;
+    }
+
+    try {
+        // Mensaje informativo (opcional, puedes quitarlo si prefieres silencio total)
+        if (typeof showCustomAlert === 'function') {
+            showCustomAlert("Intentando sincronizar con servidor...", "info");
+        }
+        
+        const response = await fetch(`${SERVER_URL}/api/productos/${companyId}`, {
+            signal: AbortSignal.timeout(3000) // ⏱️ Si en 3 seg no responde, salta al catch
+        });
+        
+        if (!response.ok) throw new Error("Servidor no disponible");
+        
+        const productosServidor = await response.json();
+        let procesados = 0;
+
+        for (const pServidor of productosServidor) {
+            const productoParaValidar = {
+                id: pServidor.producto_ID || pServidor.id, 
+                company_id: companyId,
+                branch_id: pServidor.sucursal_ID || pServidor.branchId || 'sucursal_1',
+                codigo: String(pServidor.codigo),
+                nombre: pServidor.nombre,
+                precio: pServidor.precio_venta || pServidor.precio || 0,
+                categoria: pServidor.categoria || 'Sin Cat.',
+                status: pServidor.status !== undefined ? pServidor.status : 1,
+                imagen: pServidor.imagen || '',
+                datos_json: JSON.stringify(pServidor),
+                fecha_modificacion: pServidor.fecha_modificacion || pServidor.updatedAt || new Date().toISOString()
+            };
+
+            await window.nexusAPI.sincronizarProductoServidor(productoParaValidar);
+            procesados++;
+        }
+
+        console.log(`✅ Sincronización completada. ${procesados} productos actualizados.`);
+        cargarProductosDesdeLocal();
+
+    } catch (error) {
+        // 🛠️ AQUÍ ESTÁ LA MAGIA: Filtramos el error
+        console.warn("⚠️ Nota: No se pudo sincronizar (Servidor Xeon desconectado).");
+        
+        // En lugar de un alert de "Error", damos un aviso de cortesía o hacemos silencio
+        if (typeof showCustomAlert === 'function') {
+            showCustomAlert("Trabajando en modo local (Servidor offline)", "info");
+        }
+
+        // Cargamos lo que tenemos en SQLite de todos modos
+        cargarProductosDesdeLocal();
+    }
+}
+
+// 1. Convertimos el bloque en una función autónoma
+async function iniciarMotorInventario() {
+    try {
+        // Forzamos la búsqueda de la API en la ventana actual o en la del padre
+        const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+
+        if (!api) {
+            console.warn("⏳ NexusAPI no encontrada aún. Reintentando en 100ms...");
+            // REGLA DE ORO: En vez de disparar el evento de nuevo, simplemente volvemos a llamar a esta función
+            setTimeout(iniciarMotorInventario, 100); 
+            return;
+        }
+
+        const session = await api.obtenerSesionLocal();
+
+        if (session) {
+            console.log("✅ Sesión validada localmente en Inventario.");
+            // companyId debe estar declarada como global (let companyId;) arriba en tu script
+            companyId = session.companyId;
+            window.currentCompanyId = companyId;
+            window.currentBranchId = session.branchId || 'principal';
+
+            // Carga inmediata de SQLite para que el usuario no espere
+            await cargarProductosDesdeLocal(); 
+
+            if (navigator.onLine) {
+                console.log("🌐 Internet detectado, validando con el servidor Xeon...");
+                // Esta función hará el fetch al puerto 3000 del Xeon (113)
+                if (typeof descargarYValidarProductos === 'function') {
+                    await descargarYValidarProductos(companyId); 
+                }
+            } else {
+                console.log("🔌 Modo Offline: Usando datos de SQLite exclusivamente.");
+            }
+        } else {
+            window.location.href = 'login.html';
+        }
+    } catch (error) {
+        console.error("❌ Error en el arranque del inventario:", error);
+    }
+}
+
+
+iniciarMotorInventario();
+
+
+    async function compressImage(file, quality = 0.7) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (e) => {
+            const img = new Image();
+            img.src = e.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 500;
+                const scaleSize = MAX_WIDTH / img.width;
+                canvas.width = MAX_WIDTH;
+                canvas.height = img.height * scaleSize;
+
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+        };
+    });
+}
+
+
+function updateImageUI(src) {
+    const imgDisplay = document.getElementById('img-display');
+    const placeholder = document.getElementById('img-placeholder');
+    const btnRemove = document.getElementById('btn-remove-img');
+
+    if (src) {
+        imgDisplay.src = src;
+        imgDisplay.style.display = 'block';
+        placeholder.style.display = 'none';
+        btnRemove.style.display = 'block';
+        productBase64 = src;
+    } else {
+        imgDisplay.src = '';
+        imgDisplay.style.display = 'none';
+        placeholder.style.display = 'block';
+        btnRemove.style.display = 'none';
+        productBase64 = "";
+        document.getElementById('file-input').value = ""; 
+    }
+}
+
+document.getElementById('file-input').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        const compressed = await compressImage(file);
+        updateImageUI(compressed);
+    }
+});
+
+document.getElementById('btn-remove-img').addEventListener('click', () => {
+    updateImageUI(null);
+});1
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Llamamos a la carga de categorías al iniciar
+    loadCategories();
+});
+
+
+async function loadBranches(companyId) {
+    try {
+        const branches = [{ id: 'sucursal_1', nombre: 'Sucursal Principal' }]; // Dato simulado temporal
+        stockBranchSelect.innerHTML = '<option value="">Seleccione una sucursal...</option>';
+        if(branches) {
+            branches.forEach((branch) => {
+                const option = document.createElement('option');
+                option.value = branch.id;
+                option.textContent = branch.nombre || `Sucursal ${branch.id}`;
+                stockBranchSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error("Error cargando sucursales:", error);
+    }
+}
+
+
+async function autoSelectPacking(productName) {
+    if (!productName || !companyId) return;
+    
+    try {
+        const packings = []; // Dato simulado temporal
+        const match = packings ? packings.find(p => p.productType === productName.toLowerCase().trim()) : null;
+
+        if (match) {
+            stockUnitConversion.innerHTML = `<option value="${match.id}">${match.unit} (x${match.quantity} ${match.measureType})</option>`;
+            currentPackingFactor = match.quantity || 1;
+            stockUnitConversion.disabled = false;
+        } else {
+            stockUnitConversion.innerHTML = '<option value="">Sin empaque vinculado</option>';
+            currentPackingFactor = 1;
+            stockUnitConversion.disabled = true;
+        }
+        calculateTotalStockAddition();
+    } catch (error) {
+        console.error("Error buscando empaques:", error);
+    }
+}
+
+function calculateTotalStockAddition() {
+        const qty = parseFloat(stockQuantityUnitsInput.value) || 0;
+        stockTotalAddInput.value = (qty * currentPackingFactor).toFixed(2);
+    }
+
+
+    async function fetchStockValue(branchId, productId) {
+    if (!branchId || !productId || !companyId) return;
+    stockCurrentInput.value = "Cargando...";
+    
+    try {
+        const stockActual = await window.nexusAPI.obtenerStockLocal(branchId, productId); 
+        stockCurrentInput.value = stockActual !== null ? stockActual : "0";
+    } catch (error) {
+        console.error("Error obteniendo stock:", error);
+        stockCurrentInput.value = "Error";
+    }
+}
+
+window.enableEditing = async function(docId, productData) {
+    if (!docId) {
+        console.error("❌ Error: Se intentó editar un producto sin ID válido.");
+        return;
+    }
+    editingProductId = docId;
+    console.log("📝 Modo edición activado para ID:", editingProductId);
+    
+    productNameInput.value = productData.nombre || '';               
+    productPriceInput.value = productData.precio_venta || 0;         
+    productBuyPriceInput.value = productData.precio_compra || 0;     
+    
+    if (productProfitPercentageInput) {
+        productProfitPercentageInput.value = productData.porcentaje_ganancia || productData.porcentaje_ganacia || 0;
+    }
+
+    // 🔥 AGREGADO: Carga del tipo de Alícuota (IVA)
+    const taxSelect = document.getElementById('product-tax-type');
+    if (taxSelect) {
+        taxSelect.value = productData.tipo_alicuota || "16";
+    }
+
+    productCategorySelect.value = productData.categoria || '';       
+    productCodeInput.value = productData.codigo || '';              
+    
+    const currencyEl = document.getElementById('product-currency');
+    if (currencyEl) currencyEl.value = productData.currency || productData.moneda || 'USD';
+    
+    const unitSelect = document.getElementById('product-unit-select');
+    if (unitSelect) {
+        unitSelect.value = productData.unit || 'UN';
+    }
+
+    if (stockBranchSelect && stockBranchSelect.options.length > 0) {
+        stockBranchSelect.value = String(productData.sucursal_ID || '0'); 
+    }
+    
+    if (navigator.onLine && stockBranchSelect.value && docId) {
+        fetchStockValue(stockBranchSelect.value, docId);
+    } else {
+        if (stockTotalAddInput) stockTotalAddInput.value = productData.base_imponible || 0;
+    }
+    
+    await autoSelectPacking(productData.nombre); 
+    
+    if (stockContainer) {
+        // Mantenemos 'block' o 'grid' según tu diseño organizado a la izquierda
+        stockContainer.style.display = 'block'; 
+    }
+    
+    if (typeof stockArrow !== 'undefined' && stockArrow) {
+        stockArrow.style.transform = 'rotate(180deg)';
+    }
+    
+    updateImageUI(productData.imagen || null);
+    toggleFormButtons(true); 
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+async function addProduct(companyId) {
+    // 1. Obtención y Validación de datos
+    // Esta función ya captura nombre, precios, ganancia, %, etc.
+    const productData = getValidatedProductData();
+    if (!productData) return;
+
+    // 2. Preparación del objeto final (Traducción universal)
+    const finalProduct = {
+        ...productData,
+        producto_ID: `PROD-${Date.now()}`, // ID único para Xeon/Nube
+        id: `PROD-${Date.now()}`,          // ID para SQLite local
+        empresa_ID: companyId,
+        fecha_modificacion: new Date().toISOString(),
+        status: 1, // Activo por defecto
+        // Empaquetamos todo en el JSON que SQLite guardará en la columna datos_json
+        datos_json: JSON.stringify({
+            ...productData,
+            status: 1,
+            id: `PROD-${Date.now()}`
+        })
+    };
+
+    try {
+        // 3. GUARDADO LOCAL PRIORITARIO (Reflejo instantáneo en el Cerebro)
+        // Al usar sincronizarProductoServidor, el main.js detectará el cambio y avisará a la tabla
+        await window.nexusAPI.sincronizarProductoServidor(finalProduct);
+
+        // 4. INTENTO DE ENVÍO AL SERVIDOR XEON
+        if (navigator.onLine) {
+            const response = await fetch(`${SERVER_URL}/api/productos`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(finalProduct)
+            });
+
+            if (!response.ok) throw new Error("Error en el servidor Xeon");
+            showCustomAlert("✅ Producto creado y sincronizado con el Xeon");
+        } else {
+            // Si no hay red, lanzamos error para caer en el catch y encolar
+            throw new Error("Sin conexión a la red"); 
+        }
+
+    } catch (e) {
+        console.warn("⚠️ No se pudo enviar al Xeon, encolando tarea:", e.message);
+        
+        // 5. ENCOLADO DE TAREA (Respaldo para sincronización posterior)
+        await window.nexusAPI.encolarSincronizacion({
+            operacion: 'INSERT',
+            tabla: 'productos',
+            datos: finalProduct
+        });
+        
+        showCustomAlert("💾 Guardado localmente. Se subirá al Xeon automáticamente al detectar conexión.", "info");
+        
+    } finally {
+        // 6. LIMPIEZA Y REFRESCO DE INTERFAZ
+        clearForm();
+        
+        // Cerramos el panel de stock y reseteamos la flecha
+        const stockContainer = document.getElementById('stock-container');
+        if (stockContainer) stockContainer.style.display = 'none';
+        
+        const stockArrow = document.getElementById('stock-arrow');
+        if (stockArrow) stockArrow.style.transform = 'rotate(0deg)';
+
+        // Forzamos la recarga de la tabla para ver el nuevo producto inmediatamente
+        await cargarProductosDesdeLocal();
+    }
+}
+
+function clearForm() {
+    if (productNameInput) productNameInput.value = ''; 
+    if (productPriceInput) productPriceInput.value = ''; 
+    if (productBuyPriceInput) productBuyPriceInput.value = '';
+    if (productProfitPercentageInput) productProfitPercentageInput.value = ''; 
+    if (productCategorySelect) productCategorySelect.value = ''; 
+    if (productCodeInput) productCodeInput.value = '';
+    if (stockQuantityUnitsInput) stockQuantityUnitsInput.value = ''; 
+    if (stockTotalAddInput) stockTotalAddInput.value = ''; 
+    
+    const currencySelect = document.getElementById('product-currency');
+    if (currencySelect) currencySelect.value = 'BS';
+    
+    const unitSelect = document.getElementById('product-unit-select');
+    if (unitSelect) unitSelect.value = 'UN';
+    
+    // 🔥 LIMPIAMOS LA IMAGEN DE LA UI Y LA VARIABLE GLOBAL
+    if (typeof updateImageUI === 'function') {
+        updateImageUI(null);
+    }
+    
+    editingProductId = null; 
+}
+
+
+
+window.deleteProduct = async function(productId) {
+    if (!confirm("¿Desea inactivar este producto?")) return;
+    const updateData = { 
+        producto_ID: productId, 
+        status: 0, 
+        empresa_ID: currentCompanyId,
+        fecha_modificacion: new Date().toISOString()
+    };
+
+    if (navigator.onLine) {
+        try {
+            const response = await fetch(`${SERVER_URL}/api/productos/${productId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updateData)
+            });
+            if (!response.ok) throw new Error("Error en servidor Xeon");
+            await window.nexusAPI.sincronizarProductoServidor(updateData);
+            
+            showCustomAlert("Producto inactivado en el Xeon y local");
+            loadInventory(currentCompanyId); 
+        } catch (e) {
+            console.error("Error al inactivar en Xeon:", e);
+            guardarInactivacionLocal(updateData);
+        }
+    } else {
+        guardarInactivacionLocal(updateData);
+    }
+};
+
+window.cancelEditing = function() {
+    editingProductId = null;
+    clearForm();
+    toggleFormButtons(false);
+
+    // Ocultar sección de stock (Ajusta 'stock-edit-section' al ID real de tu div)
+    const stockSection = document.getElementById('stock-edit-section');
+    if (stockSection) {
+        stockSection.style.display = 'none';
+    }
+};
+
+async function guardarInactivacionLocal(datos) {
+    try {
+        await window.nexusAPI.sincronizarProductoServidor(datos);
+        await window.nexusAPI.encolarSincronizacion({
+            operacion: 'UPDATE',
+            tabla: 'productos', 
+            datos: datos
+        });
+
+        showCustomAlert("Inactivación guardada localmente (Pendiente de sincronizar)", "warning");
+        loadInventory(currentCompanyId);
+    } catch (err) {
+        console.error("Error en inactivación local:", err);
+    }
+}
+
+
+window.updateProduct = async function(idEmpresa) {
+    const data = getValidatedProductData();
+    
+    if (!data || !editingProductId) {
+        console.error("❌ No se puede actualizar: ID es null o datos inválidos");
+        showCustomAlert("Error: ID de producto no encontrado", "error");
+        return;
+    }
+
+    const idParaSync = editingProductId; 
+
+    // 🛠️ ARREGLO DE LA AMNESIA: Empaquetamos todo correctamente en datos_json
+    const productData = {
+        ...data,
+        id: idParaSync,              // Traductor para main.js
+        producto_ID: idParaSync,     // Traductor para la Nube
+        company_id: idEmpresa,
+        empresa_ID: idEmpresa,
+        fecha_modificacion: new Date().toISOString(),
+        status: 1, // Mantenemos el estatus activo
+        // 🔥 ESTO ERA LO QUE FALTABA: La mochila con los detalles
+        datos_json: JSON.stringify({
+            ...data,
+            id: idParaSync,
+            producto_ID: idParaSync,
+            status: 1
+        })
+    };
+
+    try {
+        // 1. Guardar en Local (Cerebro SQLite)
+        const resultadoLocal = await window.nexusAPI.sincronizarProductoServidor(productData);
+
+        // 2. Enviar a la Nube (Xeon) si hay internet
+        if (navigator.onLine) {
+            fetch(`${SERVER_URL}/api/productos/${idParaSync}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(productData)
+            }).then(response => {
+                if (!response.ok) console.warn("⚠️ Falló sincronización con Xeon (Nube)");
+            }).catch(err => console.warn("⚠️ Error de red con Xeon", err));
+        } else {
+            // 3. Encolar tarea si no hay red
+            await window.nexusAPI.encolarSincronizacion({
+                operacion: 'UPDATE',
+                tabla: 'productos',
+                datos: productData
+            });
+        }
+
+        if (resultadoLocal) {
+            // Ya no hace falta llamar cargarProductosDesdeLocal() aquí 
+            // porque nuestro radar en tiempo real lo hará en milisegundos.
+            showCustomAlert("✅ Producto actualizado correctamente");
+            window.cancelEditing(); 
+        }
+
+    } catch (error) {
+        console.error("❌ Error en actualización:", error);
+        showCustomAlert("Hubo un error al actualizar el producto.", "error");
+    }
+};
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    cargarProductosDesdeLocal();
+});
+
+async function guardarEnColaLocal(productData, companyId) {
+    try {
+        await window.nexusAPI.sincronizarProductoServidor(productData);
+
+        await window.nexusAPI.encolarSincronizacion({
+            operacion: 'UPDATE',
+            tabla: 'productos', 
+            datos: productData
+        });
+
+        showCustomAlert("Cambios guardados localmente. Sincronización pendiente.");
+        cancelEditing();
+        cargarProductosDesdeLocal();
+    } catch (err) {
+        console.error("Error en edición offline:", err);
+        showCustomAlert("Error crítico al guardar localmente", "error");
+    }
+}
+
+async function handleStockUpdate(productId, name) {
+    const SERVER_URL = "http://192.168.0.113:3000";
+    const branchId = stockBranchSelect.value;
+    const totalToAdd = parseFloat(stockTotalAddInput.value) || 0;
+
+    if (branchId && totalToAdd > 0) {
+        const currentStock = parseFloat(stockCurrentInput.value) || 0;
+        const stockData = {
+            producto_ID: productId,
+            nombre: name,
+            sucursal_ID: branchId,
+            empresa_ID: currentCompanyId,
+            stock_nuevo: currentStock + totalToAdd,
+            cantidad_añadida: totalToAdd,
+            fecha_modificacion: new Date().toISOString()
+        };
+
+        if (navigator.onLine) {
+            try {
+                const response = await fetch(`${SERVER_URL}/api/inventario/actualizar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(stockData)
+                });
+
+                if (!response.ok) throw new Error("Error en servidor Xeon");
+                await window.nexusAPI.sincronizarProductoServidor({
+                    producto_ID: productId,
+                    base_imponible: (currentStock + totalToAdd).toString() 
+                });
+
+                console.log("📈 Stock actualizado en Xeon y Local");
+            } catch (error) {
+                console.error("Error actualizando stock en Xeon:", error);
+                await encolarStockLocal(stockData);
+            }
+        } else {
+            await encolarStockLocal(stockData);
+        }
+    }
+}
+
+async function encolarStockLocal(datos) {
+    try {
+        await window.nexusAPI.sincronizarProductoServidor({
+            producto_ID: datos.producto_ID,
+            base_imponible: datos.stock_nuevo.toString()
+        });
+        await window.nexusAPI.encolarSincronizacion({
+            operacion: 'UPDATE_STOCK',
+            tabla: 'productos',
+            datos: datos
+        });
+
+        showCustomAlert("Stock actualizado localmente (Sincronización pendiente)", "warning");
+    } catch (err) {
+        console.error("Error en respaldo de stock:", err);
+    }
+}
+
+function getValidatedProductData() {
+    // 1. CAPTURA DE LOS ELEMENTOS
+    const productNameInput = document.getElementById('product-name');
+    const productPriceInput = document.getElementById('product-price');
+    const productBuyPriceInput = document.getElementById('product-buy-price');
+    const productCategorySelect = document.getElementById('product-category');
+    const productCodeInput = document.getElementById('product-code');
+    const taxSelect = document.getElementById('product-tax-type'); 
+    const unitSelect = document.getElementById('product-unit-select'); 
+
+    // 2. EXTRACCIÓN DE VALORES
+    const nombre = productNameInput ? productNameInput.value.trim() : "";
+    const precioVenta = productPriceInput ? parseFloat(productPriceInput.value) : 0;
+    const precioCompra = productBuyPriceInput ? parseFloat(productBuyPriceInput.value) : 0;
+    const categoria = productCategorySelect ? productCategorySelect.value : "";
+    const codigo = productCodeInput ? productCodeInput.value.trim() : "";
+    
+    const tipo_alicuota = taxSelect ? taxSelect.value : "16";
+    const unit = unitSelect ? unitSelect.value : "UN"; 
+
+    const profitInput = document.getElementById('product-profit');
+    const profitPercentInput = document.getElementById('product-profit-percentage');
+    const ganancia = profitInput ? parseFloat(profitInput.value) : (precioVenta - precioCompra);
+    const porcentajeGanancia = profitPercentInput ? parseFloat(profitPercentInput.value) : 0;
+
+    const monedaEl = document.getElementById('product-currency');
+    const moneda = monedaEl ? monedaEl.value : "BS";
+
+    // 3. VALIDACIÓN
+    if (!nombre || isNaN(precioVenta) || !categoria) {
+        showCustomAlert("Faltan campos obligatorios: Nombre, Precio o Categoría", "error");
+        return null; 
+    }
+
+    // 4. RETORNO DEL OBJETO (¡Ahora con la imagen!)
+    return {
+        nombre,
+        precio_venta: precioVenta,
+        precio_compra: precioCompra,
+        ganancia: ganancia,
+        porcentaje_ganancia: porcentajeGanancia,
+        tipo_alicuota: tipo_alicuota, 
+        categoria,
+        codigo,
+        moneda,
+        currency: moneda,
+        unit: unit,
+        imagen: typeof productBase64 !== 'undefined' ? productBase64 : "", // 🔥 AQUÍ ESTÁ LA SOLUCIÓN
+        stock_nuevo: document.getElementById('stock-total-add') ? (parseInt(document.getElementById('stock-total-add').value) || 0) : 0
+    };
+}
+
+
+    function showDeleteConfirmationModal(docId, productName) {
+        productToDelete = { docId, name: productName };
+        modalMessage.innerHTML = `¿Estás seguro de que deseas Deshabilitar permanentemente <strong>"${productName}"</strong>?`;
+        deleteModal.style.display = 'block';
+    }
+
+async function confirmDeleteAction(companyId, docId, productName) {
+    const SERVER_URL = "http://192.168.0.113:3000";
+
+    if (navigator.onLine) {
+        try {
+            const response = await fetch(`${SERVER_URL}/api/productos/${docId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            if (!response.ok) throw new Error("No se pudo eliminar en el servidor Xeon");
+            await window.nexusAPI.eliminarProductoLocal(docId);
+            showCustomAlert(`"${productName}" eliminado permanentemente.`);           
+            cargarProductosDesdeLocal();
+
+        } catch (e) {
+            console.error("Error en eliminación:", e);
+            showCustomAlert("Error al eliminar en el servidor", "error");
+        }
+    } else {
+
+        try {
+
+            await window.nexusAPI.eliminarProductoLocal(docId);
+            await window.nexusAPI.encolarSincronizacion({
+                operacion: 'DELETE',
+                tabla: 'productos',
+                datos: { producto_ID: docId, empresa_ID: companyId }
+            });
+
+            showCustomAlert(`"${productName}" eliminado localmente (Pendiente de sincronizar)`);
+            cargarProductosDesdeLocal();
+        } catch (err) {
+            console.error("Error en eliminación local:", err);
+            showCustomAlert("Error al eliminar localmente", "error");
+        }
+    }
+}
+
+    function renderProducts(products) {
+    const inventoryTableBody = document.getElementById('inventory-table-body'); 
+    if (!inventoryTableBody) return;
+
+    inventoryTableBody.innerHTML = '';
+
+    if (!products || products.length === 0) {
+        inventoryTableBody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 2rem; color: #666;">No hay productos disponibles.</td></tr>`;
+        return;
+    }
+
+    products.forEach(item => {
+        const product = item.product;
+        const docId = item.docId;
+        
+        // 1. TRADUCTOR DE CATEGORÍA
+        const categoryName = window.categoryMap && window.categoryMap[product.categoria] 
+            ? window.categoryMap[product.categoria] 
+            : (product.categoria || 'Sin Cat.');
+
+        // 2. CÁLCULOS Y PRECIOS
+        const sellPrice = parseFloat(product.precio_venta || 0);
+        const buyPrice = parseFloat(product.precio_compra || 0);
+        const profit = parseFloat(product.ganancia !== undefined ? product.ganancia : (sellPrice - buyPrice));
+        const profitPercentage = parseFloat(product.porcentaje_ganancia || 0);
+        
+        // 3. ESTILOS DE MONEDA
+        const currencySymbol = product.currency || 'USD';
+        const isUSD = currencySymbol === "USD";
+        const currencyStyle = isUSD ? 'style="color: #27ae60; font-weight: bold;"' : '';
+        const numberStyle = 'style="font-weight: bold; color: #2c3e50;"';
+
+        // 4. LÓGICA DE IVA (ALÍCUOTA) - Doble línea
+        const taxLabels = {
+            "16": "G (General)",
+            "0": "E (Exento)",
+            "8": "R (Reducida)",
+            "31": "A (Adicional)"
+        };
+
+        const taxRate = product.tipo_alicuota || '16';
+        const taxLabel = taxLabels[taxRate] || "G (General)";
+        
+        // Colores: Azul para General, Naranja para el resto
+        const taxClass = (taxRate === '16' || taxRate === 16) 
+            ? 'background-color: #e8f4fd; color: #2980b9;' 
+            : 'background-color: #fdf2e9; color: #d35400;';
+
+        const row = document.createElement('tr');
+        const safeProductJson = JSON.stringify(product).replace(/"/g, '&quot;');
+        const safeProductName = (product.nombre || '').replace(/'/g, "\\'");
+
+        // 5. RENDERIZADO FINAL
+        row.innerHTML = `
+            <td>${product.nombre || '---'}</td>
+            <td title="${product.categoria}">${categoryName}</td>
+            <td style="text-align: center;">${product.unit || 'UN'}</td>
+            
+            <td ${numberStyle}>
+                ${buyPrice.toFixed(2)} <span ${currencyStyle}>${currencySymbol}</span>
+            </td>
+
+            <td style="text-align: center; font-weight: bold; color: #2c3e50;">
+                ${profitPercentage.toFixed(2)}%
+            </td>
+
+            <td ${numberStyle}>
+                ${sellPrice.toFixed(2)} <span ${currencyStyle}>${currencySymbol}</span>
+            </td>
+
+            <td style="color: #27ae60; font-weight: bold;">
+                ${profit.toFixed(2)} <span ${currencyStyle}>${currencySymbol}</span>
+            </td>
+
+            <td style="text-align: center; min-width: 100px;">
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;">
+                    <span style="padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; ${taxClass}">
+                        ${taxRate}%
+                    </span>
+                    <small style="font-size: 9px; color: #666; font-weight: bold; text-transform: uppercase;">
+                        ${taxLabel.split(' ')[0]} ${taxLabel.split(' ')[1] || ''}
+                    </small>
+                </div>
+            </td>
+
+            <td><code style="background: #eee; padding: 2px 4px; border-radius: 4px;">${product.codigo || '---'}</code></td>
+            
+            <td>
+                <div class="table-actions-container">
+                    <button class="btn-edit" onclick="window.enableEditing('${docId}', ${safeProductJson})">Editar</button>
+                    <button class="btn-delete" onclick="window.deleteProduct('${docId}', '${safeProductName}')">
+                        ${product.status === 1 ? 'Deshabilitar' : 'Habilitar'}
+                    </button>
+                </div>
+            </td>
+        `;
+        
+        inventoryTableBody.appendChild(row);
+    });
+}
+    
+function filterProducts() {
+    const searchInputEl = document.getElementById('product-search');
+    const searchTerm = searchInputEl ? searchInputEl.value.toLowerCase() : '';
+
+    const filteredProducts = allProducts.filter(item => {
+        const p = item.product;
+        const nombre = (p.nombre || '').toLowerCase();
+        const categoria = (p.categoria || '').toLowerCase();
+        const codigo = (p.codigo || '').toLowerCase();
+
+        return nombre.includes(searchTerm) || 
+               categoria.includes(searchTerm) || 
+               codigo.includes(searchTerm);
+    });
+
+    renderProducts(filteredProducts);
+}
+
+async function cargarProductosDesdeLocal() {
+    try {
+        if (typeof showLoadingSpinner === 'function') showLoadingSpinner();
+        
+        // 1. Buscamos en el Cerebro (SQLite)
+        const apiSegura = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+        const localProducts = await apiSegura.obtenerProductosLocal(companyId || window.currentCompanyId);
+        
+        // Inicializamos allProducts como array vacío por seguridad (Debe ser variable global)
+        allProducts = [];
+
+        if (localProducts && localProducts.length > 0) {
+            
+            // 2. TRADUCCIÓN DE FORMATO CON PROTECCIÓN ANTI-NULL
+            allProducts = localProducts.map(p => {
+                if (!p) return null;
+
+                let datosParseados = {};
+                
+                try {
+                    if (typeof p.datos_json === 'string') {
+                        datosParseados = JSON.parse(p.datos_json);
+                    } else if (typeof p.datos_json === 'object' && p.datos_json !== null) {
+                        datosParseados = p.datos_json;
+                    }
+                } catch (e) {
+                    console.warn("⚠️ Error parseando JSON del producto ID:", p.id, e);
+                    datosParseados = {};
+                }
+
+                if (!datosParseados) datosParseados = {};
+
+                // EMPAQUETAMOS ASEGURANDO QUE NADA LLEGUE UNDEFINED A LA UI
+                return {
+                    docId: p.id || 'ID-DESCONOCIDO',
+                    product: {
+                        // Prioridad: 1. JSON parseado | 2. Columna directa de la DB | 3. Valor por defecto
+                        nombre: datosParseados.nombre || p.nombre || 'Sin nombre',
+                        codigo: datosParseados.codigo || p.codigo || 'Sin código',
+                        precio_compra: datosParseados.precio_compra || p.precio_compra || 0,
+                        precio_venta: datosParseados.precio_venta || p.precio || 0,
+                        ganancia: datosParseados.ganancia || 0,
+                        porcentaje_ganancia: datosParseados.porcentaje_ganancia || p.porcentaje_ganancia || 0,
+                        categoria: datosParseados.categoria || p.categoria || '',
+                        status: datosParseados.status !== undefined ? datosParseados.status : (p.status !== undefined ? p.status : 1),
+                        imagen: datosParseados.imagen || p.imagen || '',
+                        currency: datosParseados.currency || p.currency || 'USD',
+                        unit: datosParseados.unit || p.unit || 'UN',
+                        tipo_alicuota: datosParseados.tipo_alicuota || p.tipo_alicuota || "16"
+                    }
+                };
+            }).filter(item => item !== null);
+            
+            // 3. Dibujar la tabla y sincronizar UI
+            if (typeof renderProducts === 'function') renderProducts(allProducts);
+            
+            // Si el buscador tiene texto, volvemos a filtrar para no perder la vista del usuario
+            if (typeof filterProducts === 'function') filterProducts();
+            
+            console.log(`📦 ${allProducts.length} productos cargados y sincronizados.`);
+        } else {
+            console.warn("La tabla local está vacía.");
+            if (typeof renderProducts === 'function') renderProducts([]);
+        }
+    } catch (err) {
+        console.error("❌ Error crítico al obtener productos de SQLite:", err);
+    } finally {
+        if (typeof hideLoadingSpinner === 'function') hideLoadingSpinner();
+    }
+}
+
+// 4. ESCUCHADOR DE SEÑAL DEL CEREBRO (Main Process)
+const apiGlobal = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+
+if (apiGlobal && apiGlobal.onProductosCambiados) {
+    console.log("👁️ [INVENTARIO] Radar conectado exitosamente. Esperando señal...");
+    apiGlobal.onProductosCambiados(() => {
+        console.log("🔄 [INVENTARIO] ¡Señal recibida del Cerebro! Actualizando tabla...");
+        cargarProductosDesdeLocal();
+    });
+} else {
+    console.error("❌ [INVENTARIO] ERROR: No se pudo conectar el radar (NexusAPI no encontrada).");
+}
+
+
+
+async function loadInventory(companyId) {
+    console.log("🔄 Sincronizando inventario con Xeon...");
+    let cargadoExitosamente = false;
+    if (navigator.onLine) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 4000); 
+
+            const response = await fetch(`${SERVER_URL}/api/productos/empresa/${companyId}`, { 
+                signal: controller.signal 
+            });
+            clearTimeout(timeoutId);
+
+            if (response.ok) {
+                const productos = await response.json();
+                allProducts = productos.map(p => ({
+                    docId: p.producto_ID,
+                    product: p
+                }));
+
+                renderTable(allProducts); 
+                cargadoExitosamente = true;
+                fetch(`${LOCAL_URL}/api/sincronizar-desde-xeon`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(productos)
+                }).catch(err => console.error("Error respaldando en SQLite:", err));
+            }
+        } catch (err) {
+            console.warn("⚠️ Xeon fuera de línea, activando respaldo local.");
+        }
+    }
+    if (!cargadoExitosamente) {
+        try {
+            const localData = await window.nexusAPI.obtenerProductosLocal();
+            if (localData && localData.length > 0) {
+                allProducts = localData.map(p => ({
+                    docId: p.producto_ID,
+                    product: p
+                }));
+                renderTable(allProducts);
+                console.log("📂 Cargado exitosamente desde SQLite (Modo Respaldo)");
+            } else {
+                showCustomAlert("No hay datos locales disponibles", "error");
+            }
+        } catch (err) {
+            console.error("❌ Error al acceder al almacenamiento local:", err);
+        }
+    }
+}
+
+// Definir la función globalmente para que los botones de la tabla puedan verla
+window.editProduct = function(id) {
+    // 1. Buscar el producto en el array local allProducts
+    const p = allProducts.find(item => item.id === id);
+    if (!p) {
+        console.error("❌ Producto no encontrado para editar:", id);
+        return;
+    }
+
+    // 2. Guardar el ID en la variable global de edición
+    editingProductId = id;
+
+    // 3. Llenar los campos del formulario con los datos del producto
+    productNameInput.value = p.nombre || '';
+    productPriceInput.value = p.precio || '';
+    productBuyPriceInput.value = p.precio_compra || '';
+    productProfitPercentageInput.value = p.porcentaje_ganancia || '';
+    
+    // IMPORTANTE: p.categoria debe contener el ID (ej: CAT-123) 
+    // para que el select se posicione automáticamente
+    productCategorySelect.value = p.categoria || p.category || '';
+    
+    productCodeInput.value = p.codigo || '';
+    stockQuantityUnitsInput.value = p.stock || 0;
+    
+    const currencySelect = document.getElementById('product-currency');
+    if (currencySelect) currencySelect.value = p.moneda || 'BS';
+
+    // 4. Cambiar la visibilidad de los botones (Ocultar "Agregar", Mostrar "Guardar" y "Cancelar")
+    toggleFormButtons(true);
+
+    // 5. Scroll suave al formulario para que el usuario vea que cargaron los datos
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    console.log("📝 Editando producto:", p.nombre);
+};
+
+if (btnSave) {
+    btnSave.addEventListener('click', () => {
+        const currentCompanyId = typeof companyId !== 'undefined' ? companyId : (localStorage.getItem('companyId') || '1');
+        // Aseguramos el llamado correcto sin importar si es global o local
+        if (typeof window.updateProduct === 'function') {
+            window.updateProduct(currentCompanyId);
+        } else {
+            updateProduct(currentCompanyId);
+        }
+    });
+}
+
+if (btnCancel) {
+    btnCancel.addEventListener('click', () => {
+        // Llamamos explícitamente a la función global que creamos
+        if (typeof window.cancelEditing === 'function') {
+            window.cancelEditing();
+        } else {
+            console.error("❌ La función cancelEditing no está definida en el código.");
+        }
+    });
+}
+
+function toggleFormButtons(isEditing) {
+    if (btnAdd) btnAdd.style.display = isEditing ? 'none' : 'block';
+    if (btnSave) btnSave.style.display = isEditing ? 'block' : 'none';
+    if (btnCancel) btnCancel.style.display = isEditing ? 'block' : 'none';
+}
+
+window.cancelEditing = function() {
+    console.log("🚫 Edición cancelada");
+    editingProductId = null; 
+    clearForm(); 
+    toggleFormButtons(false);
+    
+    const stockPanel = document.getElementById('product-stock-container');
+    if (stockPanel) stockPanel.style.display = 'none';
+};
+
+    function showCustomAlert(message, type = 'success') {
+        const div = document.createElement('div');
+        div.textContent = message;
+        div.style.cssText = `position:fixed; top:20px; right:20px; background:${type==='error'?'#f44336':'#4CAF50'}; color:white; padding:15px; border-radius:5px; z-index:1000;`;
+        document.body.appendChild(div);
+        setTimeout(() => div.remove(), 3000);
+    }
+
+// USA ESTA VERSIÓN
+if (btnAdd) {
+    btnAdd.onclick = async () => {
+        // Obtenemos el ID de la empresa directamente de la base de datos local
+        const sesion = await window.nexusAPI.obtenerSesionLocal();
+        const idEmpresa = sesion ? sesion.companyId : null;
+
+        if (idEmpresa) {
+            // Llamamos a la función unificada
+            await addProduct(idEmpresa);
+        } else {
+            showCustomAlert("Error: No se pudo identificar la empresa activa. Por favor, reicie sesión.", "error");
+        }
+    };
+}
+
+
+window.addEventListener('online', async () => {
+    console.log("🌐 Internet detectado. Iniciando sincronización de Nexus POS...");
+    try {
+        const resultado = await window.nexusAPI.procesarColaSync();
+        console.log("✅ Sincronización completada:", resultado);
+    } catch (err) {
+        console.error("❌ Error en la sincronización automática:", err);
+    }
+});
+
+loadCategories();
+</script>
+</body>
+</html>

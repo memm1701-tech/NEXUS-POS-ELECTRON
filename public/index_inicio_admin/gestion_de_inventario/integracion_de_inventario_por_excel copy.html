@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integración de Inventario por Excel</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+    <style>
+        /* (Estilos CSS sin cambios) */
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f3f4f6;
+            margin: 0;
+            padding: 0;
+        }
+
+        .main-content {
+            background-color: #ffffff;
+            padding: 20px; 
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            width: 95%; 
+            max-width: 900px;
+            box-sizing: border-box;
+            margin: 1rem auto;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.8em; 
+            font-weight: 700;
+        }
+
+        .mapping-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .mapping-item label {
+            font-weight: bold;
+            color: #555;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .mapping-item select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+
+        .btn-primary {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            color: white;
+            background-color: #007bff;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        .btn-success {
+            background-color: #28a745;
+        }
+        .btn-success:hover {
+            background-color: #218838;
+        }
+        
+        .auth-info {
+            background-color: #f0f8ff;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: left;
+            border: 1px solid #b3d9ff;
+            font-size: 0.9em;
+        }
+        .auth-info span {
+            font-weight: 500;
+            color: #0056b3;
+            margin-right: 15px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <main class="main-content">
+        <h1>Integración de Inventario por Excel 💾</h1>
+        
+        <div class="auth-info" id="auth-display-info">
+            <span>👤 Usuario ID: <strong id="user-id-display">Cargando...</strong></span>
+            <span>🏢 Empresa ID: <strong id="company-id-display">Cargando...</strong></span>
+            <span>🔑 Rol: <strong id="role-display">Cargando...</strong></span>
+        </div>
+        
+        <hr class="my-6">
+
+        <div id="file-upload-section" class="text-left bg-gray-50 p-6 rounded-lg border border-gray-200">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">Paso 1: Sube tu Archivo</h2>
+            <p class="mb-4 text-gray-600">Selecciona el archivo Excel o CSV que contiene los productos que deseas añadir o actualizar en el inventario.</p>
+            
+            <label for="excel-file" class="font-bold text-gray-700 block mb-2">Archivo:</label>
+            <input type="file" id="excel-file" accept=".xlsx, .xls, .csv" 
+                class="w-full p-3 border border-gray-300 rounded-lg text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            
+            <div id="file-status" class="mt-3 text-sm italic text-gray-500">Esperando archivo...</div>
+        </div>
+
+        <div id="mapping-section" class="text-left mt-8 bg-white p-6 rounded-lg border border-yellow-300 shadow-lg" style="display: none;">
+            <h2 class="text-xl font-semibold mb-4 text-orange-600">Paso 2: Mapea las Columnas de tu Archivo</h2>
+            <p class="mb-6 text-gray-600">Asigna la columna de tu archivo (a la derecha) a cada campo requerido de tu sistema (a la izquierda).</p>
+            
+            <div id="mapping-selectors" class="mapping-grid">
+                </div>
+            
+            <div class="flex justify-end gap-3 mt-8">
+                <button id="btn-cancel-import" class="btn-danger">Cancelar Mapeo</button>
+                <button id="btn-process-import" class="btn-primary">Procesar e Importar Datos (🚀)</button>
+            </div>
+        </div>
+
+        <div id="import-results" class="mt-8 text-left p-4 bg-gray-100 rounded-lg border border-gray-300" style="display: none;">
+            <h2 class="text-lg font-semibold mb-2">Resultados de la Importación</h2>
+            <p id="results-message" class="text-gray-700"></p>
+            </div>
+
+    </main>
+
+    <script>
+    
+    // =========================================================
+    // NUEVA FUNCIÓN DE PARSEO DE PRECIOS FLEXIBLE
+    // =========================================================
+    /**
+     * Intenta parsear una cadena de precio, manejando formatos con/sin símbolos
+     * de moneda, y utilizando coma o punto como separador decimal.
+     * * @param {string|number} priceString El valor extraído de la celda del Excel.
+     * @returns {number} El precio parseado como número flotante o NaN si es inválido.
+     */
+    function parseFlexiblePrice(priceString) {
+        // 1. Si ya es un número (por la forma en que XLSX lee a veces), lo devuelve.
+        if (typeof priceString === 'number') {
+            return priceString;
+        }
+        
+        // 2. Si no es una cadena o es nulo, devuelve NaN (fallará la validación).
+        if (typeof priceString !== 'string') {
+            return NaN;
+        }
+
+        let cleaned = priceString.trim();
+
+        // 3. Eliminar TODOS los caracteres no numéricos, EXCEPTO el punto y la coma.
+        // Esto elimina: símbolos de moneda ($, €, etc.), letras, espacios, guiones.
+        cleaned = cleaned.replace(/[^\d,.]/g, '');
+        
+        // 4. Heurística para decidir separador decimal (EU vs US/Standard):
+        // Si el ÚLTIMO separador es una coma (ej: 1.234,50), asumimos formato Europeo.
+        if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) {
+            // Remover todos los puntos (separadores de miles)
+            cleaned = cleaned.replace(/\./g, '');
+            // Convertir la coma decimal a punto estándar.
+            cleaned = cleaned.replace(/,/g, '.');
+        } 
+        // Si el ÚLTIMO separador es un punto, o no hay ninguno (ej: 1,234.50 o 1234),
+        // asumimos formato Americano/Estándar.
+        else {
+            // Remover todas las comas (separadores de miles)
+            cleaned = cleaned.replace(/,/g, '');
+        }
+
+        // 5. Caso de borde: si después de limpiar queda cadena vacía o solo un punto.
+        if (cleaned === '' || cleaned === '.') {
+            return NaN;
+        }
+
+        // 6. Devolver el número parseado
+        return parseFloat(cleaned);
+    }
+    // =========================================================
+    // FIN: FUNCIÓN DE PARSEO DE PRECIOS FLEXIBLE
+    // =========================================================
+
+    window.onload = function() {
+        
+        // Configuración de Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDN9mZ1n-OkC-Qz52eTCOy4yJH7M0U9zYI",
+            authDomain: "nexus-pos-75593.firebaseapp.com",
+            projectId: "nexus-pos-75593",
+            storageBucket: "nexus-pos-75593.firebasestorage.app",
+            messagingSenderId: "626840984883",
+            appId: "1:626840984883:web:08d56544ee28bc8e637246",
+            measurementId: "G-K1EQVJWJHG"
+        };
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // Inicialización de Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore(app); 
+        const auth = firebase.auth(app);     
+        
+        // Variables globales
+        let companyId = null;
+        let categoryMapByName = {}; 
+        let importedData = []; 
+        
+        // Referencias del DOM
+        const excelFileInput = document.getElementById('excel-file');
+        const fileStatusDiv = document.getElementById('file-status');
+        const mappingSection = document.getElementById('mapping-section');
+        const mappingSelectors = document.getElementById('mapping-selectors');
+        const btnProcessImport = document.getElementById('btn-process-import');
+        const btnCancelImport = document.getElementById('btn-cancel-import');
+        const resultsDiv = document.getElementById('import-results');
+        const resultsMessage = document.getElementById('results-message');
+
+        // Display de Autenticación
+        const userIdDisplay = document.getElementById('user-id-display');
+        const companyIdDisplay = document.getElementById('company-id-display');
+        const roleDisplay = document.getElementById('role-display');
+
+
+        // ----------------------------------------------------
+        // LÓGICA DE AUTENTICACIÓN Y CARGA
+        // ----------------------------------------------------
+
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                userIdDisplay.textContent = user.uid;
+                try {
+                    const idTokenResult = await user.getIdTokenResult();
+                    companyId = idTokenResult.claims.companyId;
+                    const userRole = idTokenResult.claims.role || 'N/A';
+                    
+                    companyIdDisplay.textContent = companyId || 'No encontrado';
+                    roleDisplay.textContent = userRole;
+
+                    if (companyId) {
+                        await loadCategories(companyId);
+                        setupListeners();
+                    } else {
+                        showCustomAlert("Error: ID de la empresa no disponible.", 'error'); 
+                    }
+                } catch (error) {
+                    console.error("Error al obtener los claims del token:", error);
+                    showCustomAlert("Error de autenticación. Por favor, recarga la página.", 'error'); 
+                }
+            } else {
+                userIdDisplay.textContent = 'Desconectado';
+                companyIdDisplay.textContent = 'N/A';
+                roleDisplay.textContent = 'N/A';
+                if (initialAuthToken) {
+                    try {
+                        await auth.signInWithCustomToken(initialAuthToken);
+                    } catch (error) {
+                        console.error("Error al iniciar sesión:", error);
+                        showCustomAlert("Error de autenticación. Por favor, recarga la página.", 'error'); 
+                    }
+                } else {
+                    console.warn("No hay usuario autenticado ni token inicial.");
+                    showCustomAlert("Sesión no iniciada. Autenticación requerida.", 'warning');
+                }
+            }
+        });
+
+        async function loadCategories(companyId) {
+            try {
+                const categoriesRef = db.collection('companies').doc(companyId).collection('categories');
+                const snapshot = await categoriesRef.get();
+                
+                categoryMapByName = {}; 
+                if (!snapshot.empty) {
+                    snapshot.forEach(doc => {
+                        const category = doc.data();
+                        categoryMapByName[category.name.toLowerCase()] = doc.id;
+                    });
+                    console.log('Categorías cargadas y mapeadas.');
+                }
+            } catch (error) {
+                console.error('Error al cargar categorías:', error);
+                showCustomAlert('Error al cargar categorías. La importación puede fallar.', 'warning');
+            }
+        }
+
+        function setupListeners() {
+            excelFileInput.addEventListener('change', handleFileUpload);
+            btnProcessImport.addEventListener('click', processImport);
+            btnCancelImport.addEventListener('click', cancelImport);
+        }
+        
+        // ----------------------------------------------------
+        // LÓGICA DE MANEJO DE ARCHIVOS EXCEL
+        // ----------------------------------------------------
+
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const XLSX_LIB = window.XLSX; 
+            
+            if (!XLSX_LIB || !XLSX_LIB.read) {
+                showCustomAlert('Error: Librería XLSX no disponible. Recarga la página.', 'error');
+                return;
+            }
+
+            fileStatusDiv.textContent = `Cargando y parseando "${file.name}"...`;
+            resultsDiv.style.display = 'none';
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const data = new Uint8Array(event.target.result);
+                    const workbook = XLSX_LIB.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    
+                    const excelHeaders = XLSX_LIB.utils.sheet_to_json(worksheet, { header: 1 })[0]; 
+                    importedData = XLSX_LIB.utils.sheet_to_json(worksheet); 
+
+                    if (importedData.length === 0) {
+                        fileStatusDiv.textContent = 'Archivo leído, pero no se encontraron filas de datos.';
+                        mappingSection.style.display = 'none';
+                        return;
+                    }
+                    
+                    generateMappingUI(excelHeaders);
+                    mappingSection.style.display = 'block';
+                    fileStatusDiv.textContent = `Archivo "${file.name}" cargado. ${importedData.length} filas encontradas.`;
+
+                } catch (error) {
+                    showCustomAlert('Error al leer el archivo. Asegúrate de que es un Excel (.xlsx) o CSV válido.', 'error');
+                    fileStatusDiv.textContent = 'Error al parsear el archivo.';
+                    mappingSection.style.display = 'none';
+                    console.error("Error al parsear el archivo:", error);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function generateMappingUI(headers) {
+            mappingSelectors.innerHTML = '';
+            
+            const requiredFields = [
+                { id: 'map-name', label: 'Nombre del Producto', required: true },
+                { id: 'map-buy-price', label: 'Precio de Compra (P. Compra)', required: true },
+                { id: 'map-price', label: 'Precio de Venta (P. Venta)', required: true },
+                { id: 'map-category', label: 'Categoría (ID o Nombre)', required: true },
+                { id: 'map-unit', label: 'Unidad de Venta', required: true },
+                { id: 'map-code', label: 'Código de Barras (Opcional)', required: false },
+            ];
+
+            const defaultOption = '<option value="">-- Ignorar Columna --</option>';
+
+            requiredFields.forEach(field => {
+                const div = document.createElement('div');
+                div.className = 'mapping-item';
+                
+                const requiredMark = field.required ? '<span style="color: #dc3545;">*</span>' : '';
+
+                div.innerHTML = `
+                    <label for="${field.id}">${field.label} ${requiredMark}:</label>
+                    <select id="${field.id}">
+                        ${defaultOption}
+                        ${headers.map(header => `<option value="${header}">${header}</option>`).join('')}
+                    </select>
+                `;
+                mappingSelectors.appendChild(div);
+            });
+        }
+
+        // ----------------------------------------------------
+        // LÓGICA DE PROCESAMIENTO E INSERCIÓN A FIRESTORE
+        // ----------------------------------------------------
+
+        async function processImport() {
+            if (!companyId) {
+                showCustomAlert('Autenticación incompleta. Espera o recarga la página.', 'warning');
+                return;
+            }
+
+            const mapping = getMappingSelections();
+            
+            if (!mapping.name || !mapping.buyPrice || !mapping.price || !mapping.category || !mapping.unit) {
+                showCustomAlert('Por favor, asegúrate de mapear todos los campos obligatorios (*).', 'warning');
+                return;
+            }
+            
+            let successfulImports = 0;
+            let failedImports = 0;
+            
+            showCustomAlert('Iniciando procesamiento de importación...', 'info');
+            resultsDiv.style.display = 'block';
+            resultsMessage.textContent = 'Procesando... no cierres la ventana.';
+
+            // Bucle de procesamiento
+            for (let i = 0; i < importedData.length; i++) {
+                const row = importedData[i];
+                const lineNumber = i + 1; // Número de línea para el log
+                
+                // 1. Extracción y conversión de datos (usando la nueva función flexible)
+                const name = String(row[mapping.name] || '').trim();
+                const buyPrice = parseFlexiblePrice(row[mapping.buyPrice]); // USANDO FUNCIÓN FLEXIBLE
+                const price = parseFlexiblePrice(row[mapping.price]);     // USANDO FUNCIÓN FLEXIBLE
+                const categoryValue = String(row[mapping.category] || '').trim();
+                const unit = String(row[mapping.unit] || '').trim();
+                const code = mapping.code ? String(row[mapping.code] || '').trim() : '';
+
+                // LOGS DE DEBUG AÑADIDOS AQUI:
+                console.log(`--- Procesando Fila ${lineNumber} (${name}) ---`);
+                console.log(`Nombre: "${name}" (Vacio: ${!name})`);
+                console.log(`P. Compra: ${buyPrice} (NaN: ${isNaN(buyPrice)}) (Negativo: ${buyPrice < 0})`);
+                console.log(`P. Venta: ${price} (NaN: ${isNaN(price)}) (Cero/Neg: ${price <= 0})`);
+                console.log(`Categoría: "${categoryValue}" (Vacio: ${!categoryValue})`);
+                console.log(`Unidad: "${unit}" (Vacio: ${!unit})`);
+                console.log(`Condición de Fallo: ${!name} (name) || ${isNaN(price)} (price NaN) || ${price <= 0} (price <= 0) || ${isNaN(buyPrice)} (buyPrice NaN) || ${buyPrice < 0} (buyPrice < 0) || ${!categoryValue} (category) || ${!unit} (unit)`);
+
+
+                // 2. Validación de datos
+                // La validación FALLARÁ si:
+                // - El campo es nulo o tiene solo espacios (ej: !name)
+                // - El campo numérico da NaN (si la celda estaba vacía o tenía texto que no pudo limpiar/parsear)
+                // Esto cumple el requisito de que "espacios extra o celdas completamente vacías sí den errores"
+                if (!name || isNaN(price) || price <= 0 || isNaN(buyPrice) || buyPrice < 0 || !categoryValue || !unit) {
+                    // LOG DE FALLO
+                    console.error(`VALIDACIÓN FALLIDA para la LÍNEA ${lineNumber} (${name}). Saltando fila.`);
+                    failedImports++;
+                    continue; 
+                }
+                
+                // 3. Preparación e Inserción
+                let categoryId = categoryMapByName[categoryValue.toLowerCase()] || categoryValue;
+
+                const profit = price - buyPrice;
+                
+                const productData = {
+                    name,
+                    price: parseFloat(price.toFixed(2)),
+                    buyPrice: parseFloat(buyPrice.toFixed(2)),
+                    category: categoryId, 
+                    unit,
+                    code: code || null,
+                    profit: parseFloat(profit.toFixed(2)),
+                    createdAt: new Date()
+                };
+
+                try {
+                    await db.collection(`companies/${companyId}/products`).add(productData); 
+                    successfulImports++;
+                } catch (e) {
+                    console.error(`Error de Firestore al añadir producto en la LÍNEA ${lineNumber} (${name}): `, e);
+                    failedImports++;
+                }
+            }
+            
+            // Finalización y Feedback
+            const totalProcessed = successfulImports + failedImports;
+            resultsMessage.innerHTML = `✅ **Proceso Completado:** Se procesaron ${totalProcessed} filas.<br>
+                - Productos añadidos con éxito: **${successfulImports}**.<br>
+                - Filas fallidas (datos inválidos/error): **${failedImports}**.<br>`;
+            
+            showCustomAlert(`Importación finalizada. ${successfulImports} productos añadidos.`, 'success');
+            cancelImport(); 
+        }
+        
+        function getMappingSelections() {
+            return {
+                name: document.getElementById('map-name').value,
+                buyPrice: document.getElementById('map-buy-price').value,
+                price: document.getElementById('map-price').value,
+                category: document.getElementById('map-category').value,
+                unit: document.getElementById('map-unit').value,
+                code: document.getElementById('map-code').value,
+            };
+        }
+        
+        function cancelImport() {
+            excelFileInput.value = '';
+            importedData = [];
+            mappingSection.style.display = 'none';
+            fileStatusDiv.textContent = 'Esperando archivo...';
+        }
+
+        function showCustomAlert(message, type = 'success') {
+            const alertDiv = document.createElement('div');
+            alertDiv.textContent = message;
+            
+            let backgroundColor = '#4CAF50'; 
+            let textColor = 'white';
+            if (type === 'error') {
+                backgroundColor = '#f44336';
+            } else if (type === 'warning') {
+                backgroundColor = '#ff9800';
+            } else if (type === 'info') {
+                backgroundColor = '#2196F3';
+            }
+            
+            alertDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background-color: ${backgroundColor};
+                color: ${textColor};
+                padding: 15px;
+                border-radius: 5px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 10000;
+                transition: opacity 0.5s ease-in-out;
+            `;
+            document.body.appendChild(alertDiv);
+            setTimeout(() => {
+                alertDiv.style.opacity = '0';
+                setTimeout(() => alertDiv.remove(), 500);
+            }, 3500);
+        }
+    }; // Cierre de window.onload
+</script>
+</body>
+</html>

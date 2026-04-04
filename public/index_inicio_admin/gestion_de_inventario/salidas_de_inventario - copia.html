@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salida de Inventario</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .inventory-form-container {
+            /* Mismo estilo de contenedor principal */
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 1200px;
+            box-sizing: border-box;
+            margin: 2rem auto;
+        }
+        /* Estilos de Autenticación/Usuario */
+        .user-info {
+            background-color: #f0f4f8;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: left;
+            border: 1px solid #e2e8f0;
+        }
+        .user-info p {
+            margin: 5px 0;
+            font-size: 1rem;
+            color: #4a5568;
+        }
+        /* Estilos para el campo de búsqueda con autocompletado */
+        .search-group {
+            position: relative;
+            z-index: 10;
+        }
+        #product-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 10;
+        }
+        .result-item {
+            padding: 10px;
+            cursor: pointer;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .result-item:hover {
+            background-color: #f9f9f9;
+        }
+        /* Estilo para el campo de solo lectura */
+        #final-stock-display {
+            background-color: #e9ecef;
+            cursor: default;
+            font-weight: bold;
+            color: #495057;
+        }
+        /* Estilos para la tabla de transacciones */
+        .transaction-table th {
+            background-color: #f3f4f6;
+            color: #4b5563;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .transaction-table td {
+            padding: 10px 15px;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .transaction-table tbody tr:hover {
+            background-color: #f9fafb;
+        }
+        .table-scroll-container {
+            max-height: 400px; /* Limitar la altura para hacerlo desplazable */
+            overflow-y: auto;
+            margin-top: 1.5rem; /* Espacio superior */
+        }
+    </style>
+</head>
+<body class="p-8">
+    <main>
+        <div class="inventory-form-container">
+            <h1 class="text-4xl font-extrabold text-gray-800 text-center mb-8">Salida de Inventario</h1>
+            
+            <div class="user-info">
+                <p><strong>ID de Usuario:</strong> <span id="userIdDisplay">Cargando...</span></p>
+                <p><strong>ID de Compañía:</strong> <span id="companyIdDisplay">Cargando...</span></p>
+                <p><strong>Rol:</strong> <span id="userRoleDisplay">Cargando...</span></p>
+            </div>
+            
+            <div id="message-box" class="hidden mb-6 p-4 rounded-md text-sm text-center font-medium" role="alert"></div>
+            
+            <form id="inventory-form">
+                <div class="flex flex-col gap-6">
+                    
+                    <div class="flex flex-col md:flex-row gap-4">
+                        
+                        <div class="search-group flex-1">
+                            <label for="product-search" class="block text-sm font-medium text-gray-700 mb-1">Busca el Producto:</label>
+                            <input type="text" id="product-search" placeholder="Escribe para buscar el producto..." autocomplete="off" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500" required>
+                            <div id="product-results"></div>
+                        </div>
+
+                        <div class="flex-1">
+                            <label for="packaging-unit-select" class="block text-sm font-medium text-gray-700 mb-1">Unidad de Empaque (Opcional):</label>
+                            <select id="packaging-unit-select" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500" disabled>
+                                <option value="" selected>Selecciona un producto primero...</option> 
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <div class="flex-1">
+                            <label for="quantity-input" class="block text-sm font-medium text-gray-700 mb-1">Cantidad de Paquetes/Unidades a Retirar:</label>
+                            <input type="number" id="quantity-input" placeholder="Ej: 1" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500" min="0.01" step="0.01" required>
+                        </div>
+
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Total de Stock Base a Restar:</label>
+                            <input type="text" id="final-stock-display" placeholder="0 unidad(es)" readonly class="w-full p-3 border border-gray-300 rounded-md">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label for="storage-location" class="block text-sm font-medium text-gray-700 mb-1">Lugar de Retiro (Sucursal):</label>
+                        <select id="storage-location" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500" required>
+                            <option value="">Cargando sucursales...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="exit-reason" class="block text-sm font-medium text-gray-700 mb-1">Motivo de Salida:</label>
+                        <select id="exit-reason" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500" required>
+                            <option value="">Selecciona el motivo...</option>
+                            <option value="venta">Venta</option>
+                            <option value="desperdicio">Desperdicio</option>
+                            <option value="devolucion">Devolución</option>
+                            <option value="caducidad">Caducidad</option>
+                            <option value="merma">Merma</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="observation" class="block text-sm font-medium text-gray-700 mb-1">Observación:</label>
+                        <textarea id="observation" rows="3" placeholder="Añade una nota sobre esta salida..." class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"></textarea>
+                    </div>
+                </div>
+                
+                <button type="submit" id="register-exit-btn" class="w-full bg-red-500 text-white font-bold py-3 px-6 rounded-md hover:bg-red-600 transition-colors mt-8">
+                    Registrar Salida
+                </button>
+            </form>
+
+            <div id="transaction-log-section">
+                <hr class="my-8 border-gray-300">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Historial de Últimas Salidas</h2>
+                <div id="transaction-log" class="table-scroll-container">
+                    <p class="text-gray-500 text-center" id="log-status">Cargando transacciones...</p>
+                    </div>
+            </div>
+            </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // Importar 'limit' y 'orderBy' de firestore para la consulta del log
+        import { getFirestore, doc, collection, getDocs, getDoc, updateDoc, increment, addDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Configuración de Firebase (se asume que estas variables son inyectadas en el entorno)
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        let app;
+        if (getApps().length === 0) {
+            app = initializeApp(firebaseConfig);
+        } else {
+            app = getApp();
+        }
+
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        // Variables globales para datos de usuario y aplicación
+        let userCompanyId = null;
+        let userBranchId = null;
+        let userId = null;
+        let userRole = null;
+        let allProducts = [];
+        let allPackagings = []; 
+        let selectedProductId = null; 
+        let selectedPackagingFactor = 1; 
+        
+        // Referencias a elementos del DOM
+        const productSearchInput = document.getElementById('product-search'); 
+        const productResultsDiv = document.getElementById('product-results'); 
+        const packagingUnitSelect = document.getElementById('packaging-unit-select'); 
+        const finalStockDisplayInput = document.getElementById('final-stock-display'); 
+        const quantityInput = document.getElementById('quantity-input'); 
+        
+        const storageLocationSelect = document.getElementById('storage-location');
+        const exitReasonSelect = document.getElementById('exit-reason');
+        const observationInput = document.getElementById('observation');
+        const form = document.getElementById('inventory-form');
+
+        const userIdDisplay = document.getElementById('userIdDisplay');
+        const companyIdDisplay = document.getElementById('companyIdDisplay');
+        const userRoleDisplay = document.getElementById('userRoleDisplay');
+        const messageBox = document.getElementById('message-box');
+        
+        const transactionLogDiv = document.getElementById('transaction-log');
+        const logStatus = document.getElementById('log-status');
+
+
+        // *******************************************************************
+        // ********************* FUNCIONES DE UTILIDAD ***********************
+        // *******************************************************************
+
+        function showMessage(text, type = 'success') {
+            messageBox.textContent = text;
+            messageBox.classList.remove('hidden', 'bg-red-200', 'text-red-700', 'bg-green-200', 'text-green-700', 'bg-blue-200', 'text-blue-700');
+            
+            switch(type) {
+                case 'error':
+                    messageBox.classList.add('bg-red-200', 'text-red-700');
+                    break;
+                case 'info':
+                    messageBox.classList.add('bg-blue-200', 'text-blue-700');
+                    break;
+                default:
+                    messageBox.classList.add('bg-green-200', 'text-green-700');
+            }
+            
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, 5000);
+        }
+
+        // *******************************************************************
+        // ********************* FUNCIONES DE CARGA DE DATOS *****************
+        // *******************************************************************
+
+        async function populateStorageLocationSelect(companyId) {
+            try {
+                const branchesRef = collection(db, 'companies', companyId, 'branches');
+                const branchesSnapshot = await getDocs(branchesRef);
+                storageLocationSelect.innerHTML = '<option value="" disabled selected>Selecciona el lugar de retiro...</option>';
+                
+                branchesSnapshot.forEach(doc => {
+                    const branch = doc.data();
+                    const option = document.createElement('option');
+                    option.value = doc.id;
+                    option.textContent = branch.name;
+                    storageLocationSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Error loading branches:", error);
+                showMessage("Error al cargar las sucursales. Verifique sus reglas de seguridad.", "error");
+            }
+        }
+
+        async function loadAllProducts(companyId) {
+            try {
+                const productsRef = collection(db, 'companies', companyId, 'products');
+                const productsSnapshot = await getDocs(productsRef);
+                allProducts = productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                console.log("Product catalog loaded:", allProducts);
+                
+                await loadAllPackagings(companyId); // Cargar las unidades de empaque
+
+            } catch (error) {
+                console.error("Error loading product catalog:", error);
+                showMessage("Error al cargar los productos.", "error");
+            }
+        }
+
+        async function loadAllPackagings(companyId) {
+            try {
+                const packingsRef = collection(db, 'companies', companyId, 'packing');
+                const packingsSnapshot = await getDocs(packingsRef);
+                allPackagings = packingsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                console.log("Packing catalog loaded:", allPackagings);
+            } catch (error) {
+                console.error("Error loading packing catalog:", error);
+                showMessage("Error al cargar las unidades de empaque.", "error");
+            }
+        }
+        
+        /**
+         * Nueva función para cargar y mostrar el historial de transacciones
+         */
+        async function loadTransactionLog(companyId, branchId) {
+            if (!companyId || !branchId) {
+                logStatus.textContent = "Seleccione una sucursal para ver las transacciones.";
+                transactionLogDiv.innerHTML = `<p class="text-gray-500 text-center" id="log-status">${logStatus.textContent}</p>`;
+                return;
+            }
+
+            logStatus.textContent = "Cargando transacciones...";
+            transactionLogDiv.innerHTML = `<p class="text-gray-500 text-center" id="log-status">${logStatus.textContent}</p>`;
+            
+            try {
+                // Modificación: La colección se encuentra en /companies/{companyId}/branches/{branchId}/exit_inventory
+                const logRef = collection(db, 'companies', companyId, 'branches', branchId, 'exit_inventory');
+                const q = query(logRef, orderBy('timestamp', 'desc'), limit(15)); // Últimas 15 salidas
+                const logSnapshot = await getDocs(q);
+                
+                if (logSnapshot.empty) {
+                    logStatus.textContent = "No se encontraron salidas de inventario en esta sucursal.";
+                    transactionLogDiv.innerHTML = `<p class="text-gray-500 text-center">${logStatus.textContent}</p>`;
+                    return;
+                }
+
+                // Generar la tabla HTML
+                let tableHTML = `
+                    <table class="transaction-table w-full text-sm text-left text-gray-500">
+                        <thead class="text-xs text-gray-700 uppercase sticky top-0 bg-white">
+                            <tr>
+                                <th>Fecha/Hora</th>
+                                <th>Producto</th>
+                                <th>Cant. Base Retirada</th>
+                                <th>Motivo</th>
+                                <th>Usuario</th>
+                                <th>Observación</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                logSnapshot.forEach(doc => {
+                    const log = doc.data();
+                    const timestamp = log.timestamp?.toDate ? log.timestamp.toDate().toLocaleString('es-CL') : 'N/A';
+                    
+                    tableHTML += `
+                        <tr>
+                            <td>${timestamp}</td>
+                            <td class="font-medium text-gray-900">${log.productName}</td>
+                            <td>${log.quantityBase} ${log.unit}</td>
+                            <td>${log.reason.charAt(0).toUpperCase() + log.reason.slice(1)}</td>
+                            <td>${log.userName || 'Usuario: ' + log.userId}</td>
+                            <td class="whitespace-nowrap overflow-hidden text-ellipsis max-w-xs" title="${log.observation || ''}">${log.observation || 'N/A'}</td>
+                        </tr>
+                    `;
+                });
+
+                tableHTML += `
+                        </tbody>
+                    </table>
+                `;
+                
+                // Reemplazar todo el contenido
+                transactionLogDiv.innerHTML = tableHTML;
+
+            } catch (error) {
+                // Este error es el que el usuario estaba viendo
+                console.error("Error al cargar el historial:", error);
+                transactionLogDiv.innerHTML = `<p class="text-red-500 text-center">Error al cargar el historial: ${error.message}. Por favor, verifique sus reglas de seguridad de Firebase.</p>`;
+            }
+        }
+
+
+        // *******************************************************************
+        // ********************* LÓGICA DE BÚSQUEDA Y CONVERSIÓN *************
+        // *******************************************************************
+        
+        function handleProductSearch(searchTerm) {
+            productResultsDiv.innerHTML = '';
+            if (searchTerm.length < 2) {
+                return;
+            }
+            const filteredProducts = allProducts.filter(p =>
+                p.name.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+
+            filteredProducts.forEach(product => {
+                const resultItem = document.createElement('div');
+                resultItem.classList.add('result-item');
+                resultItem.textContent = `${product.name} (${product.unit})`;
+                resultItem.dataset.id = product.id;
+                productResultsDiv.appendChild(resultItem);
+            });
+        }
+
+        function updatePackagingSelect(productName) {
+            packagingUnitSelect.innerHTML = '';
+            packagingUnitSelect.disabled = false;
+            selectedPackagingFactor = 1;
+
+            const productData = allProducts.find(p => p.name.toLowerCase() === productName.toLowerCase());
+            let baseUnitName = productData ? productData.unit : 'unidad';
+
+            // Opción por defecto (Sin conversión - Salida por unidad base)
+            const defaultOption = document.createElement('option');
+            defaultOption.value = "";
+            defaultOption.selected = true;
+            defaultOption.textContent = `Salida por ${baseUnitName}`;
+            packagingUnitSelect.appendChild(defaultOption);
+
+            const relevantPackings = allPackagings.filter(p => 
+                p.productType && p.productType.toLowerCase() === productName.toLowerCase()
+            );
+
+            if (relevantPackings.length === 0) {
+                 packagingUnitSelect.innerHTML = '<option value="" selected>No hay unidades de empaque específicas</option>';
+                 packagingUnitSelect.disabled = true;
+            } else {
+                 relevantPackings.forEach(packing => {
+                    const option = document.createElement('option');
+                    const optionText = `${packing.unit} (${packing.quantity} ${packing.measureType})`;
+                    
+                    option.value = packing.unit;
+                    option.textContent = optionText;
+                    option.dataset.conversionFactor = packing.quantity;
+                    option.dataset.measureType = packing.measureType;
+                    
+                    packagingUnitSelect.appendChild(option);
+                });
+            }
+        }
+
+        function updateFinalStockDisplay() {
+            const quantity = parseFloat(quantityInput.value);
+            
+            if (!selectedProductId || isNaN(quantity) || quantity <= 0) {
+                finalStockDisplayInput.value = '0';
+                return;
+            }
+
+            const productData = allProducts.find(p => p.id === selectedProductId);
+            let baseUnit = productData ? productData.unit : 'unidad';
+
+            let measureType = baseUnit; 
+            
+            if (selectedPackagingFactor > 1) {
+                const selectedOption = packagingUnitSelect.options[packagingUnitSelect.selectedIndex];
+                measureType = selectedOption.dataset.measureType || baseUnit; 
+            }
+
+            const finalStockQuantity = quantity * selectedPackagingFactor;
+            
+            // Redondear a 2 decimales
+            const roundedQuantity = Math.round(finalStockQuantity * 100) / 100;
+
+            finalStockDisplayInput.value = `${roundedQuantity} ${measureType}`;
+        }
+
+        // *******************************************************************
+        // ********************* LÓGICA DE FIREBASE **************************
+        // *******************************************************************
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const tokenResult = await user.getIdTokenResult();
+                const claims = tokenResult.claims;
+
+                if (!claims.companyId) {
+                    showMessage("Actualizando información del usuario. Por favor espere...", "info");
+                    await user.getIdToken(true);
+                    return;
+                }
+
+                userId = user.uid;
+                userCompanyId = claims.companyId;
+                userBranchId = claims.branchId;
+                userRole = claims.role;
+
+                userIdDisplay.textContent = userId;
+                companyIdDisplay.textContent = userCompanyId || 'No disponible';
+                userRoleDisplay.textContent = userRole || 'No disponible';
+                
+                if (userCompanyId) {
+                    await loadAllProducts(userCompanyId); // Carga productos y empaques
+                    await populateStorageLocationSelect(userCompanyId);
+                    
+                    if (userBranchId) {
+                        storageLocationSelect.value = userBranchId;
+                        storageLocationSelect.disabled = true;
+                        // Cargar log inicial si la sucursal está preseleccionada
+                        loadTransactionLog(userCompanyId, userBranchId);
+                    } else {
+                         logStatus.textContent = "Seleccione una sucursal para ver las transacciones.";
+                    }
+                } 
+            } else {
+                try {
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                    } else {
+                        await signInAnonymously(auth); 
+                    }
+                } catch (error) {
+                    console.error('Sign-in error:', error);
+                    showMessage("Error de inicio de sesión. Intente recargar la página.", "error");
+                }
+            }
+        });
+        
+        // *******************************************************************
+        // ********************* MANEJO DE EVENTOS ***************************
+        // *******************************************************************
+
+        // 1. Manejo de la búsqueda
+        productSearchInput.addEventListener('input', (e) => {
+            handleProductSearch(e.target.value);
+        });
+
+        // 2. Selección del producto de la lista desplegable
+        productResultsDiv.addEventListener('click', (e) => {
+            const resultItem = e.target.closest('.result-item');
+            if (resultItem) {
+                selectedProductId = resultItem.dataset.id;
+                
+                // Muestra solo el nombre del producto en el input
+                const productName = resultItem.textContent.split('(')[0].trim();
+                productSearchInput.value = productName; 
+                
+                productResultsDiv.innerHTML = '';
+                
+                updatePackagingSelect(productName);
+                updateFinalStockDisplay(); 
+            }
+        });
+
+        // 3. Cambio de unidad de empaque o cantidad
+        packagingUnitSelect.addEventListener('change', (e) => {
+            const selectedOption = e.target.options[e.target.selectedIndex];
+            selectedPackagingFactor = parseFloat(selectedOption.dataset.conversionFactor) || 1;
+            updateFinalStockDisplay();
+        });
+        
+        quantityInput.addEventListener('input', updateFinalStockDisplay);
+        
+        // 4. Cargar el historial cuando cambie la sucursal (si no está pre-bloqueada)
+        storageLocationSelect.addEventListener('change', (e) => {
+            if (userCompanyId && e.target.value) {
+                loadTransactionLog(userCompanyId, e.target.value);
+            } else {
+                 logStatus.textContent = "Seleccione una sucursal para ver las transacciones.";
+                 transactionLogDiv.innerHTML = `<p class="text-gray-500 text-center">${logStatus.textContent}</p>`;
+            }
+        });
+
+
+        // 5. Registrar la Salida de Inventario
+        async function registerInventoryExit(event) {
+            event.preventDefault();
+
+            const quantity = parseFloat(quantityInput.value); 
+            const finalStockQuantity = quantity * selectedPackagingFactor; // Cantidad base real a restar
+            const storageLocation = storageLocationSelect.value;
+            const exitReason = exitReasonSelect.value;
+            const observation = observationInput.value;
+            const roundedQuantityToDecrement = Math.round(finalStockQuantity * 100) / 100;
+            
+            const productData = allProducts.find(p => p.id === selectedProductId);
+            let finalUnit = productData ? productData.unit : 'unidad';
+            if (selectedPackagingFactor > 1) {
+                const selectedOption = packagingUnitSelect.options[packagingUnitSelect.selectedIndex];
+                finalUnit = selectedOption.dataset.measureType || finalUnit; 
+            }
+
+
+            if (!userCompanyId || !storageLocation || !selectedProductId || isNaN(quantity) || quantity <= 0 || !exitReason) {
+                showMessage('Por favor, asegúrese de haber iniciado sesión y de que todos los campos requeridos estén llenos.', 'error');
+                return;
+            }
+
+            if (!productData) {
+                showMessage('Producto no encontrado en el catálogo. Intente buscar de nuevo.', 'error');
+                return;
+            }
+            
+            try {
+                // Obtener el usuario actual para el log
+                const currentUser = auth.currentUser; 
+                
+                const inventoryRef = doc(db, 'companies', userCompanyId, 'branches', storageLocation, 'inventory', selectedProductId);
+                
+                // 1. Verificar el stock actual
+                const docSnap = await getDoc(inventoryRef);
+                
+                if (!docSnap.exists() || docSnap.data().unit !== finalUnit) {
+                     showMessage(`Error: Inventario no encontrado o la unidad base registrada ('${docSnap.data()?.unit || 'N/A'}') no coincide con la esperada ('${finalUnit}').`, 'error');
+                     return;
+                }
+                
+                const currentStock = docSnap.data().stock || 0;
+                
+                if (currentStock < roundedQuantityToDecrement) {
+                     showMessage(`Error: Stock insuficiente. Stock actual de ${productData.name}: ${currentStock} ${finalUnit}. Intenta retirar ${roundedQuantityToDecrement}.`, 'error');
+                     return;
+                }
+
+                // 2. Decrementar el stock usando la operación atómica 'increment' con valor negativo
+                // Ruta: /companies/{companyId}/branches/{branchId}/inventory/{productId}
+                await updateDoc(inventoryRef, {
+                    stock: increment(-roundedQuantityToDecrement),
+                    updated_at: new Date()
+                });
+
+                // 3. Registrar la salida en un log de movimientos
+                // Ruta: /companies/{companyId}/branches/{branchId}/exit_inventory
+                const logRef = collection(db, 'companies', userCompanyId, 'branches', storageLocation, 'exit_inventory');
+                
+                await addDoc(logRef, {
+                    type: 'exit',
+                    productId: selectedProductId,
+                    productName: productData.name,
+                    branchId: storageLocation, 
+                    branchName: storageLocationSelect.options[storageLocationSelect.selectedIndex].text,
+                    
+                    quantity: quantity, 
+                    quantityBase: roundedQuantityToDecrement, 
+                    unit: finalUnit,
+                    reason: exitReason,
+                    observation: observation,
+                    userId: userId,
+                    userName: currentUser?.email || 'N/A',
+                    timestamp: new Date()
+                });
+                
+                showMessage(`Salida registrada. Stock de ${productData.name} decreció en ${roundedQuantityToDecrement} ${finalUnit}.`, 'success');
+                
+                // Actualizar el log de transacciones después de una salida exitosa
+                loadTransactionLog(userCompanyId, storageLocation); 
+
+                // Limpiar el formulario
+                form.reset();
+                productResultsDiv.innerHTML = '';
+                packagingUnitSelect.innerHTML = '<option value="" selected>Selecciona un producto primero...</option>';
+                packagingUnitSelect.disabled = true;
+                finalStockDisplayInput.value = '0';
+                selectedProductId = null;
+                selectedPackagingFactor = 1;
+                if (userBranchId) { 
+                    storageLocationSelect.value = userBranchId;
+                }
+                
+            } catch (error) {
+                console.error("Error al registrar la salida de inventario:", error);
+                showMessage('Error al registrar la salida. Verifique sus permisos de escritura o conexión.', 'error');
+            }
+        }
+
+        // Manejar el envío del formulario
+        form.addEventListener('submit', registerInventoryExit);
+
+    </script>
+</body>
+</html>

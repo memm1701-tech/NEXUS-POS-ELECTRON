@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS POS - El Futuro de tu Negocio</title>
+    <link rel="icon" type="image/png" href="logo_nexus.png">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'Poppins', 'sans-serif'],
+                    },
+                    colors: {
+                        nexus: {
+                            dark: '#0B1120', // Fondo principal muy oscuro
+                            surface: '#151E32', // Superficies
+                            primary: '#3b82f6', // Azul eléctrico
+                            accent: '#06b6d4', // Cian brillante
+                            glow: '#60a5fa',
+                            secondary: '#f59e0b', // Amarillo/Dorado
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* --- ESTILOS MODERNOS AVANZADOS --- */
+        
+        body {
+            background-color: #0B1120;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Fondo Animado "Aurora" */
+        .ambient-light {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            pointer-events: none;
+            z-index: -1;
+            overflow: hidden;
+            background: radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.08), transparent 25%),
+                        radial-gradient(circle at 85% 30%, rgba(6, 182, 212, 0.08), transparent 25%);
+        }
+
+        .blob {
+            position: absolute;
+            filter: blur(80px);
+            z-index: -1;
+            opacity: 0.4;
+            animation: float 10s infinite ease-in-out;
+        }
+        .blob-1 { top: -10%; left: -10%; width: 500px; height: 500px; background: #3b82f6; animation-delay: 0s; }
+        .blob-2 { bottom: -10%; right: -10%; width: 600px; height: 600px; background: #6366f1; animation-delay: 2s; }
+        .blob-3 { top: 40%; left: 40%; width: 400px; height: 400px; background: #06b6d4; animation-delay: 4s; opacity: 0.2; }
+
+        @keyframes float {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+
+        /* Glassmorphism (Efecto Vidrio) - Reemplaza al Neumorfismo */
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.4); /* Fondo semitransparente oscuro */
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass-panel:hover {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 
+                        0 0 20px rgba(59, 130, 246, 0.2); /* Glow azul sutil */
+        }
+
+        .glass-panel-pressed {
+            transform: scale(0.98);
+            background: rgba(30, 41, 59, 0.8);
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Títulos con Gradiente */
+        .text-gradient {
+            background: linear-gradient(135deg, #ffffff 0%, #93c5fd 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .text-gradient-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Scrollbar personalizada */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0B1120;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 5px;
+            border: 1px solid #334155;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3b82f6;
+        }
+
+        /* Animación Fade In */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 1s cubic-bezier(0.5, 0, 0, 1), transform 1s cubic-bezier(0.5, 0, 0, 1);
+        }
+        .fade-in.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Botón WhatsApp */
+        .whatsapp-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(135deg, #25d366, #128c7e);
+            color: white;
+            border-radius: 50%;
+            width: 65px;
+            height: 65px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+            box-shadow: 0 0 20px rgba(37, 211, 102, 0.4);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+        .whatsapp-button:hover {
+            transform: scale(1.1) rotate(10deg);
+            box-shadow: 0 0 30px rgba(37, 211, 102, 0.6);
+        }
+
+        /* Carrusel y Modal */
+        .carousel-item { display: none; }
+        .carousel-item.active { display: block; animation: fadeEffect 0.8s; }
+        @keyframes fadeEffect { from {opacity: 0.4;} to {opacity: 1;} }
+
+        /* Ajustes específicos de imágenes */
+        .carousel-img-source {
+            mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+        }
+        
+        /* Grid de fondo sutil */
+        .grid-bg {
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        }
+
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="ambient-light">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+        <div class="absolute inset-0 grid-bg"></div>
+    </div>
+
+    <header class="fixed w-full z-50 transition-all duration-300 backdrop-blur-md bg-nexus-dark/70 border-b border-white/5 py-4 px-6 md:px-12">
+        <nav class="flex justify-between items-center max-w-7xl mx-auto">
+            <div class="flex items-center space-x-3 group cursor-pointer">
+                <div class="relative">
+                    <div class="absolute inset-0 bg-blue-500 blur opacity-40 group-hover:opacity-70 transition duration-300 rounded-full"></div>
+                    <img src="logo_nexus.png" alt="NEXUS POS Logo" class="relative w-12 h-12 rounded-full border border-white/10">
+                </div>
+                <span class="text-2xl font-bold tracking-tight text-white group-hover:text-blue-400 transition">NEXUS <span class="font-light text-blue-400">POS</span></span>
+            </div>
+            
+            <ul class="hidden lg:flex space-x-8"> 
+                <li><a href="#features" class="text-sm font-medium text-gray-300 hover:text-white hover:shadow-[0_2px_0_0_#3b82f6] pb-1 transition-all duration-300">Características</a></li>
+                <li><a href="#solutions" class="text-sm font-medium text-gray-300 hover:text-white hover:shadow-[0_2px_0_0_#3b82f6] pb-1 transition-all duration-300">Soluciones</a></li>
+                <li><a href="#benefits" class="text-sm font-medium text-gray-300 hover:text-white hover:shadow-[0_2px_0_0_#3b82f6] pb-1 transition-all duration-300">Beneficios</a></li>
+                <li><a href="#demo" class="text-sm font-medium text-gray-300 hover:text-white hover:shadow-[0_2px_0_0_#3b82f6] pb-1 transition-all duration-300">Demo</a></li>
+                <li><a href="#testimonials" class="text-sm font-medium text-gray-300 hover:text-white hover:shadow-[0_2px_0_0_#3b82f6] pb-1 transition-all duration-300">Testimonios</a></li>
+                <li><a href="#pricing" class="text-sm font-medium text-gray-300 hover:text-white hover:shadow-[0_2px_0_0_#3b82f6] pb-1 transition-all duration-300">Precios</a></li>
+                <li><a href="#faq" class="text-sm font-medium text-gray-300 hover:text-white hover:shadow-[0_2px_0_0_#3b82f6] pb-1 transition-all duration-300">FAQ</a></li>
+            </ul>
+
+            <div class="hidden md:block">
+                <a href="index.html" class="relative inline-flex items-center justify-center px-6 py-2 overflow-hidden font-bold text-white transition-all duration-300 bg-blue-600 rounded-full group hover:bg-blue-500 hover:ring-2 hover:ring-blue-400 hover:ring-offset-2 hover:ring-offset-slate-900">
+                    <span class="absolute w-0 h-0 transition-all duration-500 ease-out bg-white rounded-full group-hover:w-56 group-hover:h-56 opacity-10"></span>
+                    <span class="relative">Iniciar Sesión</span>
+                </a>
+            </div>
+
+            <button id="mobile-menu-button" class="lg:hidden text-white hover:text-blue-400 focus:outline-none transition">
+                <span class="material-icons text-3xl">menu</span>
+            </button>
+        </nav>
+
+        <div id="mobile-menu" class="hidden lg:hidden absolute top-full left-0 w-full glass-panel mt-2 border-t border-white/10 shadow-2xl">
+            <ul class="py-4 space-y-1">
+                <li><a href="#features" class="block px-6 py-3 text-gray-300 hover:bg-white/5 hover:text-blue-400 transition">Características</a></li>
+                <li><a href="#solutions" class="block px-6 py-3 text-gray-300 hover:bg-white/5 hover:text-blue-400 transition">Soluciones</a></li>
+                <li><a href="#benefits" class="block px-6 py-3 text-gray-300 hover:bg-white/5 hover:text-blue-400 transition">Beneficios Clave</a></li>
+                <li><a href="#demo" class="block px-6 py-3 text-gray-300 hover:bg-white/5 hover:text-blue-400 transition">Demo</a></li>
+                <li><a href="#testimonials" class="block px-6 py-3 text-gray-300 hover:bg-white/5 hover:text-blue-400 transition">Testimonios</a></li>
+                <li><a href="#pricing" class="block px-6 py-3 text-gray-300 hover:bg-white/5 hover:text-blue-400 transition">Precios</a></li>
+                <li><a href="#faq" class="block px-6 py-3 text-gray-300 hover:bg-white/5 hover:text-blue-400 transition">FAQ</a></li>
+                <li><a href="index.html" class="block px-6 py-3 text-blue-400 font-semibold hover:bg-white/5 transition">Iniciar Sesión</a></li>
+            </ul>
+        </div>
+    </header>
+
+    <main class="relative z-10">
+        
+        <section class="pt-32 pb-16 md:pt-40 md:pb-24 fade-in min-h-screen flex items-center">
+            <div class="max-w-7xl mx-auto px-6 md:px-12 flex flex-col md:flex-row items-center justify-between">
+                
+                <div class="md:w-1/2 text-center md:text-left mb-16 md:mb-0 md:pr-12 relative">
+                    <div class="absolute -top-20 -left-20 w-64 h-64 bg-blue-600 rounded-full mix-blend-multiply filter blur-[80px] opacity-20 animate-pulse"></div>
+
+                    <div class="inline-block mb-4 px-4 py-1 rounded-full border border-blue-500/30 bg-blue-500/10 backdrop-blur-sm">
+                        <span class="text-blue-300 text-sm font-semibold tracking-wider uppercase">V 3.0 Ahora Disponible</span>
+                    </div>
+
+                    <h1 class="text-5xl md:text-7xl font-extrabold leading-tight mb-6 tracking-tight text-white">
+                        <span class="text-gradient-primary">Revoluciona</span> tu Negocio con <span class="text-white relative inline-block">
+                            NEXUS
+                            <svg class="absolute w-full h-3 -bottom-1 left-0 text-blue-600 opacity-60" viewBox="0 0 200 9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.00025 6.99997C2.00025 6.99997 64.6062 -2.13113 198.001 2.50002" stroke="currentColor" stroke-width="3"/></svg>
+                        </span>
+                    </h1>
+                    <p class="text-lg md:text-xl text-gray-400 mb-10 max-w-xl mx-auto md:mx-0 leading-relaxed">
+                        El sistema POS que no solo registra ventas, sino que <span class="text-gray-200 font-medium">entiende tu crecimiento</span>. Potencia, diseño y simplicidad en un solo lugar.
+                    </p>
+                    
+                    <div class="flex flex-col sm:flex-row justify-center md:justify-start space-y-4 sm:space-y-0 sm:space-x-4 mt-8">
+                        <a href="#" class="glass-panel text-white py-4 px-8 rounded-2xl font-semibold hover:bg-white/10 transition duration-300 flex items-center justify-center border border-white/10 group">
+                            <span class="material-icons mr-3 group-hover:text-green-400 transition-colors">android</span> Google Play
+                        </a>
+                        <a href="#" class="glass-panel text-white py-4 px-8 rounded-2xl font-semibold hover:bg-white/10 transition duration-300 flex items-center justify-center border border-white/10 group">
+                            <span class="material-icons mr-3 group-hover:text-gray-300 transition-colors">apple</span> App Store
+                        </a>
+                    </div>
+                    
+                    <div class="mt-6 flex flex-col sm:flex-row items-center justify-center md:justify-start space-y-4 sm:space-y-0 sm:space-x-4">
+                        <a href="#" class="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-cyan-500 text-white py-4 px-10 rounded-full font-bold shadow-[0_0_20px_rgba(59,130,246,0.5)] hover:shadow-[0_0_30px_rgba(6,182,212,0.6)] hover:scale-105 transition transform duration-300 flex items-center justify-center">
+                            <span class="material-icons mr-2">rocket_launch</span> Accede Web
+                        </a>
+                        <a href="index.html" class="text-gray-300 font-semibold hover:text-white transition duration-300 flex items-center">
+                            Prueba Gratuita <span class="material-icons ml-1 text-sm">arrow_forward</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="md:w-1/2 flex justify-center items-center p-4 relative perspective-1000">
+                    <div class="absolute inset-0 bg-gradient-to-tr from-blue-500/20 to-purple-500/20 rounded-[3rem] transform rotate-6 scale-95 blur-xl"></div>
+                    
+                    <div class="relative w-full max-w-lg mx-auto z-10 transition-transform duration-500 hover:rotate-y-2 hover:scale-[1.02]"> 
+                        
+                        <div id="hero-carousel" class="w-full overflow-hidden rounded-[2rem] border border-white/10 shadow-2xl relative cursor-pointer bg-nexus-dark" onclick="openModalFromCarousel()">
+                            <div class="absolute inset-0 ring-1 ring-white/10 rounded-[2rem] pointer-events-none z-30"></div>
+                            
+                            <div class="carousel-item active" data-index="0">
+                                <img src="baner_inicio.png" alt="Dashboard NEXUS" class="w-full h-auto object-cover opacity-90 hover:opacity-100 transition duration-500">
+                            </div>
+
+                            <div class="carousel-item" data-index="1">
+                                <img src="baner_cajera.png" alt="Interfaz de Ventas" class="w-full h-auto object-cover opacity-90 hover:opacity-100 transition duration-500">
+                            </div>
+                            
+                            <div class="carousel-item" data-index="2">
+                                <img src="baner_cierre.png" alt="Reportes Analíticos" class="w-full h-auto object-cover opacity-90 hover:opacity-100 transition duration-500">
+                            </div>
+
+                            <div class="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-nexus-dark to-transparent z-20"></div>
+                        </div>
+
+                        <div class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 flex space-x-2 z-30 bg-black/40 backdrop-blur-md px-4 py-2 rounded-full border border-white/10">
+                            <button id="prev-btn" class="text-white/70 hover:text-white transition"><span class="material-icons text-xl">chevron_left</span></button>
+                            <div id="carousel-dots" class="flex items-center space-x-2"></div>
+                            <button id="next-btn" class="text-white/70 hover:text-white transition"><span class="material-icons text-xl">chevron_right</span></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="features" class="py-20 md:py-32 relative fade-in">
+            <div class="max-w-7xl mx-auto px-6 md:px-12">
+                <div class="text-center mb-16">
+                    <h2 class="text-3xl md:text-5xl font-bold text-white mb-6">
+                        <span class="text-blue-500">NEXUS POS:</span> Ingeniería de Vanguardia
+                    </h2>
+                    <p class="text-gray-400 text-lg max-w-2xl mx-auto">Construido sobre una arquitectura robusta para ofrecer velocidad y fiabilidad sin compromisos.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="glass-panel p-10 rounded-3xl relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 -mt-10 -mr-10 w-32 h-32 bg-blue-500 rounded-full blur-[60px] opacity-20 group-hover:opacity-40 transition duration-500"></div>
+                        
+                        <div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-blue-500/30 group-hover:scale-110 transition duration-300">
+                            <span class="material-icons text-white text-3xl">dashboard</span>
+                        </div>
+                        <h3 class="text-2xl font-bold text-white mb-4">Control Centralizado</h3>
+                        <p class="text-gray-400 leading-relaxed">Un "Command Center" intuitivo. Gestiona inventarios, personal y finanzas desde una única pantalla con diseño ergonómico.</p>
+                    </div>
+
+                    <div class="glass-panel p-10 rounded-3xl relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 -mt-10 -mr-10 w-32 h-32 bg-cyan-500 rounded-full blur-[60px] opacity-20 group-hover:opacity-40 transition duration-500"></div>
+
+                        <div class="w-14 h-14 bg-gradient-to-br from-cyan-500 to-teal-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-cyan-500/30 group-hover:scale-110 transition duration-300">
+                            <span class="material-icons text-white text-3xl">smartphone</span>
+                        </div>
+                        <h3 class="text-2xl font-bold text-white mb-4">Omnicanalidad</h3>
+                        <p class="text-gray-400 leading-relaxed">Tu negocio en tu bolsillo. Aplicación nativa optimizada para tablets y smartphones con sincronización en tiempo real.</p>
+                    </div>
+
+                    <div class="glass-panel p-10 rounded-3xl relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 -mt-10 -mr-10 w-32 h-32 bg-purple-500 rounded-full blur-[60px] opacity-20 group-hover:opacity-40 transition duration-500"></div>
+
+                        <div class="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-purple-500/30 group-hover:scale-110 transition duration-300">
+                            <span class="material-icons text-white text-3xl">analytics</span>
+                        </div>
+                        <h3 class="text-2xl font-bold text-white mb-4">Data Intelligence</h3>
+                        <p class="text-gray-400 leading-relaxed">Transformamos datos crudos en estrategias. Algoritmos que predicen tendencias de venta y optimizan tu stock.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="solutions" class="py-20 md:py-32 bg-black/20 fade-in">
+            <div class="max-w-7xl mx-auto px-6 md:px-12 text-center">
+                <span class="text-cyan-400 tracking-widest font-bold uppercase text-sm mb-2 block">Versatilidad</span>
+                <h2 class="text-4xl md:text-5xl font-bold text-white mb-16">
+                    Soluciones <span class="text-gradient">Adaptativas</span>
+                </h2>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="glass-panel p-8 rounded-3xl flex flex-col items-start text-left hover:border-orange-500/50 transition duration-500">
+                        <div class="p-3 bg-orange-500/20 rounded-lg text-orange-400 mb-6">
+                            <span class="material-icons text-4xl">restaurant</span>
+                        </div>
+                        <h3 class="text-2xl font-bold text-white mb-4">Gastronomía</h3>
+                        <p class="text-gray-400 mb-6 text-sm">Desde Food Trucks hasta Alta Cocina. Flujos de trabajo diseñados para la velocidad de la cocina.</p>
+                        <ul class="text-gray-400 space-y-3 text-sm w-full">
+                            <li class="flex items-center"><span class="w-1.5 h-1.5 bg-orange-500 rounded-full mr-2"></span>Gestión de Mesas y Comandas</li>
+                            <li class="flex items-center"><span class="w-1.5 h-1.5 bg-orange-500 rounded-full mr-2"></span>Modificadores de Platos</li>
+                            <li class="flex items-center"><span class="w-1.5 h-1.5 bg-orange-500 rounded-full mr-2"></span>División de Cuentas</li>
+                        </ul>
+                    </div>
+
+                    <div class="glass-panel p-8 rounded-3xl flex flex-col items-start text-left hover:border-blue-500/50 transition duration-500 transform lg:-translate-y-4">
+                        <div class="p-3 bg-blue-500/20 rounded-lg text-blue-400 mb-6">
+                            <span class="material-icons text-4xl">store</span>
+                        </div>
+                        <h3 class="text-2xl font-bold text-white mb-4">Retail & Comercios</h3>
+                        <p class="text-gray-400 mb-6 text-sm">Control milimétrico de SKU. No pierdas ni una venta por falta de stock.</p>
+                        <ul class="text-gray-400 space-y-3 text-sm w-full">
+                            <li class="flex items-center"><span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-2"></span>Lectura de Código de Barras</li>
+                            <li class="flex items-center"><span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-2"></span>Alertas de Stock Bajo</li>
+                            <li class="flex items-center"><span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-2"></span>Integración E-commerce</li>
+                        </ul>
+                    </div>
+
+                    <div class="glass-panel p-8 rounded-3xl flex flex-col items-start text-left hover:border-purple-500/50 transition duration-500">
+                        <div class="p-3 bg-purple-500/20 rounded-lg text-purple-400 mb-6">
+                            <span class="material-icons text-4xl">spa</span>
+                        </div>
+                        <h3 class="text-2xl font-bold text-white mb-4">Servicios</h3>
+                        <p class="text-gray-400 mb-6 text-sm">Para profesionales que venden tiempo y experiencia. Organiza tu agenda.</p>
+                        <ul class="text-gray-400 space-y-3 text-sm w-full">
+                            <li class="flex items-center"><span class="w-1.5 h-1.5 bg-purple-500 rounded-full mr-2"></span>Sistema de Reservas</li>
+                            <li class="flex items-center"><span class="w-1.5 h-1.5 bg-purple-500 rounded-full mr-2"></span>Base de Datos Clientes</li>
+                            <li class="flex items-center"><span class="w-1.5 h-1.5 bg-purple-500 rounded-full mr-2"></span>Historial de Servicios</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="benefits" class="py-20 md:py-32 fade-in relative">
+            <div class="absolute inset-0 bg-nexus-dark opacity-90 -z-10"></div>
+            <div class="max-w-7xl mx-auto px-6 md:px-12 flex flex-col lg:flex-row items-center gap-12">
+                <div class="lg:w-1/2">
+                    <h2 class="text-3xl md:text-5xl font-bold text-white mb-8 leading-tight">
+                        Optimiza. Escala. <br><span class="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500">Domina tu Mercado.</span>
+                    </h2>
+                    <p class="text-lg text-gray-400 mb-10 leading-relaxed">
+                        NEXUS POS elimina las fricciones operativas. Deja que la tecnología maneje lo complejo mientras tú te enfocas en la visión estratégica.
+                    </p>
+                    <a href="index.html" class="inline-flex items-center bg-white/5 border border-white/20 text-white py-3 px-8 rounded-full font-bold hover:bg-white/20 hover:scale-105 transition duration-300">
+                        Descubre tu Potencial <span class="material-icons ml-2">trending_up</span>
+                    </a>
+                </div>
+                
+                <div class="lg:w-1/2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="glass-panel p-6 rounded-2xl border-l-4 border-green-500 hover:bg-white/5 transition">
+                        <div class="flex items-center mb-3">
+                            <span class="material-icons text-green-400 mr-3">attach_money</span>
+                            <h4 class="font-bold text-lg text-white">Finanzas Claras</h4>
+                        </div>
+                        <p class="text-gray-400 text-sm">Flujo de caja en tiempo real. Cero sorpresas a fin de mes.</p>
+                    </div>
+                    
+                    <div class="glass-panel p-6 rounded-2xl border-l-4 border-blue-500 hover:bg-white/5 transition">
+                        <div class="flex items-center mb-3">
+                            <span class="material-icons text-blue-400 mr-3">inventory</span>
+                            <h4 class="font-bold text-lg text-white">Inventario Smart</h4>
+                        </div>
+                        <p class="text-gray-400 text-sm">Predicción de stock basada en IA para evitar quiebres.</p>
+                    </div>
+
+                    <div class="glass-panel p-6 rounded-2xl border-l-4 border-purple-500 hover:bg-white/5 transition">
+                        <div class="flex items-center mb-3">
+                            <span class="material-icons text-purple-400 mr-3">favorite</span>
+                            <h4 class="font-bold text-lg text-white">Fidelización</h4>
+                        </div>
+                        <p class="text-gray-400 text-sm">Programas de puntos integrados y perfiles detallados.</p>
+                    </div>
+
+                    <div class="glass-panel p-6 rounded-2xl border-l-4 border-yellow-500 hover:bg-white/5 transition">
+                        <div class="flex items-center mb-3">
+                            <span class="material-icons text-yellow-400 mr-3">insights</span>
+                            <h4 class="font-bold text-lg text-white">Métricas KPI</h4>
+                        </div>
+                        <p class="text-gray-400 text-sm">Tableros ejecutivos para toma de decisiones instantánea.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="demo" class="py-20 md:py-32 bg-gradient-to-b from-transparent to-black/40 fade-in">
+            <div class="max-w-7xl mx-auto px-6 md:px-12 text-center">
+                <h2 class="text-4xl font-bold text-white mb-6">Experiencia <span class="text-nexus-primary">Inmersiva</span></h2>
+                <p class="text-gray-400 mb-12 max-w-2xl mx-auto">Prueba la interfaz sin compromisos. Rápida, oscura, elegante.</p>
+                
+                <div class="relative w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-2xl border border-white/10 group">
+                    <img src="https://placehold.co/1000x600/1e293b/3b82f6?text=Interfaz+NEXUS+Dark+Mode" alt="Demo NEXUS POS" class="w-full h-auto object-cover transform group-hover:scale-105 transition duration-700">
+                    <div class="absolute inset-0 flex items-center justify-center bg-black/60 group-hover:bg-black/40 transition-all duration-300">
+                        <a href="#" class="relative inline-flex group">
+                            <div class="absolute transition-all duration-1000 opacity-70 -inset-px bg-gradient-to-r from-[#44BCFF] via-[#FF44EC] to-[#FF675E] rounded-full blur-lg group-hover:opacity-100 group-hover:-inset-1 group-hover:duration-200 animate-tilt"></div>
+                            <button class="relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white transition-all duration-200 bg-gray-900 font-pj rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900">
+                                <span class="material-icons mr-2 text-2xl">play_circle</span> Iniciar Demo
+                            </button>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="testimonials" class="py-20 md:py-32 relative fade-in">
+            <div class="max-w-7xl mx-auto px-6 md:px-12">
+                <h2 class="text-3xl md:text-5xl font-bold text-center text-white mb-16">Lo que dicen los <span class="text-yellow-400">Líderes</span></h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div class="glass-panel p-8 rounded-3xl relative">
+                        <span class="material-icons text-6xl text-white/5 absolute top-4 right-4">format_quote</span>
+                        <p class="text-gray-300 italic mb-8 relative z-10">"La transición a NEXUS fue impecable. La interfaz oscura descansa la vista de mis cajeros y la velocidad es incomparable."</p>
+                        <div class="flex items-center">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 p-[2px]">
+                                <img src="https://placehold.co/60x60/1a1a1a/ffffff?text=JR" class="rounded-full w-full h-full object-cover border-2 border-nexus-dark">
+                            </div>
+                            <div class="ml-4">
+                                <h4 class="font-bold text-white">Juan Rodríguez</h4>
+                                <p class="text-xs text-blue-400 uppercase tracking-wide">CEO, Sabor Latino</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-8 rounded-3xl relative transform md:-translate-y-4 shadow-[0_0_40px_rgba(59,130,246,0.1)]">
+                         <span class="material-icons text-6xl text-white/5 absolute top-4 right-4">format_quote</span>
+                        <p class="text-gray-300 italic mb-8 relative z-10">"El control de inventario en tiempo real cambió mi negocio. Ahora sé exactamente qué reponer antes de que se agote."</p>
+                        <div class="flex items-center">
+                             <div class="w-12 h-12 rounded-full bg-gradient-to-r from-cyan-400 to-green-500 p-[2px]">
+                                <img src="https://placehold.co/60x60/1a1a1a/ffffff?text=AG" class="rounded-full w-full h-full object-cover border-2 border-nexus-dark">
+                            </div>
+                            <div class="ml-4">
+                                <h4 class="font-bold text-white">Ana García</h4>
+                                <p class="text-xs text-cyan-400 uppercase tracking-wide">Dueña, Moda Urbana</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-8 rounded-3xl relative">
+                         <span class="material-icons text-6xl text-white/5 absolute top-4 right-4">format_quote</span>
+                        <p class="text-gray-300 italic mb-8 relative z-10">"Soporte 24/7 real y una plataforma que no se cae. NEXUS es el socio silencioso más importante de mi clínica."</p>
+                        <div class="flex items-center">
+                             <div class="w-12 h-12 rounded-full bg-gradient-to-r from-pink-400 to-orange-500 p-[2px]">
+                                <img src="https://placehold.co/60x60/1a1a1a/ffffff?text=LC" class="rounded-full w-full h-full object-cover border-2 border-nexus-dark">
+                            </div>
+                            <div class="ml-4">
+                                <h4 class="font-bold text-white">Luis Castro</h4>
+                                <p class="text-xs text-pink-400 uppercase tracking-wide">Dir. Bienestar Total</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="pricing" class="py-20 md:py-32 fade-in relative overflow-hidden">
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/20 blur-[120px] rounded-full -z-10"></div>
+
+            <div class="max-w-7xl mx-auto px-6 md:px-12 text-center">
+                <h2 class="text-4xl font-bold text-white mb-6">Planes de Inversión</h2>
+                <p class="text-gray-400 mb-16">Transparencia total. Sin costos ocultos. Cancela cuando quieras.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+                    
+                    <div class="glass-panel p-8 rounded-3xl border border-white/5">
+                        <h3 class="text-xl font-bold text-gray-300 mb-2">Startup</h3>
+                        <div class="text-4xl font-bold text-white mb-4">$19 <span class="text-lg text-gray-500 font-normal">/mes</span></div>
+                        <p class="text-gray-500 text-sm mb-8">Para soñadores que inician.</p>
+                        
+                        <ul class="text-gray-400 text-left space-y-4 mb-8 text-sm">
+                            <li class="flex items-center"><span class="material-icons text-green-500 text-lg mr-2">check</span> Gestión de Ventas</li>
+                            <li class="flex items-center"><span class="material-icons text-green-500 text-lg mr-2">check</span> Reportes Básicos</li>
+                            <li class="flex items-center"><span class="material-icons text-green-500 text-lg mr-2">check</span> 1 Usuario</li>
+                        </ul>
+                        <a href="#" class="block w-full py-3 rounded-xl border border-white/20 text-white hover:bg-white/10 transition">Elegir Básico</a>
+                    </div>
+
+                    <div class="glass-panel p-10 rounded-3xl border border-blue-500/50 bg-blue-900/10 relative transform scale-105 z-10 shadow-[0_0_50px_rgba(59,130,246,0.2)]">
+                        <div class="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-xs font-bold py-1 px-4 rounded-full shadow-lg">MÁS ELEGIDO</div>
+                        
+                        <h3 class="text-2xl font-bold text-blue-400 mb-2">Growth</h3>
+                        <div class="text-5xl font-bold text-white mb-4">$49 <span class="text-lg text-gray-500 font-normal">/mes</span></div>
+                        <p class="text-gray-400 text-sm mb-8">Potencia para escalar rápido.</p>
+
+                        <ul class="text-gray-300 text-left space-y-4 mb-8 text-sm">
+                            <li class="flex items-center"><span class="material-icons text-cyan-400 text-lg mr-2">verified</span> Todo lo del Startup</li>
+                            <li class="flex items-center"><span class="material-icons text-cyan-400 text-lg mr-2">verified</span> Inventario Avanzado</li>
+                            <li class="flex items-center"><span class="material-icons text-cyan-400 text-lg mr-2">verified</span> Hasta 5 Usuarios</li>
+                            <li class="flex items-center"><span class="material-icons text-cyan-400 text-lg mr-2">verified</span> Analíticas Pro</li>
+                        </ul>
+                        <a href="#" class="block w-full py-4 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold hover:shadow-lg hover:shadow-blue-500/40 transition">Comenzar Ahora</a>
+                    </div>
+
+                    <div class="glass-panel p-8 rounded-3xl border border-white/5">
+                        <h3 class="text-xl font-bold text-gray-300 mb-2">Enterprise</h3>
+                        <div class="text-4xl font-bold text-white mb-4">$99 <span class="text-lg text-gray-500 font-normal">/mes</span></div>
+                        <p class="text-gray-500 text-sm mb-8">Dominio total del mercado.</p>
+
+                        <ul class="text-gray-400 text-left space-y-4 mb-8 text-sm">
+                            <li class="flex items-center"><span class="material-icons text-green-500 text-lg mr-2">check</span> Todo lo de Growth</li>
+                            <li class="flex items-center"><span class="material-icons text-green-500 text-lg mr-2">check</span> Usuarios Ilimitados</li>
+                            <li class="flex items-center"><span class="material-icons text-green-500 text-lg mr-2">check</span> Multi-Sucursal</li>
+                            <li class="flex items-center"><span class="material-icons text-green-500 text-lg mr-2">check</span> API Access</li>
+                        </ul>
+                        <a href="#" class="block w-full py-3 rounded-xl border border-white/20 text-white hover:bg-white/10 transition">Contactar Ventas</a>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <section id="faq" class="py-20 md:py-32 fade-in">
+            <div class="max-w-3xl mx-auto px-6 md:px-12">
+                <h2 class="text-3xl font-bold text-center text-white mb-12">Preguntas Frecuentes</h2>
+                <div class="space-y-4">
+                    <div class="glass-panel rounded-2xl overflow-hidden faq-item transition-all duration-300" data-target="faq-answer-1">
+                        <div class="p-6 flex justify-between items-center cursor-pointer hover:bg-white/5 transition">
+                            <h3 class="font-semibold text-white">¿Por qué NEXUS POS es superior?</h3>
+                            <span class="material-icons text-blue-400 faq-icon transition-transform duration-300">add</span>
+                        </div>
+                        <div id="faq-answer-1" class="hidden px-6 pb-6 text-gray-400 border-t border-white/5 pt-4">
+                            Diseño centrado en el usuario (UX), velocidad de carga instantánea y una arquitectura Dark Mode que reduce la fatiga visual. Es tecnología de 2025 hoy.
+                        </div>
+                    </div>
+
+                     <div class="glass-panel rounded-2xl overflow-hidden faq-item transition-all duration-300" data-target="faq-answer-2">
+                        <div class="p-6 flex justify-between items-center cursor-pointer hover:bg-white/5 transition">
+                            <h3 class="font-semibold text-white">¿Necesito hardware especial?</h3>
+                            <span class="material-icons text-blue-400 faq-icon transition-transform duration-300">add</span>
+                        </div>
+                        <div id="faq-answer-2" class="hidden px-6 pb-6 text-gray-400 border-t border-white/5 pt-4">
+                            No. NEXUS vive en la nube. Funciona en cualquier navegador moderno, iPad, tablet Android o tu laptop actual. Ahorra miles en hardware.
+                        </div>
+                    </div>
+
+                    <div class="glass-panel rounded-2xl overflow-hidden faq-item transition-all duration-300" data-target="faq-answer-3">
+                        <div class="p-6 flex justify-between items-center cursor-pointer hover:bg-white/5 transition">
+                            <h3 class="font-semibold text-white">¿Mis datos están seguros?</h3>
+                            <span class="material-icons text-blue-400 faq-icon transition-transform duration-300">add</span>
+                        </div>
+                        <div id="faq-answer-3" class="hidden px-6 pb-6 text-gray-400 border-t border-white/5 pt-4">
+                            Utilizamos encriptación de grado bancario (AES-256) y servidores redundantes. Tu información está más segura con nosotros que en un servidor local.
+                        </div>
+                    </div>
+                     <div class="glass-panel rounded-2xl overflow-hidden faq-item transition-all duration-300" data-target="faq-answer-4">
+                        <div class="p-6 flex justify-between items-center cursor-pointer hover:bg-white/5 transition">
+                            <h3 class="font-semibold text-white">¿Tienen soporte técnico?</h3>
+                            <span class="material-icons text-blue-400 faq-icon transition-transform duration-300">add</span>
+                        </div>
+                        <div id="faq-answer-4" class="hidden px-6 pb-6 text-gray-400 border-t border-white/5 pt-4">
+                            Sí. Nuestro equipo de soporte no son bots, son expertos en el sistema listos para ayudarte vía chat o email con tiempos de respuesta récord.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-black/80 backdrop-blur-xl border-t border-white/10 pt-16 pb-8 text-gray-400">
+        <div class="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+            <div>
+                <div class="flex items-center space-x-3 mb-6">
+                    <img src="logo_nexus.png" alt="NEXUS POS Logo" class="w-10 h-10 rounded-full border border-white/20">
+                    <span class="text-xl font-bold text-white tracking-wider">NEXUS</span>
+                </div>
+                <p class="mb-4 text-sm leading-relaxed text-gray-500">Tecnología diseñada para empoderar a la próxima generación de comercios.</p>
+                <div class="flex space-x-4">
+                    <a href="#" class="text-gray-500 hover:text-white transition"><i class="material-icons">email</i></a>
+                    <a href="#" class="text-gray-500 hover:text-white transition"><i class="material-icons">call</i></a>
+                </div>
+            </div>
+
+            <div>
+                <h4 class="font-bold text-white mb-6 uppercase text-xs tracking-widest">Producto</h4>
+                <ul class="space-y-3 text-sm">
+                    <li><a href="#" class="hover:text-blue-400 transition">Características</a></li>
+                    <li><a href="#" class="hover:text-blue-400 transition">Integraciones</a></li>
+                    <li><a href="#" class="hover:text-blue-400 transition">Precios</a></li>
+                    <li><a href="#" class="hover:text-blue-400 transition">Roadmap</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h4 class="font-bold text-white mb-6 uppercase text-xs tracking-widest">Empresa</h4>
+                <ul class="space-y-3 text-sm">
+                    <li><a href="#" class="hover:text-blue-400 transition">Sobre Nosotros</a></li>
+                    <li><a href="#" class="hover:text-blue-400 transition">Carreras</a></li>
+                    <li><a href="#" class="hover:text-blue-400 transition">Blog</a></li>
+                    <li><a href="#" class="hover:text-blue-400 transition">Legal</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h4 class="font-bold text-white mb-6 uppercase text-xs tracking-widest">Social</h4>
+                <div class="flex space-x-4">
+                    <a href="#" class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-blue-600 hover:text-white transition text-gray-400 text-xs font-bold">FB</a>
+                     <a href="#" class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-pink-600 hover:text-white transition text-gray-400 text-xs font-bold">IG</a>
+                     <a href="#" class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-blue-400 hover:text-white transition text-gray-400 text-xs font-bold">TW</a>
+                     <a href="#" class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-blue-700 hover:text-white transition text-gray-400 text-xs font-bold">LI</a>
+                </div>
+            </div>
+        </div>
+        <div class="text-center text-xs text-gray-600 border-t border-white/5 pt-8">
+            &copy; 2025 NEXUS COMPANY F.P. | Crafted with <span class="text-red-900">♥</span> in the Future.
+        </div>
+    </footer>
+
+    <a href="https://wa.me/XXXXXXXXXX" target="_blank" class="whatsapp-button hover:animate-pulse">
+        <span class="material-icons text-3xl">chat_bubble</span>
+    </a>
+
+    <div id="image-modal" class="fixed inset-0 bg-black/95 backdrop-blur-xl z-[9999] hidden flex justify-center items-center p-4 transition-opacity duration-300" onclick="closeModal()">
+        <div class="relative w-full h-full flex justify-center items-center" onclick="event.stopPropagation()">
+            <img id="modal-image-content" src="" alt="Imagen expandida" class="max-h-[90vh] max-w-[90vw] object-contain rounded-lg shadow-2xl border border-white/10">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-white/50 hover:text-white text-5xl font-light transition duration-300 z-10">&times;</button>
+        </div>
+    </div>
+
+    <script>
+        // Variables Globales para el Carrusel
+        const carousel = document.getElementById('hero-carousel');
+        const items = carousel.querySelectorAll('.carousel-item');
+        const dotsContainer = document.getElementById('carousel-dots');
+        const nextBtn = document.getElementById('next-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const totalItems = items.length;
+        let currentIndex = 0;
+        const intervalTime = 4000; 
+        let carouselInterval;
+
+        function goToImage(index) {
+            if (index >= totalItems) index = 0;
+            else if (index < 0) index = totalItems - 1;
+
+            items[currentIndex].classList.remove('active');
+            // Actualizar estilo de dots para el tema oscuro
+            dotsContainer.children[currentIndex].classList.remove('bg-white', 'scale-125');
+            dotsContainer.children[currentIndex].classList.add('bg-white/30');
+
+            currentIndex = index;
+
+            items[currentIndex].classList.add('active');
+            dotsContainer.children[currentIndex].classList.remove('bg-white/30');
+            dotsContainer.children[currentIndex].classList.add('bg-white', 'scale-125');
+        }
+
+        function autoSlide() { goToImage(currentIndex + 1); }
+
+        function startCarousel() {
+            stopCarousel();
+            carouselInterval = setInterval(autoSlide, intervalTime);
+        }
+
+        function stopCarousel() { clearInterval(carouselInterval); }
+
+        function createDots() {
+            for (let i = 0; i < totalItems; i++) {
+                const dot = document.createElement('div');
+                dot.classList.add('w-2', 'h-2', 'rounded-full', 'cursor-pointer', 'transition-all', 'duration-300'); 
+                dot.setAttribute('data-index', i);
+                
+                if (i === 0) dot.classList.add('bg-white', 'scale-125');
+                else dot.classList.add('bg-white/30');
+
+                dot.addEventListener('click', (e) => {
+                    stopCarousel();
+                    const index = parseInt(e.target.getAttribute('data-index'));
+                    goToImage(index);
+                    startCarousel();
+                });
+                dotsContainer.appendChild(dot);
+            }
+        }
+
+        nextBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            stopCarousel();
+            goToImage(currentIndex + 1);
+            startCarousel();
+        });
+
+        prevBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            stopCarousel();
+            goToImage(currentIndex - 1);
+            startCarousel();
+        });
+        
+        createDots();
+        startCarousel(); 
+        
+        // Modal logic
+        const modal = document.getElementById('image-modal');
+        const modalImage = document.getElementById('modal-image-content');
+
+        function openModalFromCarousel() {
+            stopCarousel();
+            const activeItem = carousel.querySelector('.carousel-item.active');
+            const activeImageSrc = activeItem ? activeItem.querySelector('img').src : null;
+            if (activeImageSrc) {
+                modalImage.src = activeImageSrc;
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function closeModal() {
+            modal.classList.add('hidden');
+            startCarousel();
+            document.body.style.overflow = '';
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === "Escape" && !modal.classList.contains('hidden')) {
+                closeModal();
+            }
+        });
+
+        // Mobile Menu
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        mobileMenuButton.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+
+        // FAQ Logic Updated for new classes
+        document.querySelectorAll('.faq-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const targetId = item.dataset.target;
+                const answer = document.getElementById(targetId);
+                const icon = item.querySelector('.faq-icon');
+                const isHidden = answer.classList.contains('hidden');
+
+                document.querySelectorAll('.faq-item .faq-icon').forEach(i => i.textContent = 'add');
+                document.querySelectorAll('.faq-item p, .faq-item div[id^="faq-answer"]').forEach(a => {
+                    if(a.id !== targetId) a.classList.add('hidden');
+                });
+                
+                // Reset styles
+                document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('bg-white/10'));
+
+                if (isHidden) {
+                    answer.classList.remove('hidden');
+                    icon.textContent = 'remove';
+                    item.classList.add('bg-white/10'); // Highlight active
+                } else {
+                    answer.classList.add('hidden');
+                    icon.textContent = 'add';
+                    item.classList.remove('bg-white/10');
+                }
+            });
+        });
+
+        // Scroll Animation
+        const fadeInSections = document.querySelectorAll('.fade-in');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('show');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        fadeInSections.forEach(section => observer.observe(section));
+    </script>
+</body>
+</html>

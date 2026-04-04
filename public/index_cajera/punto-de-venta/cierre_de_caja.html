@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="logo_nexus.png">
+    <title>NEXUS POS - Cierre de Caja Detallado</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #fff;
+            width: 30px;
+            height: 30px;
+            -webkit-animation: spin 1s linear infinite; 
+            animation: spin 1s linear infinite;
+        }
+
+        
+        @-webkit-keyframes spin {
+            0% { -webkit-transform: rotate(0deg); }
+            100% { -webkit-transform: rotate(360deg); }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-white font-roboto">
+
+    <div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="spinner"></div>
+    </div>
+    
+    <main class="main-content w-full max-w-8xl mx-auto">
+        
+            
+            <div class="relative mb-6 border-b pb-4">
+                
+                <button onclick="history.back()" 
+                        class="absolute top-1 left-0 text-gray-600 hover:text-gray-900 transition duration-150 ease-in-out p-2 rounded-full hover:bg-gray-100 focus:outline-none"
+                        title="Regresar a la página anterior">
+                    <span class="material-icons text-3xl">arrow_back</span>
+                </button>
+                
+                <div class="flex items-center justify-center">
+                    
+                    <h1 class="text-3xl font-bold text-gray-800">Cierre de Caja Detallado</h1>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="bg-gray-100 p-4 rounded-lg border border-gray-300">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2 flex items-center">
+                        <span class="material-icons text-red-500 mr-2">trending_down</span>
+                        Gestión de Gastos
+                    </h3>
+                    <div class="flex justify-between items-center text-xl font-bold text-gray-800 mb-1">
+                        <span>Total Gastos (Bs):</span>
+                        <span id="total-expenses-bs">Bs. 0.00</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xl font-bold text-gray-800">
+                        <span>Total Gastos ($):</span>
+                        <span id="total-expenses-dollars">$. 0.00</span>
+                    </div>
+                </div>
+                <div class="bg-gray-100 p-4 rounded-lg border border-gray-300">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2 flex items-center">
+                        <span class="material-icons text-green-500 mr-2">trending_up</span>
+                        Gestión de Ingresos
+                    </h3>
+                    <div class="flex justify-between items-center text-xl font-bold text-gray-800 mb-1">
+                        <span>Total Ingresos (Bs):</span>
+                        <span id="total-incomes-bs">Bs. 0.00</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xl font-bold text-gray-800">
+                        <span>Total Ingresos ($):</span>
+                        <span id="total-incomes-dollars">$. 0.00</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+                    <span class="material-icons text-yellow-500 mr-2">account_balance_wallet</span>
+                    Conciliación de Pagos
+                </h2>
+                <div class="grid grid-cols-4 gap-4 p-2 font-semibold text-sm text-gray-600 border-b border-gray-300 sticky top-0 bg-white md:hidden">
+                    <div class="col-span-1">Método de Pago</div>
+                    <div class="text-right">Monto Registrado</div>
+                    <div class="text-right">Monto Contado</div>
+                    <div class="text-right">Diferencia</div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <div class="hidden md:grid grid-cols-4 gap-4 p-2 font-semibold text-sm text-gray-600 border-b border-gray-300 sticky top-0 bg-white">
+                            <div class="col-span-1">Método de Pago</div>
+                            <div class="text-right">Monto Registrado</div>
+                            <div class="text-right">Monto Contado</div>
+                            <div class="text-right">Diferencia</div>
+                        </div>
+
+                        <div class="grid grid-cols-4 items-center gap-4 p-2 bg-gray-50 rounded-lg">
+                            <div class="col-span-1 flex items-center text-gray-700 font-medium">
+                                <span class="material-icons text-green-600 mr-2">payments</span>
+                                Efectivo
+                            </div>
+                            <div class="text-right font-semibold text-gray-800" id="registered-cash">Bs. 0.00</div>
+                            <input type="number" step="0.01" class="text-right p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow counted-input" data-payment-type="cash-bs">
+                            <div class="text-right font-bold text-lg" id="diff-cash">Bs. 0.00</div>
+                        </div>
+    
+                        <div class="grid grid-cols-4 items-center gap-4 p-2 bg-gray-50 rounded-lg">
+                            <div class="col-span-1 flex items-center text-gray-700 font-medium">
+                                <span class="material-icons text-blue-600 mr-2">credit_card</span>
+                                Tarjeta de Débito
+                            </div>
+                            <div class="text-right font-semibold text-gray-800" id="registered-debit-card">Bs. 0.00</div>
+                            <input type="number" step="0.01" class="text-right p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow counted-input" data-payment-type="debit-card-bs">
+                            <div class="text-right font-bold text-lg" id="diff-debit-card">Bs. 0.00</div>
+                        </div>
+    
+                        <div class="grid grid-cols-4 items-center gap-4 p-2 bg-gray-50 rounded-lg">
+                            <div class="col-span-1 flex items-center text-gray-700 font-medium">
+                                <span class="material-icons text-purple-600 mr-2">phone_iphone</span>
+                                Pago Móvil
+                            </div>
+                            <div class="text-right font-semibold text-gray-800" id="registered-mobile-payment">Bs. 0.00</div>
+                            <input type="number" step="0.01" class="text-right p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow counted-input" data-payment-type="mobile-payment-bs">
+                            <div class="text-right font-bold text-lg" id="diff-mobile-payment">Bs. 0.00</div>
+                        </div>
+    
+                        <div class="grid grid-cols-4 items-center gap-4 p-2 bg-gray-50 rounded-lg">
+                            <div class="col-span-1 flex items-center text-gray-700 font-medium">
+                                <span class="material-icons text-indigo-600 mr-2">smartphone</span>
+                                Zinli
+                            </div>
+                            <div class="text-right font-semibold text-gray-800" id="registered-zinli">$. 0.00</div>
+                            <input type="number" step="0.01" class="text-right p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow counted-input" data-payment-type="zinli-dollars">
+                            <div class="text-right font-bold text-lg" id="diff-zinli">$. 0.00</div>
+                        </div>
+    
+                        <div class="grid grid-cols-4 items-center gap-4 p-2 bg-gray-50 rounded-lg">
+                            <div class="col-span-1 flex items-center text-gray-700 font-medium">
+                                <span class="material-icons text-red-600 mr-2">fingerprint</span>
+                                Bio Pago
+                            </div>
+                            <div class="text-right font-semibold text-gray-800" id="registered-biopago">Bs. 0.00</div>
+                            <input type="number" step="0.01" class="text-right p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow counted-input" data-payment-type="biopago-bs">
+                            <div class="text-right font-bold text-lg" id="diff-biopago">Bs. 0.00</div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="hidden md:grid grid-cols-4 gap-4 p-2 font-semibold text-sm text-gray-600 border-b border-gray-300 sticky top-0 bg-white">
+                            <div class="col-span-1">Método de Pago</div>
+                            <div class="text-right">Monto Registrado</div>
+                            <div class="text-right">Monto Contado</div>
+                            <div class="text-right">Diferencia</div>
+                        </div>
+                        
+                        <div class="grid grid-cols-4 items-center gap-4 p-2 bg-gray-50 rounded-lg">
+                            <div class="col-span-1 flex items-center text-gray-700 font-medium">
+                                <span class="material-icons text-emerald-600 mr-2">attach_money</span>
+                                Dólar
+                            </div>
+                            <div class="text-right font-semibold text-gray-800" id="registered-dollars">$. 0.00</div>
+                            <input type="number" step="0.01" class="text-right p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow counted-input" data-payment-type="dollars">
+                            <div class="text-right font-bold text-lg" id="diff-dollars">$. 0.00</div>
+                        </div>
+                        
+                        <div class="grid grid-cols-4 items-center gap-4 p-2 bg-gray-50 rounded-lg">
+                            <div class="col-span-1 flex items-center text-gray-700 font-medium">
+                                <span class="material-icons text-cyan-600 mr-2">account_balance</span>
+                                Transferencia
+                            </div>
+                            <div class="text-right font-semibold text-gray-800" id="registered-transfer">Bs. 0.00</div>
+                            <input type="number" step="0.01" class="text-right p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow counted-input" data-payment-type="transfer-bs">
+                            <div class="text-right font-bold text-lg" id="diff-transfer">Bs. 0.00</div>
+                        </div>
+                        
+                        <div class="grid grid-cols-4 items-center gap-4 p-2 bg-gray-50 rounded-lg">
+                            <div class="col-span-1 flex items-center text-gray-700 font-medium">
+                                <span class="material-icons text-yellow-600 mr-2">payments</span>
+                                Depósito
+                            </div>
+                            <div class="text-right font-semibold text-gray-800" id="registered-deposit">Bs. 0.00</div>
+                            <input type="number" step="0.01" class="text-right p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow counted-input" data-payment-type="deposit-bs">
+                            <div class="text-right font-bold text-lg" id="diff-deposit">Bs. 0.00</div>
+                        </div>
+    
+                        <div class="grid grid-cols-4 items-center gap-4 p-2 bg-gray-50 rounded-lg">
+                            <div class="col-span-1 flex items-center text-gray-700 font-medium">
+                                <span class="material-icons text-orange-600 mr-2">receipt_long</span>
+                                Crédito
+                            </div>
+                            <div class="text-right font-semibold text-gray-800" id="registered-credit">Bs. 0.00</div>
+                            <input type="number" step="0.01" class="text-right p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow counted-input" data-payment-type="credit-bs">
+                            <div class="text-right font-bold text-lg" id="diff-credit">Bs. 0.00</div>
+                        </div>
+    
+                        <div class="grid grid-cols-4 items-center gap-4 p-2 bg-gray-50 rounded-lg">
+                            <div class="col-span-1 flex items-center text-gray-700 font-medium">
+                                <span class="material-icons text-red-600 mr-2">credit_card</span>
+                                Tarjeta de Crédito
+                            </div>
+                            <div class="text-right font-semibold text-gray-800" id="registered-credit-card">Bs. 0.00</div>
+                            <input type="number" step="0.01" class="text-right p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow counted-input" data-payment-type="credit-card-bs">
+                            <div class="text-right font-bold text-lg" id="diff-credit-card">Bs. 0.00</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-blue-600 rounded-lg p-6 text-white text-center shadow-lg">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-4 border-b border-blue-400 pb-4">
+                    <span class="text-xl font-semibold">Total Ventas Registradas (Bs)</span>
+                    <span id="total-sales-bs" class="text-3xl font-bold">Bs. 0.00</span>
+                </div>
+                <div class="flex flex-col md:flex-row justify-between items-center mb-4 border-b border-blue-400 pb-4">
+                    <span class="text-xl font-semibold">Total Ventas Registradas ($)</span>
+                    <span id="total-sales-dollars" class="text-3xl font-bold">$. 0.00</span>
+                </div>
+                
+                <div class="flex flex-col md:flex-row justify-between items-center mb-4 border-b border-blue-400 pb-4">
+                    <span class="text-xl font-semibold">Diferencia Total en Caja (Bs)</span>
+                    <span id="total-difference-bs" class="text-3xl font-bold text-white">Bs. 0.00</span>
+                </div>
+                 <div class="flex flex-col md:flex-row justify-between items-center">
+                    <span class="text-xl font-semibold">Diferencia Total en Caja ($)</span>
+                    <span id="total-difference-dollars" class="text-3xl font-bold text-white">$. 0.00</span>
+                </div>
+            </div>
+
+            <div class="flex justify-end mt-6 space-x-4">
+                <button id="close-cash-button" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 shadow-md">
+                    Cerrar Caja
+                </button>
+            </div>
+
+    </main>
+
+    <div id="info-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 shadow-xl max-w-sm w-full">
+            <h3 id="modal-title" class="text-lg font-bold mb-4"></h3>
+            <p id="modal-message" class="text-gray-700 mb-4"></p>
+            <div class="flex justify-end">
+                <button id="close-modal-button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, onSnapshot, collection, query, where, collectionGroup, addDoc, serverTimestamp, writeBatch, getDocs, limit, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        let appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'; 
+        let firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}'); 
+        let initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        firebaseConfig = {
+            apiKey: "AIzaSyDN9mZ1n-OkC-Qz52eTCOy4yJH7M0U9zYI",
+            authDomain: "nexus-pos-75593.firebaseapp.com",
+            projectId: "nexus-pos-75593",
+            storageBucket: "nexus-pos-75593.firebasestorage.app",
+            messagingSenderId: "626840984883",
+            appId: "1:626840984883:web:08d56544ee28bc8e637246",
+            measurementId: "G-K1EQVJWJHG"
+        };
+        initialAuthToken = null; 
+        
+        let app;
+        if (!getApps().length) {
+            app = initializeApp(firebaseConfig);
+        } else {
+            app = getApp();
+        }
+
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        let userId = null; 
+        let companyId = null;
+        let role = null;
+        let branchId = null;
+        let hasListeners = false;
+        let salesPaymentTotals = {}; 
+        let incomePaymentTotals = {};
+        let expensePaymentTotals = {}; 
+        
+        let printerName = "TICKET"; 
+
+        let currentReportData = {
+            totalSalesBs: 0,
+            totalSalesDollars: 0,
+            totalExpensesBs: 0, 
+            totalExpensesDollars: 0,
+            totalIncomes: 0,
+            totalDifferenceBs: 0,
+            totalDifferenceDollars: 0,
+            paymentDetails: {} 
+        };
+
+        let userIdDisplay = null;
+        let companyIdDisplay = null;
+        let roleDisplay = null;
+        let totalExpensesBsDisplay = null; 
+        let totalExpensesDollarsDisplay = null; 
+        let totalIncomesBsDisplay = null; 
+        let totalIncomesDollarsDisplay = null; 
+        let totalSalesBsDisplay = null; 
+        let totalSalesDollarsDisplay = null;
+        let totalDifferenceBsDisplay = null;
+        let totalDifferenceDollarsDisplay = null;
+        
+        let countedInputs = [];
+        let closeCashButton = null;
+        let loadingOverlay = null;
+        let infoModal = null;
+        let modalTitle = null;
+        let modalMessage = null;
+        let closeModalButton = null;
+
+        function formatLine(leftText, rightText, totalWidth = 32) {
+            rightText = String(rightText);
+            
+            let padding = totalWidth - leftText.length - rightText.length;
+            
+            if (padding < 1) {
+                const minSpace = 2; 
+                const availableSpace = totalWidth - rightText.length - minSpace;
+                
+                if (availableSpace > 0) {
+                    leftText = leftText.substring(0, availableSpace);
+                    padding = minSpace;
+                } else {
+                    return leftText + rightText + '\\n';
+                }
+            }
+            
+            return leftText + ' '.repeat(padding) + rightText + '\\n';
+        }
+
+    
+        async function printCashClosingReport(reportData, sessionInfo) {
+            const { userId, companyId, role, branchId } = sessionInfo;
+            
+            const now = new Date();
+            const dateTime = now.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + now.toLocaleTimeString('es-VE');
+
+            const paymentMethodMap = {
+                'cash-bs': 'Efectivo (Bs)',
+                'debit-card-bs': 'T. Débito (Bs)',
+                'mobile-payment-bs': 'Pago Móvil (Bs)',
+                'zinli-dollars': 'Zinli ($)',
+                'biopago-bs': 'Bio Pago (Bs)',
+                'dollars': 'Dólar ($)',
+                'transfer-bs': 'Transferencia (Bs)',
+                'deposit-bs': 'Depósito (Bs)',
+                'credit-bs': 'Crédito (Bs)',
+                'credit-card-bs': 'T. Crédito (Bs)'
+            };
+
+            const payload = {
+                impresora: printerName, 
+                operaciones: [
+                    { nombre: "AbrirCajon" },
+                    { nombre: "EstablecerTamanoFuente", argumentos: [2] }, 
+                    { nombre: "EscribirTexto", argumentos: [`NEXUS POS\\n`] },
+                    { nombre: "EstablecerTamanoFuente", argumentos: [1] }, 
+                    { nombre: "EscribirTexto", argumentos: [`REPORTE DE CIERRE DE CAJA\\n`] },
+                    { nombre: "EscribirTexto", argumentos: [`--------------------------------\\n`] },
+                    { nombre: "EscribirTexto", argumentos: [`Cajero: ${userId}\\n`] },
+                    { nombre: "EscribirTexto", argumentos: [`Compañía: ${companyId}\\n`] },
+                    { nombre: "EscribirTexto", argumentos: [`Sucursal: ${branchId}\\n`] },
+                    { nombre: "EscribirTexto", argumentos: [`Rol: ${role}\\n`] },
+                    { nombre: "EscribirTexto", argumentos: [`Fecha/Hora: ${dateTime}\\n`] },
+                    { nombre: "EscribirTexto", argumentos: [`--------------------------------\\n`] },
+                ],
+            };
+
+            payload.operaciones.push(
+                { nombre: "EscribirTexto", argumentos: [`--- RESUMEN DE MOVIMIENTOS ---\\n`] },
+                { nombre: "EscribirTexto", argumentos: [formatLine("TOTAL INGRESOS (Bs)", reportData.totalIncomes.toFixed(2))] },
+                { nombre: "EscribirTexto", argumentos: [formatLine("TOTAL GASTOS (Bs)", reportData.totalExpensesBs.toFixed(2))] },
+                { nombre: "EscribirTexto", argumentos: [formatLine("TOTAL GASTOS ($)", reportData.totalExpensesDollars.toFixed(2))] },
+                { nombre: "EscribirTexto", argumentos: [`--------------------------------\\n`] }
+            );
+            
+            payload.operaciones.push(
+                { nombre: "EscribirTexto", argumentos: [`--- TOTALES DE VENTA ---\\n`] },
+                { nombre: "EscribirTexto", argumentos: [formatLine("VENTAS REG. (Bs)", reportData.totalSalesBs.toFixed(2))] },
+                { nombre: "EscribirTexto", argumentos: [formatLine("VENTAS REG. ($)", reportData.totalSalesDollars.toFixed(2))] },
+                { nombre: "EscribirTexto", argumentos: [`--------------------------------\\n`] }
+            );
+
+
+            payload.operaciones.push(
+                { nombre: "EstablecerTamanoFuente", argumentos: [2] }, 
+                { nombre: "EscribirTexto", argumentos: [`CONCILIACIÓN DE PAGOS\\n`] },
+                { nombre: "EstablecerTamanoFuente", argumentos: [1] },
+                { nombre: "EscribirTexto", argumentos: [`--------------------------------\\n`] }
+            );
+            
+            for (const type in reportData.paymentDetails) {
+                const detail = reportData.paymentDetails[type];
+                const methodName = paymentMethodMap[type] || type; 
+                
+                if (Math.abs(detail.registered) < 0.01 && Math.abs(detail.counted) < 0.01) continue; 
+
+                payload.operaciones.push(
+                    { nombre: "EscribirTexto", argumentos: [`MÉTODO: ${methodName}\\n`] },
+                    { nombre: "EscribirTexto", argumentos: [formatLine("   - Registrado", detail.registered.toFixed(2))] },
+                    { nombre: "EscribirTexto", argumentos: [formatLine("   - Contado", detail.counted.toFixed(2))] },
+                    { 
+                        nombre: "EscribirTexto", 
+                        argumentos: [formatLine("   - Diferencia", detail.difference.toFixed(2))] 
+                    },
+                    { nombre: "EscribirTexto", argumentos: [`---\\n`] }
+                );
+            }
+            
+            payload.operaciones.push(
+                { nombre: "EscribirTexto", argumentos: [`--------------------------------\\n`] },
+                { nombre: "EstablecerTamanoFuente", argumentos: [2] }, 
+                { nombre: "EscribirTexto", argumentos: [formatLine("DIFERENCIA TOTAL (Bs)", reportData.totalDifferenceBs.toFixed(2))] },
+                { nombre: "EscribirTexto", argumentos: [formatLine("DIFERENCIA TOTAL ($)", reportData.totalDifferenceDollars.toFixed(2))] },
+                { nombre: "EstablecerTamanoFuente", argumentos: [1] }, 
+                { nombre: "EscribirTexto", argumentos: [`\\n\\n`] }, 
+                { nombre: "CorteParcial" } 
+            );
+
+            try {
+                console.log("=================================================");
+                console.log("%cPAYLOAD JSON ENVIADO A IMPRIMIR (cierre_de_caja):", 'color: #3b82f6; font-weight: bold;');
+                console.log(`Usando impresora: ${printerName}`);
+                console.log(JSON.stringify(payload, null, 2));
+                console.log("=================================================");
+                
+                showInfoMessage(`Imprimiendo cierre de caja...`, 'info'); 
+                
+                const response = await fetch("http://localhost:8000/imprimir", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+
+                const rawText = await response.text(); 
+                
+                console.log("=================================================");
+                console.log("%cRESPUESTA RAW DEL SERVIDOR:", 'color: #10b981; font-weight: bold;');
+                console.log(rawText);
+                console.log("=================================================");
+
+                let result;
+                try {
+                    result = JSON.parse(rawText);
+                } catch (e) {
+                    throw new Error(`El plugin no devolvió una respuesta JSON válida. Respuesta recibida: "${rawText.substring(0, 100)}..."`);
+                }
+
+
+                if (result.ok || result.exito) {
+                    console.log(`✅ Reporte de cierre impreso correctamente.`);
+                    return true;
+                } else {
+                    const errorMessage = result.message || result.mensaje || "Error desconocido al imprimir. (El mensaje del plugin estaba vacío o result.exito=false)";
+                    throw new Error(errorMessage);
+                }
+            } catch (error) {
+                console.error("❌ Error al enviar el cierre a imprimir:", error);
+                showInfoMessage(`❌ Error al enviar el cierre a imprimir. Asegúrate de que el plugin esté activo y configurado. Mensaje: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        function updateConciliationDisplay() {
+            const combinedTotals = { ...salesPaymentTotals };
+            
+            for (const method in incomePaymentTotals) {
+                if (combinedTotals.hasOwnProperty(method)) {
+                    combinedTotals[method] += incomePaymentTotals[method];
+                } else {
+                    combinedTotals[method] = incomePaymentTotals[method];
+                }
+            }
+        
+            for (const method in expensePaymentTotals) {
+                if (combinedTotals.hasOwnProperty(method)) {
+                    combinedTotals[method] -= expensePaymentTotals[method]; 
+                } else {
+                     combinedTotals[method] = -expensePaymentTotals[method];
+                }
+            }
+
+            const paymentTypes = [
+                'cash-bs', 'debit-card-bs', 'mobile-payment-bs', 'zinli-dollars', 
+                'biopago-bs', 'dollars', 'transfer-bs', 'deposit-bs',
+                'credit-bs', 'credit-card-bs'
+            ];
+            
+            paymentTypes.forEach(type => {
+                const element = document.getElementById(`registered-${type.replace('-bs', '').replace('-dollars', '')}`);
+                const amount = combinedTotals[type] || 0;
+                
+                if (element) {
+                    const currency = type.includes('dollars') ? '$.' : 'Bs.';
+                    element.textContent = formatCurrency(amount, currency);
+                }
+            });
+
+            updateDifferencesAndTotals();
+        }
+
+        function updateUserInfoDisplay() {
+            if (userIdDisplay) userIdDisplay.textContent = userId || 'N/A';
+            if (companyIdDisplay) companyIdDisplay.textContent = companyId || 'N/A';
+            if (roleDisplay) roleDisplay.textContent = role || 'N/A';
+        }
+
+        function showInfoMessage(message, type = 'info') {
+            if (modalTitle) modalTitle.textContent = type === 'error' ? 'Error' : 'Información';
+            if (modalTitle) modalTitle.className = `text-lg font-bold mb-4 ${type === 'error' ? 'text-red-600' : 'text-blue-600'}`;
+            if (modalMessage) modalMessage.textContent = message;
+            if (infoModal) infoModal.classList.remove('hidden');
+        }
+
+        function formatCurrency(amount, currency = 'Bs.') {
+            const parsedAmount = parseFloat(amount);
+            if (isNaN(parsedAmount)) {
+                return `${currency} 0.00`;
+            }
+            return `${currency} ${parsedAmount.toFixed(2)}`;
+        }
+
+        function getDifferenceColor(difference, context = 'detail') {
+            if (difference > 0.01) {
+                return 'text-green-600'; 
+            } else if (difference < -0.01) {
+                return 'text-red-600'; 
+            }
+            
+            if (context === 'final') {
+                return 'text-white';
+            } else { 
+                return 'text-gray-800'; 
+            }
+        }
+
+        function updateDifferencesAndTotals() {
+            let totalDifferenceBs = 0;
+            let totalDifferenceDollars = 0;
+            const paymentDetails = {};
+            
+            const paymentTypes = [
+                'cash-bs', 'debit-card-bs', 'mobile-payment-bs', 'zinli-dollars', 
+                'biopago-bs', 'dollars', 'transfer-bs', 'deposit-bs',
+                'credit-bs', 'credit-card-bs'
+            ];
+
+            const registeredAmounts = {};
+            paymentTypes.forEach(type => {
+                const element = document.getElementById(`registered-${type.replace('-bs', '').replace('-dollars', '')}`);
+                if (element) {
+                    const currencySymbol = type.includes('dollars') ? '$. ' : 'Bs. ';
+                    registeredAmounts[type] = parseFloat(element.textContent.replace(currencySymbol, '')) || 0;
+                }
+            });
+
+            countedInputs.forEach(input => {
+                const paymentType = input.dataset.paymentType;
+                const countedAmount = parseFloat(input.value) || 0; 
+                const registeredAmount = registeredAmounts[paymentType] || 0;
+                const difference = countedAmount - registeredAmount;
+
+                const diffElement = document.getElementById(`diff-${paymentType.replace('-bs', '').replace('-card', '-card').replace('zinli-dollars', 'zinli')}`);
+                
+                if (diffElement) {
+                    const currency = paymentType.includes('dollars') ? '$.' : 'Bs.';
+                    
+                    diffElement.textContent = formatCurrency(difference, currency);
+                    diffElement.className = `text-right font-bold text-lg ${getDifferenceColor(difference, 'detail')}`;
+                    
+                    if (paymentType.includes('dollars')) {
+                        totalDifferenceDollars += difference;
+                    } else {
+                        totalDifferenceBs += difference;
+                    }
+
+                    paymentDetails[paymentType] = {
+                        registered: registeredAmount,
+                        counted: countedAmount,
+                        difference: difference
+                    };
+                }
+            });
+
+            currentReportData.totalDifferenceBs = totalDifferenceBs;
+            currentReportData.totalDifferenceDollars = totalDifferenceDollars;
+            currentReportData.paymentDetails = paymentDetails;
+
+            if (totalDifferenceBsDisplay) {
+                totalDifferenceBsDisplay.textContent = formatCurrency(totalDifferenceBs, 'Bs.');
+                totalDifferenceBsDisplay.className = `text-3xl font-bold ${getDifferenceColor(totalDifferenceBs, 'final')}`;
+            }
+            if (totalDifferenceDollarsDisplay) {
+                totalDifferenceDollarsDisplay.textContent = formatCurrency(totalDifferenceDollars, '$.');
+                totalDifferenceDollarsDisplay.className = `text-3xl font-bold ${getDifferenceColor(totalDifferenceDollars, 'final')}`;
+            }
+        }
+
+        async function fetchPrinterConfig(companyId) {
+            if (!companyId) return;
+            try {
+                const docRef = doc(db, `companies/${companyId}/config/factura`); 
+                const docSnap = await getDoc(docRef); 
+
+                if (docSnap.exists() && docSnap.data().impresoraSeleccionada) {
+                    printerName = docSnap.data().impresoraSeleccionada;
+                    console.log(`✅ Nombre de impresora cargado de Firebase: ${printerName}`);
+                } else {
+                    console.warn("⚠️ No se encontró la configuración de impresora en Firebase o el campo 'impresoraSeleccionada' está vacío. Usando el nombre por defecto: TICKET");
+                    printerName = "TICKET";
+                }
+            } catch (error) {
+                console.error("Error al cargar la configuración de la impresora:", error);
+                showInfoMessage("Error al cargar la configuración de la impresora de Firebase.", 'error');
+                printerName = "TICKET"; // Fallback
+            }
+        }
+
+
+
+        async function deleteDocumentsProcessed(collectionQuery) {
+    const snapshot = await getDocs(collectionQuery);
+
+    if (snapshot.empty) {
+        console.log(`No hay documentos para eliminar en la colección consultada.`);
+        return 0;
+    }
+
+    const batch = writeBatch(db);
+    let deletedCount = 0;
+
+    snapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+        deletedCount++;
+    });
+
+    await batch.commit();
+    return deletedCount;
+}
+
+async function handleCloseCash() {
+    if (!companyId || !branchId || !userId) {
+        showInfoMessage("ERROR: Faltan datos de sesión (Empresa, Sucursal o Cajero). No se puede completar el cierre.", 'error');
+        return;
+    }
+
+    if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+
+    try {
+        updateDifferencesAndTotals();
+
+        const reportData = {
+            companyId: companyId,
+            branchId: branchId,
+            cashierId: userId,
+            role: role,
+            timestamp: serverTimestamp(),
+            
+            totalSalesBs: currentReportData.totalSalesBs,
+            totalSalesDollars: currentReportData.totalSalesDollars,
+            totalExpensesBs: currentReportData.totalExpensesBs, 
+            totalExpensesDollars: currentReportData.totalExpensesDollars,
+            totalIncomes: currentReportData.totalIncomes,
+            
+            totalDifferenceBs: currentReportData.totalDifferenceBs,
+            totalDifferenceDollars: currentReportData.totalDifferenceDollars,
+
+            paymentsConciliation: currentReportData.paymentDetails 
+        };
+
+        const cashClosingRef = collection(db, `companies/${companyId}/branches/${branchId}/cashiers/${userId}/cashclosing`);
+        await addDoc(cashClosingRef, reportData);
+        
+        const sessionInfo = {
+            userId: userId, 
+            companyId: companyId, 
+            role: role, 
+            branchId: branchId
+        };
+        const printSuccess = await printCashClosingReport(reportData, sessionInfo); 
+        
+        
+        const salesRef = collection(db, `companies/${companyId}/branches/${branchId}/cashiers/${userId}/salesProcessed`);
+        const salesQuery = query(salesRef); 
+        const deletedSalesCount = await deleteDocumentsProcessed(salesQuery); // Usa la función genérica
+
+        const incomesRef = collection(db, `companies/${companyId}/branches/${branchId}/cashiers/${userId}/gestiondeingreso`);
+        const incomesQuery = query(incomesRef); 
+        const deletedIncomesCount = await deleteDocumentsProcessed(incomesQuery); // AÑADIDO
+        
+        const expensesRef = collection(db, `companies/${companyId}/branches/${branchId}/cashiers/${userId}/gestiondegastos`);
+        const expensesQuery = query(expensesRef); 
+        const deletedExpensesCount = await deleteDocumentsProcessed(expensesQuery); // AÑADIDO
+        
+        let messageDetail = `Se eliminaron ${deletedSalesCount} ventas, ${deletedIncomesCount} ingresos y ${deletedExpensesCount} gastos de la sesión.`;
+        
+        if (printSuccess) {
+            showInfoMessage(`¡Cierre de caja completado con éxito! (Impresión exitosa). ${messageDetail}`, 'success');
+        } else {
+            showInfoMessage(`¡Cierre de caja completado! (Fallo en la impresión). ${messageDetail}`, 'success');
+        }
+        
+        countedInputs.forEach(input => input.value = '');
+        updateDifferencesAndTotals();
+
+    } catch (error) {
+        console.error("Error CRÍTICO al cerrar la caja:", error);
+        showInfoMessage("ERROR: Falló la operación de cierre. Revise la consola. Asegúrese de que las reglas de seguridad estén bien configuradas.", 'error');
+    } finally {
+        if (loadingOverlay) loadingOverlay.classList.add('hidden');
+    }
+}
+
+
+
+        function setupSalesDataListener(companyId, userId, branchId) {
+            
+            const DB_TO_CODE_MAP = {
+                'efectivo': 'cash-bs', 'debito': 'debit-card-bs', 'tarjeta_debito': 'debit-card-bs',
+                'pagomovil': 'mobile-payment-bs', 'pago_movil': 'mobile-payment-bs', 'pago_móvil': 'mobile-payment-bs', 
+                'dolar': 'dollars', 'dólar': 'dollars', 'usd': 'dollars', 'divisa': 'dollars', // <-- AÑADIDO 'divisa'
+                'transferencia': 'transfer-bs',
+                'deposito': 'deposit-bs', 'credito': 'credit-bs', 'crédito': 'credit-bs', 
+                'tarjetacredito': 'credit-card-bs', 'tarjeta_credito': 'credit-card-bs', 'tarjeta_crédito': 'credit-card-bs', 
+                'biopago': 'biopago-bs', 'zinli': 'zinli-dollars'
+            };
+
+            const salesQuery = query(
+                collectionGroup(db, 'salesProcessed'), 
+                where("companyId", "==", companyId), 
+                where("cashierId", "==", userId) 
+            );
+            
+            const expensesPath = `companies/${companyId}/branches/${branchId}/cashiers/${userId}/gestiondegastos`; 
+            const expensesQuery = query(collection(db, expensesPath), where("branchId", "==", branchId));
+
+            const incomesPath = `companies/${companyId}/branches/${branchId}/cashiers/${userId}/gestiondeingreso`;
+            const incomesQuery = query(collection(db, incomesPath), where("branchId", "==", branchId));
+
+            
+            onSnapshot(salesQuery, (snapshot) => {
+                let totalSalesBs = 0; 
+                let totalSalesDollars = 0; 
+                
+                salesPaymentTotals = { 
+                    'cash-bs': 0, 'debit-card-bs': 0, 'mobile-payment-bs': 0, 'zinli-dollars': 0, 
+                    'biopago-bs': 0, 'dollars': 0, 'transfer-bs': 0, 'deposit-bs': 0,
+                    'credit-bs': 0, 'credit-card-bs': 0
+                };
+
+                snapshot.forEach((doc) => {
+                    const sale = doc.data();
+                    let paymentsObject = sale.payments;
+
+                    if (typeof paymentsObject === 'string') {
+                        try {
+                            paymentsObject = JSON.parse(paymentsObject);
+                        } catch (e) {
+                            console.error(`%c[Pagos] ERROR CRÍTICO: Falló JSON.parse para la venta ${doc.id}. Documento omitido.`, 'color: #dc2626; font-weight: bold;', e);
+                            return; 
+                        }
+                    }
+                    
+                    if (paymentsObject && typeof paymentsObject === 'object') {
+                        for (let dbPaymentMethod in paymentsObject) {
+                            const amount = parseFloat(paymentsObject[dbPaymentMethod]) || 0;
+                            
+                            let normalizedMethod = dbPaymentMethod.toLowerCase();
+                            const codePaymentMethod = DB_TO_CODE_MAP[normalizedMethod]; 
+
+                            if (codePaymentMethod && salesPaymentTotals.hasOwnProperty(codePaymentMethod)) {
+                                salesPaymentTotals[codePaymentMethod] += amount;
+                                
+                                if (codePaymentMethod.includes('dollars')) {
+                                    totalSalesDollars += amount;
+                                } else {
+                                    totalSalesBs += amount;
+                                }
+                            }
+                        }
+                    }
+                });
+
+                currentReportData.totalSalesBs = totalSalesBs;
+                currentReportData.totalSalesDollars = totalSalesDollars;
+
+                updateConciliationDisplay();
+                
+                if (totalSalesBsDisplay) totalSalesBsDisplay.textContent = formatCurrency(totalSalesBs, 'Bs.');
+                if (totalSalesDollarsDisplay) totalSalesDollarsDisplay.textContent = formatCurrency(totalSalesDollars, '$.');
+
+                updateDifferencesAndTotals();
+            }, (error) => {
+                console.error("Error listening to sales data:", error);
+                showInfoMessage("Error al escuchar los datos de ventas. Revise la consola por posibles errores de índice.", 'error');
+            });
+
+            onSnapshot(incomesQuery, (snapshot) => {
+                let totalIncomesBs = 0; 
+                let totalIncomesDollars = 0; 
+                
+                const newIncomeTotals = {
+                    'cash-bs': 0, 'debit-card-bs': 0, 'mobile-payment-bs': 0, 'zinli-dollars': 0, 
+                    'biopago-bs': 0, 'dollars': 0, 'transfer-bs': 0, 'deposit-bs': 0,
+                    'credit-bs': 0, 'credit-card-bs': 0
+                };
+                
+                snapshot.forEach((doc) => {
+                    const incomeData = doc.data();
+                    
+                    const amountBs = parseFloat(incomeData.amountBs) || 0;
+                    totalIncomesBs += amountBs;
+                    
+                    const methodBs = (incomeData.methodBs || '').toLowerCase();
+                    const codeMethodBs = DB_TO_CODE_MAP[methodBs] || 'cash-bs'; 
+
+                    if (newIncomeTotals.hasOwnProperty(codeMethodBs)) {
+                        newIncomeTotals[codeMethodBs] += amountBs;
+                    }
+                    
+                    const amountUsd = parseFloat(incomeData.amountUsd) || 0;
+                    totalIncomesDollars += amountUsd;
+                    
+                    const methodUsd = (incomeData.methodUsd || '').toLowerCase();
+                    const codeMethodUsd = DB_TO_CODE_MAP[methodUsd] || 'dollars'; 
+                    
+                    if (newIncomeTotals.hasOwnProperty(codeMethodUsd)) {
+                         newIncomeTotals[codeMethodUsd] += amountUsd;
+                    }
+                });
+                
+                incomePaymentTotals = newIncomeTotals; 
+
+                if (totalIncomesBsDisplay) totalIncomesBsDisplay.textContent = formatCurrency(totalIncomesBs, 'Bs.');
+                if (totalIncomesDollarsDisplay) totalIncomesDollarsDisplay.textContent = formatCurrency(totalIncomesDollars, '$.');
+                
+                currentReportData.totalIncomes = totalIncomesBs; 
+                
+                updateConciliationDisplay(); 
+
+            }, (error) => {
+                console.error("Error listening to incomes data:", error);
+                showInfoMessage("Error al escuchar los datos de ingresos.", 'error');
+            });
+
+            onSnapshot(expensesQuery, (snapshot) => {
+                let totalExpensesBs = 0; 
+                let totalExpensesDollars = 0; 
+                
+                expensePaymentTotals = { 
+                    'cash-bs': 0, 'debit-card-bs': 0, 'mobile-payment-bs': 0, 'zinli-dollars': 0, 
+                    'biopago-bs': 0, 'dollars': 0, 'transfer-bs': 0, 'deposit-bs': 0,
+                    'credit-bs': 0, 'credit-card-bs': 0
+                };
+
+                snapshot.forEach((doc) => {
+                    const expenseData = doc.data();
+                    const method = (expenseData.method || '').toLowerCase();
+                    const amountBs = parseFloat(expenseData.amountBs || 0) || 0;
+                    const amountUsd = parseFloat(expenseData.amountUsd || 0) || 0;
+                    
+                    if (amountBs > 0) {
+                        totalExpensesBs += amountBs;
+                        const codeMethodBs = DB_TO_CODE_MAP[method] || 'cash-bs'; // Por defecto a efectivo
+                        if (expensePaymentTotals.hasOwnProperty(codeMethodBs)) {
+                            expensePaymentTotals[codeMethodBs] += amountBs;
+                        }
+                    }
+                    
+                    if (amountUsd > 0) {
+                        totalExpensesDollars += amountUsd;
+                        const codeMethodUsd = DB_TO_CODE_MAP[method] || 'dollars'; // Por defecto a dólar
+                        if (expensePaymentTotals.hasOwnProperty(codeMethodUsd)) {
+                            expensePaymentTotals[codeMethodUsd] += amountUsd;
+                        }
+                    }
+                });
+                
+                if (totalExpensesBsDisplay) totalExpensesBsDisplay.textContent = formatCurrency(totalExpensesBs, 'Bs.');
+                if (totalExpensesDollarsDisplay) totalExpensesDollarsDisplay.textContent = formatCurrency(totalExpensesDollars, '$.');
+                
+                currentReportData.totalExpensesBs = totalExpensesBs;
+                currentReportData.totalExpensesDollars = totalExpensesDollars;
+                
+                updateConciliationDisplay();
+
+            }, (error) => {
+                console.error("Error listening to expenses data:", error);
+                showInfoMessage("Error al escuchar los datos de gastos.", 'error');
+            });
+        }
+        
+        (async () => {
+            
+            userIdDisplay = document.getElementById('user-id');
+            companyIdDisplay = document.getElementById('company-id');
+            roleDisplay = document.getElementById('role-display');
+            totalExpensesBsDisplay = document.getElementById('total-expenses-bs'); 
+            totalExpensesDollarsDisplay = document.getElementById('total-expenses-dollars'); 
+            totalIncomesBsDisplay = document.getElementById('total-incomes-bs'); 
+            totalIncomesDollarsDisplay = document.getElementById('total-incomes-dollars'); 
+            totalSalesBsDisplay = document.getElementById('total-sales-bs');
+            totalSalesDollarsDisplay = document.getElementById('total-sales-dollars');
+            totalDifferenceBsDisplay = document.getElementById('total-difference-bs');
+            totalDifferenceDollarsDisplay = document.getElementById('total-difference-dollars');
+            
+            countedInputs = document.querySelectorAll('.counted-input');
+            closeCashButton = document.getElementById('close-cash-button');
+            loadingOverlay = document.getElementById('loading-overlay');
+            infoModal = document.getElementById('info-modal');
+            modalTitle = document.getElementById('modal-title');
+            modalMessage = document.getElementById('modal-message');
+            closeModalButton = document.getElementById('close-modal-button');
+
+            if (closeModalButton) closeModalButton.addEventListener('click', () => { if (infoModal) infoModal.classList.add('hidden'); });
+            countedInputs.forEach(input => { input.addEventListener('input', updateDifferencesAndTotals); });
+            
+            if (closeCashButton) closeCashButton.addEventListener('click', handleCloseCash);
+
+            if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+
+            onAuthStateChanged(auth, async (user) => {
+                
+                if (user) {
+                    userId = user.uid; 
+                    updateUserInfoDisplay(); 
+
+                    try {
+                        const idTokenResult = await user.getIdTokenResult();
+                        const claims = idTokenResult.claims;
+                        
+                        if (claims && claims.companyId) {
+                            companyId = claims.companyId || 'N/A';
+                            role = claims.role || 'N/A';
+                            branchId = claims.branchId || 'N/A';
+                            
+                            await fetchPrinterConfig(companyId); 
+
+                            if (companyId !== 'N/A' && userId !== 'N/A' && branchId !== 'N/A' && !hasListeners) {
+                                setupSalesDataListener(companyId, userId, branchId);
+                                hasListeners = true;
+                            } else if (!hasListeners) { 
+                                 console.warn('Authentication successful but missing critical claims to start data listeners.');
+                                 showInfoMessage("Autenticación exitosa, pero faltan datos de sesión (Empresa/Sucursal/Rol). No se pueden cargar los datos de caja.", 'error');
+                            }
+                        } else {
+                            console.warn("Claims are missing or do not contain companyId. Please check token configuration.");
+                        }
+
+                    } catch (error) {
+                        console.error("Error fetching user claims:", error);
+                        showInfoMessage("Error al obtener los datos de la empresa. (Verifique token)", 'error');
+                    } finally {
+                        updateUserInfoDisplay(); 
+                        if (loadingOverlay) loadingOverlay.classList.add('hidden');
+                    }
+                    
+} else {
+                    userId = null;
+                    companyId = null;
+                    role = null;
+                    updateUserInfoDisplay(); 
+
+                    try {
+                        await signInAnonymously(auth);
+                        
+                    } catch (error) {
+                         console.error('Sign-in error:', error);
+                         showInfoMessage("Error de inicio de sesión de Firebase. Intente recargar la página.", "error");
+                    } finally {
+                        if (loadingOverlay) loadingOverlay.classList.add('hidden');
+                    }
+                }
+
+            });
+        })(); 
+    </script>
+</body>
+</html>

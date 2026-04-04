@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS POS - Generador de Códigos de Barras</title>
+    <link rel="icon" type="image/png" href="../NEXUS POS/logo_nexus.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* MODIFICACIÓN CLAVE: Se elimina el padding y se asegura el margin: 0 para integración dinámica */
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f3f4f6; /* gray-100 */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            margin: 0; /* Elimina el margen por defecto del navegador */
+            padding: 0; /* Elimina el padding que causaba el espacio extra */
+        }
+
+        /* Estilos para el spinner de carga */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #3b82f6; /* blue-500 */
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Estilos para el modal */
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.7); /* Fondo oscuro semitransparente */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999; /* Asegura que esté por encima de todo */
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .modal-overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.open .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-close-button {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #4a5568; /* gray-700 */
+            transition: color 0.2s ease;
+        }
+
+        .modal-close-button:hover {
+            color: #1a202c; /* gray-900 */
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <main class="main-content px-8 flex justify-center w-full"> 
+        <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-2xl my-8">
+            <h2 class="text-3xl font-bold mb-8 text-gray-800 text-center flex items-center justify-center">
+                <span class="material-icons text-blue-600 mr-3 text-4xl">qr_code_2</span>
+                Generador de Códigos de Barras
+            </h2>
+
+            <div class="space-y-6 mb-8">
+                <div>
+                    <label for="barcode-data" class="block text-sm font-medium text-gray-700 mb-2">
+                        Datos del Código de Barras (Texto o Número)
+                    </label>
+                    <input type="text" id="barcode-data" value="123456789012"
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 sm:text-base p-3"
+                           placeholder="Ej. 123456789012, ProductoXYZ">
+                    <p class="mt-1 text-sm text-gray-500">
+                        Ingresa los datos que quieres codificar. Longitud máxima varía según el tipo.
+                    </p>
+                </div>
+
+                <div class="border-t border-gray-200 pt-6 mt-6">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-700">Generar Código Aleatorio para Producto</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                        <div>
+                            <label for="random-code-length" class="block text-sm font-medium text-gray-700 mb-2">
+                                Longitud del Código (dígitos)
+                            </label>
+                            <input type="number" id="random-code-length" value="8" min="4" max="18"
+                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 sm:text-base p-3">
+                            <p class="mt-1 text-sm text-gray-500">
+                                Sugerido: 8 a 12 dígitos para códigos internos.
+                            </p>
+                        </div>
+                        <button id="generate-random-code-btn"
+                                class="w-full bg-purple-600 text-white py-3 px-6 rounded-xl hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition duration-150 ease-in-out text-lg font-semibold shadow-lg flex items-center justify-center">
+                            <span class="material-icons mr-2">shuffle</span>
+                            Generar Código Aleatorio
+                        </button>
+                    </div>
+                </div>
+
+                <div class="border-t border-gray-200 pt-6 mt-6">
+                    <label for="barcode-type" class="block text-sm font-medium text-gray-700 mb-2">
+                        Tipo de Código de Barras
+                    </label>
+                    <select id="barcode-type"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 sm:text-base p-3">
+                        <option value="CODE128">CODE128 (Uso General)</option>
+                        <option value="EAN13">EAN13 (Europa, 12 dígitos)</option>
+                        <option value="UPC">UPC (EEUU/Canadá, 11 dígitos)</option>
+                        <option value="CODE39">CODE39 (Caracteres Alfanuméricos)</option>
+                        <option value="ITF14">ITF14 (Empaques, 13 dígitos)</option>
+                        <option value="MSI">MSI (Dígitos)</option>
+                        <option value="Pharmacode">Pharmacode (Farmacéutico)</option>
+                    </select>
+                    <p class="mt-1 text-sm text-gray-500">
+                        Selecciona el formato de código de barras. Cada tipo tiene reglas de datos específicas.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="barcode-width" class="block text-sm font-medium text-gray-700 mb-2">
+                            Ancho (px)
+                        </label>
+                        <input type="number" id="barcode-width" value="2" min="1" max="5" step="1"
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 sm:text-base p-3">
+                        <p class="mt-1 text-sm text-gray-500">Grosor de las barras.</p>
+                    </div>
+                    <div>
+                        <label for="barcode-height" class="block text-sm font-medium text-gray-700 mb-2">
+                            Alto (px)
+                        </label>
+                        <input type="number" id="barcode-height" value="100" min="50" max="300" step="10"
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 sm:text-base p-3">
+                        <p class="mt-1 text-sm text-gray-500">Altura del código.</p>
+                    </div>
+                    <div class="flex items-end">
+                        <div class="flex items-center">
+                            <input id="display-value" type="checkbox" checked
+                                   class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                            <label for="display-value" class="ml-2 block text-sm font-medium text-gray-700">
+                                Mostrar valor
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="generate-barcode-btn"
+                    class="w-full bg-blue-600 text-white py-3 px-6 rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out text-lg font-semibold shadow-lg flex items-center justify-center">
+                <span class="material-icons mr-2">barcode_reader</span>
+                Generar Código de Barras
+            </button>
+
+            <div class="mt-8 pt-8 border-t border-gray-200 text-center">
+                <h3 class="text-xl font-bold mb-4 text-gray-800">Código de Barras Generado</h3>
+                <div id="barcode-container" class="bg-gray-50 p-6 rounded-lg border border-gray-200 flex items-center justify-center min-h-[150px] relative">
+                    <canvas id="barcode-canvas" class="max-w-full h-auto"></canvas>
+                    <div id="loading-spinner" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 hidden">
+                        <div class="spinner"></div>
+                    </div>
+                    <p id="barcode-error-message" class="text-red-600 text-sm mt-2 hidden"></p>
+                    <p id="barcode-placeholder" class="text-gray-400 text-lg">
+                        El código de barras aparecerá aquí.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="info-message-modal-overlay" class="modal-overlay hidden fixed top-0 left-0 w-full h-full">
+        <div class="modal-content">
+            <button id="close-info-message-modal" class="modal-close-button">
+                <span class="material-icons">close</span>
+            </button>
+            <h3 id="info-message-title" class="text-xl font-bold mb-4 text-gray-800 text-center"></h3>
+            <p id="info-message-text" class="text-gray-700 mb-6 text-center"></p>
+            <div class="flex justify-center">
+                <button id="info-message-ok-btn" class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">Aceptar</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+
+    <script>
+        // Mantenemos la lógica de inicialización en una función
+        function initializeBarcodeGenerator() {
+            const barcodeDataInput = document.getElementById('barcode-data');
+            const barcodeTypeSelect = document.getElementById('barcode-type');
+            const barcodeWidthInput = document.getElementById('barcode-width');
+            const barcodeHeightInput = document.getElementById('barcode-height');
+            const displayValueCheckbox = document.getElementById('display-value');
+            const generateBarcodeBtn = document.getElementById('generate-barcode-btn');
+            const barcodeCanvas = document.getElementById('barcode-canvas');
+            const barcodeErrorMessage = document.getElementById('barcode-error-message');
+            const barcodePlaceholder = document.getElementById('barcode-placeholder');
+            const loadingSpinner = document.getElementById('loading-spinner');
+
+            // Nuevos elementos para la generación de código aleatorio
+            const randomCodeLengthInput = document.getElementById('random-code-length');
+            const generateRandomCodeBtn = document.getElementById('generate-random-code-btn');
+
+            // Custom Message Modal elements
+            const infoMessageModalOverlay = document.getElementById('info-message-modal-overlay');
+            const infoMessageTitle = document.getElementById('info-message-title');
+            const infoMessageText = document.getElementById('info-message-text');
+            const closeInfoMessageModal = document.getElementById('close-info-message-modal');
+            const infoMessageOkBtn = document.getElementById('info-message-ok-btn');
+
+            // Function to show custom message modal
+            function showInfoMessage(message, type = 'info') {
+                let title = '';
+                infoMessageTitle.classList.remove('text-orange-600', 'text-red-600', 'text-blue-600', 'text-green-600');
+                if (type === 'warning') {
+                    title = 'Advertencia';
+                    infoMessageTitle.classList.add('text-orange-600');
+                } else if (type === 'error') {
+                    title = 'Error';
+                    infoMessageTitle.classList.add('text-red-600');
+                } else if (type === 'success') {
+                    title = 'Éxito';
+                    infoMessageTitle.classList.add('text-green-600');
+                } else {
+                    title = 'Información';
+                    infoMessageTitle.classList.add('text-blue-600');
+                }
+                infoMessageTitle.textContent = title;
+                infoMessageText.textContent = message;
+                infoMessageModalOverlay.classList.remove('hidden');
+            }
+
+            // Function to hide custom message modal
+            function hideInfoMessage() {
+                infoMessageModalOverlay.classList.add('hidden');
+            }
+
+            // Event listeners for custom message modal
+            closeInfoMessageModal.addEventListener('click', hideInfoMessage);
+            infoMessageOkBtn.addEventListener('click', hideInfoMessage);
+            infoMessageModalOverlay.addEventListener('click', (e) => {
+                if (e.target === infoMessageModalOverlay) {
+                    hideInfoMessage();
+                }
+            });
+
+            /**
+             * Generates a random numeric string of a specified length.
+             * @param {number} length - The desired length of the numeric code.
+             * @returns {string} The randomly generated numeric code.
+             */
+            function generateRandomNumericCode(length) {
+                let result = '';
+                const characters = '0123456789';
+                const charactersLength = characters.length;
+                for (let i = 0; i < length; i++) {
+                    result += characters.charAt(Math.floor(Math.random() * charactersLength));
+                }
+                return result;
+            }
+
+            // Function to generate barcode
+            function generateBarcode() {
+                // **Verificamos si JsBarcode está definido antes de intentar usarlo**
+                if (typeof JsBarcode === 'undefined') {
+                    loadingSpinner.classList.add('hidden');
+                    barcodePlaceholder.classList.remove('hidden');
+                    barcodeErrorMessage.textContent = `Error: La librería JsBarcode no ha cargado. Esto puede deberse a un problema de red o de carga dinámica.`;
+                    barcodeErrorMessage.classList.remove('hidden');
+                    // Mostramos el error en el modal (esto se ejecutará ahora)
+                    showInfoMessage(`La librería JsBarcode no se pudo cargar a tiempo. Intenta generar el código haciendo clic en el botón.`, 'error');
+                    return;
+                }
+
+                const data = barcodeDataInput.value.trim();
+                const type = barcodeTypeSelect.value;
+                const width = parseInt(barcodeWidthInput.value);
+                const height = parseInt(barcodeHeightInput.value);
+                const displayValue = displayValueCheckbox.checked;
+
+                // Clear previous errors and hide placeholder/canvas
+                barcodeErrorMessage.classList.add('hidden');
+                barcodeCanvas.classList.add('hidden');
+                barcodePlaceholder.classList.add('hidden');
+                loadingSpinner.classList.remove('hidden'); // Show spinner
+
+                if (!data) {
+                    loadingSpinner.classList.add('hidden');
+                    barcodePlaceholder.classList.remove('hidden');
+                    showInfoMessage('Por favor, introduce los datos para generar el código de barras.', 'warning');
+                    return;
+                }
+
+                try {
+                    // Use JsBarcode to draw the barcode
+                    JsBarcode("#barcode-canvas", data, {
+                        format: type,
+                        width: width,
+                        height: height,
+                        displayValue: displayValue,
+                        lineColor: "#333", // Dark grey color for lines
+                        background: "#fff", // White background
+                        font: "Roboto", // Use Roboto font for text
+                        fontSize: 18, // Font size for the value
+                        margin: 10 // Margin around the barcode
+                    });
+                    barcodeCanvas.classList.remove('hidden'); // Show canvas
+                } catch (error) {
+                    barcodeCanvas.classList.add('hidden'); // Hide canvas if error
+                    barcodeErrorMessage.textContent = `Error al generar el código de barras: ${error.message}. Por favor, verifica el formato de los datos para el tipo de código seleccionado.`;
+                    barcodeErrorMessage.classList.remove('hidden'); // Show error message
+                    showInfoMessage(`Error: ${error.message}. Asegúrate de que los datos son válidos para el tipo de código de barras seleccionado.`, 'error');
+                } finally {
+                    loadingSpinner.classList.add('hidden'); // Hide spinner
+                }
+            }
+
+            // Event listener for the generate button
+            generateBarcodeBtn.addEventListener('click', generateBarcode);
+
+            // Event listener for the random code generation button
+            generateRandomCodeBtn.addEventListener('click', () => {
+                const length = parseInt(randomCodeLengthInput.value);
+
+                if (isNaN(length) || length < 4 || length > 18) {
+                    showInfoMessage('La longitud del código aleatorio debe ser un número entre 4 y 18.', 'warning');
+                    return;
+                }
+
+                const randomCode = generateRandomNumericCode(length);
+                barcodeDataInput.value = randomCode; // Populate the main data input
+                generateBarcode(); // Generate barcode with the new random code
+            });
+
+            // Llamada a la función de generación inicial
+            generateBarcode();
+        }
+
+        // Se usa setTimeout(..., 0) para posponer la inicialización al siguiente ciclo 
+        // del event loop, asegurando que el script externo JsBarcode haya tenido tiempo 
+        // de ejecutarse y definir la variable global JsBarcode. 
+        setTimeout(initializeBarcodeGenerator, 0); 
+
+    </script>
+</body>
+</html>

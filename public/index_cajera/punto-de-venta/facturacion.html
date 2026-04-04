@@ -1,0 +1,3522 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="tailwindcss.js"></script>
+    <link rel="stylesheet" href="../node_modules/@fortawesome/fontawesome-free/css/all.min.css">
+    <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <title>Sistema de Facturación</title>
+    <style>
+
+* {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #ffffff;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .main-content {
+            padding: 0 !important;
+        }
+
+        .card {
+            background-color: #ffffff;
+            border-radius: 0;
+            box-shadow: none;
+            width: 100%;
+            margin: 0;
+            max-width: none;
+        }
+        
+        .autocomplete-container {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+/* CONTENEDOR PRINCIPAL: Sombra, bordes redondeados y separación */
+        .autocomplete-results {
+            position: absolute;
+            z-index: 9999;
+            top: 100%;
+            left: 0;
+            right: 0;
+            border: 1px solid #e5e7eb; /* Borde gris muy suave */
+            background-color: #ffffff;
+            border-radius: 0.5rem; /* Bordes redondeados (8px) */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Sombra flotante elegante */
+            max-height: 250px;
+            overflow-y: auto;
+            display: none;
+            margin-top: 0.5rem; /* Separación de la barra de búsqueda */
+        }
+
+        /* CADA PRODUCTO EN LA LISTA */
+        .autocomplete-item {
+            padding: 12px 16px; /* Más espacio para que respire el texto */
+            cursor: pointer;
+            background-color: #ffffff;
+            border: none !important; 
+            outline: none !important;
+            box-shadow: none !important;
+            border-bottom: 1px solid #f3f4f6; /* Línea divisoria súper sutil */
+            transition: background-color 0.2s ease; /* Efecto suave al pasar el mouse */
+        }
+
+        /* Quitar la línea divisoria al último producto */
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        /* EFECTO HOVER (Cuando pasas el mouse por encima) */
+        .autocomplete-item:hover {
+            background-color: #f9fafb !important; /* Gris ultra claro */
+        }
+
+        .autocomplete-active {
+            background-color: #bfdbfe !important; /* Azul más intenso y vivo */
+            border-left: 4px solid #2563eb !important; /* Franja gruesa azul oscuro a la izquierda */
+            border-top: none !important;
+            border-right: none !important;
+            border-bottom: 1px solid #bfdbfe !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        /* ESTILOS INTERNOS DE TEXTO (Se mantienen igual) */
+        .item-info {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+
+        .item-name {
+            font-weight: 600;
+            color: #1f2937;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            line-height: 1.2;
+        }
+
+        .item-code {
+            font-size: 0.7rem;
+            color: #9ca3af;
+            margin-top: 2px;
+            font-weight: 400;
+        }
+
+        .item-price {
+            font-weight: 700;
+            color: #059669;
+            font-size: 1rem;
+            margin-left: 15px;
+            white-space: nowrap;
+        }
+        
+        /* DISEÑO DE LA BARRA DE SCROLL */
+        .autocomplete-results::-webkit-scrollbar {
+            width: 6px;
+        }
+        .autocomplete-results::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 10px;
+        }
+        
+        /* CORRECCIÓN DE FOCO DE LA BARRA DE BÚSQUEDA */
+        #product-search:focus, #barcode-search:focus {
+            border-color: #0062ff !important; /* Borde azul suave al hacer clic */
+            outline: none !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important; /* Anillo de luz azul */
+        }
+
+        .quantity-input {
+            width: 70px;
+            text-align: center;
+        }
+        .delete-btn {
+            color: #dc2626;
+            transition: color 0.2s;
+        }
+        .delete-btn:hover {
+            color: #b91c1c;
+        }
+        
+        .client-info-container {
+            min-height: 40px;
+        }
+        
+        .load-invoice-cell {
+            cursor: pointer;
+            transition: background-color 0.15s;
+        }
+        .load-invoice-cell:hover {
+            background-color: #f3f4f6;
+        }
+    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+
+<main class="main-content min-h-screen bg-white">
+    <div class="p-4 w-full mx-auto bg-white"> 
+        <div class="space-y-8">
+            <div class="text-center">
+                <h1 class="text-3xl font-bold text-gray-800">Sistema de Facturación</h1>
+            </div>
+            
+<div class="flex flex-col md:flex-row md:space-x-4 mb-8">
+    
+    <div class="w-full md:w-1/2 mb-4 md:mb-0">
+        <div class="space-y-4">
+            <h2 class="text-xl font-bold text-gray-800">Seleccionar Cliente (C)</h2>
+            <div class="flex items-center space-x-2">
+                <input type="text" id="client-search" placeholder="Buscar por Cédula o Nombre..." class="flex-1 rounded-md border-gray-300 shadow-sm sm:text-sm p-2 outline-none">
+                <button id="search-client-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md shadow-md transition duration-300 ease-in-out">Buscar</button>
+            </div>
+            
+            <div id="client-info-container" class="client-info-container">
+                <div id="client-found-message" class="hidden">
+                    <p class="text-base font-medium text-gray-700">Cliente: <span id="client-found-name"></span> (<span id="client-found-id"></span>)</p>
+                </div>
+
+                <div id="add-new-client-prompt" class="hidden flex items-center justify-between p-2 rounded-md bg-gray-100">
+                    <p class="text-sm text-gray-700">Este cliente no existe. ¿Desea agregarlo?</p>
+                    <button id="show-add-client-form-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded-md shadow-md transition duration-300 ease-in-out">Sí</button>
+                </div>
+
+                <div id="add-client-form" class="hidden space-y-2">
+                    <div class="flex flex-col md:flex-row md:space-x-4 space-y-2 md:space-y-0">
+                        <input type="text" id="new-client-name" placeholder="Nombre" class="flex-1 rounded-md border-gray-300 shadow-sm sm:text-sm p-2">
+                        <input type="text" id="new-client-id" placeholder="Cédula" class="flex-1 rounded-md border-gray-300 shadow-sm sm:text-sm p-2">
+                        <input type="text" id="new-client-address" placeholder="Dirección" class="flex-1 rounded-md border-gray-300 shadow-sm sm:text-sm p-2">
+                    </div>
+                    <button id="add-client-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md shadow-md transition duration-300 ease-in-out w-full">Agregar Cliente</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="w-full md:w-1/2 flex items-start justify-end pt-11 md:pt-[3.8rem]">
+        <button id="btn-quick-sale" 
+                onclick="openQuickSaleModal()" 
+                class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md shadow-lg transition duration-300 ease-in-out w-full md:w-auto">
+            <i class="fas fa-hand-holding-usd mr-2"></i> Venta Rápida(F)
+        </button>
+    </div>
+</div>
+            
+            <div class="flex flex-col md:grid md:grid-cols-10 md:gap-x-8">
+                <div class="flex-1 flex flex-col space-y-4 md:col-span-10">
+                    <h2 class="text-xl font-bold text-gray-800">Crear Factura</h2>
+                    
+                    <div class="flex flex-col md:flex-row md:space-x-4 space-y-4 md:space-y-0">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-medium text-gray-700">Buscar Productos (F1)</h3>
+                            <div class="autocomplete-container">
+                                <input type="text" id="product-search" placeholder="Buscar producto..." class="mt-2 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm p-2 outline-none">
+                                <div id="autocomplete-results" class="autocomplete-results">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex-1">
+                            <h3 class="text-lg font-medium text-gray-700">Buscar codigo (barra)</h3>
+                            <div class="autocomplete-container">
+                                <input type="text" id="barcode-search" placeholder="Buscar por código..." class="mt-2 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm p-2 outline-none">
+                                <div id="barcode-autocomplete-results" class="autocomplete-results">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex-1">
+                            <h3 class="text-lg font-medium text-gray-700">Último Código Escaneado</h3>
+                            <input type="text" id="last-scanned-code" readonly class="mt-2 block w-full rounded-md border-gray-300 bg-gray-100 text-gray-600 shadow-sm sm:text-sm p-2 outline-none">
+                        </div>
+                    </div>
+                    
+<div class="flex items-center space-x-4">
+    <div class="flex-2">
+        <div id="weight-mode-toggle-bar" class="hidden"> 
+            <div class="flex items-center justify-between mb-1">
+                <label for="unidad-mode-toggle" class="block text-sm font-medium text-gray-700">
+                    Modo: <span id="mode-text">Peso (Kg)</span>
+                </label>
+                <label class="flex items-center cursor-pointer">
+                    <div class="relative">
+                        <input type="checkbox" id="unit-mode-toggle" class="sr-only">
+                        <div class="block bg-gray-600 w-10 h-6 rounded-full"></div>
+                        <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition"></div>
+                    </div>
+                </label>
+            </div>
+        </div>
+        <div id="manual-quantity-container" class="hidden">
+            <input type="number" id="manual-quantity" value="1" min="1" 
+                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 text-lg text-right" 
+                   placeholder="Cantidad (Unidades)">
+        </div>
+
+        <div id="weight-input-container">
+            <input type="number" id="cantidad" value="0.00" step="0.01" readonly
+                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 text-lg text-right bg-gray-100" 
+                   placeholder="Peso (Kg)">
+        </div>
+    </div>
+    
+    <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md shadow-md transition duration-300 ease-in-out w-full" onclick="addItem()">Añadir al Carrito</button>
+</div>
+
+<div class="p-4 overflow-x-auto">
+                        <table class="min-w-full table-fixed divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="w-[35%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PRODUCTO</th>
+                                    <th scope="col" class="w-[15%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CANTIDAD</th>
+                                    <th scope="col" class="w-[20%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">P. UNIT. (BS)</th>
+                                    <th scope="col" class="w-[15%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SUBTOTAL (BS)</th>
+                                    <th scope="col" class="w-[15%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ACCIONES</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cart-items" class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td colspan="5" class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">No hay productos en el carrito.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="flex flex-col items-end space-y-2">
+    <button id="btn-process-sale" onclick="openPaymentModal()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-md shadow-md transition duration-300 ease-in-out mt-6 w-full md:w-auto">Procesar Venta (F2)</button>
+                        <div class="flex justify-between w-full max-w-sm">
+                            <span class="text-sm font-medium text-gray-700">Subtotal:</span>
+                            <span id="subtotal" class="text-sm font-bold">Bs0.00</span>
+                        </div>
+
+                        <div class="flex justify-between w-full max-w-sm">
+                            <span class="text-lg font-bold text-gray-900">Total:</span>
+                            <span id="total" class="text-lg font-bold text-gray-900">Bs0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex-1 flex flex-col space-y-4 mt-8 md:mt-0 md:col-span-10">
+                    <h2 class="text-xl font-bold text-gray-800">Facturas Guardadas (Borradores)</h2>
+                    <div class="flex space-x-2">
+    <button id="btn-save-invoice" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-md shadow-md transition duration-300 ease-in-out" onclick="saveInvoice()">Guardar Factura Actual (F4)</button>
+    <button class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md shadow-md transition duration-300 ease-in-out" onclick="newInvoice()">Nueva Factura(N)</button>
+    <button class="" onclick=""></button>
+</div>
+                    <div class="p-4 overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CLIENTE</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TOTAL (BS)</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">FECHA</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ACCIONES</th>
+                                </tr>
+                            </thead>
+                            <tbody id="invoices-list" class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td colspan="4" class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">Cargando facturas...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<div id="quick-sale-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+    <div id="quick-sale-content" class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 relative transition-all duration-300">
+        
+        <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2 text-center">Venta Rápida (Sin Inventario)</h2>
+        
+        <div class="space-y-4">
+            
+            <div>
+                <label for="quick-sale-name" class="block text-sm font-medium text-gray-700">Nombre del Producto</label>
+                <input type="text" id="quick-sale-name" class="w-full border rounded-lg p-3 text-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Ej: Carne, Pollo, Papa" required>
+            </div>
+            
+            <div class="flex space-x-4">
+                <div class="flex-1">
+                    <label for="quick-sale-price" class="block text-sm font-medium text-gray-700">Precio de Venta (Bs)</label>
+                    <input type="number" id="quick-sale-price" class="w-full border rounded-lg p-3 text-lg text-right" placeholder="0.00" step="0.01" min="0.01" required>
+                </div>
+                <div class="flex-1">
+                    <label for="quick-sale-quantity" class="block text-sm font-medium text-gray-700">Cantidad</label>
+                    <input type="number" id="quick-sale-quantity" class="w-full border rounded-lg p-3 text-lg text-right" placeholder="1" value="" step="0.001" min="0.001" required>
+                </div>
+            </div>
+            
+        </div>
+        
+        <div class="mt-6 flex justify-between">
+            <button onclick="closeQuickSaleModal()" class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg transition duration-300">Cancelar(Esc)</button>
+            <button id="btn-process-quick-sale" onclick="processQuickSale()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out">Añadir al Carrito</button>
+        </div>
+        
+        <button onclick="closeQuickSaleModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-xl font-bold">×</button>
+    </div>
+</div>
+
+<div id="payment-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+    <div id="payment-content" class="bg-white rounded-lg shadow-lg w-full max-w-4xl p-6 relative transition-all duration-500 ease-in-out">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2 text-center">Métodos de Pago</h2>
+        
+        <div id="payment-grid" class="grid md:grid-cols-1 gap-8">
+            <div class="space-y-4">
+                <h3 class="text-lg font-semibold text-gray-700 mb-3 border-b pb-1">Ingreso de Pagos</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 flex items-center">
+                            <span class="material-icons text-green-600 mr-2">payments</span>
+                            Efectivo (F5)
+                        </label>
+                        <input type="number" id="efectivo-amount" class="payment-input w-full border rounded-md p-2 text-right" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 flex items-center">
+                            <span class="material-icons text-blue-600 mr-2">credit_card</span>
+                            Débito (F6)
+                        </label>
+                        <input type="number" id="debito-amount" class="payment-input w-full border rounded-md p-2 text-right" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 flex items-center">
+                            <span class="material-icons text-purple-600 mr-2">phone_iphone</span>
+                            Pago Móvil (F7)
+                        </label>
+                        <input type="number" id="pago-movil-amount" class="payment-input w-full border rounded-md p-2 text-right" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 flex items-center">
+                            <span class="material-icons text-red-600 mr-2">fingerprint</span>
+                            Biopago (F8)
+                        </label>
+                        <input type="number" id="bio-pago-amount" class="payment-input w-full border rounded-md p-2 text-right" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 flex items-center">
+                            <span class="material-icons text-emerald-600 mr-2">attach_money</span>
+                            Dólares (F9)
+                        </label>
+                        <input type="number" id="dolar-amount" class="payment-input w-full border rounded-md p-2 text-right" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 flex items-center">
+                            <span class="material-icons text-cyan-600 mr-2">account_balance</span>
+                            Transferencia (F10)
+                        </label>
+                        <input type="number" id="transferencia-amount" class="payment-input w-full border rounded-md p-2 text-right" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 flex items-center">
+                            <span class="material-icons text-yellow-600 mr-2">payments</span>
+                            Depósito (F11)
+                        </label>
+                        <input type="number" id="deposito-amount" class="payment-input w-full border rounded-md p-2 text-right" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 flex items-center">
+                            <span class="material-icons text-orange-600 mr-2">receipt_long</span>
+                            Crédito (F12)
+                        </label>
+                        <input type="number" id="credito-amount" class="payment-input w-full border rounded-md p-2 text-right" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 flex items-center">
+                            <span class="material-icons text-red-600 mr-2">credit_card</span>
+                            T. Crédito (J)
+                        </label>
+                        <input type="number" id="tarjeta-credito-amount" class="payment-input w-full border rounded-md p-2 text-right" placeholder="0.00">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-gray-50 p-4 rounded-lg shadow-inner flex flex-col justify-between h-full">
+                
+                <div class="space-y-3 mb-6">
+                    <h3 class="text-xl font-bold mb-3 border-b pb-2 text-indigo-700">Total de la Venta</h3>
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="text-base text-gray-700 font-medium">TOTAL Bs:</span>
+                        <span id="resumen-total-bs" class="text-2xl font-extrabold text-gray-900">Bs0.00</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-base text-gray-700 font-medium">TOTAL Divisa:</span>
+                        <span id="resumen-total-usd" class="text-xl font-bold text-gray-800">$0.00</span>
+                    </div>
+                </div>
+                
+                <div class="space-y-3 mt-auto pt-4 border-t border-gray-300">
+                    <h3 class="text-xl font-bold mb-3 text-gray-700">Monto Pagado</h3>
+                    
+                    <div class="flex justify-between">
+                        <span class="text-base font-medium">Pagado Bs:</span>
+                        <span id="montoPagado" class="text-xl font-bold text-green-600">Bs0.00</span>
+                    </div>
+
+                    <hr class="my-2 border-dashed border-gray-400">
+
+                    <div class="flex justify-between items-center">
+                        <span id="etiqueta-faltante-bs" class="text-lg font-bold">FALTANTE Bs:</span>
+                        <span id="resumen-faltante-bs" class="text-3xl font-extrabold text-red-600">Bs0.00</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span id="etiqueta-faltante-usd" class="text-base font-medium">FALTANTE $:</span>
+                        <span id="resumen-faltante-usd" class="text-xl font-bold text-red-600">$0.00</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="vuelto-column" class="bg-gray-50 p-4 rounded-lg shadow-inner flex flex-col justify-start h-full hidden">
+    
+    <div class="space-y-3">
+        <h3 class="text-xl font-bold mb-3 border-b pb-2 text-green-700">Vuelto (Cambio)</h3> 
+        
+        <div class="grid grid-cols-1 gap-4">
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Efectivo (Bs)</label>
+                <input type="number" id="vuelto-efectivo-amount" class="payment-input w-full border rounded-md p-2 text-right" placeholder="0.00" value="">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Dólares ($)</label>
+                <input type="number" id="vuelto-dolar-amount" class="payment-input w-full border rounded-md p-2 text-right" placeholder="0.00" value="">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Pago Móvil (Bs)</label>
+                <input type="number" id="vuelto-pago-movil-amount" class="payment-input w-full border rounded-md p-2 text-right" placeholder="0.00" value="">
+            </div>
+            
+        </div>
+    </div>
+</div>
+            
+        <div class="mt-6 flex justify-between">
+    <button onclick="closePaymentModal()" class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-md">Cerrar(Esc)</button>
+    <button id="btn-confirm-payment"  class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md">Confirmar Venta (F3)</button>
+</div>
+        <button onclick="closePaymentModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-xl font-bold">×</button>
+    </div>
+</div>
+
+<div id="extended-search-modal" class="fixed inset-0 z-50 bg-gray-900 bg-opacity-75 flex items-center justify-center hidden transition-opacity duration-300">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl p-6 transform transition-all duration-300 scale-95">
+        
+        <div class="flex justify-between items-center mb-4 border-b pb-3">
+            <h2 class="text-2xl font-bold text-gray-800">🔍 Búsqueda Extendida de Productos (Tab)</h2>
+            <button onclick="closeExtendedSearchModal()" class="text-gray-500 hover:text-gray-800">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <div class="mb-4">
+            <input type="text" id="extended-product-search-input" placeholder="Escriba aquí para buscar por nombre o código..." 
+                   class="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                   oninput="performExtendedSearch()">
+        </div>
+
+        <div class="h-96 overflow-y-auto border border-gray-200 rounded-lg">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50 sticky top-0">
+                    <tr>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">Acción</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código / SKU</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Precio (Bs)</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Stock</th>
+                    </tr>
+                </thead>
+                <tbody id="extended-search-results" class="bg-white divide-y divide-gray-200">
+                    <tr><td colspan="5" class="px-4 py-2 text-center text-sm text-gray-500">Comience a escribir para buscar productos.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+</main>
+<script type="module">
+    
+// Función que actualiza la interfaz de usuario del modo de cantidad (Unidad/Peso)
+// Función que actualiza la interfaz de usuario del modo de cantidad (Unidad/Peso)
+function updateWeightUI(isEnabled) {
+    isScaleEnabled = isEnabled; // Asigna el estado a la variable global
+
+    // --- Referencias DOM (Asegúrate de que existan) ---
+    const weightModeToggleBar = document.getElementById('weight-mode-toggle-bar'); // El nuevo contenedor
+    const unitModeToggle = document.getElementById('unit-mode-toggle'); 
+    const modeText = document.getElementById('mode-text');
+    const weightInputContainer = document.getElementById('weight-input-container');
+    const manualQuantityContainer = document.getElementById('manual-quantity-container');
+    const weightQuantityInput = document.getElementById('cantidad'); // Input de Peso
+    const manualQuantityInput = document.getElementById('manual-quantity'); // Input de Cantidad Manual
+    
+    // 🔴 SE ELIMINÓ LA LÍNEA QUE CAUSABA EL ERROR (sesion is not defined)
+    // ----------------------
+
+    if (!weightModeToggleBar || !unitModeToggle) {
+        console.error("Elementos de control de modo (Peso/Unidad) no encontrados en el DOM.");
+        return;
+    }
+
+    if (isEnabled) {
+        // 🟢 Báscula Habilitada: Mostrar la barra de alternancia
+        weightModeToggleBar.classList.remove('hidden');
+
+        // Habilitamos el interruptor
+        unitModeToggle.disabled = false;
+        
+        // Comprobar estado actual del toggle (Asumiendo: checked=Unidad, unchecked=Peso)
+        if (unitModeToggle.checked) {
+             // Modo Unidad
+             modeText.textContent = 'Unidad';
+             manualQuantityContainer.classList.remove('hidden');
+             weightInputContainer.classList.add('hidden');
+        } else {
+             // Modo Peso (iniciado por defecto)
+             modeText.textContent = 'Peso (Kg)';
+             manualQuantityContainer.classList.add('hidden');
+             weightInputContainer.classList.remove('hidden');
+             if(weightQuantityInput) weightQuantityInput.value = '0.00'; // Limpiar al iniciar en modo peso
+        }
+
+    } else {
+        // 🔴 Báscula Deshabilitada: Ocultar la barra de alternancia (¡Tu Requisito!)
+        weightModeToggleBar.classList.add('hidden');
+
+        // Forzar el modo Unidad
+        unitModeToggle.disabled = true;
+        unitModeToggle.checked = true; // Forzar el switch a la posición de Unidad
+        
+        // UI Mode: Force to Unit (mostramos la entrada manual)
+        modeText.textContent = 'Unidad';
+        manualQuantityContainer.classList.remove('hidden');
+        weightInputContainer.classList.add('hidden');
+        
+        // Asegurar que la entrada de cantidad esté en estado de Unidad
+        if(manualQuantityInput) manualQuantityInput.value = 1;
+        if(weightQuantityInput) weightQuantityInput.value = '0.00'; // Limpiar el peso por seguridad
+    }
+}
+
+let balanzaSocket = null;
+
+function initializeBalanzaSocket(url, cashierId) {
+    
+    // 1. Validaciones
+    if (typeof io === 'undefined') {
+        console.warn('Error: Socket.IO no está cargado. Reintentando la conexión en 500ms...');
+        setTimeout(() => {
+            // Reintentar la inicialización, asumiendo que las variables ya están definidas
+            if (window.BALANZA_SERVER_URL && window.CASHIER_ID_ACTUAL) {
+                initializeBalanzaSocket(window.BALANZA_SERVER_URL, window.CASHIER_ID_ACTUAL);
+            }
+        }, 500);
+        return;
+    }
+    
+    if (!url || !cashierId) {
+        console.error("Balanza: URL o CASHIER_ID no definidos. La báscula no se puede conectar.");
+        // Opcional: Establecer el campo de cantidad a 1 (como se discutió previamente)
+        const cantidadInput = document.getElementById('cantidad');
+        if (cantidadInput) cantidadInput.value = 1; 
+        return;
+    }
+
+    if (balanzaSocket) {
+        balanzaSocket.disconnect(); // Asegurar una sola conexión
+    }
+
+    // 2. Conexión con Identificación (CASHIER_ID)
+    balanzaSocket = io(url, {
+        reconnection: true,
+        reconnectionAttempts: 20,
+        timeout: 2000,
+        query: { 
+            role: 'browser-client',
+            cashierId: cashierId
+        }
+    });
+    
+    console.log(`Balanza: Intentando conectar a ${url} como cajero: ${cashierId}...`);
+
+    balanzaSocket.on('connect', () => {
+        console.log(`Balanza: Conectada a la sala [${cashierId}] ✅`);
+        // Nota: El servidor ya sabe su ID y solo le enviará el peso de su báscula.
+    });
+
+    // 🔑 BLOQUE MODIFICADO: Solución para el peso "pegado"
+    balanzaSocket.on('disconnect', () => {
+        console.log('Balanza: Desconectada ❌');
+        // AÑADIDO: Limpiar el campo de peso al perder la conexión para evitar datos obsoletos.
+        const cantidadInput = document.getElementById('cantidad');
+        if (cantidadInput) {
+            cantidadInput.value = '0.00'; 
+        }
+    });
+    // ------------------------------------
+    
+    // 3. Recepción del Peso
+    // EVENTO CLAVE: Recepción del peso filtrado.
+    balanzaSocket.on('peso_balanza', (peso) => {
+        const cantidadInput = document.getElementById('cantidad');
+        if (cantidadInput) {
+            // El peso recibido AHORA proviene SOLAMENTE de la báscula de este cajero
+            const pesoFormateado = parseFloat(peso).toFixed(3);
+            cantidadInput.value = pesoFormateado;
+            
+        }
+    });
+}
+
+// --------------------------------------------------------------------------------------
+// 🔚 FIN: INTEGRACIÓN BALANZA SOCKET.IO
+// --------------------------------------------------------------------------------------
+
+
+async function loadBasculaConfigAndInitSocket() {
+    // Validar que la API local esté disponible
+    if (!window.nexusAPI || typeof window.nexusAPI.obtenerConfiguracion !== 'function') {
+        console.warn("Balanza: API local no disponible. Deshabilitando interfaz.");
+        updateWeightUI(false); 
+        return;
+    }
+    
+    try {
+        // 🟢 NUEVO: Leer configuración directamente desde SQLite local (Ya no usamos Firebase aquí)
+        const basculaDataRaw = await window.nexusAPI.obtenerConfiguracion('config_bascula');
+        
+        let enableScale = false;
+        let puertoConexion = null;
+
+        if (basculaDataRaw) {
+            const data = JSON.parse(basculaDataRaw);
+            
+            // CLAVE: Leer el estado exacto que guardaste en configuracion.html
+            enableScale = data.enableScale === true;
+            // config_bascula guarda el puerto en 'puertoCOM', lo mapeamos para el socket
+            puertoConexion = data.puertoCOM || data.vpsUrl; 
+
+            // 1. Aplicar la configuración a la UI inmediatamente
+            updateWeightUI(enableScale); 
+            console.log(`Balanza: Configuración cargada de SQLite. Habilitada: ${enableScale}`);
+        } else {
+            console.warn("Balanza: No hay configuración local guardada. Deshabilitando por defecto.");
+            updateWeightUI(false);
+        }
+        
+        // 2. Inicializar el socket SOLO si está habilitado Y tenemos un puerto/URL
+        if (enableScale && puertoConexion) {
+            initializeBalanzaSocket(puertoConexion, userId); 
+            console.log(`Balanza: Conexión de Socket iniciada en ${puertoConexion}.`);
+        } else {
+             console.log(`Balanza: Socket no iniciado.`);
+        }
+
+    } catch (error) {
+        console.error("Balanza: Error al leer desde SQLite local:", error);
+        updateWeightUI(false); // Forzar modo manual (Unidades) si SQLite falla
+    }
+}
+
+    // Inyecta dinámicamente el CSS para los estilos del componente.
+const style = document.createElement('style');
+    style.textContent = `
+        body {
+            background-color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .main-content {
+            padding: 0;
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 0;
+            box-shadow: none;
+            width: 100%;
+            margin: 0;
+            max-width: none;
+            /* CAMBIO CLAVE: Permitir que el menú desplegable sea visible */
+            overflow: visible !important; 
+        }
+        
+        .autocomplete-container {
+            position: relative;
+            display: block; /* Cambiado de inline-block para mejor control */
+            width: 100%;
+        }
+
+        .autocomplete-results {
+            position: absolute;
+            z-index: 9999; /* Aumentado para que siempre esté al frente */
+            top: 100%;
+            left: 0;
+            right: 0;
+            border: 1px solid #d1d5db;
+            background-color: #ffffff;
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-height: 250px; /* Un poco más de espacio */
+            overflow-y: auto;
+            display: none;
+        }
+        
+        /* Asegúrate de que los items tengan fondo blanco para no ser transparentes */
+        .autocomplete-item {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #e5e7eb;
+            background-color: #ffffff; 
+        }
+
+
+.autocomplete-item:hover {
+    background-color: #006eff78; 
+    color: #1e3a8a !important;
+}
+        
+        .autocomplete-results::-webkit-scrollbar {
+            width: 8px;
+        }
+        .autocomplete-results::-webkit-scrollbar-thumb {
+            background-color: #d1d5db;
+            border-radius: 4px;
+        }
+        
+        #product-search:focus {
+            border-color: #60a5fa;
+            box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.5);
+        }
+
+        .quantity-input {
+            width: 70px;
+            text-align: center;
+        }
+        .delete-btn {
+            color: #dc2626;
+            transition: color 0.2s;
+        }
+        .delete-btn:hover {
+            color: #b91c1c;
+        }
+        .client-info-container {
+            min-height: 40px;
+        }
+        .load-invoice-cell {
+            cursor: pointer;
+            transition: background-color 0.15s;
+        }
+        .load-invoice-cell:hover {
+            background-color: #f3f4f6;
+        }
+    `;
+    document.head.appendChild(style);
+
+    async function verificarSesionLocal() {
+    try {
+        const sesion = await window.nexusAPI.obtenerSesionLocal();
+        if (sesion) {
+            companyId = sesion.companyId;
+            branchId = sesion.branchId;
+            console.log("✅ Sesión local de Nexus POS detectada:", companyId);
+        } else {
+            console.warn("⚠️ No hay sesión activa.");
+            // Aquí podrías redirigir al login si quisieras
+        }
+    } catch (error) {
+        console.error("Error al obtener sesión:", error);
+    }
+}
+
+// Llama a esto dentro de tu DOMContentLoaded
+document.addEventListener('DOMContentLoaded', () => {
+    verificarSesionLocal();
+    GestorClientes.inicializar();
+});
+
+    // App state
+    let cart = [];
+    let productsList = [];
+    let isScaleEnabled = false;
+    let selectedProduct = null;
+    let allProducts = [];   
+    let isProcessingSale = false;
+    let userId = null;
+    let companyId = null;
+    let enableMulticurrency = false;
+    let userRole = null;
+    let isAuthReady = false;
+    let productFocus = -1; 
+    let barcodeFocus = -1;
+    let filteredProducts = [];
+    let tipoEmisionFiscal = "TICKET_NO_FISCAL";
+
+function filterProducts(query, type, resultsId) {
+
+    // 1. REINICIAR EL FOCO SEGÚN EL TIPO
+    if (type === 'name') {
+        productFocus = -1;
+    } else {
+        barcodeFocus = -1;
+    }
+
+    if (!allProducts || allProducts.length === 0) {
+        console.error("❌ ERROR: 'allProducts' está vacío. ¿Falló el PASO 1?");
+        document.getElementById(resultsId).style.display = 'none';
+        return;
+    }
+
+    const normalizedQuery = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
+    let filteredProducts = allProducts.filter(product => {
+        if (!product.nombre) return false;
+        const productName = product.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        
+        if (type === 'name') {
+            return productName.includes(normalizedQuery);
+        } else if (type === 'code') {
+            return product.codigo && String(product.codigo).toLowerCase().includes(normalizedQuery);
+        }
+        return false;
+    });
+
+    // Ordenar resultados
+    filteredProducts.sort((a, b) => {
+        const aName = a.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const bName = b.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const aStarts = aName.startsWith(normalizedQuery) ? 0 : 1;
+        const bStarts = bName.startsWith(normalizedQuery) ? 0 : 1;
+        return aStarts - bStarts;
+    });
+
+    const topResults = filteredProducts.slice(0, 10);
+
+    // Enviar a renderizar
+    renderAutocompleteResults(topResults, resultsId, type);
+}
+
+    let currentInvoiceId = null;
+    let branchId = null;
+    let selectedCustomer = null;
+    let lastUsedInputId = null; 
+    
+    // Tasa de cambio global
+    let dolarExchangeRate = 240.00; 
+    let printerSize = "58";
+    let encabezadoFactura = {
+    line1: "porfavor",
+    line2: "seleciona un",
+    line3: "encabezado de factura",
+    line4: "desde la configuracion en el menu"
+};
+
+const unitModeToggle = document.getElementById('unit-mode-toggle');
+const modeText = document.getElementById('mode-text');
+const manualQuantityContainer = document.getElementById('manual-quantity-container');
+const weightInputContainer = document.getElementById('weight-input-container');
+const manualQuantityInput = document.getElementById('manual-quantity');
+const quantityInput = document.getElementById('cantidad'); 
+
+unitModeToggle.addEventListener('change', () => {
+    if (unitModeToggle.checked) {
+        modeText.textContent = 'Unidades (Pzas)';
+        weightInputContainer.classList.add('hidden');
+        manualQuantityContainer.classList.remove('hidden');
+        manualQuantityInput.focus();
+        quantityInput.value = '0.00';
+    } else {
+        modeText.textContent = 'Peso (Kg)';
+        manualQuantityContainer.classList.add('hidden');
+        weightInputContainer.classList.remove('hidden');
+        manualQuantityInput.value = '1';
+    }
+});
+
+let scannedBarcode = ''; 
+let scanTimer;           
+let lastScannedTimestamp = 0;    
+let lastScannedCodeGlobal = '';
+
+
+function applyHighlight(items, focusIndex) {
+    if (!items || items.length === 0) return;
+    
+    // Limpiamos el gris de todos los items de esta lista específica
+    items.forEach(el => {
+        el.classList.remove("autocomplete-active");
+        el.style.backgroundColor = ""; 
+    });
+    
+    // Aplicamos el gris solo al índice actual
+    if (focusIndex > -1 && items[focusIndex]) {
+        items[focusIndex].classList.add("autocomplete-active");
+        items[focusIndex].style.backgroundColor = "#e5e7eb"; 
+        
+        // Scroll automático
+        items[focusIndex].scrollIntoView({ block: "nearest" });
+    }
+}
+
+
+document.addEventListener('keydown', (event) => {
+    const activeElement = document.activeElement;
+    // Verifica si el usuario está escribiendo en algún campo de texto
+    const isInputActive = activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA');
+
+    // Estados de visibilidad de los modales
+    const paymentModal = document.getElementById('payment-modal');
+    const isPaymentVisible = paymentModal && (paymentModal.style.display === 'flex' || !paymentModal.classList.contains('hidden'));
+    const quickSaleModal = document.getElementById('quick-sale-modal');
+    const isQuickSaleVisible = quickSaleModal && (quickSaleModal.style.display === 'flex' || !quickSaleModal.classList.contains('hidden'));
+
+    // A. NAVEGACIÓN (Flechas y Enter en buscadores) - PRIORIDAD MÁXIMA
+    if (activeElement.id === "product-search" || activeElement.id === "barcode-search") {
+        const isProduct = activeElement.id === "product-search";
+        const resultsId = isProduct ? 'autocomplete-results' : 'barcode-autocomplete-results';
+        const resultsContainer = document.getElementById(resultsId);
+        const items = resultsContainer ? resultsContainer.querySelectorAll('.autocomplete-item') : [];
+
+        if (items.length > 0) {
+            let tempFocus = isProduct ? productFocus : barcodeFocus;
+
+            if (event.key === "ArrowDown") {
+                event.preventDefault(); 
+                event.stopImmediatePropagation();
+                tempFocus++;
+                if (tempFocus >= items.length) tempFocus = 0;
+                if (isProduct) productFocus = tempFocus; else barcodeFocus = tempFocus;
+                applyHighlight(items, tempFocus);
+                return;
+            } 
+            else if (event.key === "ArrowUp") {
+                event.preventDefault(); 
+                event.stopImmediatePropagation();
+                tempFocus--;
+                if (tempFocus < 0) tempFocus = items.length - 1;
+                if (isProduct) productFocus = tempFocus; else barcodeFocus = tempFocus;
+                applyHighlight(items, tempFocus);
+                return;
+            } 
+            else if (event.key === "Enter") {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                const finalIndex = tempFocus > -1 ? tempFocus : 0;
+                if (items[finalIndex]) {
+                    items[finalIndex].click();
+                    if (isProduct) productFocus = -1; else barcodeFocus = -1;
+                }
+                return;
+            }
+        }
+    }
+
+    // B. ATAJO BARRA ESPACIADORA (Desmarcar TODO)
+    // Solo funciona si no se está escribiendo en un input
+    if (event.code === 'Space' && !isInputActive) {
+        event.preventDefault();
+        const allCheckboxes = document.querySelectorAll('input[type="checkbox"]');
+        allCheckboxes.forEach(cb => {
+            cb.checked = false;
+            // Disparamos el evento change por si hay lógica vinculada al check
+            cb.dispatchEvent(new Event('change'));
+        });
+        return;
+    }
+
+    // C. ATAJO ESCAPE (Cerrar Métodos de Pago y Venta Rápida)
+    if (event.key === 'Escape') {
+        if (isPaymentVisible) {
+            event.preventDefault();
+            if (typeof closePaymentModal === 'function') closePaymentModal();
+        }
+        if (isQuickSaleVisible) {
+            event.preventDefault();
+            if (typeof closeQuickSaleModal === 'function') closeQuickSaleModal();
+        }
+    }
+
+    // D. ATAJO ENTER (Confirmar venta en Métodos de Pago)
+    if (event.key === 'Enter' && isPaymentVisible) {
+        event.preventDefault();
+        document.getElementById('btn-confirm-payment')?.click();
+        return;
+    }
+
+    // E. ATAJOS DE LETRAS (Solo si no hay un input activo)
+    if (!isInputActive) {
+        const key = event.key.toLowerCase();
+        
+        if (key === 'n') { // Nueva Factura
+            event.preventDefault();
+            if (typeof newInvoice === 'function') newInvoice();
+        }
+        else if (key === 'f') { // Venta Rápida
+            event.preventDefault();
+            if (typeof openQuickSaleModal === 'function') openQuickSaleModal();
+        }
+        else if (key === 'c') { // Barra de búsqueda de Clientes
+            event.preventDefault();
+            document.getElementById('client-search')?.focus();
+        }
+        else if (key === 'j' && isPaymentVisible) { // Seleccionar T. Crédito en modal
+            event.preventDefault();
+            const input = document.getElementById('tarjeta-credito-amount');
+            if (input) { input.focus(); input.select(); }
+        }
+    }
+
+    // F. TECLAS DE FUNCIÓN (F1 - F12)
+    if (event.key.startsWith('F')) {
+        event.preventDefault();
+
+        // Navegación general
+        if (event.key === 'F1') {
+            const el = document.getElementById('product-search') || document.getElementById('barcode-search');
+            if (el) el.focus();
+        }
+        else if (event.key === 'F2') {
+            document.getElementById('btn-process-sale')?.click();
+        }
+        else if (event.key === 'F3') {
+            const btn = isPaymentVisible ? document.getElementById('btn-confirm-payment') : document.getElementById('btn-process-sale');
+            btn?.click();
+        }
+        else if (event.key === 'F4') {
+            document.getElementById('btn-save-invoice')?.click();
+        }
+
+        // Selección de Métodos de Pago (F5 - F12)
+        if (isPaymentVisible) {
+            const paymentMap = {
+                'F5': 'efectivo-amount',
+                'F6': 'debito-amount',
+                'F7': 'pago-movil-amount',
+                'F8': 'bio-pago-amount',
+                'F9': 'dolar-amount',
+                'F10': 'transferencia-amount',
+                'F11': 'deposito-amount',
+                'F12': 'credito-amount'
+            };
+            const targetId = paymentMap[event.key];
+            if (targetId) {
+                const input = document.getElementById(targetId);
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            }
+        }
+        return;
+    }
+
+    // G. LÓGICA DEL ESCÁNER MEJORADA Y BLINDADA
+    // Si estamos en cualquier input (incluyendo barcode-search), dejamos que el listener del input mande.
+    if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) return;
+
+    // 1. Manejo del Enter del Escáner (G. LÓGICA DEL ESCÁNER)
+    if (event.key === 'Enter' && scannedBarcode.length > 0) {
+        event.preventDefault();
+        const finalBarcode = scannedBarcode.trim();
+        
+        scannedBarcode = ''; 
+        clearTimeout(scanTimer);
+        
+        const now = Date.now();
+        if (finalBarcode === lastScannedCodeGlobal && (now - lastScannedTimestamp) < 600) return;
+        
+        lastScannedCodeGlobal = finalBarcode;
+        lastScannedTimestamp = now;
+
+        // 🔥 LIMPIEZA PREVENTIVA: Si el escáner estaba escribiendo en la barra de búsqueda, la vaciamos
+        const pSearch = document.getElementById('product-search');
+        if (pSearch) pSearch.value = ''; 
+
+        processBarcodeScan(finalBarcode);
+        return;
+    }
+
+    // 2. Acumulador de caracteres
+    if (event.key.length === 1 && (/[a-zA-Z0-9-]/).test(event.key)) {
+        scannedBarcode += event.key;
+        clearTimeout(scanTimer);
+        
+        scanTimer = setTimeout(() => {
+            if (scannedBarcode.length > 2) {
+                const finalBarcode = scannedBarcode.trim();
+                scannedBarcode = '';
+                
+                const now = Date.now();
+                if (finalBarcode === lastScannedCodeGlobal && (now - lastScannedTimestamp) < 600) return;
+
+                lastScannedCodeGlobal = finalBarcode;
+                lastScannedTimestamp = now;
+                processBarcodeScan(finalBarcode);
+            } else {
+                scannedBarcode = ''; 
+            }
+        }, 150); // Aumentado a 150ms para estabilidad
+    }
+});
+
+
+// --- NUEVA LÓGICA DE INICIALIZACIÓN LOCAL (REEMPLAZO DE FIREBASE AUTH) ---
+async function validarAccesoYIniciar() {
+    try {
+        const sesion = await window.nexusAPI.obtenerSesionLocal();
+        
+        if (sesion) {
+            console.log("✅ Acceso autorizado para la empresa:", sesion.companyId);
+            
+            companyId = sesion.companyId;
+            branchId = sesion.branchId;
+            userRole = sesion.role;
+            userId = sesion.uid;
+            isAuthReady = true; 
+
+            window.companyId = sesion.companyId;
+            window.branchId = sesion.branchId;
+            window.userId = sesion.uid;
+            window.isAuthReady = true;
+
+            if (typeof fetchProductsLocal === 'function') {
+                await fetchProductsLocal(); 
+            } else if (typeof fetchProducts === 'function') {
+                await fetchProducts();
+            }
+
+            // Configuraciones iniciales
+            if (typeof fetchExchangeRate === 'function') await fetchExchangeRate(); 
+            if (typeof fetchFacturaConfig === 'function') await fetchFacturaConfig();
+            
+            try {
+                if (typeof loadBasculaConfigAndInitSocket === 'function') await loadBasculaConfigAndInitSocket();
+            } catch(e) { console.warn("Balanza no lista."); }
+            
+            // Dibujar interfaz y buscadores
+            if (typeof renderCart === 'function') renderCart();
+            if (typeof setupSearchListener === 'function') setupSearchListener();
+            if (typeof setupBarcodeSearchListener === 'function') setupBarcodeSearchListener();
+
+            // Inicializar el Gestor de Clientes Local
+            if (typeof GestorClientes !== 'undefined') {
+                await GestorClientes.inicializar();
+            }
+
+            console.log("🚀 Sistema de Facturación Nexus POS listo.");
+
+        } else {
+            console.warn("⚠️ No se detectó sesión activa local.");
+        }
+    } catch (error) {
+        console.error("❌ Error crítico al iniciar sesión local:", error);
+        if (typeof messageBox === 'function') messageBox("Error al iniciar el sistema local.", 'bg-red-500');
+    }
+}
+
+// Ejecutar automáticamente
+validarAccesoYIniciar();
+
+
+window.addItemToCart = function(quickSaleItem) {
+    
+    // Llama a la función central, pasando el objeto de Venta Rápida completo 
+    // y la cantidad (el segundo argumento).
+    if (typeof updateCartAndRender === 'function') {
+        updateCartAndRender(quickSaleItem, quickSaleItem.cantidad);
+    } else {
+        // Este mensaje solo se muestra si updateCartAndRender no existe (lo cual es poco probable si ya está definida).
+        console.error('Error: La función principal updateCartAndRender no es accesible.');
+        alert('Error Crítico: El sistema de carrito no es accesible.');
+    }
+};
+
+    // 📄 INICIO DE CÓDIGO JAVASCRIPT
+// --- Funciones para el Modal de Venta Rápida ---
+
+// 1. Mostrar el modal
+window.openQuickSaleModal = function() {
+    const modal = document.getElementById('quick-sale-modal');
+    modal.classList.remove('hidden');
+    // Opcional: enfocar el primer campo al abrir
+    document.getElementById('quick-sale-name').focus();
+}
+
+// 2. Ocultar el modal
+window.closeQuickSaleModal = function() {
+    const modal = document.getElementById('quick-sale-modal');
+    modal.classList.add('hidden');
+    
+    // Opcional: limpiar los campos al cerrar
+    document.getElementById('quick-sale-name').value = '';
+    document.getElementById('quick-sale-price').value = '';
+    document.getElementById('quick-sale-quantity').value = '1';
+}
+
+// 3. Procesar la venta rápida y añadir al carrito
+// 3. Procesar la venta rápida y añadir al carrito
+window.processQuickSale = function() {
+    const nameInput = document.getElementById('quick-sale-name');
+    const priceInput = document.getElementById('quick-sale-price');
+    const quantityInput = document.getElementById('quick-sale-quantity');
+
+    const nombre = nameInput.value.trim();
+    const precioVenta = parseFloat(priceInput.value);
+    const cantidad = parseFloat(quantityInput.value);
+
+    // Validación básica de campos
+    if (!nombre || nombre.length === 0) {
+        alert('Por favor, ingresa el nombre del producto.');
+        nameInput.focus();
+        return;
+    }
+    if (isNaN(precioVenta) || precioVenta <= 0) {
+        alert('Por favor, ingresa un precio de venta válido.');
+        priceInput.focus();
+        return;
+    }
+    if (isNaN(cantidad) || cantidad <= 0) {
+        alert('Por favor, ingresa una cantidad válida.');
+        quantityInput.focus();
+        return;
+    }
+    
+    // Cálculo: Precio * Cantidad
+    const subtotal = precioVenta * cantidad;
+
+    // Crear el objeto del producto para el carrito
+    const quickSaleItem = {
+        // Usamos un ID temporal o genérico para productos sin inventario
+        id: 'QUICK-' + Date.now(), 
+        codigo: 'VTA-RAPIDA', 
+        nombre: nombre,
+        precio: precioVenta,
+        cantidad: cantidad,
+        // Almacenamos el subtotal total de la línea
+        subtotal: subtotal,
+        // Marcamos como un producto de venta rápida para diferenciar
+        isQuickSale: true
+    };
+    
+    // 🚩 CAMBIO CLAVE: Llama a la nueva función que crearemos abajo.
+    addItemToCart(quickSaleItem);
+    
+    // Cierra el modal después de añadir el producto
+    closeQuickSaleModal(); 
+};
+
+
+
+function updateCartAndRender(producto, cantidad) {
+    // 1. Extraer precio y tasa de IVA (Alicuota)
+    const precioUnitario = parseFloat(producto.precio_venta || producto.precio) || 0;
+    
+    // Convertir tipo_alicuota a número (ej: "16" o "8")
+    const porcentajeIva = parseFloat(producto.tipo_alicuota || producto.iva) || 16; 
+    
+    // 2. Cálculos Fiscales (Fórmula reversa para obtener base imponible)
+    const totalItem = precioUnitario * cantidad;
+    const baseImponible = totalItem / (1 + (porcentajeIva / 100));
+    const montoIva = totalItem - baseImponible;
+
+    // 3. Crear el objeto para el carrito
+    const itemCarrito = {
+        id: producto.producto_ID || producto.id,
+        nombre: producto.nombre,
+        codigo: producto.codigo,
+        cantidad: cantidad,
+        precio: precioUnitario,
+        tasaIva: porcentajeIva,
+        baseImponible: baseImponible,
+        montoIva: montoIva,
+        subtotal: totalItem,
+        moneda: producto.currency || 'BS' // Detecta si es USD o BS
+    };
+
+    // 4. Verificar si el producto ya está en el carrito para sumar cantidad en lugar de duplicar
+    const indexExistente = cart.findIndex(item => item.codigo === itemCarrito.codigo);
+    
+    if (indexExistente > -1) {
+        cart[indexExistente].cantidad += cantidad;
+        // Recalcular valores del item existente
+        const nuevoTotal = cart[indexExistente].precio * cart[indexExistente].cantidad;
+        cart[indexExistente].subtotal = nuevoTotal;
+        cart[indexExistente].baseImponible = nuevoTotal / (1 + (cart[indexExistente].tasaIva / 100));
+        cart[indexExistente].montoIva = nuevoTotal - cart[indexExistente].baseImponible;
+    } else {
+        cart.push(itemCarrito);
+    }
+
+    // 5. Persistencia y Dibujado
+    localStorage.setItem('cart', JSON.stringify(cart));
+    renderCart();
+    
+    if (typeof messageBox === 'function') {
+        messageBox(`${producto.nombre} añadido al carrito.`, 'bg-green-600');
+    }
+}
+
+function validarRIF(rif) {
+    if (!rif) return false;
+    
+    // 1. Limpiar espacios y guiones
+    const limpio = rif.replace(/[-\s]/g, '').toUpperCase();
+    
+    // 2. Si son solo números (6 a 9 dígitos), es válido para procesar como cédula
+    if (/^\d{6,9}$/.test(limpio)) return true;
+    
+    // 3. Si incluyó letra, validamos el formato estándar (Letra + números)
+    const regexConLetra = /^[VJEGPC]\d{6,9}$/;
+    return regexConLetra.test(limpio);
+}
+    
+
+async function fetchExchangeRate() {
+    if (!companyId) return;
+
+    let tasaRecuperada = null;
+
+    // 1. INTENTAR OBTENER DESDE EL SERVIDOR XEON (Prioridad Central vía Cloudflare)
+    try {
+        if (navigator.onLine) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 seg de espera
+
+            // Actualizado: Subdominio correcto, sin puertos y con HTTPS para el túnel
+            const response = await fetch(`https://scarping.nexusposgobal.com/api/companias/tasa_de_cambio/${companyId}`, {
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.tasa) {
+                    tasaRecuperada = parseFloat(data.tasa);
+                    console.log("📡 Tasa obtenida desde Servidor Xeon Global:", tasaRecuperada);
+
+                    // Sincronizar con SQLite local para futuros arranques offline
+                    if (window.nexusAPI && typeof window.nexusAPI.guardarTasaBCV === 'function') {
+                        await window.nexusAPI.guardarTasaBCV(tasaRecuperada);
+                    }
+                }
+            }
+        }
+    } catch (xeonError) {
+        console.warn("⚠️ Servidor Xeon Global no disponible. Iniciando recuperación local.");
+    }
+
+    // 2. MODO RESPALDO: SI FALLÓ EL XEON O NO HAY INTERNET, USAR SQLITE LOCAL
+    if (tasaRecuperada === null) {
+        try {
+            if (window.nexusAPI && typeof window.nexusAPI.obtenerHistorialTasas === 'function') {
+                const historial = await window.nexusAPI.obtenerHistorialTasas();
+                if (historial && historial.length > 0) {
+                    // Tomamos el valor más reciente del historial local
+                    tasaRecuperada = parseFloat(historial[0].valor);
+                    console.log("📂 Tasa cargada desde Respaldo Local (SQLite):", tasaRecuperada);
+                }
+            }
+        } catch (localError) {
+            console.error("❌ Error al leer respaldo local de tasa:", localError);
+        }
+    }
+
+    // 3. APLICAR EL RESULTADO AL SISTEMA DE FACTURACIÓN
+    if (tasaRecuperada !== null && tasaRecuperada > 0) {
+        // Se actualiza la variable global de facturación
+        dolarExchangeRate = tasaRecuperada;
+        
+        // Actualizar UI del panel de ventas
+        const displayTasa = document.getElementById('tasa-actual-display');
+        if (displayTasa) {
+            displayTasa.textContent = `Tasa: ${tasaRecuperada.toFixed(2)} BS`;
+        }
+    } else {
+        // Valor de seguridad extremo (1:1) si fallan Xeon y SQLite
+        dolarExchangeRate = 1.00; 
+        if (typeof messageBox === 'function') {
+            messageBox("Atención: No se pudo obtener la tasa. Usando valor 1:1.", 'bg-red-600');
+        }
+    }
+
+    // Forzar actualización de precios en el carrito de compras
+    if (typeof renderCart === 'function') renderCart();
+}
+
+    function initializeFirestoreListeners() {
+    if (!isAuthReady || !userId) {
+        return;
+    }
+    // ----------------------------------------------------------------------
+    // 🟢 FASE 1: SIMULACIÓN DE LECTURA DE BORRADORES (Pronto SQLite)
+    // ----------------------------------------------------------------------
+    console.log("⏳ [Fase 1] Esperando módulo SQLite para cargar facturas guardadas en UI.");
+    
+    // Dejamos la tabla limpia por ahora para que no de error
+    const invoicesList = document.getElementById('invoices-list');
+    if (invoicesList) {
+        invoicesList.innerHTML = `<tr><td colspan="4" class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">Borradores locales habilitándose pronto...</td></tr>`;
+    }
+}
+    
+function renderCart() {
+    const cartItems = document.getElementById('cart-items');
+    if (!cartItems) return;
+    
+    cartItems.innerHTML = '';
+    
+    // Variables globales para almacenar los totales exactos
+    // Las guardamos en window para que calculatePaymentSummary las pueda leer
+    window.exactTotalBs = 0;
+    window.exactTotalUsd = 0;
+
+    cart.forEach((item, index) => {
+        // Determinamos si es divisa
+        const isDivisa = item.moneda === 'USD' || item.isUSD === true;
+        
+        // --- CORRECCIÓN: Compatibilidad Español/Inglés y prevención de undefined ---
+        const precioItem = item.precio !== undefined ? item.precio : (item.price || 0);
+        const cantidadItem = item.cantidad !== undefined ? item.cantidad : (item.quantity || 0);
+        const nombreItem = item.nombre !== undefined ? item.nombre : (item.name || 'Producto');
+        const tasaItem = item.tasa !== undefined ? item.tasa : dolarExchangeRate; 
+        
+        // --- LÓGICA DE CÁLCULO ---
+        let itemTotalBs = 0;
+        let itemTotalUsd = 0;
+
+        if (isDivisa) {
+            // CASO 1: Producto en Dólares (Divisa)
+            // El total en dólares es la cantidad exacta del producto
+            itemTotalUsd = precioItem * cantidadItem;
+            
+            // El total en Bs se calcula con SU tasa específica (la que editaste o la global)
+            itemTotalBs = itemTotalUsd * tasaItem;
+            
+        } else {
+            // CASO 2: Producto en Bolívares
+            // El total en Bs es la cantidad exacta
+            itemTotalBs = precioItem * cantidadItem;
+            
+            // El total en dólares es la conversión usando la tasa GLOBAL del día (BCV)
+            itemTotalUsd = itemTotalBs / dolarExchangeRate;
+        }
+
+        // Acumulamos a los totales globales
+        window.exactTotalBs += itemTotalBs;
+        window.exactTotalUsd += itemTotalUsd;
+        // -------------------------
+
+        const row = document.createElement('tr');
+        
+        // Lógica visual para Precio Unitario
+        let precioDisplayHTML = '';
+        if (isDivisa) {
+            precioDisplayHTML = `
+                <div class="flex flex-col">
+                    <span class="font-bold text-green-700">$${precioItem.toFixed(2)}</span>
+                    <span class="text-xs text-gray-500">Tasa: ${tasaItem.toFixed(2)}</span>
+                </div>
+            `;
+        } else {
+            precioDisplayHTML = `
+                <span class="font-bold text-blue-700">Bs${precioItem.toFixed(2)}</span>
+            `;
+        }
+
+        // 🟢 SOLUCIÓN DE ALINEACIÓN: El botón invisible mantiene el espacio
+        const editButtonHTML = isDivisa 
+            ? `<button onclick="editItemTasa(${index})" class="text-yellow-500 hover:text-yellow-700 p-2"><i class="fas fa-pencil-alt"></i></button>`
+            : `<button class="p-2 invisible pointer-events-none"><i class="fas fa-pencil-alt"></i></button>`;
+
+        row.innerHTML = `
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${nombreItem}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <input type="number" value="${cantidadItem}" onchange="updateQuantity(${index}, this.value)" 
+                       class="quantity-input border rounded p-1 text-sm w-20 text-center" min="0.001" step="any">
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                ${precioDisplayHTML}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
+                Bs${itemTotalBs.toFixed(2)}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <div class="flex items-center">
+                    ${editButtonHTML}
+                    <button onclick="removeItemFromCart(${index})" class="text-red-600 hover:text-red-900" title="Eliminar">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+            </td>
+        `;
+        cartItems.appendChild(row);
+    });
+
+    // Actualizar Totales Globales en la interfaz principal
+    if (document.getElementById('subtotal')) document.getElementById('subtotal').textContent = `Bs${window.exactTotalBs.toFixed(2)}`; 
+    if (document.getElementById('total')) document.getElementById('total').textContent = `Bs${window.exactTotalBs.toFixed(2)}`;
+
+    // Forzar el recálculo del resumen de pagos con los nuevos valores
+    calculatePaymentSummary(); 
+    
+    if (cart.length === 0) {
+        cartItems.innerHTML = `<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Carrito vacío</td></tr>`;
+    }
+}
+
+
+
+function updateGlobalIVAConfig(value) {
+    console.log("IVA actualizado. Nuevo valor de includeIVA:", value); 
+    includeIVA = value;
+    renderCart(); 
+}
+
+
+    function renderInvoices(invoices) {
+        const invoicesList = document.getElementById('invoices-list');
+        if (!invoicesList) {
+            return;
+        }
+        invoicesList.innerHTML = '';
+
+        if (invoices.length === 0) {
+            invoicesList.innerHTML = `<tr><td colspan="4" class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">No hay facturas guardadas.</td></tr>`;
+        } else {
+            const sortedInvoices = invoices.sort((a, b) => b.createdAt - a.createdAt);
+            sortedInvoices.forEach(invoice => {
+                const date = new Date(invoice.createdAt);
+                const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                const row = document.createElement('tr');
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 load-invoice-cell">
+                        ${invoice.customerName || invoice.id}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Bs${invoice.total.toFixed(2)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formattedDate}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <button class="delete-btn" onclick="deleteInvoice('${invoice.id}')" title="Eliminar borrador">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                const loadCell = row.querySelector('.load-invoice-cell');
+                loadCell.onclick = (e) => {
+                    if (!e.target.closest('.delete-btn')) { 
+                       loadInvoice(invoice);
+                    }
+                };
+
+                invoicesList.appendChild(row);
+            });
+        }
+    }
+    
+function updateCartItemQuantity(index, newQuantity) {
+    const quantity = parseFloat(newQuantity);
+    if (isNaN(quantity) || quantity <= 0) {
+        messageBox("La cantidad debe ser un número positivo.", 'bg-red-500');
+        renderCart();
+        return;
+    }
+    cart[index].quantity = quantity;
+    localStorage.setItem('cart', JSON.stringify(cart));
+    renderCart();
+}
+
+
+
+
+
+async function processBarcodeScan(barcode) {
+    if (!isAuthReady) return; 
+    
+    barcode = barcode.trim();
+    if (!barcode) return;
+
+    try {
+        const product = allProducts.find(p => String(p.codigo) === barcode);
+
+        if (product) {
+            let quantity;
+            const productUnit = product.unit || 'UN'; 
+            
+            if (productUnit === 'Unidad' || productUnit === 'UN') { 
+                quantity = 1;
+            } else {
+                const quantityInput = document.getElementById('cantidad');
+                quantity = parseFloat(quantityInput.value) || 0; 
+                // ... validación de cantidad ...
+            }
+
+            updateCartAndRender(product, quantity);
+            
+            // 🔥 SOLUCIÓN AL PROBLEMA SECUENCIAL:
+            // Al limpiar esto aquí, permitimos que si el usuario borra el item 
+            // y vuelve a escanear de inmediato, el sistema no piense que es un "rebote"
+            lastScannedCodeGlobal = ''; 
+            lastScannedTimestamp = 0;
+
+            // Limpieza de interfaz
+            selectedProduct = null; 
+            if (document.getElementById('cantidad')) document.getElementById('cantidad').value = '1';
+            document.getElementById('product-search').value = '';
+            document.getElementById('barcode-search').value = '';
+            
+            const productSearch = document.getElementById('product-search');
+            const barcodeSearch = document.getElementById('barcode-search');
+            if (productSearch) productSearch.value = '';
+            if (barcodeSearch) barcodeSearch.value = ''; 
+
+            console.log(`✅ Producto ${product.nombre} añadido por escáner.`);
+
+        } else {
+            if (typeof messageBox === 'function') {
+                messageBox(`Producto con código ${barcode} no encontrado en el inventario local.`, 'bg-red-500');
+            }
+        }
+
+    } catch (error) {
+        console.error("❌ Error al procesar el escaneo local:", error);
+        if (typeof messageBox === 'function') {
+            messageBox("Error al procesar el código de barras.", 'bg-red-500');
+        }
+    }
+}
+
+
+function removeCartItem(index) {
+    if (index < 0 || index >= cart.length) {
+        console.error("❌ Intento de eliminar un índice inexistente:", index);
+        return;
+    }
+
+    const nombreProducto = cart[index].nombre || "Producto";
+
+    cart.splice(index, 1);
+
+    localStorage.setItem('cart', JSON.stringify(cart));
+    lastScannedCodeGlobal = '';
+    lastScannedTimestamp = 0;
+    
+    if (typeof renderCart === 'function') {
+        renderCart();
+    }
+    
+    if (typeof messageBox === 'function') {
+        messageBox(`${nombreProducto} eliminado del carrito.`, 'bg-red-500');
+    }
+
+    console.log(`🗑️ Item "${nombreProducto}" eliminado. Reset de memoria de escáner completado.`);
+}
+
+function processAndRenderItem(itemToAdd, quantity) {
+    const existingItemIndex = cart.findIndex(item => item.name === itemToAdd.name);
+    
+    if (existingItemIndex > -1) {
+        cart[existingItemIndex].quantity += quantity;
+    } else {
+        const newItem = {
+            id: itemToAdd.id, 
+            name: itemToAdd.name,
+            quantity: quantity, 
+            price: itemToAdd.price,
+            unit: itemToAdd.unit 
+        };
+        cart.push(newItem);
+    }
+    
+    renderCart(); 
+}
+
+window.addItem = function() {
+    if (!selectedProduct) {
+        messageBox("Por favor, seleccione un producto.", 'bg-red-500');
+        return;
+    }
+    
+    let cantidad = 0;
+    
+    // Determinamos la cantidad según el tipo de producto (Unidad o Pesable)
+    // Se incluye 'UN' como alias común en la base de datos local
+    if (selectedProduct.unit === 'Unidad' || selectedProduct.unit === 'UN') {
+        cantidad = 1;
+        const manualInput = document.getElementById('manual-quantity');
+        if (manualInput) manualInput.value = '1';
+    } else {
+        if (unitModeToggle.checked) {
+            const manualInput = document.getElementById('manual-quantity'); 
+            cantidad = parseFloat(manualInput ? manualInput.value : 0) || 0; 
+        } else {
+            // Peso proveniente de la balanza o el input de cantidad
+            const quantityInput = document.getElementById('cantidad');
+            cantidad = parseFloat(quantityInput ? quantityInput.value : 0) || 0; 
+        }
+    }
+
+    if (isNaN(cantidad) || cantidad <= 0) { 
+        messageBox("Por favor, ingrese una cantidad válida y mayor que cero.", 'bg-red-500');
+        return;
+    }
+
+    // --- PROCESAMIENTO ---
+    // updateCartAndRender ahora maneja la detección de USD/BS y cálculos fiscales (IVA/Base Imponible)
+    updateCartAndRender(selectedProduct, cantidad); 
+
+    // --- LIMPIEZA Y RESETEO DE INTERFAZ ---
+    if (unitModeToggle.checked) {
+        const manualInput = document.getElementById('manual-quantity');
+        if (manualInput) manualInput.value = '1';
+    }
+    
+    selectedProduct = null; 
+    
+    // Limpiar inputs de búsqueda
+    document.getElementById('product-search').value = '';
+    document.getElementById('barcode-search').value = ''; 
+    document.getElementById('cantidad').value = '0.00';
+    
+    // Ocultar listas de autocompletado
+    const resultsContainer = document.getElementById('autocomplete-results');
+    const barcodeResultsContainer = document.getElementById('barcode-autocomplete-results');
+    if (resultsContainer) resultsContainer.style.display = 'none';
+    if (barcodeResultsContainer) barcodeResultsContainer.style.display = 'none';
+    
+    // Foco automático al lector de barras para la siguiente operación
+    document.getElementById('barcode-search').focus(); 
+};
+
+function clearCart() {
+    // 1. Vaciar el array global y actualizar la vista
+    cart = [];
+    renderCart();
+    
+    // 2. Limpiar todos los campos de pago (Métodos de pago)
+    const paymentIds = [
+        'efectivo-amount', 'debito-amount', 'pago-movil-amount', 
+        'bio-pago-amount', 'dolar-amount', 'transferencia-amount', 
+        'deposito-amount', 'credito-amount', 'tarjeta-credito-amount'
+    ];
+    
+    paymentIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+
+    // 3. Notificar al usuario
+    messageBox("Carrito limpiado.", 'bg-yellow-500');
+}
+    
+    function clearSelectedCustomer() {
+        selectedCustomer = null; 
+        // 🟢 NUEVO: Limpiamos la memoria del Gestor también
+        if (typeof GestorClientes !== 'undefined') GestorClientes.selectedCustomer = null; 
+        
+        const clientFoundMessage = document.getElementById('client-found-message');
+        if (clientFoundMessage) {
+            clientFoundMessage.classList.add('hidden');
+        }
+        const clientSearchInput = document.getElementById('client-search');
+        if (clientSearchInput) {
+            clientSearchInput.value = '';
+        }
+    
+        messageBox("Cliente deseleccionado, listo para nueva venta.", 'bg-yellow-500');
+    }
+
+
+    async function sendProfitCalculation(companyId, branchId, cashierId, saleId, cartItems) {
+        const API_URL = 'https://profit.api.nexusposgobal.com/calculate-profit';
+        const simplifiedCartItems = cartItems.map(item => ({
+            productId: item.id,
+            quantity: item.quantity
+        }));
+
+        const payload = {
+            companyId: companyId,
+            branchId: branchId,
+            cashierId: cashierId,
+            saleId: saleId,
+            cartItems: simplifiedCartItems
+        };
+
+        console.log("Enviando datos a la API de ganancias:", payload);
+
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: 'Respuesta no JSON.' }));
+                throw new Error(errorData.message || `Error HTTP: ${response.status}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.success) {
+                console.log(`✅ Cálculo de ganancia exitoso. Profit: ${result.profit}`);
+                messageBox(`Ganancia procesada: Bs${result.profit}`, 'bg-blue-500');
+                return result.profit;
+            } else {
+                throw new Error(result.message || "Error en el cálculo de ganancia reportado por el servidor.");
+            }
+
+        } catch (error) {
+            console.error("❌ Error al procesar la ganancia. El documento de venta NO tendrá el campo 'profit':", error.message);
+            messageBox(`❌ ERROR en la API de ganancias: ${error.message}`, 'bg-red-500');
+            return null; 
+        }
+    }
+
+
+function openExtendedSearchModal() {
+    const modal = document.getElementById('extended-search-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        document.getElementById('extended-product-search-input').focus();
+    }
+}
+
+function closeExtendedSearchModal() {
+    const modal = document.getElementById('extended-search-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        document.getElementById('extended-product-search-input').value = '';
+        document.getElementById('extended-search-results').innerHTML = '<tr><td colspan="5" class="px-4 py-2 text-center text-sm text-gray-500">Comience a escribir para buscar productos.</td></tr>';
+    }
+}
+
+
+function performExtendedSearch() {
+    const query = document.getElementById('extended-product-search-input').value.toLowerCase();
+    const resultsContainer = document.getElementById('extended-search-results');
+    
+    if (query.length < 3) {
+        resultsContainer.innerHTML = '<tr><td colspan="5" class="px-4 py-2 text-center text-sm text-gray-500">Mínimo 3 caracteres para buscar.</td></tr>';
+        return;
+    }
+
+    const filteredProducts = productsList.filter(product => {
+        const nameMatch = product.name.toLowerCase().includes(query);
+        const codeMatch = product.code && product.code.toLowerCase().includes(query);
+        return nameMatch || codeMatch;
+    });
+
+    if (filteredProducts.length === 0) {
+        resultsContainer.innerHTML = '<tr><td colspan="5" class="px-4 py-2 text-center text-sm text-gray-500">No se encontraron productos.</td></tr>';
+        return;
+    }
+    
+    const rowsHtml = filteredProducts.map(product => {
+        const categoryName = getCategoryName(product.category); 
+        
+        return `
+            <tr class="hover:bg-gray-100 cursor-pointer" onclick="addProductToCartFromExtendedSearch('${product.id}')">
+                <td class="px-4 py-2 whitespace-nowrap text-sm font-medium">
+                    <button class="text-green-600 hover:text-green-900 font-bold text-xl">+</button>
+                </td>
+                <td class="px-4 py-2 text-sm text-gray-900">
+                    ${product.name}<br>
+                    <span class="text-xs text-blue-600">${categoryName}</span>
+                </td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${product.code || 'N/A'}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${product.price.toFixed(2)}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${product.unit}</td>
+            </tr>
+        `;
+    }).join('');
+
+    resultsContainer.innerHTML = rowsHtml;
+}
+
+function addProductToCartFromExtendedSearch(productId) {
+
+    closeExtendedSearchModal(); 
+}
+
+
+
+
+
+async function processSale() {
+    const confirmBtn = document.getElementById('btn-confirm-payment');
+    if (window.isProcessingSale) {
+        console.warn("Venta ya en proceso. Ignorando doble clic.");
+        return;
+    }
+
+    window.isProcessingSale = true;
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Procesando...';
+    }
+
+    const totalElement = document.getElementById('total');
+    const total = parseFloat(totalElement ? totalElement.textContent.replace(/[^\d.]/g, '') : '0'); 
+    const subtotalElement = document.getElementById('subtotal');
+    const subtotal = parseFloat(subtotalElement ? subtotalElement.textContent.replace(/[^\d.]/g, '') : '0');
+    const montoPagadoElement = document.getElementById('montoPagado');
+    const montoPagado = parseFloat(montoPagadoElement ? montoPagadoElement.textContent.replace(/[^\d.]/g, '') : '0');
+
+    if (cart.length === 0) {
+        window.isProcessingSale = false;
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Confirmar Venta (F3)';
+        }
+        messageBox("El carrito está vacío. No se puede procesar la venta.", 'bg-red-500');
+        return;
+    }
+    
+    if (montoPagado < total) {
+        window.isProcessingSale = false;
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Confirmar Venta (F3)';
+        }
+        messageBox("El monto pagado es insuficiente para cubrir el total de la factura.", 'bg-red-500');
+        return;
+    }
+    
+    if (!isAuthReady || !userId || !companyId || !branchId) {
+        window.isProcessingSale = false;
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Confirmar Venta (F3)';
+        }
+        messageBox("Error: La información de usuario/compañía/sucursal no está disponible.", 'bg-red-500');
+        return;
+    }
+
+    const clienteActivo = (window.GestorClientes && window.GestorClientes.selectedCustomer) 
+                            ? window.GestorClientes.selectedCustomer 
+                            : (typeof selectedCustomer !== 'undefined' ? selectedCustomer : null);
+
+    if (!clienteActivo) {
+        window.isProcessingSale = false;
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Confirmar Venta (F3)';
+        }
+        messageBox("Por favor, seleccione o agregue un cliente para procesar la venta.", 'bg-red-500');
+        return;
+    }
+    
+    try {
+        const pagoEfectivoRecibido = parseFloat(document.getElementById('efectivo-amount').value) || 0;
+        const pagoMovilRecibido = parseFloat(document.getElementById('pago-movil-amount').value) || 0;
+        const dolarRecibido = parseFloat(document.getElementById('dolar-amount').value) || 0;
+        const vueltoEfectivoDado = parseFloat(document.getElementById('vuelto-efectivo-amount')?.value) || 0;
+        const vueltoDolarDado = parseFloat(document.getElementById('vuelto-dolar-amount')?.value) || 0;
+        const vueltoPagoMovilDado = parseFloat(document.getElementById('vuelto-pago-movil-amount')?.value) || 0;
+        
+        const efectivoNetoParaCaja = pagoEfectivoRecibido - vueltoEfectivoDado;
+        const dolarNetoParaCaja = dolarRecibido - vueltoDolarDado;
+        const pagoMovilNetoParaCaja = pagoMovilRecibido - vueltoPagoMovilDado;
+
+        const payments = {
+            efectivo: efectivoNetoParaCaja, 
+            pagomovil: pagoMovilNetoParaCaja,
+            dolar: dolarNetoParaCaja,
+            debito: parseFloat(document.getElementById('debito-amount').value) || 0,
+            biopago: parseFloat(document.getElementById('bio-pago-amount').value) || 0,
+            transferencia: parseFloat(document.getElementById('transferencia-amount').value) || 0,
+            deposito: parseFloat(document.getElementById('deposito-amount').value) || 0,
+            credito: parseFloat(document.getElementById('credito-amount').value) || 0,
+            tarjetaCredito: parseFloat(document.getElementById('tarjeta-credito-amount').value) || 0,
+        };
+
+        // 🟢 CÁLCULOS FISCALES REALES PARA TU TABLA ventas_locales
+        let montoExento = 0;
+        let baseImponible = 0;
+        let montoIva = 0;
+
+        cart.forEach(item => {
+            if (parseFloat(item.tasaIva) === 0) {
+                montoExento += item.subtotal;
+            } else {
+                baseImponible += item.baseImponible || (item.subtotal / 1.16);
+                montoIva += item.montoIva || (item.subtotal - (item.subtotal / 1.16));
+            }
+        });
+
+        // IGTF 3% sobre el pago en dólares (convertido a Bs)
+        const montoIgtf = dolarRecibido > 0 ? (dolarRecibido * (window.dolarExchangeRate || 1)) * 0.03 : 0;
+
+        const newSale = {
+            id: `VTA-${Date.now()}`,
+            company_id: companyId,
+            branch_id: branchId,
+            cashier_id: userId,
+            numero_factura: `FAC-${Date.now()}`, // Aquí podrías llamar a obtenerProximoCorrelativo
+            numero_control: `00-${Math.floor(Math.random() * 900000)}`,
+            cliente_nombre: clienteActivo.nombre || clienteActivo.name || 'CONSUMIDOR FINAL',
+            cliente_rif: clienteActivo.rif || clienteActivo.ci || 'V000000000',
+            monto_exento: montoExento,
+            base_imponible: baseImponible,
+            monto_iva: montoIva,
+            monto_igtf: montoIgtf,
+            monto_total: total + montoIgtf,
+            tasa_bcv: window.dolarExchangeRate || 1,
+            metodo_pago: JSON.stringify(payments),
+            datos_json: JSON.stringify(cart)
+        };
+        
+        // 🟢 FASE REAL: GUARDADO EN SQLITE (Cerebro local)
+        const respuestaDB = await window.nexusAPI.guardarVentaLocal(newSale);
+        
+        if (respuestaDB && respuestaDB.error) {
+            throw new Error(respuestaDB.error);
+        }
+
+        if (currentInvoiceId) {
+             console.log("🧹 Borrador procesado.");
+             currentInvoiceId = null;
+        }
+        
+        if (typeof messageBox === 'function') messageBox("Venta procesada con éxito.", 'bg-green-500');
+
+        await printInvoice();
+        resetPaymentModalState();        
+        clearCart();
+        
+        if (window.GestorClientes && typeof window.GestorClientes.limpiarSeleccion === 'function') {
+            window.GestorClientes.limpiarSeleccion();
+        } else if (typeof clearSelectedCustomer === 'function') {
+            clearSelectedCustomer();
+        }
+
+        window.isProcessingSale = false; 
+        
+        if (confirmBtn) {
+            confirmBtn.textContent = '✅ Venta Exitosa!'; 
+            confirmBtn.disabled = false; 
+        }
+
+    } catch (error) {
+        messageBox(`Error: ${error.message || "Fallo al procesar la venta."}`, 'bg-red-500');
+        console.error("Error al procesar la venta:", error);
+        window.isProcessingSale = false;
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Confirmar Venta (F3)';
+        }
+    }
+
+    cart = []; 
+    renderCart(); 
+}
+
+
+
+
+
+function handleF2Shortcut() {
+    const openModalBtn = document.getElementById('btn-process-sale');
+    if (openModalBtn) {
+        openModalBtn.click();
+    } else {
+        console.error("❌ ID no encontrado: btn-process-sale"); 
+    }
+}
+
+function handleF3Shortcut(isPaymentModalVisible) {
+    if (isPaymentModalVisible) {
+        processSale(); 
+    } else {
+        const openModalBtn = document.getElementById('btn-process-sale');
+        if (openModalBtn) {
+            openModalBtn.click();
+        }
+    }
+}
+
+document.getElementById('btn-confirm-payment').addEventListener('click', () => {
+    processSale();
+});
+
+
+function resetPaymentModalState() {
+    const paymentInputIds = [
+        'efectivo-amount', 'debito-amount', 'pago-movil-amount', 'bio-pago-amount', 
+        'dolar-amount', 'transferencia-amount', 'deposito-amount', 'credito-amount', 
+        'tarjeta-credito-amount',
+        'vuelto-efectivo-amount', 
+        'vuelto-dolar-amount', 
+        'vuelto-pago-movil-amount'
+    ];
+
+
+    paymentInputIds.forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.value = ''; 
+        }
+    });
+
+    const montoPagadoDisplay = document.getElementById('montoPagado');
+    const resumenFaltanteBs = document.getElementById('resumen-faltante-bs');
+    const resumenFaltanteUsd = document.getElementById('resumen-faltante-usd');
+    const vueltoColumn = document.getElementById('vuelto-column');
+    if (montoPagadoDisplay) montoPagadoDisplay.textContent = 'Bs0.00';
+    if (resumenFaltanteBs) resumenFaltanteBs.textContent = 'Bs0.00';
+    if (resumenFaltanteUsd) resumenFaltanteUsd.textContent = '$0.00';
+    if (vueltoColumn) vueltoColumn.classList.add('hidden'); 
+    
+    console.log("Estado del modal de pagos restablecido.");
+}
+
+
+async function loadIVAConfigFromDB() {
+    if (!window.nexusAPI || typeof window.nexusAPI.obtenerConfiguracion !== 'function') {
+        console.warn("[CONFIG IVA] API local no disponible. Usando configuración de IVA por defecto (TRUE).");
+        updateGlobalIVAConfig(true);
+        return;
+    }
+    
+    try {
+        // 🟢 NUEVO: Leer configuración directamente desde SQLite local
+        const configDataRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
+        
+        if (configDataRaw) {
+            const data = JSON.parse(configDataRaw);
+            const shouldIncludeIVA = (data.includeIVA === undefined || data.includeIVA === null) ? true : data.includeIVA;
+            
+            // Actualizar la variable global e invocar el recálculo
+            updateGlobalIVAConfig(shouldIncludeIVA);
+            console.log(`[CONFIG IVA] Cargado desde SQLite: ${shouldIncludeIVA}`);
+            
+        } else {
+            console.log("[CONFIG IVA] No se encontró configuración de factura. Usando IVA por defecto.");
+            updateGlobalIVAConfig(true);
+        }
+    } catch (error) {
+        console.error("[CONFIG IVA] Error al cargar la configuración de IVA desde SQLite:", error);
+    }
+}
+
+function calculatePaymentSummary() {
+    const totalElement = document.getElementById('total');
+    if (!totalElement) return;
+
+    // Obtener elementos de control de estilo
+    const paymentContent = document.getElementById('payment-content'); 
+    const paymentGrid = document.getElementById('payment-grid');       
+    
+    // --- CAMBIO PRINCIPAL AQUÍ ---
+    // En lugar de leer el HTML y dividir, usamos los acumuladores exactos
+    const totalBs = window.exactTotalBs || 0;
+    const totalUsd = window.exactTotalUsd || 0;
+    // -----------------------------
+    
+    // 1. OBTENER MONTOS PAGADOS
+    const efectivo = parseFloat(document.getElementById('efectivo-amount')?.value) || 0;
+    const debito = parseFloat(document.getElementById('debito-amount')?.value) || 0;
+    const pagomovil = parseFloat(document.getElementById('pago-movil-amount')?.value) || 0;
+    const biopago = parseFloat(document.getElementById('bio-pago-amount')?.value) || 0;
+    const dolarInput = parseFloat(document.getElementById('dolar-amount')?.value) || 0;
+    const transferencia = parseFloat(document.getElementById('transferencia-amount')?.value) || 0;
+    const deposito = parseFloat(document.getElementById('deposito-amount')?.value) || 0;
+    const credito = parseFloat(document.getElementById('credito-amount')?.value) || 0;
+    const tarjetaCredito = parseFloat(document.getElementById('tarjeta-credito-amount')?.value) || 0;
+    
+    // Calcular el monto pagado TOTAL en BS
+    // Usamos la tasa global para convertir los dólares que PAGAN (billetes recibidos)
+    const montoDolarBs = dolarInput * dolarExchangeRate;
+    
+    const montoPagadoBs = efectivo + debito + pagomovil + biopago + montoDolarBs +
+                          transferencia + deposito + credito + tarjetaCredito;
+
+    // 2. CALCULAR FALTANTE / CAMBIO
+    const faltanteBs = totalBs - montoPagadoBs;
+    
+    // OBTENER MONTOS DE VUELTO DADO
+    const vueltoEfectivoDado = parseFloat(document.getElementById('vuelto-efectivo-amount')?.value) || 0;
+    const vueltoDolarDado = parseFloat(document.getElementById('vuelto-dolar-amount')?.value) || 0;
+    const vueltoPagoMovilDado = parseFloat(document.getElementById('vuelto-pago-movil-amount')?.value) || 0;
+    
+    const vueltoDolarDadoBs = vueltoDolarDado * dolarExchangeRate;
+    const totalVueltoDadoBs = vueltoEfectivoDado + vueltoDolarDadoBs + vueltoPagoMovilDado;
+
+    // 3. ACTUALIZAR PANELES DE RESUMEN
+    const resumenFaltanteBs = document.getElementById('resumen-faltante-bs');
+    const resumenFaltanteUsd = document.getElementById('resumen-faltante-usd');
+    const etiquetaFaltanteBs = document.getElementById('etiqueta-faltante-bs');
+    const etiquetaFaltanteUsd = document.getElementById('etiqueta-faltante-usd');
+    const montoPagadoDisplay = document.getElementById('montoPagado');
+    const vueltoColumn = document.getElementById('vuelto-column');
+    
+    // Actualizar Totales (en el panel de resumen)
+    document.getElementById('resumen-total-bs').textContent = `Bs${totalBs.toFixed(2)}`;
+    // Aquí mostramos el TOTAL USD calculado correctamente (sumando $ + $ convertidos)
+    document.getElementById('resumen-total-usd').textContent = `$${totalUsd.toFixed(2)}`;
+    
+    montoPagadoDisplay.textContent = `Bs${montoPagadoBs.toFixed(2)}`;
+
+    [resumenFaltanteBs, resumenFaltanteUsd].forEach(el => {
+        el.classList.remove('text-red-600', 'text-green-600');
+    });
+
+    const hayCambio = faltanteBs < -0.01;
+
+    if (hayCambio) {
+        // VUELTO PRESENTE
+        const cambioTotalBs = Math.abs(faltanteBs);
+        const cambioPendienteBs = cambioTotalBs - totalVueltoDadoBs;
+        const cambioPendienteUsd = cambioPendienteBs / dolarExchangeRate; // El vuelto siempre se calcula a tasa global
+        
+        etiquetaFaltanteBs.textContent = "CAMBIO Bs:";
+        etiquetaFaltanteUsd.textContent = "CAMBIO $:";
+        
+        resumenFaltanteBs.textContent = `Bs${Math.abs(cambioPendienteBs).toFixed(2)}`;
+        resumenFaltanteUsd.textContent = `$${Math.abs(cambioPendienteUsd).toFixed(2)}`;
+
+        if (cambioPendienteBs > 0.01) {
+             resumenFaltanteBs.classList.add('text-red-600'); 
+             resumenFaltanteUsd.classList.add('text-red-600');
+        } else if (cambioPendienteBs < -0.01) {
+             resumenFaltanteBs.classList.add('text-red-600');
+             resumenFaltanteUsd.classList.add('text-red-600');
+             etiquetaFaltanteBs.textContent = "VUELTO EXCESIVO:";
+             etiquetaFaltanteUsd.textContent = "VUELTO EXCESIVO:";
+        } else {
+             resumenFaltanteBs.classList.add('text-green-600');
+             resumenFaltanteUsd.classList.add('text-green-600');
+             etiquetaFaltanteBs.textContent = "VUELTO CUADRADO:";
+             etiquetaFaltanteUsd.textContent = "VUELTO CUADRADO:";
+        }
+        
+        vueltoColumn?.classList.remove('hidden');
+        paymentContent.classList.remove('max-w-2xl');
+        paymentContent.classList.add('max-w-4xl');
+        paymentGrid.classList.remove('md:grid-cols-2');
+        paymentGrid.classList.add('md:grid-cols-3');
+
+    } else {
+        // NO HAY VUELTO (Faltante o Exacto)
+        // El faltante en USD se muestra referencial a la tasa global para que el cliente sepa cuántos $ faltan
+        const faltanteUsd = faltanteBs / dolarExchangeRate;
+
+        if (faltanteBs > 0.01) {
+            etiquetaFaltanteBs.textContent = "FALTANTE Bs:";
+            etiquetaFaltanteUsd.textContent = "FALTANTE $:";
+            resumenFaltanteBs.textContent = `Bs${faltanteBs.toFixed(2)}`;
+            resumenFaltanteUsd.textContent = `$${faltanteUsd.toFixed(2)}`;
+            resumenFaltanteBs.classList.add('text-red-600');
+            resumenFaltanteUsd.classList.add('text-red-600');
+        } else {
+            etiquetaFaltanteBs.textContent = "Pagado Exacto:";
+            etiquetaFaltanteUsd.textContent = "Pagado Exacto:";
+            resumenFaltanteBs.textContent = `Bs0.00`;
+            resumenFaltanteUsd.textContent = `$0.00`;
+        }
+
+        vueltoColumn?.classList.add('hidden');
+        paymentContent.classList.remove('max-w-4xl');
+        paymentContent.classList.add('max-w-2xl');
+        paymentGrid.classList.remove('md:grid-cols-3');
+        paymentGrid.classList.add('md:grid-cols-2');
+    }
+}
+
+   // Saves the current cart as a new invoice (Borrador)
+async function saveInvoice() {
+    if (!isAuthReady || !userId || !companyId || !branchId) {
+        messageBox("Error: La sesión no está lista. Intenta de nuevo.", 'bg-red-500');
+        return;
+    }
+    
+    // 🟢 NUEVO: Extraemos el cliente del nuevo Gestor Local
+    const clienteActivo = (window.GestorClientes && window.GestorClientes.selectedCustomer) 
+                          ? window.GestorClientes.selectedCustomer 
+                          : (typeof selectedCustomer !== 'undefined' && selectedCustomer ? selectedCustomer : null);
+
+    if (!clienteActivo) {
+        messageBox("Por favor, seleccione o agregue un cliente para guardar la factura en espera.", 'bg-red-500');
+        return;
+    }
+
+    if (cart.length > 0) {
+        try {
+            const subtotal = cart.reduce((sum, item) => {
+                const p = item.precio !== undefined ? item.precio : (item.price || 0);
+                const q = item.cantidad !== undefined ? item.cantidad : (item.quantity || 0);
+                return sum + (p * q);
+            }, 0);
+            const ivaRate = 0;
+            const ivaAmount = subtotal * ivaRate;
+            const total = subtotal + ivaAmount;
+
+            const payments = {
+                efectivo: parseFloat(document.getElementById('efectivo-amount').value) || 0,
+                debito: parseFloat(document.getElementById('debito-amount').value) || 0,
+                pagomovil: parseFloat(document.getElementById('pago-movil-amount').value) || 0,
+                biopago: parseFloat(document.getElementById('bio-pago-amount').value) || 0,
+                dolar: parseFloat(document.getElementById('dolar-amount').value) || 0,
+                transferencia: parseFloat(document.getElementById('transferencia-amount').value) || 0,
+                deposito: parseFloat(document.getElementById('deposito-amount').value) || 0,
+                credito: parseFloat(document.getElementById('credito-amount').value) || 0,
+                tarjetaCredito: parseFloat(document.getElementById('tarjeta-credito-amount').value) || 0,
+            };
+
+            const invoiceData = {
+                items: JSON.stringify(cart),
+                subtotal: subtotal,
+                iva: ivaAmount,
+                total: total,
+                payments: JSON.stringify(payments),
+                createdAt: Date.now(),
+                userId: userId,
+                companyId: companyId,
+                branchId: branchId,
+                // 🟢 NUEVO: Soporta la estructura SQLite (.nombre / .rif)
+                customerName: clienteActivo.nombre || clienteActivo.name || 'CONSUMIDOR FINAL',
+                customerIdNumber: clienteActivo.rif || clienteActivo.ci || 'V000000000'
+            };
+            
+            // ----------------------------------------------------------------------
+            // 🟢 FASE 1: SIMULACIÓN DE GUARDADO DE BORRADOR (Pronto SQLite)
+            // ----------------------------------------------------------------------
+            console.log("⏳ [Fase 1] Simulación: Borrador listo para BD local.", invoiceData);
+            
+            if (currentInvoiceId) {
+                // Simula la actualización
+                console.log(`Borrador ${currentInvoiceId} actualizado localmente.`);
+                messageBox(`Factura borrador actualizada. Cliente: ${invoiceData.customerName}`, 'bg-purple-500');
+            } else {
+                // Simula la creación
+                currentInvoiceId = `BORR-${Date.now()}`;
+                console.log(`Nuevo borrador creado localmente con ID: ${currentInvoiceId}`);
+                messageBox(`Factura guardada en espera (ID: ${currentInvoiceId}). Cliente: ${invoiceData.customerName}`, 'bg-purple-500');
+            }
+            // ----------------------------------------------------------------------
+            
+        } catch (error) {
+            console.error("Error al guardar el borrador:", error);
+            messageBox("Error al guardar la factura.", 'bg-red-500');
+        }
+    } else {
+        messageBox("No se puede guardar una factura vacía.", 'bg-red-500');
+    }
+}
+
+    // Starts a new invoice by clearing the cart
+    function newInvoice() {
+        cart = [];
+        currentInvoiceId = null;
+        selectedCustomer = null;
+        renderCart();
+        // Dejar en blanco los campos de pago
+        document.getElementById('efectivo-amount').value = '';
+        document.getElementById('debito-amount').value = '';
+        document.getElementById('pago-movil-amount').value = '';
+        document.getElementById('bio-pago-amount').value = '';
+        document.getElementById('dolar-amount').value = '';
+        document.getElementById('transferencia-amount').value = '';
+        document.getElementById('deposito-amount').value = '';
+        document.getElementById('credito-amount').value = '';
+        document.getElementById('tarjeta-credito-amount').value = '';
+        messageBox("Nueva factura creada. El carrito se ha vaciado.", 'bg-gray-500');
+        
+        selectedProduct = null;
+        document.getElementById('product-search').value = '';
+        document.getElementById('barcode-search').value = '';
+        document.getElementById('autocomplete-results').style.display = 'none';
+        
+        // Vuelve a enfocar el campo de código de barras
+        document.getElementById('barcode-search').focus();
+    }
+
+    // Loads a saved invoice into the cart
+    function loadInvoice(invoice) {
+        try {
+            cart = invoice.items;
+            currentInvoiceId = invoice.id;
+            
+            // Si la factura guardada tiene información de cliente, cargarla
+            if (invoice.customerName && invoice.customerIdNumber) {
+                selectedCustomer = { name: invoice.customerName, ci: invoice.customerIdNumber };
+                document.getElementById('client-search').value = invoice.customerIdNumber;
+                clientFoundName.textContent = invoice.customerName;
+                clientFoundId.textContent = invoice.customerIdNumber;
+                clientFoundMessage.classList.remove('hidden');
+                addNewClientPrompt.classList.add('hidden');
+                addClientForm.classList.add('hidden');
+            }
+
+            renderCart();
+            messageBox(`Factura ${invoice.id} (${invoice.customerName || 'sin nombre'}) cargada.`, 'bg-blue-500');
+            const payments = JSON.parse(invoice.payments);
+            // Cargar los valores guardados, usando '' si el valor es 0 para que inicie en blanco (a menos que el valor guardado sea no-cero)
+            document.getElementById('efectivo-amount').value = (payments.efectivo || 0) === 0 ? '' : payments.efectivo.toFixed(2);
+            document.getElementById('debito-amount').value = (payments.debito || 0) === 0 ? '' : payments.debito.toFixed(2);
+            document.getElementById('pago-movil-amount').value = (payments.pagomovil || 0) === 0 ? '' : payments.pagomovil.toFixed(2);
+            document.getElementById('bio-pago-amount').value = (payments.biopago || 0) === 0 ? '' : payments.biopago.toFixed(2);
+            document.getElementById('dolar-amount').value = (payments.dolar || 0) === 0 ? '' : payments.dolar.toFixed(2);
+            document.getElementById('transferencia-amount').value = (payments.transferencia || 0) === 0 ? '' : payments.transferencia.toFixed(2);
+            document.getElementById('deposito-amount').value = (payments.deposito || 0) === 0 ? '' : payments.deposito.toFixed(2);
+            document.getElementById('credito-amount').value = (payments.credito || 0) === 0 ? '' : payments.credito.toFixed(2);
+            document.getElementById('tarjeta-credito-amount').value = (payments.tarjetaCredito || 0) === 0 ? '' : payments.tarjetaCredito.toFixed(2);
+            calculatePaymentSummary();
+        } catch (e) {
+            messageBox("Error al cargar la factura.", 'bg-red-500');
+        }
+    }
+    
+    // MODIFICACIÓN 4: Nueva función para eliminar factura borrador
+async function deleteInvoice(invoiceId) {
+    if (!isAuthReady || !userId) {
+        messageBox("Error: La sesión no está lista.", 'bg-red-500');
+        return;
+    }
+
+    if (invoiceId === currentInvoiceId) {
+        currentInvoiceId = null;
+        newInvoice(); 
+    }
+    
+    try {
+        // ----------------------------------------------------------------------
+        // 🟢 FASE 1: SIMULACIÓN DE ELIMINACIÓN DE BORRADOR (Pronto SQLite)
+        // ----------------------------------------------------------------------
+        console.log(`⏳ [Fase 1] Simulación: Borrador ${invoiceId} eliminado de BD local.`);
+        messageBox(`Factura borrador ${invoiceId} eliminada.`, 'bg-red-600');
+        
+        // Pronto aquí irá: await window.nexusAPI.eliminarBorradorLocal(invoiceId);
+        
+    } catch (error) {
+        messageBox("Error al eliminar la factura borrador.", 'bg-red-500');
+        console.error("Error al eliminar la factura borrador:", error);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log("🚀 Iniciando sistema Nexus POS Local...");
+    await fetchProducts();
+
+});
+
+
+async function fetchProducts() {
+    const productSearchInput = document.getElementById('product-search');
+    const resultsContainer = document.getElementById('autocomplete-results');
+
+    if (!productSearchInput) {
+        return;
+    }
+
+    try {
+        console.log("=== 🔍 PASO 1: INICIANDO CARGA DE PRODUCTOS ===");
+        
+        // 🟢 1. NUEVO: Obtenemos el ID de la empresa (Igual que en tu inventario)
+        const sesion = await window.nexusAPI.obtenerSesionLocal();
+        const idEmpresa = sesion ? sesion.companyId : null;
+
+        if (!idEmpresa) {
+            console.error("❌ ERROR: No se detectó una sesión activa o companyId.");
+            if (typeof messageBox === 'function') messageBox("Error: Inicia sesión nuevamente.", "bg-red-600");
+            return;
+        }
+
+        console.log(`🏢 Empresa detectada: ${idEmpresa}. Solicitando inventario...`);
+        
+        // 🟢 2. CORRECCIÓN: Le pasamos el idEmpresa a la función de Electron
+        const productosDB = await window.nexusAPI.obtenerProductosLocal(idEmpresa);
+        
+        console.log("📦 Datos crudos recibidos de SQLite (Primeros 2):", productosDB.slice(0, 2));
+
+        if (!productosDB || productosDB.length === 0) {
+            console.warn("⚠️ ADVERTENCIA: SQLite devolvió un array vacío. ¿Tienes productos registrados en esta empresa?");
+            if (resultsContainer) {
+                resultsContainer.innerHTML = `<div class="autocomplete-item text-center text-gray-500">No hay productos registrados.</div>`;
+            }
+            allProducts = []; 
+            return;
+        }
+
+
+        allProducts = productosDB.map(p => {
+            let monedaReal = p.currency || p.moneda || 'BS';
+            let unidadReal = p.unit || 'UN'; // 🔥 SOLUCIÓN: Declaramos la variable para atrapar la unidad
+            
+            // Extraemos la información del JSON empaquetado para asegurar los datos
+            try {
+                if (p.datos_json) {
+                    const datosParseados = typeof p.datos_json === 'string' ? JSON.parse(p.datos_json) : p.datos_json;
+                    if (datosParseados.currency || datosParseados.moneda) {
+                        monedaReal = datosParseados.currency || datosParseados.moneda;
+                    }
+                    if (datosParseados.unit) {
+                        unidadReal = datosParseados.unit; // 🔥 SOLUCIÓN: Extraemos la unidad del JSON
+                    }
+                }
+            } catch (e) {
+                console.warn("⚠️ Error parseando JSON del producto:", e);
+            }
+
+            return {
+                id: p.producto_ID || p.id,
+                nombre: p.nombre || p.name,
+                codigo: p.codigo || p.code,
+                precio: parseFloat(p.precio_venta || p.precio || 0),
+                iva: p.tipo_alicuota || '16', 
+                stock: p.stock || 0,
+                categoria: p.categoria || 'General',
+                currency: monedaReal, 
+                isUSD: monedaReal === 'USD' || p.isUSD || false,
+                unit: unidadReal // 🔥 SOLUCIÓN: Agregamos el campo al array final
+            };
+        });
+
+        console.log("🧠 Array 'allProducts' guardado en memoria RAM. Total:", allProducts.length);
+
+        if (resultsContainer) {
+            resultsContainer.innerHTML = '';
+        }
+
+        if (typeof setupSearchListener === 'function') {
+            setupSearchListener();
+        }
+
+    } catch (error) {
+        console.error("❌ ERROR CRÍTICO al cargar productos desde SQLite:", error);
+    }
+}
+
+function renderAutocompleteResults(products, resultsId, type) {
+    
+    const resultsContainer = document.getElementById(resultsId);
+    if (!resultsContainer) {
+        console.error(`❌ ERROR: No existe el contenedor con ID: ${resultsId}`);
+        return;
+    }
+
+    resultsContainer.innerHTML = '';
+    
+    if (type === 'name') {
+        productFocus = -1;
+    } else {
+        barcodeFocus = -1;
+    }
+
+    if (products.length === 0) {
+        console.log("⚠️ Array vacío al renderizar. Ocultando menú.");
+        resultsContainer.style.display = 'none';
+        return;
+    }
+
+
+   products.forEach((product) => {
+        const div = document.createElement('div');
+        div.className = 'autocomplete-item';
+        div.style.backgroundColor = "transparent"; 
+        
+        const isUSD = product.currency === 'USD' || product.isUSD;
+        const symbol = isUSD ? 'USD' : 'BS';
+        const symbolColor = isUSD ? '#059669' : '#2563eb';
+        
+        // Variables conectadas al "Cerebro" local (SQLite)
+        const price = product.precio ? parseFloat(product.precio).toFixed(2) : '0.00';
+        const productCode = product.codigo || 'NC';
+
+        // Tu diseño original intocable
+        div.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; pointer-events: none;">
+                <div style="display: flex; flex-direction: column; flex-grow: 1;">
+                    <span style="text-transform: uppercase; font-weight: 600; font-size: 0.85rem; color: #1f2937;">
+                        ${product.nombre}
+                    </span>
+                    <span style="font-size: 0.7rem; color: #9ca3af; font-weight: 400; margin-top: 2px;">
+                        Código: ${productCode}
+                    </span>
+                </div>
+                <div style="margin-left: 15px; white-space: nowrap; font-size: 0.95rem; font-weight: 700;">
+                    <span style="color: #111827;">${price}</span> 
+                    <span style="color: ${symbolColor}; margin-left: 4px;">${symbol}</span>
+                </div>
+            </div>
+        `;
+
+        div.addEventListener('click', () => {
+            console.log(`🖱️ Producto seleccionado: ${product.nombre}`);
+            selectedProduct = product; 
+            resultsContainer.style.display = 'none';
+            addItem(); 
+
+            const inputId = (type === 'name') ? 'product-search' : 'barcode-search';
+            const searchInput = document.getElementById(inputId);
+            if (searchInput) {
+                searchInput.value = ''; 
+                searchInput.focus();
+            }
+        });
+
+        resultsContainer.appendChild(div);
+    }); 
+
+    resultsContainer.style.display = 'block';
+}
+
+
+function setupSearchListener() {
+    const searchInput = document.getElementById('product-search');
+    const resultsContainer = document.getElementById('autocomplete-results');
+    
+    if (!searchInput) return;
+
+    // 1. RASTREO DE ENFOQUE
+    searchInput.addEventListener('focusin', () => {
+        lastUsedInputId = 'product-search';
+    });
+
+    // 2. BÚSQUEDA DINÁMICA CON DETECCIÓN DE ESCÁNER
+    searchInput.addEventListener('input', (event) => {
+        const query = event.target.value.trim(); 
+        
+        if (!query) {
+            resultsContainer.style.display = 'none';
+            return;
+        }
+
+        // --- LÓGICA DE DETECCIÓN AUTOMÁTICA DE BARCODE ---
+        // Si el usuario escanea teniendo el foco aquí, entrará una cadena numérica larga.
+        // El regex /^\d{7,}$/ detecta si son solo números de 7 o más dígitos.
+        const isPotentialBarcode = /^\d{7,}$/.test(query); 
+
+        if (isPotentialBarcode) {
+            // Buscamos el producto por su código exacto en el array local
+            const product = allProducts.find(p => String(p.codigo) === query);
+            
+            if (product) {
+                console.log(`🚀 Escáner detectado en barra de búsqueda. Producto: ${product.nombre}`);
+                
+                // 1. Limpiamos la barra y cerramos sugerencias de inmediato
+                searchInput.value = '';
+                resultsContainer.style.display = 'none';
+                
+                // 2. Lo asignamos y usamos la función nativa para añadir al carrito
+                selectedProduct = product;
+                addItem(); 
+                
+                return; // Cortamos el flujo para no buscar por nombre
+            }
+        }
+
+        // Si no es un código de barras, procedemos con la búsqueda normal por nombre
+        filterProducts(query, 'name', 'autocomplete-results');
+    });
+
+    // 3. NAVEGACIÓN, SELECCIÓN Y ESCÁNER (TECLAS)
+    searchInput.addEventListener('keydown', (e) => {
+        
+        // --- LÓGICA DE ENTER (Escáner vs Selección Manual) ---
+        if (e.key === 'Enter') {
+            
+            // A. Si viene del flujo de variables del escáner global
+            if (typeof scannedBarcode !== 'undefined' && scannedBarcode.length > 4) { 
+                e.preventDefault();
+                const cleanBarcode = scannedBarcode.trim();
+                processBarcodeScan(cleanBarcode);
+                scannedBarcode = ''; 
+                searchInput.value = '';
+                return; 
+            }
+
+            // B. Si es selección del menú con las flechas
+            let items = resultsContainer.querySelectorAll('.autocomplete-item');
+            if (typeof productFocus !== 'undefined' && productFocus > -1 && items[productFocus]) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                items[productFocus].click();
+                productFocus = -1; // Reseteamos la posición
+                return;
+            }
+        }
+        
+        // --- NAVEGACIÓN CON FLECHAS ---
+        let items = resultsContainer.querySelectorAll('.autocomplete-item');
+        if (items.length === 0) return;
+
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            productFocus++;
+            if (productFocus >= items.length) productFocus = 0;
+            applyHighlight(items, productFocus);
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            productFocus--;
+            if (productFocus < 0) productFocus = items.length - 1;
+            applyHighlight(items, productFocus);
+        }
+    });
+    
+    // 4. DETECCIÓN DE CLIC FUERA
+    document.addEventListener('click', (e) => {
+        if (!searchInput.contains(e.target) && !resultsContainer.contains(e.target)) {
+            resultsContainer.style.display = 'none';
+        }
+    });
+}
+
+function setupBarcodeSearchListener() {
+    const barcodeInput = document.getElementById('barcode-search');
+    const resultsContainer = document.getElementById('barcode-autocomplete-results');
+    const lastScannedInput = document.getElementById('last-scanned-code');
+
+    if (!barcodeInput) return;
+
+    // Agregar listener para rastrear el enfoque
+    barcodeInput.addEventListener('focusin', () => {
+        lastUsedInputId = 'barcode-search';
+    });
+
+    barcodeInput.addEventListener('input', (event) => {
+        const query = event.target.value.toLowerCase().trim();
+        
+        if (!query) {
+            resultsContainer.style.display = 'none';
+            return;
+        }
+        
+        let filteredProducts = allProducts.filter(product =>
+            product.codigo && String(product.codigo).toLowerCase().includes(query)
+        );
+        
+        // 🟢 CORRECCIÓN: Le pasamos 'code' para que coincida con la lógica de la función
+        renderAutocompleteResults(filteredProducts, 'barcode-autocomplete-results', 'code');
+    });
+        
+    
+    barcodeInput.addEventListener('keydown', (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            const code = barcodeInput.value.trim();
+            if (!code) return;
+
+            // 🔥 APLICAR MISMO FILTRO ANTI-REBOTE AQUÍ
+            const now = Date.now();
+            if (code === lastScannedCodeGlobal && (now - lastScannedTimestamp) < 600) return;
+            
+            lastScannedCodeGlobal = code;
+            lastScannedTimestamp = now;
+
+            const product = allProducts.find(p => String(p.codigo) === code);
+            if (product) {
+                selectedProduct = product;
+                addItem(); 
+                barcodeInput.value = ''; // Limpiar inmediatamente
+            } else {
+                if (typeof messageBox === 'function') messageBox("Producto no encontrado.", 'bg-red-500');
+            }
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (resultsContainer && !barcodeInput.contains(e.target) && !resultsContainer.contains(e.target)) {
+            resultsContainer.style.display = 'none';
+        }
+    });
+}
+
+    // Highlights an item in the autocomplete dropdown
+    function highlightItem(items) {
+        if (!items) return;
+        for (let i = 0; i < items.length; i++) {
+            items[i].classList.remove('highlighted');
+        }
+        if (items[currentFocus]) {
+            items[currentFocus].classList.add('highlighted');
+            items[currentFocus].scrollIntoView({ block: 'nearest' });
+        }
+    }
+    
+    
+    // Custom message box function instead of alert()
+    function messageBox(message, bgColor) {
+        let box = document.getElementById('message-box');
+        if (!box) {
+            box = document.createElement('div');
+            box.id = 'message-box';
+            document.body.appendChild(box);
+        }
+        
+        box.textContent = message;
+        box.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg text-white transition-opacity duration-300 z-50 ${bgColor} opacity-100`;
+        
+        setTimeout(() => {
+            box.classList.remove('opacity-100');
+            box.classList.add('opacity-0');
+        }, 3000);
+    }
+    
+// --- MÓDULO LOCAL DE CLIENTES (NEXUS POS) ---
+const GestorClientes = {
+    lista: [], 
+    selectedCustomer: null,
+
+    // Referencias al DOM (Mismos IDs de tu HTML)
+    ui: {
+        searchInput: document.getElementById('client-search'),
+        searchBtn: document.getElementById('search-client-btn'),
+        foundMessage: document.getElementById('client-found-message'),
+        foundName: document.getElementById('client-found-name'),
+        foundId: document.getElementById('client-found-id'),
+        newPrompt: document.getElementById('add-new-client-prompt'),
+        showFormBtn: document.getElementById('show-add-client-form-btn'),
+        addForm: document.getElementById('add-client-form'),
+        newName: document.getElementById('new-client-name'),
+        newId: document.getElementById('new-client-id'),
+        newAddress: document.getElementById('new-client-address'),
+        addBtn: document.getElementById('add-client-btn')
+    },
+
+    async inicializar() {
+        await this.cargarTodos();
+        this.configurarEventos();
+    },
+
+    async cargarTodos() {
+        try {
+            const clientesDB = await window.nexusAPI.obtenerClientesLocal();
+            this.lista = clientesDB || [];
+            console.log(`👥 ${this.lista.length} Clientes cargados en base de datos SQlite.`);
+        } catch (e) {
+            console.error("Error cargando clientes en SQlite:", e);
+        }
+    },
+
+    buscarCliente() {
+        const searchValue = this.ui.searchInput.value.trim().toLowerCase();
+        
+        // Resetear la vista
+        this.ui.foundMessage.classList.add('hidden');
+        this.ui.newPrompt.classList.add('hidden');
+        this.ui.addForm.classList.add('hidden');
+        this.selectedCustomer = null;
+
+        if (!searchValue) return;
+
+        // Búsqueda en memoria local
+        const clienteEncontrado = this.lista.find(c => 
+            c.rif.toLowerCase() === searchValue || 
+            c.nombre.toLowerCase().includes(searchValue)
+        );
+
+        if (clienteEncontrado) {
+            this.selectedCustomer = clienteEncontrado;
+            
+            // Clonamos a las variables globales para compatibilidad
+            selectedCustomer = clienteEncontrado;
+            selectedCustomer.name = clienteEncontrado.nombre;
+            selectedCustomer.ci = clienteEncontrado.rif;
+            
+            this.ui.foundName.textContent = clienteEncontrado.nombre;
+            this.ui.foundId.textContent = clienteEncontrado.rif;
+            this.ui.foundMessage.classList.remove('hidden');
+        } else {
+            // 🔥 SOLUCIÓN: Si no existe, activamos el aviso para agregarlo
+            this.ui.newPrompt.classList.remove('hidden');
+            // Precargamos el ID que el usuario escribió para ahorrar tiempo
+            this.ui.newId.value = this.ui.searchInput.value.toUpperCase();
+        }
+    },
+
+    limpiarSeleccion() {
+        this.selectedCustomer = null;
+        if (this.ui.searchInput) this.ui.searchInput.value = '';
+        if (this.ui.foundMessage) this.ui.foundMessage.classList.add('hidden');
+    },
+
+    mostrarFormulario() {
+        // Ocultamos el aviso de "¿Desea agregarlo?"
+        this.ui.newPrompt.classList.add('hidden');
+        // Mostramos el contenedor de los 3 inputs (Nombre, CI, Dirección)
+        this.ui.addForm.classList.remove('hidden');
+        
+        // Foco automático al nombre para rapidez del cajero
+        setTimeout(() => this.ui.newName.focus(), 100);
+    },
+    
+    async agregarCliente() {
+    const nombre = this.ui.newName.value.trim();
+    let idInput = this.ui.newId.value.trim().toUpperCase();
+    const direccion = this.ui.newAddress.value.trim() || 'No especificada';
+
+    if (!nombre || !idInput) {
+        if (typeof messageBox === 'function') messageBox('Nombre y Cédula/RIF son obligatorios.', 'bg-red-500');
+        return;
+    }
+
+    // 🔥 NORMALIZACIÓN: Si el cajero no puso letra, anteponemos 'V' automáticamente
+    // Esto garantiza que el servidor reciba el campo 'rif' con el formato correcto
+    let rifFinal = idInput.replace(/[-\s]/g, '');
+    if (/^\d+$/.test(rifFinal)) {
+        rifFinal = 'V' + rifFinal;
+    }
+
+    if (!validarRIF(rifFinal)) {
+        if (typeof messageBox === 'function') messageBox('El número de identificación no es válido.', 'bg-red-600');
+        this.ui.newId.focus();
+        return;
+    }
+
+    const sesion = await window.nexusAPI.obtenerSesionLocal();
+    const companyId = sesion ? sesion.companyId : 'DEFAULT';
+
+    // OBJETO FORMATEADO SEGÚN EL MODELO DE TU SERVIDOR (MONGOOSE)
+    const nuevoCliente = {
+        rif: rifFinal,
+        nombre: nombre,
+        direccion: direccion,
+        empresa_ID: companyId,
+        fecha_modificacion: new Date().toISOString()
+    };
+
+    // 1. Guardado local prioritario (SQLite)
+    const resultado = await window.nexusAPI.guardarClienteLocal(nuevoCliente);
+
+    if (resultado && !resultado.error) {
+        // Actualizar estado global y UI
+        this.selectedCustomer = nuevoCliente;
+        selectedCustomer = nuevoCliente; 
+        selectedCustomer.name = nuevoCliente.nombre;
+        selectedCustomer.ci = nuevoCliente.rif;
+        
+        this.ui.addForm.classList.add('hidden');
+        this.ui.newName.value = '';
+        this.ui.newId.value = '';
+        this.ui.newAddress.value = '';
+        this.ui.searchInput.value = '';
+
+        // 2. 🌐 SINCRONIZACIÓN GLOBAL (clientes.nexusposgobal.com)
+        try {
+            const response = await fetch('https://clientes.nexusposgobal.com/api/clientes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(nuevoCliente)
+            });
+
+            if (response.ok) {
+                console.log("☁️ Sincronizado con Xeon Global exitosamente.");
+            } else {
+                const errData = await response.json();
+                console.error("❌ Error 400 del Servidor Xeon:", errData);
+            }
+        } catch (err) {
+            console.warn("📡 Offline: El cliente se sincronizará automáticamente al detectar red.");
+        }
+
+        await this.cargarTodos();
+        if (typeof messageBox === 'function') messageBox(`Cliente registrado con éxito.`, 'bg-green-500');
+    }
+},
+
+configurarEventos() {
+        // Captura de elementos
+        this.ui.searchBtn = document.getElementById('search-client-btn');
+        this.ui.searchInput = document.getElementById('client-search');
+        this.ui.showFormBtn = document.getElementById('show-add-client-form-btn');
+        this.ui.addBtn = document.getElementById('add-client-btn');
+
+        // 1. Evento del botón buscar (Lupa)
+        if (this.ui.searchBtn) {
+            this.ui.searchBtn.onclick = () => this.buscarCliente();
+        }
+
+        // 2. Lógica de Enter en el Buscador (Búsqueda o Apertura de Formulario)
+        if (this.ui.searchInput) {
+            this.ui.searchInput.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    if (this.ui.newPrompt && !this.ui.newPrompt.classList.contains('hidden')) {
+                        this.mostrarFormulario();
+                    } else {
+                        this.buscarCliente();
+                    }
+                }
+            };
+        }
+
+        // 3. MEJORA: Lógica de Enter dentro del Formulario de Registro
+        // Si el cajero termina de escribir la dirección y da Enter, se guarda.
+        const inputsFormulario = [this.ui.newName, this.ui.newId, this.ui.newAddress];
+        inputsFormulario.forEach(input => {
+            if (input) {
+                input.onkeydown = (e) => {
+                    if (e.key === 'Enter') {
+                        console.log("⌨️ Enter detectado en formulario: Guardando cliente...");
+                        this.agregarCliente();
+                    }
+                };
+            }
+        });
+
+        // 4. Botones manuales
+        if (this.ui.showFormBtn) {
+            this.ui.showFormBtn.onclick = () => this.mostrarFormulario();
+        }
+
+        if (this.ui.addBtn) {
+            this.ui.addBtn.onclick = () => this.agregarCliente();
+        }
+    }
+};
+
+async function sincronizarClientesPendientes() {
+    try {
+        // Ping al dominio global de clientes
+        await fetch('https://clientes.nexusposgobal.com/api/clientes', { method: 'HEAD', mode: 'no-cors' });
+        
+        const clientes = await window.nexusAPI.obtenerClientesLocal();
+        if (!clientes || clientes.length === 0) return;
+
+        let sincronizados = 0;
+        for (const cliente of clientes) {
+            try {
+                const res = await fetch('https://clientes.nexusposgobal.com/api/clientes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(cliente)
+                });
+                if (res.ok) sincronizados++;
+            } catch (innerError) { break; }
+        }
+
+        if (sincronizados > 0) {
+            console.log(`🚀 [Motor Sync] ${sincronizados} clientes sincronizados.`);
+            if (typeof messageBox === 'function') messageBox(`Nube actualizada: ${sincronizados} clientes.`, 'bg-blue-600');
+        }
+    } catch (error) {
+        console.warn("⚠️ Servidor Xeon Clientes no alcanzable en este momento.");
+    }
+}
+
+// A. Disparador por evento de red
+window.addEventListener('online', () => {
+    console.log("🌐 Red detectada por el sistema operativo...");
+    setTimeout(sincronizarClientesPendientes, 1000); // 5 segundos de gracia
+});
+
+// B. Vigilancia Activa (Cada 60 segundos por si el evento falla)
+setInterval(() => {
+    if (navigator.onLine) {
+        sincronizarClientesPendientes();
+    }
+}, 60000); 
+
+// C. Al arrancar (Fundamental)
+document.addEventListener('DOMContentLoaded', () => {
+    // Le damos 2 segundos después de cargar la página para intentar la primera sync
+    setTimeout(sincronizarClientesPendientes, 3000);
+});
+
+// ESCUCHADOR DE INTERNET
+window.addEventListener('online', () => {
+    if (typeof messageBox === 'function') messageBox("Conexión restablecida. Sincronizando datos...", 'bg-blue-500');
+    sincronizarClientesPendientes();
+});
+
+// Arrancar el módulo automáticamente
+document.addEventListener('DOMContentLoaded', () => {
+    GestorClientes.inicializar();
+});
+    
+// HACK: Adjuntar funciones al objeto global 'window' para que el HTML pueda llamarlas directamente.
+window.addItem = addItem;
+window.GestorClientes = GestorClientes;
+window.clearCart = clearCart;
+window.processSale = processSale;
+window.saveInvoice = saveInvoice;
+window.newInvoice = newInvoice;
+window.loadInvoice = loadInvoice;
+window.printInvoice = printInvoice;
+window.calculatePaymentSummary = calculatePaymentSummary;
+window.deleteInvoice = deleteInvoice;
+
+// 🟢 Clave: Solo exponemos los alias usados en renderCart (updateQuantity y removeItemFromCart)
+window.updateQuantity = updateCartItemQuantity; 
+window.removeItemFromCart = removeCartItem;
+
+    // Lógica para vincular eventos de cálculo de pagos
+    const paymentInputs = document.querySelectorAll('.payment-input');
+    
+    paymentInputs.forEach(input => {
+        // Adjuntar el cálculo al evento 'input' (mientras se escribe) y 'change' (al salir)
+        input.addEventListener('input', calculatePaymentSummary);
+        input.addEventListener('change', calculatePaymentSummary);
+    });
+
+    // Funciones para abrir/cerrar modal de métodos de pago
+window.openPaymentModal = function() {
+  document.getElementById('payment-modal').classList.remove('hidden');
+};
+window.closePaymentModal = function() {
+  document.getElementById('payment-modal').classList.add('hidden');
+};
+
+// Esperar a que el DOM esté cargado para inicializar funciones
+window.addEventListener('DOMContentLoaded', () => {
+    if (typeof setupSearchListener === 'function') setupSearchListener();
+    if (typeof setupBarcodeSearchListener === 'function') setupBarcodeSearchListener();
+    calculatePaymentSummary();
+});
+
+    calculatePaymentSummary();
+
+    const formatLine = (label, amountText) => {
+        // ⚠️ DEBE INCLUIR ESTAS DOS LÍNEAS PARA SOLUCIONAR EL ERROR
+        const safeLabel = String(label || ''); 
+        const safeAmountText = String(amountText || '');
+
+        const maxLabelWidth = 23;
+        const maxAmountWidth = 25; 
+        
+        // Debe usar las variables 'safeLabel' y 'safeAmountText'
+        const paddedLabel = (safeLabel + ':').padEnd(maxLabelWidth);
+        const paddedAmount = safeAmountText.padStart(maxAmountWidth);
+        
+        return paddedLabel + paddedAmount + '\n';
+    };
+    
+    // Función auxiliar para envolver el texto por recuento de caracteres (17 caracteres)
+    const wrapText = (text, maxLength) => {
+        const lines = [];
+        while (text.length > 0) {
+            // Tomar el segmento y limpiar espacios al inicio si se lleva a la siguiente línea
+            let segment = text.substring(0, maxLength);
+            lines.push(segment.trimStart());
+            text = text.substring(maxLength);
+        }
+        return lines;
+    };
+
+async function fetchFacturaConfig() {
+    // Validamos que la API local (SQLite) esté disponible
+    if (!window.nexusAPI || typeof window.nexusAPI.obtenerConfiguracion !== 'function') {
+        console.warn("[CONFIG] API local no disponible. Usando valores por defecto.");
+        enableMulticurrency = false;
+        return;
+    }
+    
+    try {
+        // 🟢 NUEVO: Leer configuración directamente desde SQLite local
+        const configDataRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
+
+        if (configDataRaw) {
+            const fullConfigData = JSON.parse(configDataRaw);
+
+            // 🟢 LÓGICA PARA CARGAR TAMAÑO DE IMPRESORA
+            if (fullConfigData.tamañoImpresora && (fullConfigData.tamañoImpresora === "80" || fullConfigData.tamañoImpresora === "58")) {
+                printerSize = fullConfigData.tamañoImpresora; 
+                console.log(`[CONFIG] Tamaño de impresora cargado: ${printerSize}mm.`);
+            } else {
+                printerSize = "58"; 
+                console.warn("[CONFIG] Campo 'tamañoImpresora' inválido/no encontrado. Usando 58mm.");
+            }
+
+             // 🟢 LÓGICA PARA CARGAR FACTURA MULTIMONEDA
+             const enableMulticurrencyFromDb = fullConfigData.enableMulticurrency;
+             enableMulticurrency = (enableMulticurrencyFromDb === true); 
+             tipoEmisionFiscal = fullConfigData.tipo_emision || "TICKET_NO_FISCAL";console.log(`[CONFIG] Modo Fiscal establecido a: ${tipoEmisionFiscal}`);
+             console.log(`[CONFIG] Factura Multimoneda: ${enableMulticurrency ? 'Habilitada' : 'Deshabilitada'}.`);
+
+            // 🟢 LÓGICA PARA EL ENCABEZADO
+            if (fullConfigData.encabezadoFactura) {
+                const configDataEncabezado = fullConfigData.encabezadoFactura;
+                if (configDataEncabezado.line1 && configDataEncabezado.line2 && configDataEncabezado.line3 && configDataEncabezado.line4) {
+                    encabezadoFactura = configDataEncabezado;
+                    console.log("[CONFIG] Encabezado de factura cargado de SQLite.");
+                } else {
+                    console.warn("[CONFIG] La configuración de 'encabezadoFactura' está incompleta. Usando valores por defecto.");
+                }
+            } else {
+                console.warn("[CONFIG] No se encontró el campo 'encabezadoFactura'. Usando valores por defecto.");
+            }
+
+        } else {
+            console.warn("[CONFIG] No se encontró configuración de 'factura' en SQLite. Usando todos los valores por defecto.");
+            enableMulticurrency = false; 
+        }
+    } catch (error) {
+        console.error("[CONFIG] Error al buscar la configuración de factura local:", error);
+        enableMulticurrency = false; 
+    }
+}
+
+
+async function descontarInventario(cartData) {
+
+    const API_URL = 'https://stock.nexusposgobal.com/api/inventario/procesar-venta';
+    
+    
+    const itemsParaDescontar = cartData.map(item => {
+        return {
+            documentId: item.id, 
+            cantidadADescontar: item.quantity 
+        };
+    });
+    
+    const bodyPayload = {
+        items: itemsParaDescontar, 
+        companyID: companyId,
+        branchID: branchId    
+    };
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(bodyPayload),
+            credentials: 'omit', 
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+            const errorMessage = data.message || `Error del servidor (${response.status}): No se pudo completar la venta.`;
+            console.error(`Error de API (${response.status}):`, data);
+            
+            // Reemplace messageBox si usa otra función para notificaciones
+            messageBox(`Error de Venta: ${errorMessage}`, 'bg-red-700'); 
+            return false;
+        }
+
+        console.log("Respuesta de la API de Inventario:", data.message, data.details);
+        return true;
+
+    } catch (error) {
+        console.error("Error de red o CORS al contactar la API de stock:", error);
+        messageBox("Error de Conexión: No se pudo contactar el servidor de inventario. Verifique la red.", 'bg-red-700');
+        return false;
+    }
+}
+
+
+
+async function printInvoice() {
+    if (cart.length === 0) {
+        messageBox("El carrito está vacío.", 'bg-red-500');
+        return;
+    }
+
+    if (!selectedCustomer) {
+        messageBox("Por favor, seleccione un cliente.", 'bg-red-500');
+        return;
+    }
+    
+    // --- 1. RECUPERAR CONFIGURACIÓN Y CORRELATIVOS ---
+    let printerName = null;
+    const configDataRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
+    if (configDataRaw) {
+        const configFactura = JSON.parse(configDataRaw);
+        printerName = configFactura.impresoraSeleccionada;
+        if(configFactura.tamañoImpresora) printerSize = configFactura.tamañoImpresora;
+    }
+
+    if (!printerName) {
+        messageBox("⚠️ Impresora no configurada.", 'bg-yellow-500');
+        return;
+    }
+
+    // Obtener Números de Factura y Control desde el Cerebro (SQLite)
+    const correlativo = await window.nexusAPI.obtenerProximoCorrelativo('FORMA_LIBRE');
+    const nroFactura = correlativo.formato;
+    const nroControl = `00-${Math.floor(Math.random() * 900000)}`; // O generar correlativo propio
+
+    // --- 2. CÁLCULOS FISCALES (PROVIDENCIA 0102) ---
+    let totalExento = 0;
+    let baseG = 0; // Base Imponible General 16%
+    let ivaG = 0;
+    
+    cart.forEach(item => {
+        const tasa = parseFloat(item.tasaIva) || 16;
+        if (tasa === 0) {
+            totalExento += item.subtotal;
+        } else {
+            baseG += item.baseImponible;
+            ivaG += item.montoIva;
+        }
+    });
+
+    // Cálculo de IGTF (3%) sobre pagos en dólares
+    const pagoDolar = parseFloat(document.getElementById('dolar-amount').value) || 0;
+    const montoIGTF = pagoDolar > 0 ? (pagoDolar * dolarExchangeRate) * 0.03 : 0;
+    const totalFinalBs = totalExento + baseG + ivaG + montoIGTF;
+
+    // --- 3. CONSTRUCCIÓN DEL TICKET FISCAL DIGITAL ---
+    const LINE_WIDTH = (printerSize === "80") ? 48 : 32;
+    const CRLF = "\r\n";
+    const SEPARATOR = "-".repeat(LINE_WIDTH) + CRLF;
+
+    let t = "\x1B\x40"; // Inicializar
+    t += centerText(encabezadoFactura.line1.toUpperCase(), LINE_WIDTH) + CRLF;
+    t += centerText(`RIF: ${encabezadoFactura.line3.toUpperCase()}`, LINE_WIDTH) + CRLF;
+    t += centerText(encabezadoFactura.line2, LINE_WIDTH) + CRLF;
+    t += SEPARATOR;
+    t += centerText("FACTURA", LINE_WIDTH) + CRLF;
+    t += `NRO FACTURA: ${nroFactura}` + CRLF;
+    t += `NRO CONTROL: ${nroControl}` + CRLF;
+    t += `FECHA: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}` + CRLF;
+    t += SEPARATOR;
+    t += `CLIENTE: ${selectedCustomer.nombre || selectedCustomer.name}` + CRLF;
+    t += `RIF/CI: ${selectedCustomer.rif || selectedCustomer.ci}` + CRLF;
+    t += SEPARATOR;
+
+    // Detalle de Items con Indicador de Alícuota (E) o (G)
+    cart.forEach(item => {
+        const indicador = (item.tasaIva === 0) ? "(E)" : "(G)";
+        const desc = `${item.nombre.substring(0, LINE_WIDTH - 15)} ${indicador}`;
+        t += desc.padEnd(LINE_WIDTH - 12) + item.subtotal.toFixed(2).padStart(12) + CRLF;
+    });
+    
+    t += SEPARATOR;
+    if (totalExento > 0) t += formatLR("BI EXENTO:", totalExento.toFixed(2), LINE_WIDTH) + CRLF;
+    if (baseG > 0) {
+        t += formatLR("BI GENERAL (16%):", baseG.toFixed(2), LINE_WIDTH) + CRLF;
+        t += formatLR("IVA (16%):", ivaG.toFixed(2), LINE_WIDTH) + CRLF;
+    }
+    if (montoIGTF > 0) t += formatLR("IGTF (3%):", montoIGTF.toFixed(2), LINE_WIDTH) + CRLF;
+    t += formatLR("TOTAL BS:", totalFinalBs.toFixed(2), LINE_WIDTH) + CRLF;
+    
+    // Elementos Digitales 0102
+    t += SEPARATOR;
+    t += centerText("DOCUMENTO EMITIDO CONFORME A LA", LINE_WIDTH) + CRLF;
+    t += centerText("PROVIDENCIA SNAT/2024/000102", LINE_WIDTH) + CRLF;
+    t += centerText(`HASH: ${btoa(nroFactura).substring(0, 16)}`, LINE_WIDTH) + CRLF;
+    t += CRLF.repeat(4) + "\x1D\x56\x42\x00"; // Corte
+
+    // --- 4. GUARDAR EN DB Y ENVIAR A IMPRESORA ---
+    try {
+        const result = await window.nexusAPI.imprimirTextoLibre(t, printerName);
+        if (result.exito) {
+            messageBox(`✅ Factura ${nroFactura} Impresa`, 'bg-green-500');
+        }
+    } catch (error) {
+        messageBox(`Error: ${error.message}`, 'bg-red-500');
+    }
+}
+
+function centerText(text, width) {
+    text = text.trim();
+    if (text.length >= width) return text.substring(0, width);
+    const spaces = Math.floor((width - text.length) / 2);
+    return " ".repeat(spaces) + text;
+}
+
+// Función auxiliar para alinear izquierda-derecha
+function formatLR(left, right, width) {
+    const safeLeft = String(left || '');
+    const safeRight = String(right || '');
+    const spaceNeeded = width - safeLeft.length - safeRight.length;
+    if (spaceNeeded > 0) {
+        return safeLeft + " ".repeat(spaceNeeded) + safeRight;
+    }
+    return safeLeft.substring(0, width - safeRight.length - 1) + " " + safeRight;
+}
+
+window.editingItemIndex = null;
+
+// Función Principal: Crea y abre el modal
+window.editItemTasa = function(index) {
+    const item = cart[index];
+    if (!item) return;
+    window.editingItemIndex = index;
+
+    // Limpieza de seguridad
+    const oldModal = document.getElementById('tasa-modal');
+    if (oldModal) oldModal.remove();
+
+    const modalHTML = `
+    <div id="tasa-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style="z-index: 999999;">
+        <div class="bg-white rounded-[20px] shadow-2xl w-full max-w-[450px] overflow-hidden p-6 relative">
+            
+            <button onclick="window.closeTasaModal()" class="absolute top-4 right-5 text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+
+            <h2 class="text-[#1e293b] text-2xl font-bold text-center mb-6">Ajustar Tasa</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-[#1e293b] font-semibold mb-1.5 ml-1">Producto</label>
+                    <div class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-500 italic">
+                        ${item.name}
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-[#1e293b] font-semibold mb-1.5 ml-1">Nueva Tasa (Bs)</label>
+                    <input type="number" id="nueva-tasa-input" step="0.01" 
+                           value="${item.tasa || window.dolarExchangeRate || 0}"
+                           placeholder="0.00"
+                           class="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all">
+                </div>
+
+                <div class="flex gap-3 mt-8">
+                    <button onclick="window.closeTasaModal()" 
+                            class="flex-1 bg-[#64748b] text-white py-3.5 rounded-xl font-bold hover:bg-[#475569] transition-colors">
+                        Cancelar
+                    </button>
+                    <button onclick="window.saveTasaChanges()" 
+                            class="flex-1 bg-[#dc2626] text-white py-3.5 rounded-xl font-bold hover:bg-[#b91c1c] shadow-lg shadow-red-200 transition-colors">
+                        Confirmar Tasa
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>`;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    // Foco y selección instantánea
+    setTimeout(() => {
+        const input = document.getElementById('nueva-tasa-input');
+        if (input) { input.focus(); input.select(); }
+    }, 50);
+};
+
+// --- Las funciones closeTasaModal y saveTasaChanges se mantienen igual ---
+window.closeTasaModal = function() {
+    const modal = document.getElementById('tasa-modal');
+    if (modal) modal.remove();
+    window.editingItemIndex = null;
+};
+
+window.saveTasaChanges = function() {
+    const input = document.getElementById('nueva-tasa-input');
+    if (!input) return;
+    const nuevaTasa = parseFloat(input.value);
+
+    if (!isNaN(nuevaTasa) && nuevaTasa > 0 && window.editingItemIndex !== null) {
+        cart[window.editingItemIndex].tasa = nuevaTasa;
+        cart[window.editingItemIndex].moneda = 'USD';
+        if (typeof renderCart === 'function') renderCart(); 
+        window.closeTasaModal();
+        if (typeof messageBox === 'function') messageBox("Tasa actualizada", 'bg-green-600');
+    }
+};
+   
+</script>

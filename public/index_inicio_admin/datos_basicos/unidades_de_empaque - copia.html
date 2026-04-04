@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Unidades de Empaque</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Estilos base y de formulario */
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            background-color: #f0f8ff; 
+        }
+        /* MODIFICACIÓN: Reducción del padding y font-size de inputs/selects */
+        .form-input, .form-select {
+            display: block;
+            width: 100%;
+            padding: 0.8rem; /* Reducido de 1rem */
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 1rem; /* Reducido de 1.125rem */
+            background-color: #f9fafb;
+            color: #111827;
+            transition: border-color 0.2s;
+        }
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+        }
+        /* Estilos para mensajes de estado */
+        #loading-message, #unauthorized-message {
+            font-size: 1.5rem;
+            color: #555;
+            text-align: center;
+            padding: 50px;
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .user-info-bar {
+            background-color: #e0e0e0;
+            color: #333;
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-size: 1em;
+            width: 100%;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .feedback-message {
+            padding: 10px;
+            margin-top: 15px;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+            display: none;
+        }
+        .feedback-message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .feedback-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .search-container {
+            position: relative;
+        }
+        .autocomplete-results {
+            position: absolute;
+            z-index: 10;
+            width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            border-top: none;
+            border-radius: 0 0 0.5rem 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            background-color: white;
+        }
+        .autocomplete-results li {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            font-size: 1rem; /* Ajustado */
+            color: #111827;
+        }
+        .autocomplete-results li:hover {
+            background-color: #f3f4f6;
+        }
+
+        /* --- Estilos de Tabla y Scroll --- */
+        #packing-units-table, 
+        #packing-units-table th, 
+        #packing-units-table td {
+            border: 1px solid #e5e7eb; 
+            border-collapse: collapse;
+        }
+        
+        #packing-units-scroll-container {
+            max-height: 450px; 
+            overflow-y: auto;
+            border: 1px solid #d1d5db; 
+            border-radius: 0.5rem;
+        }
+        
+        #packing-units-table thead th {
+            position: sticky;
+            top: 0;
+            background-color: #f9fafb; 
+            z-index: 5;
+            box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Ajustes para móviles */
+        .main-content {
+            padding: 1rem;
+        }
+        .bg-white {
+            padding: 1rem; 
+        }
+        @media (max-width: 640px) {
+            /* MODIFICACIÓN: Título más pequeño en móvil */
+            .text-4xl {
+                font-size: 1.75rem; 
+            }
+            /* MODIFICACIÓN: Etiquetas más pequeñas en móvil */
+            .text-xl {
+                font-size: 1rem; 
+            }
+        }
+
+        /* --- Estilos Modal y Toast --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none; 
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            max-width: 450px;
+            width: 90%;
+            animation: fadeIn 0.3s ease-out;
+        }
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+        }
+        .toast {
+            padding: 15px 20px;
+            border-radius: 6px;
+            color: white;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+            opacity: 0; 
+            transform: translateX(100%);
+            font-size: 0.875rem; /* Ajuste para Toast */
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .toast.success {
+            background-color: #48bb78; 
+        }
+        .toast.error {
+            background-color: #f56565; 
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+    <script type="module" src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center">
+
+    <div id="loading-message">Cargando...</div>
+    <div id="unauthorized-message" style="display: none;">No autorizado. Debes ser administrador para acceder.</div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+
+    <main class="main-content flex-grow p-8 flex items-start justify-center" id="app-container" style="display: none; flex-direction: column;">
+        
+        <div id="userInfoBar" class="user-info-bar w-full max-w-6xl mx-auto" style="display: none;">
+            </div>
+
+        <div class="bg-white p-6 md:p-10 rounded-lg shadow-xl w-full max-w-6xl mx-auto">
+            <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center">Gestión de Unidades de Empaque</h2>
+            
+            <div id="successMessage" class="feedback-message success">Unidad de empaque guardada correctamente.</div>
+            <div id="errorMessage" class="feedback-message error">Error al guardar la unidad de empaque. Verifica la consola.</div>
+
+            <form id="packaging-form" class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                
+                <div class="space-y-6">
+                    <div class="search-container">
+                        <label for="product-type" class="block text-lg text-gray-700 font-semibold mb-2">
+                            Producto: 
+                            <span class="text-xs font-normal text-gray-500 opacity-70">
+                                (búsqueda de productos)
+                            </span>
+                        </label>
+                        <input type="search" id="product-type" name="productType" required class="form-input" placeholder="Ej. Arroz, Harina, Agua">
+                        <ul id="product-search-results" class="autocomplete-results hidden"></ul>
+                    </div>
+
+                    <div>
+                        <label for="packaging-unit" class="block text-lg text-gray-700 font-semibold mb-2">Unidad de Empaque:</label>
+                        <select id="packaging-unit" name="packagingUnit" required class="form-select">
+                            <option value="">Selecciona una opción</option>
+                            <option value="bulto">Bulto</option>
+                            <option value="cesta">Cesta</option>
+                            <option value="saco">Saco</option>
+                            <option value="unidad">Unidad</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
+
+                    <div id="other-unit-container" class="hidden">
+                        <label for="other-unit" class="block text-lg text-gray-700 font-semibold mb-2">Especifica la Unidad:</label>
+                        <input type="text" id="other-unit" name="otherUnit" class="form-input" placeholder="Ej. Caja, Paquete">
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <div>
+                        <label for="measure-type" class="block text-lg text-gray-700 font-semibold mb-2">Tipo de Medida:</label>
+                        <select id="measure-type" name="measureType" required class="form-select">
+                            <option value="">Selecciona una opción</option>
+                            <option value="kilos">Kilos</option>
+                            <option value="libras">Libras</option>
+                            <option value="unidades">Unidades</option>
+                            <option value="litros">Litros</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="quantity" class="block text-lg text-gray-700 font-semibold mb-2">Cantidad por Empaque:</label>
+                        <input type="number" id="quantity" name="quantity" required min="0.1" step="any" class="form-input" placeholder="Ej. 25.0 (para Kilos) o 12.5 (para Litros)">
+                    </div>
+                </div>
+
+                <button type="submit" class="md:col-span-2 w-full py-3 mt-2 text-lg text-white font-bold rounded-lg shadow-md hover:shadow-lg transition-all" style="background-color: #007bff;">
+                    Añadir Unidad de Empaque
+                </button>
+            </form>
+
+            <div class="mt-12">
+                <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">Unidades Agregadas</h3>
+                
+                <div class="overflow-x-auto shadow-md rounded-lg">
+                    
+                    <div id="packing-units-scroll-container">
+                        <table id="packing-units-table" class="min-w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unidad</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Medida</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="packing-units-body" class="bg-white">
+                                <tr>
+                                    <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">Cargando unidades...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            </div>
+    </main>
+
+    <div id="delete-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                <svg class="w-6 h-6 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.398 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                Advertencia de Eliminación
+            </h4>
+            <p class="text-sm text-gray-600 mb-6">
+                ¿Está seguro de que desea eliminar esta unidad de empaque?
+                Esta acción es irreversible y podría afectar la consistencia de los datos en el sistema POS.
+            </p>
+            <div class="flex justify-end space-x-3">
+                <button id="cancel-delete" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition-colors">
+                    Cancelar
+                </button>
+                <button id="confirm-delete" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition-colors">
+                    Sí, Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // Lógica original del formulario
+        const packagingUnitSelect = document.getElementById('packaging-unit');
+        const otherUnitContainer = document.getElementById('other-unit-container');
+        const otherUnitInput = document.getElementById('other-unit');
+
+        packagingUnitSelect.addEventListener('change', (event) => {
+            if (event.target.value === 'otro') {
+                otherUnitContainer.classList.remove('hidden');
+                otherUnitInput.setAttribute('required', 'true');
+            } else {
+                otherUnitContainer.classList.add('hidden');
+                otherUnitInput.removeAttribute('required');
+                otherUnitInput.value = ''; 
+            }
+        });
+    </script>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, where, getDocs, limit, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"; 
+
+        const loadingMessage = document.getElementById('loading-message');
+        const unauthorizedMessage = document.getElementById('unauthorized-message');
+        const appContainer = document.getElementById('app-container');
+        const userInfoBar = document.getElementById('userInfoBar');
+        const packagingForm = document.getElementById('packaging-form');
+        const successMessage = document.getElementById('successMessage');
+        const errorMessage = document.getElementById('errorMessage');
+        
+        // ELEMENTOS DEL DOM
+        const productTypeInput = document.getElementById('product-type');
+        const productSearchResults = document.getElementById('product-search-results');
+        const packingUnitsBody = document.getElementById('packing-units-body');
+        const toastContainer = document.getElementById('toast-container'); 
+
+        // ELEMENTOS DEL MODAL DE ELIMINACIÓN
+        const deleteModal = document.getElementById('delete-modal');
+        const confirmDeleteButton = document.getElementById('confirm-delete');
+        const cancelDeleteButton = document.getElementById('cancel-delete');
+        let itemToDeleteId = null; 
+
+        // Variables globales para Firebase y CompanyId
+        let companyId = null;
+        let debounceTimeout;
+
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDN9mZ1n-OkC-Qz52eTCOy4yJH7M0U9zYI",
+            authDomain: "nexus-pos-75593.firebaseapp.com",
+            projectId: "nexus-pos-75593",
+            storageBucket: "nexus-pos-75593.firebasestorage.app",
+            messagingSenderId: "626840984883",
+            appId: "1:626840984883:web:08d56544ee28bc8e637246",
+            measurementId: "G-K1EQVJWJHG"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app); 
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        async function authenticate() {
+            if (initialAuthToken) {
+                try {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } catch (error) {
+                    console.error("Error al iniciar sesión con token personalizado:", error);
+                    await signInAnonymously(auth);
+                }
+            } else {
+                await signInAnonymously(auth);
+            }
+        }
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                try {
+                    const idTokenResult = await user.getIdTokenResult();
+                    const role = idTokenResult.claims.role;
+                    companyId = idTokenResult.claims.companyId;
+
+                    if (role === 'admin' && companyId) { 
+                        loadingMessage.style.display = 'none';
+                        unauthorizedMessage.style.display = 'none';
+                        appContainer.style.display = 'flex'; 
+
+                        const userInfoHTML = `
+                            <p><strong>ID de Usuario:</strong> ${user.uid}</p>
+                            <p><strong>ID de Empresa:</strong> ${companyId}</p>
+                            <p><strong>Rol:</strong> ${role}</p>
+                        `;
+                        userInfoBar.innerHTML = userInfoHTML;
+                        userInfoBar.style.display = 'block';
+                        
+                        loadPackingUnits();
+
+                    } else {
+                        loadingMessage.style.display = 'none';
+                        unauthorizedMessage.style.display = 'block';
+                        appContainer.style.display = 'none';
+                    }
+                } catch (error) {
+                    console.error("Error en autenticación:", error);
+                    loadingMessage.style.display = 'none';
+                    unauthorizedMessage.style.display = 'block';
+                    appContainer.style.display = 'none';
+                }
+            } else {
+                loadingMessage.style.display = 'none';
+                unauthorizedMessage.style.display = 'block';
+                appContainer.style.display = 'none';
+            }
+        });
+        
+        // --- Lógica de Búsqueda de Productos (Autocomplete) ---
+
+        async function searchProducts(searchText) {
+            if (!companyId || searchText.length < 2) { 
+                productSearchResults.classList.add('hidden');
+                return;
+            }
+            const productsRef = collection(db, `companies/${companyId}/products`);
+            const startText = searchText.toLowerCase();
+            const endText = startText + '\uf8ff'; 
+            const q = query(productsRef, where('name', '>=', startText), where('name', '<=', endText), limit(10));
+
+            try {
+                const querySnapshot = await getDocs(q);
+                displayResults(querySnapshot);
+            } catch (error) {
+                console.error("Error buscando productos:", error);
+            }
+        }
+
+        function displayResults(snapshot) {
+            productSearchResults.innerHTML = '';
+            if (snapshot.empty) {
+                productSearchResults.classList.add('hidden');
+                return;
+            }
+            snapshot.forEach(doc => {
+                const product = doc.data();
+                const listItem = document.createElement('li');
+                listItem.textContent = product.name;
+                listItem.dataset.productName = product.name; 
+                
+                listItem.addEventListener('click', () => {
+                    productTypeInput.value = listItem.dataset.productName;
+                    productSearchResults.classList.add('hidden');
+                });
+                productSearchResults.appendChild(listItem);
+            });
+            productSearchResults.classList.remove('hidden');
+        }
+
+        productTypeInput.addEventListener('input', (e) => {
+            clearTimeout(debounceTimeout);
+            const searchText = e.target.value.trim();
+
+            if (searchText.length > 1) {
+                debounceTimeout = setTimeout(() => {
+                    searchProducts(searchText.toLowerCase());
+                }, 300);
+            } else {
+                productSearchResults.classList.add('hidden');
+            }
+        });
+        
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-container')) {
+                productSearchResults.classList.add('hidden');
+            }
+        });
+        
+        // --- Fin Lógica de Búsqueda de Productos (Autocomplete) ---
+
+
+        // --- Funciones de Utilidad (Toast y Modal) ---
+
+        /**
+         * Muestra un mensaje de notificación flotante (Toast).
+         * @param {string} message - El mensaje a mostrar.
+         * @param {string} type - 'success' o 'error'.
+         */
+        function showToast(message, type) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            toastContainer.appendChild(toast);
+
+            // Mostrar el toast
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10);
+
+            // Ocultar y remover el toast después de 5 segundos
+            setTimeout(() => {
+                toast.classList.remove('show');
+                toast.addEventListener('transitionend', () => toast.remove());
+            }, 5000);
+        }
+
+        /**
+         * Muestra el modal de confirmación y establece el ID del ítem a eliminar.
+         * @param {string} packingId - El ID del documento a eliminar.
+         */
+        function showDeleteModal(packingId) {
+            itemToDeleteId = packingId;
+            deleteModal.style.display = 'flex';
+        }
+
+        /**
+         * Oculta el modal de confirmación.
+         */
+        function hideDeleteModal() {
+            deleteModal.style.display = 'none';
+            itemToDeleteId = null;
+        }
+
+        // Manejadores de eventos del Modal
+        cancelDeleteButton.addEventListener('click', hideDeleteModal);
+        confirmDeleteButton.addEventListener('click', async () => {
+            if (itemToDeleteId) {
+                const id = itemToDeleteId;
+                hideDeleteModal(); 
+                await handleDeleteConfirmed(id); 
+            }
+        });
+        
+        // --- Fin Funciones de Utilidad ---
+
+
+        // --- Lógica para Cargar, Editar y Eliminar (Tabla) ---
+
+        function createTableRow(doc) {
+            const data = doc.data();
+            const row = document.createElement('tr');
+            row.id = `row-${doc.id}`;
+            
+            const cells = [
+                data.productType || 'N/A',
+                data.unit || 'N/A',
+                data.measureType || 'N/A',
+                data.quantity || 'N/A'
+            ];
+
+            cells.forEach(content => {
+                const cell = document.createElement('td');
+                // Manteniendo el tamaño de texto de la tabla en 'text-sm'
+                cell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-900'; 
+                cell.textContent = content;
+                row.appendChild(cell);
+            });
+
+            const actionCell = document.createElement('td');
+            actionCell.className = 'px-6 py-4 whitespace-nowrap text-sm font-medium';
+            
+            // Botón Editar (Amarillo)
+            const editButton = document.createElement('button');
+            // MODIFICACIÓN: Botones más pequeños
+            editButton.textContent = 'Editar';
+            editButton.className = 'bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-3 rounded transition-colors mr-2 text-xs';
+            editButton.addEventListener('click', () => handleEdit(doc.id, data));
+            
+            // Botón Eliminar (Rojo)
+            const deleteButton = document.createElement('button');
+            // MODIFICACIÓN: Botones más pequeños
+            deleteButton.textContent = 'Eliminar';
+            deleteButton.className = 'bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded transition-colors text-xs';
+            deleteButton.addEventListener('click', () => showDeleteModal(doc.id));
+            
+            actionCell.appendChild(editButton);
+            actionCell.appendChild(deleteButton);
+            row.appendChild(actionCell);
+
+            packingUnitsBody.appendChild(row);
+        }
+
+        async function loadPackingUnits() {
+            if (!companyId) return;
+
+            packingUnitsBody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">Cargando unidades...</td></tr>';
+
+            const packingRef = collection(db, `companies/${companyId}/packing`);
+            const q = query(packingRef);
+
+            try {
+                const querySnapshot = await getDocs(q);
+                
+                if (querySnapshot.empty) {
+                    packingUnitsBody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">No hay unidades de empaque registradas.</td></tr>';
+                    return;
+                }
+
+                packingUnitsBody.innerHTML = '';
+                querySnapshot.forEach(doc => {
+                    createTableRow(doc);
+                });
+
+            } catch (error) {
+                console.error("Error al cargar las unidades de empaque:", error);
+                packingUnitsBody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-sm text-red-500">Error al cargar. Ver consola.</td></tr>';
+            }
+        }
+
+        /**
+         * Función ejecutada después de la confirmación del modal.
+         */
+        async function handleDeleteConfirmed(packingId) {
+            try {
+                const docRef = doc(db, `companies/${companyId}/packing`, packingId);
+                await deleteDoc(docRef);
+
+                const rowToRemove = document.getElementById(`row-${packingId}`);
+                if (rowToRemove) {
+                    rowToRemove.remove();
+                }
+                showToast("Unidad eliminada exitosamente.", 'success');
+            } catch (error) {
+                console.error("Error al eliminar la unidad:", error);
+                showToast(`Error al eliminar: ${error.message}`, 'error');
+            }
+        }
+
+        async function updatePackingUnit(packingId, newData) {
+             try {
+                const docRef = doc(db, `companies/${companyId}/packing`, packingId);
+                await updateDoc(docRef, newData);
+                
+                showToast("Unidad actualizada exitosamente.", 'success');
+                loadPackingUnits(); 
+            } catch (error) {
+                console.error("Error al actualizar la unidad:", error);
+                showToast(`Error al actualizar: ${error.message}`, 'error');
+            }
+        }
+
+        function handleEdit(packingId, currentData) {
+            const newQuantity = prompt(`Editar cantidad para ${currentData.productType} (${currentData.unit} de ${currentData.measureType}):`, currentData.quantity);
+            
+            if (newQuantity !== null && !isNaN(parseFloat(newQuantity)) && parseFloat(newQuantity) > 0) {
+                updatePackingUnit(packingId, { quantity: parseFloat(newQuantity) });
+            } else if (newQuantity !== null) {
+                showToast("Cantidad inválida. Intente de nuevo.", 'error');
+            }
+        }
+        
+        // --- Fin Lógica para Cargar, Editar y Eliminar (Tabla) ---
+
+
+        // --- Lógica para guardar en Firestore ---
+        packagingForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!companyId) {
+                errorMessage.textContent = "Error: La sesión no está cargada correctamente (Falta Company ID).";
+                errorMessage.style.display = 'block';
+                setTimeout(() => { errorMessage.style.display = 'none'; }, 5000);
+                return;
+            }
+
+            const packagingUnit = document.getElementById('packaging-unit').value;
+            const otherUnit = document.getElementById('other-unit').value;
+            const measureType = document.getElementById('measure-type').value;
+            const quantity = parseFloat(document.getElementById('quantity').value);
+            const productType = productTypeInput.value.trim(); 
+
+            if (!productType) {
+                 errorMessage.textContent = "Por favor, busca y selecciona un producto o ingresa su nombre.";
+                errorMessage.style.display = 'block';
+                setTimeout(() => { errorMessage.style.display = 'none'; }, 5000);
+                return;
+            }
+
+            const finalUnit = packagingUnit === 'otro' ? otherUnit : packagingUnit;
+
+            const packingData = {
+                unit: finalUnit,
+                measureType: measureType,
+                quantity: quantity,
+                productType: productType,
+                createdAt: new Date(),
+                createdBy: auth.currentUser ? auth.currentUser.uid : 'unknown'
+            };
+
+            try {
+                const packingCollectionRef = collection(db, `companies/${companyId}/packing`);
+                
+                await addDoc(packingCollectionRef, packingData);
+                
+                errorMessage.style.display = 'none';
+                successMessage.style.display = 'block'; 
+                packagingForm.reset();
+                document.getElementById('other-unit-container').classList.add('hidden');
+                
+                showToast("Unidad de empaque guardada correctamente.", 'success');
+                
+                loadPackingUnits(); 
+                
+                setTimeout(() => { successMessage.style.display = 'none'; }, 5000);
+                
+            } catch (error) {
+                successMessage.style.display = 'none';
+                errorMessage.textContent = `Error al guardar: ${error.message}`;
+                errorMessage.style.display = 'block';
+                setTimeout(() => { errorMessage.style.display = 'none'; }, 7000);
+            }
+        });
+        // --- Fin Lógica para guardar en Firestore ---
+
+
+        authenticate();
+    </script>
+
+</body>
+</html>

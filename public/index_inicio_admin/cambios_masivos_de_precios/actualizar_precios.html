@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración de Inventario Avanzada</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        /* Estilo del contenedor principal para el borde redondo */
+        .main-container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            width: 95%;
+            max-width: 1400px; 
+            margin: 2rem auto;
+            box-sizing: border-box;
+        }
+        
+        /* Estilos para el encabezado de autenticación */
+        .auth-info {
+            background-color: #e3f2fd;
+            border: 1px solid #bbdefb;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+            color: #1565c0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: space-around;
+        }
+        .auth-info span {
+            font-weight: 500;
+        }
+        .auth-info strong {
+            font-weight: 700;
+            color: #0d47a1;
+        }
+
+        /* Contenedor del diseño 30/70 */
+        .content-layout {
+            display: flex;
+            flex-direction: column-reverse; 
+            gap: 20px;
+        }
+        
+        /* Contenedor 30% (Configuración) */
+        .config-panel {
+            flex: 0 0 100%; 
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        /* Contenedor 70% (Tabla) */
+        .table-panel {
+            flex: 0 0 100%; 
+        }
+
+        /* Desktop: Aplicar 30%/70% y orden correcto */
+        @media (min-width: 1024px) {
+            .content-layout {
+                flex-direction: row; 
+            }
+            .config-panel {
+                flex: 0 0 calc(30% - 10px); 
+            }
+            .table-panel {
+                flex: 1; 
+            }
+        }
+        
+        /* --- ESTILOS DE LA TABLA --- */
+        .table-responsive-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch; 
+            border-radius: 8px; 
+        }
+        
+        .table-section {
+            width: 100%;
+            min-width: 500px; 
+            border-collapse: collapse;
+            table-layout: fixed; 
+        }
+        .table-section th, .table-section td {
+            border: 1px solid #e0e0e0;
+            padding: 10px 8px; 
+            text-align: left;
+            font-size: 0.8em; 
+            word-break: break-word; 
+        }
+        .table-section th {
+            background-color: #f2f2f2;
+            color: #444;
+            font-weight: 600;
+        }
+        
+        /* Ancho fijo para la columna de Seleccionar (Última columna) */
+        .table-section th:last-child, .table-section td:last-child { 
+            width: 100px; 
+            text-align: center;
+        }
+        
+        /* Checkbox personalizado */
+        .custom-checkbox input[type="checkbox"] {
+            transform: scale(1.5); 
+            margin-left: 10px;
+        }
+
+        /* --- ESTILOS DE DEMOSTRACIÓN (30% PANEL) --- */
+        .demo-box {
+            border: 2px dashed #b3e5fc;
+            background-color: #f0f8ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        .demo-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px dotted #bbdefb;
+        }
+        .demo-item:last-child {
+            border-bottom: none;
+        }
+        .demo-name {
+            font-weight: 500;
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-right: 10px;
+            min-width: 0; 
+        }
+        .demo-price {
+            font-size: 0.9em;
+            color: #9e9e9e;
+            text-decoration: line-through;
+            margin-right: 10px;
+            flex-shrink: 0; 
+        }
+        .arrow-icon {
+            color: #4CAF50;
+            margin: 0 5px;
+            font-size: 1.2em;
+            flex-shrink: 0; 
+        }
+        .demo-new-price {
+            font-weight: bold;
+            color: #4CAF50; /* Verde */
+            white-space: nowrap;
+            flex-shrink: 0; 
+        }
+
+        /* --- ESTILOS DE LA VENTANA EMERGENTE (MODAL) --- */
+        .modal-overlay {
+            display: none; /* Inicialmente oculto */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); /* Fondo oscuro transparente */
+            z-index: 1000; 
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 12px; /* Bordes redondeados */
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+            width: 90%;
+            max-width: 400px; /* Cuadrada */
+            text-align: center;
+            animation: fadeIn 0.3s ease-out;
+        }
+        .modal-title {
+            color: #4CAF50; /* Verde para Éxito */
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+        .modal-message {
+            color: #333;
+            font-size: 1.1rem;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+        .modal-close-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        .modal-close-btn:hover {
+            background-color: #45a049;
+        }
+
+        /* Animación simple */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+    </style>
+</head>
+<body>
+
+    <main class="main-content">
+        <div class="main-container">
+            <h1 class="text-2xl font-semibold text-center mb-4 text-gray-800">Panel de Configuración de Productos</h1>
+            
+            <div id="auth-info" class="auth-info">
+                <span>Autenticando...</span>
+            </div>
+            
+            <hr class="mb-5">
+
+            <div class="content-layout">
+                
+                <div class="config-panel">
+                    <h2 class="text-xl font-bold mb-5 text-center text-gray-700">⚙️ Configuración</h2>
+                    
+                    <div class="mb-4">
+                        <label for="percentage-input" class="block font-medium mb-2 text-gray-700">Porcentaje a aplicar:</label>
+                        <div class="flex items-center">
+                            <input type="number" id="percentage-input" value="" placeholder="Ej: 15"
+                                class="flex-1 p-2.5 border border-gray-300 rounded-l-lg focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 text-right"
+                                min="-100" max="1000" step="0.01">
+                            <span class="bg-gray-200 text-gray-600 p-2.5 border border-l-0 border-gray-300 rounded-r-lg font-bold">
+                                %
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="fixed-amount-input" class="block font-medium mb-2 text-gray-700">Monto fijo a sumar:</label>
+                        <div class="flex items-center">
+                            <input type="number" id="fixed-amount-input" value="" placeholder="Ej: 5.50"
+                                class="flex-1 p-2.5 border border-gray-300 rounded-l-lg focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 text-right"
+                                min="-10000" max="1000000" step="0.01">
+                            <span class="bg-gray-200 text-gray-600 p-2.5 border border-l-0 border-gray-300 rounded-r-lg font-bold">
+                                Bs
+                            </span>
+                        </div>
+                    </div>
+                    <div class="demo-box">
+                        <h3 class="font-bold text-center mb-2 text-sm text-blue-800">DEMOSTRACIÓN DE PRECIOS</h3>
+                        <div id="demo-products-list">
+                            <p class="text-center text-gray-500 text-sm">Cargando demostración...</p>
+                        </div>
+                    </div>
+                    
+                    <button id="apply-percentage-btn" class="w-full bg-green-500 text-white p-2.5 rounded-lg hover:bg-green-600 transition duration-150 font-semibold">
+                        Aplicar a Productos Seleccionados
+                    </button>
+                    
+
+                </div>
+
+                <div class="table-panel">
+                    <h2 class="text-xl font-bold mb-3 text-center text-gray-700">📋 Productos en Inventario</h2>
+
+                    <div class="flex flex-wrap gap-3 mb-4 items-center">
+                        <input type="text" id="table-search-product" placeholder="Buscar producto en la tabla..." 
+                            class="flex-1 min-w-[200px] p-2.5 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                        
+                        <button id="select-all-btn" class="bg-blue-500 text-white p-2.5 rounded-lg hover:bg-blue-600 transition duration-150 whitespace-nowrap">Seleccionar Todo</button>
+                        
+                        <select id="category-select" class="p-2.5 border border-gray-300 rounded-lg focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50 min-w-[150px]">
+                            <option value="">Todas las Categorías</option>
+                            </select>
+                    </div>
+                    <div class="table-responsive-wrapper">
+                        <table class="table-section">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Categoría</th>
+                                    <th>Unidad</th>
+                                    <th>P. Venta</th>
+                                    <th>Seleccionar</th> 
+                                </tr>
+                            </thead>
+                            <tbody id="inventory-table-body">
+                                <tr><td colspan="5" style="text-align: center;">Cargando productos...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <div id="success-modal-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-title">¡Éxito! 🎉</div>
+            <p id="modal-message-text" class="modal-message">
+                Aplicado un cambio al Precio de Venta de producto(s) seleccionados.
+            </p>
+            <button id="modal-close-btn" class="modal-close-btn">
+                Entendido
+            </button>
+        </div>
+    </div>
+    <script type="module">
+        // Importaciones de Firebase, incluyendo doc, updateDoc, y writeBatch para la actualización de precios
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, query, doc, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        
+        // --- CONFIGURACIÓN DE FIREBASE (REPLICADA) ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDN9mZ1n-OkC-Qz52eTCOy4yJH7M0U9zYI",
+            authDomain: "nexus-pos-75593.firebaseapp.com",
+            projectId: "nexus-pos-75593",
+            storageBucket: "nexus-pos-75593.firebasestorage.app",
+            messagingSenderId: "626840984883",
+            appId: "1:626840984883:web:08d56544ee28bc8e637246",
+            measurementId: "G-K1EQVJWJHG"
+        };
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // Inicializa Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        let companyId = null;
+        let userId = null;
+        let branchId = null; 
+        
+        let allProducts = [];
+        let categoryMap = {}; 
+        let selectedProducts = {}; 
+
+        // Elementos del DOM
+        const authInfoDiv = document.getElementById('auth-info');
+        const inventoryTableBody = document.getElementById('inventory-table-body');
+        
+        // ELEMENTOS DEL 70% PANEL (Tabla y Controles)
+        const tableSearchInput = document.getElementById('table-search-product');
+        const selectAllBtn = document.getElementById('select-all-btn');
+        const categorySelect = document.getElementById('category-select');
+        
+        // ELEMENTOS DEL 30% PANEL
+        const percentageInput = document.getElementById('percentage-input');
+        const fixedAmountInput = document.getElementById('fixed-amount-input'); 
+        const applyPercentageBtn = document.getElementById('apply-percentage-btn');
+        const demoProductsList = document.getElementById('demo-products-list'); 
+
+        // NUEVOS ELEMENTOS DEL MODAL
+        const successModalOverlay = document.getElementById('success-modal-overlay');
+        const modalMessageText = document.getElementById('modal-message-text');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+
+        // Función para mostrar el modal
+        function showModal(message) {
+            modalMessageText.textContent = message;
+            successModalOverlay.style.display = 'flex';
+        }
+        
+        // Función para ocultar el modal
+        function hideModal() {
+            successModalOverlay.style.display = 'none';
+        }
+
+        // Listener para cerrar el modal
+        modalCloseBtn.addEventListener('click', hideModal);
+        successModalOverlay.addEventListener('click', (e) => {
+            if (e.target === successModalOverlay) {
+                hideModal();
+            }
+        });
+
+
+        // --- LÓGICA DE AUTENTICACIÓN (REPLICADA) ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                try {
+                    const idTokenResult = await user.getIdTokenResult();
+                    companyId = idTokenResult.claims.companyId;
+                    userId = idTokenResult.claims.user_id; 
+                    branchId = idTokenResult.claims.branchId || 'N/A'; 
+
+                    if (companyId) {
+                        // 1. Mostrar IDs en el encabezado
+                        authInfoDiv.innerHTML = `
+                            <span>Empresa ID: <strong>${companyId}</strong></span>
+                            <span>Usuario ID: <strong>${userId || 'N/A'}</strong></span>
+                            <span>Sucursal ID: <strong>${branchId}</strong></span>
+                        `;
+                        
+                        // 2. Iniciar Listeners de Datos
+                        setupCategoryListener(companyId);
+                        setupRealtimeListener(companyId);
+                        
+                        // 3. Listeners de Interacción del Usuario
+                        tableSearchInput.addEventListener('input', filterProducts); 
+                        categorySelect.addEventListener('change', filterProducts); 
+                        selectAllBtn.addEventListener('click', handleSelectAll); 
+                        applyPercentageBtn.addEventListener('click', handleApplyPercentage);
+                        percentageInput.addEventListener('input', renderDemoProducts); 
+                        fixedAmountInput.addEventListener('input', renderDemoProducts); 
+                        
+                    } else {
+                        authInfoDiv.innerHTML = '<span style="color: red;">Error: ID de la empresa no disponible.</span>';
+                    }
+                } catch (error) {
+                    console.error("Error al obtener los claims del token:", error);
+                    authInfoDiv.innerHTML = '<span style="color: red;">Error de autenticación. Recarga la página.</span>';
+                }
+            } else {
+                if (initialAuthToken) {
+                    try {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                    } catch (error) {
+                        console.error("Error al iniciar sesión con el token:", error);
+                        authInfoDiv.innerHTML = '<span style="color: red;">Error: No se pudo iniciar sesión con el token.</span>';
+                    }
+                } else {
+                    authInfoDiv.innerHTML = '<span style="color: red;">Error: Token de autenticación no disponible.</span>';
+                }
+            }
+        });
+
+        // --- LISTENERS DE FIRESTORE (DATOS) ---
+        
+        function setupCategoryListener(companyId) {
+            const categoriesCollectionRef = collection(db, 'companies', companyId, 'categories');
+            const q = query(categoriesCollectionRef);
+            
+            onSnapshot(q, (snapshot) => {
+                categoryMap = {}; 
+                snapshot.forEach((doc) => {
+                    categoryMap[doc.id] = doc.data().name; 
+                });
+                
+                categorySelect.innerHTML = '<option value="">Todas las Categorías</option>';
+                Object.keys(categoryMap).forEach(catId => {
+                    const option = document.createElement('option');
+                    option.value = catId;
+                    option.textContent = categoryMap[catId];
+                    categorySelect.appendChild(option);
+                });
+
+                filterProducts(); 
+            }, (error) => {
+                console.error("Error al escuchar categorías:", error);
+            });
+        }
+
+        function setupRealtimeListener(companyId) {
+            const q = query(collection(db, `companies/${companyId}/products`));
+        
+            onSnapshot(q, (snapshot) => {
+                allProducts = []; 
+                if (!snapshot.empty) {
+                    snapshot.forEach((doc) => {
+                        allProducts.push({ 
+                            docId: doc.id,
+                            product: doc.data() 
+                        });
+                    });
+                }
+                filterProducts(); 
+                renderDemoProducts(); 
+            }, (error) => {
+                console.error("Error al escuchar productos:", error);
+            });
+        }
+        
+        // --- LÓGICA DE SELECCIÓN Y FILTRADO (70%) ---
+
+        function handleCheckboxChange(docId, isChecked) {
+            selectedProducts[docId] = isChecked;
+            console.log(`Producto ${docId} ${isChecked ? 'Seleccionado' : 'Deseleccionado'}`);
+            renderDemoProducts(); 
+        }
+        
+        function filterVisibleProducts() {
+            const searchTerm = tableSearchInput.value.toLowerCase().trim();
+            const categoryFilter = categorySelect.value;
+            
+            let products = allProducts;
+
+            if (categoryFilter && categoryFilter !== '') {
+                 products = products.filter(({ product }) => product.category === categoryFilter);
+            }
+
+            if (searchTerm.length > 0) {
+                products = products.filter(({ product }) => {
+                    const nameMatch = product.name.toLowerCase().includes(searchTerm);
+                    const codeMatch = (product.code || '').toLowerCase().includes(searchTerm);
+                    return nameMatch || codeMatch;
+                });
+            }
+            return products;
+        }
+        
+        function handleSelectAll() {
+            const productsToToggle = filterVisibleProducts(); 
+            
+            const allCurrentlySelected = productsToToggle.every(({ docId }) => selectedProducts[docId]);
+            const shouldSelect = !allCurrentlySelected; 
+
+            productsToToggle.forEach(({ docId }) => {
+                selectedProducts[docId] = shouldSelect;
+            });
+            
+            filterProducts(); 
+            renderDemoProducts(); 
+        }
+
+        function filterProducts() {
+            const productsToDisplay = filterVisibleProducts();
+            renderTable(productsToDisplay);
+        }
+
+        function renderTable(productsToDisplay) {
+            inventoryTableBody.innerHTML = '';
+            
+            if (productsToDisplay.length === 0) {
+                inventoryTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No hay productos que coincidan con los filtros.</td></tr>';
+                return;
+            }
+
+            productsToDisplay.forEach(({ docId, product }) => {
+                const row = document.createElement('tr');
+                const categoryName = categoryMap[product.category] || product.category || 'Sin Categoría'; 
+                const isSelected = selectedProducts[docId] || false;
+                
+                row.innerHTML = `
+                    <td>${product.name}</td>
+                    <td>${categoryName}</td> 
+                    <td>${product.unit || 'N/A'}</td>
+                    <td>Bs ${product.price ? product.price.toFixed(2) : '0.00'}</td>
+                    <td style="text-align: center;">
+                        <div class="custom-checkbox">
+                            <input type="checkbox" id="table-select-${docId}" ${isSelected ? 'checked' : ''} data-doc-id="${docId}">
+                        </div>
+                    </td>
+                `; 
+                
+                const checkbox = row.querySelector(`#table-select-${docId}`);
+                checkbox.addEventListener('change', (e) => handleCheckboxChange(docId, e.target.checked));
+
+                inventoryTableBody.appendChild(row);
+            });
+        }
+        
+        // --- LÓGICA DE DEMOSTRACIÓN Y APLICACIÓN DE PORCENTAJE/MONTO FIJO (30%) ---
+        
+        /**
+         * Calcula el nuevo precio aplicando primero el porcentaje y luego sumando el monto fijo.
+         */
+        function calculateNewPrice(currentPrice, percentageValue, fixedAmountValue) {
+            let newPrice = currentPrice;
+
+            // 1. Aplicar el porcentaje
+            const percentageMultiplier = 1 + (percentageValue / 100);
+            newPrice *= percentageMultiplier;
+            
+            // 2. Aplicar el monto fijo
+            newPrice += fixedAmountValue;
+            
+            // Asegurar que el nuevo precio no sea negativo.
+            return Math.max(0, newPrice);
+        }
+        
+        function renderDemoProducts() {
+            demoProductsList.innerHTML = '';
+
+            const selectedProductIds = Object.keys(selectedProducts).filter(id => selectedProducts[id]);
+            const percentageValue = parseFloat(percentageInput.value) || 0;
+            const fixedAmountValue = parseFloat(fixedAmountInput.value) || 0; 
+
+            // 1. Mensaje si no hay productos seleccionados
+            if (selectedProductIds.length === 0) {
+                demoProductsList.innerHTML = '<p class="text-center font-semibold text-red-600 text-sm">⚠️ Seleccione un producto primero</p>';
+                return;
+            }
+            
+            // 2. Obtener los objetos de productos seleccionados
+            const selectedProductsObjects = allProducts.filter(({ docId }) => selectedProductIds.includes(docId));
+            
+            // Función para obtener 'n' elementos al azar de un array
+            const getRandomItems = (arr, num) => {
+                const shuffled = [...arr].sort(() => 0.5 - Math.random());
+                return shuffled.slice(0, num);
+            };
+
+            let demoProducts = [];
+            
+            // 3. Determinar productos para la demostración (máximo 3)
+            if (selectedProductsObjects.length <= 3) {
+                demoProducts = selectedProductsObjects;
+            } else {
+                demoProducts = getRandomItems(selectedProductsObjects, 3);
+            }
+            
+            // 4. Renderizar la demostración
+            demoProducts.forEach(({ docId, product }) => {
+                const currentPrice = product.price || 0;
+                
+                // Aplicar el cálculo del porcentaje y el monto fijo
+                const newPrice = calculateNewPrice(currentPrice, percentageValue, fixedAmountValue);
+                
+                const itemDiv = document.createElement('div');
+                itemDiv.classList.add('demo-item');
+                itemDiv.innerHTML = `
+                    <span class="demo-name" title="${product.name}">${product.name}</span>
+                    <span class="demo-price">Bs ${currentPrice.toFixed(2)}</span>
+                    <span class="arrow-icon">➔</span>
+                    <span class="demo-new-price">Bs ${newPrice.toFixed(2)}</span>
+                `;
+                demoProductsList.appendChild(itemDiv);
+            });
+        }
+        
+        async function handleApplyPercentage() {
+            const percentageValue = parseFloat(percentageInput.value) || 0;
+            const fixedAmountValue = parseFloat(fixedAmountInput.value) || 0; 
+
+            if (percentageValue === 0 && fixedAmountValue === 0) {
+                showModal('⚠️ Por favor, ingresa un Porcentaje a aplicar o un Monto fijo a sumar que no sea cero.');
+                return;
+            }
+            
+            const selectedIds = Object.keys(selectedProducts).filter(id => selectedProducts[id]);
+            
+            if (selectedIds.length === 0) {
+                showModal('⚠️ Por favor, selecciona al menos un producto en la tabla para aplicar los cambios.');
+                return;
+            }
+
+            // INICIO: Lógica para actualizar los precios en Firestore usando un Batch
+            const batch = writeBatch(db);
+            let productsUpdatedCount = 0;
+
+            for (const docId of selectedIds) {
+                const productEntry = allProducts.find(p => p.docId === docId);
+                
+                if (productEntry && productEntry.product) {
+                    const currentPrice = productEntry.product.price || 0;
+                    const newPrice = calculateNewPrice(currentPrice, percentageValue, fixedAmountValue);
+                    const finalPrice = parseFloat(newPrice.toFixed(2)); 
+
+                    if (currentPrice.toFixed(2) !== finalPrice.toFixed(2)) {
+                        const productRef = doc(db, `companies/${companyId}/products`, docId);
+                        
+                        batch.update(productRef, { 
+                            price: finalPrice 
+                        });
+                        productsUpdatedCount++;
+                    }
+                }
+            }
+            
+            if (productsUpdatedCount === 0) {
+                showModal('No se encontró ningún producto para actualizar, o los cambios aplicados resultan en el mismo precio anterior.');
+                return;
+            }
+
+            try {
+                await batch.commit(); // Ejecuta todas las actualizaciones de precios
+
+                // --- Mensaje de Éxito ---
+                let message = '';
+                if (percentageValue !== 0) {
+                    message += `${percentageValue}% de cambio`;
+                }
+                if (percentageValue !== 0 && fixedAmountValue !== 0) {
+                    message += ' y ';
+                }
+                if (fixedAmountValue !== 0) {
+                    // CAMBIO: $ a Bs en el mensaje de éxito
+                    message += `${fixedAmountValue.toFixed(2)}Bs de monto fijo`;
+                }
+                
+                const successMessage = `Aplicado un ${message} al Precio de Venta de ${productsUpdatedCount} producto(s) seleccionados.`;
+                showModal(successMessage);
+                
+                // Lógica de deselección
+                Object.keys(selectedProducts).forEach(id => selectedProducts[id] = false);
+                filterProducts(); 
+                renderDemoProducts(); 
+
+            } catch (error) {
+                console.error("Error al aplicar la actualización de precios:", error);
+                showModal(`❌ Error: No se pudieron actualizar los precios. Por favor, revisa la consola para más detalles. (Mensaje: ${error.message})`);
+            }
+        }
+    </script>
+</body>
+</html>

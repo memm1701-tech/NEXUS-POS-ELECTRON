@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <link rel="icon" type="image/png" href="logo_nexus.png">
+    <title>Redirigiendo a la Tienda...</title>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const companyId = params.get('company');
+            
+            // 🛑 DEBUG 1: Revisa la consola del navegador para ver qué ID lee
+            console.log("ID de empresa leído por el puente:", companyId);
+
+            if (companyId) {
+                // ⚠️ RUTA FINAL (Esta es la línea CORREGIDA)
+                // Se eliminó el '/' inicial para evitar el error 'Cannot GET'.
+                const destinationPath = 'index_inicio_admin/tienda_online/tienda.html';
+                
+                // 🚀 LÍNEA DE CÓDIGO CRÍTICA: Asegúrate de que el '?' y el 'company=' estén aquí
+                const finalDestinationUrl = destinationPath + '?company=' + companyId;
+
+                // 🛑 DEBUG 2: Revisa la consola para ver qué URL va a usar
+                console.log("URL de destino final:", finalDestinationUrl);
+                
+                window.location.replace(finalDestinationUrl);
+                
+            } else {
+                document.body.innerHTML = '<p style="text-align: center; padding-top: 50px;">Error: Faltan datos de la empresa para cargar la tienda.</p>';
+            }
+        });
+    </script>
+</head>
+<body>
+    <div id="redirect-message" style="text-align: center; padding-top: 50px;">
+        Redirigiendo a la Tienda Online, por favor espere...
+    </div>
+</body>
+</html>

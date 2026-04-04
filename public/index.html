@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS POS - Login / Registro</title>
+    <link rel="icon" type="image/png" href="logo_nexus.png">
+    <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <link href="../node_modules/material-icons/iconfont/material-icons.css" rel="stylesheet">
+    <script src="tailwindcss.js"></script>
+    <style>
+        .message-box {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+        }
+
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #2563eb;
+            animation: spin 1s linear infinite;
+        }
+        
+        /* Nuevo spinner para el botón de login */
+        .btn-spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border-left-color: #ffffff;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .app-bg {
+            background: linear-gradient(-45deg, #e0f2fe, #bfdbfe, #93c5fd, #60a5fa);
+            background-size: 400% 400%;
+            animation: gradientShift 10s ease infinite;
+        }
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        body {
+            display: none; 
+        }
+
+        .side-panel {
+            background-color: #1d4ed8; 
+            background-image: linear-gradient(145deg, #1d4ed8 0%, #3b82f6 100%); 
+            position: relative; 
+            z-index: 10;
+        }
+        
+        /* Efecto Hover Glow para la lista */
+        .hover-glow:hover {
+            transform: translateX(4px);
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
+            background-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50; 
+        }
+        .modal-content {
+            background-color: white;
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            transform: translateY(-50px);
+            transition: transform 0.3s ease-out;
+        }
+        .modal-overlay.open .modal-content {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="app-bg flex min-h-screen font-sans m-0 p-0 overflow-hidden">
+
+    <div style="-webkit-app-region: drag; position: fixed; top: 0; left: 0; width: 100%; height: 40px; z-index: 9999; display: flex; justify-content: flex-end; align-items: flex-start; padding: 12px 15px 0 0;">
+        <div style="-webkit-app-region: no-drag; display: flex; gap: 8px;">
+            <button id="btn-minimize-custom" style="background: transparent; border: none; color: #2563eb; cursor: pointer; padding: 4px 10px; border-radius: 6px; transition: background 0.2s;" onmouseover="this.style.background='rgba(37,99,235,0.1)'" onmouseout="this.style.background='transparent'">
+                <span class="material-icons" style="font-size: 20px;">remove</span>
+            </button>
+            <button id="btn-close-custom" style="background: transparent; border: none; color: #2563eb; cursor: pointer; padding: 4px 10px; border-radius: 6px; transition: all 0.2s;" onmouseover="this.style.background='#ef4444'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='#2563eb'">
+                <span class="material-icons" style="font-size: 20px;">close</span>
+            </button>
+        </div>
+    </div>
+    
+    <div id="app-loading" class="flex flex-col items-center justify-center min-h-screen w-full bg-white z-50">
+        <div class="spinner mb-4"></div>
+        <p class="text-gray-600 text-sm font-medium">Cargando ecosistema...</p>
+    </div>
+
+    <div id="app-content" class="hidden w-full min-h-screen">
+        
+        <div class="flex flex-row w-full min-h-screen bg-white">
+            
+            <div id="side-panel" class="side-panel flex w-5/12 px-8 py-10 flex-col justify-between items-center text-white shadow-[10px_0_30px_rgba(0,0,0,0.1)] relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-48 h-48 bg-white opacity-5 rounded-full blur-3xl -mr-12 -mt-12 pointer-events-none"></div>
+                <div class="absolute bottom-0 left-0 w-56 h-56 bg-blue-300 opacity-20 rounded-full blur-3xl -ml-12 -mb-12 pointer-events-none"></div>
+
+                <div class="w-full relative z-10 mt-2">
+                    <h2 class="text-3xl font-extrabold mb-3 text-left w-full border-b border-blue-400/50 pb-2 tracking-tight">NEXUS POS</h2>
+                    <p class="text-sm text-left opacity-90 mb-4 font-light">
+                        La gestión ágil que tu negocio merece.
+                    </p>
+                    
+                    <ul class="space-y-2.5 text-left mb-4">
+                        <li id="btn-tour-inventario" class="flex items-center bg-white/5 p-2.5 rounded-xl border border-white/10 backdrop-blur-sm transition-all duration-300 hover-glow cursor-pointer select-none">
+                            <i class="material-icons mr-3 text-yellow-300 text-lg">check_circle</i>
+                            <span class="font-semibold text-[13px]">Control de Inventario Avanzado</span>
+                        </li>
+                        <li id="btn-tour-modulos" class="flex items-center bg-white/5 p-2.5 rounded-xl border border-white/10 backdrop-blur-sm transition-all duration-300 hover-glow cursor-pointer select-none">
+                            <i class="material-icons mr-3 text-yellow-300 text-lg">check_circle</i>
+                            <span class="font-semibold text-[13px]">Módulos para Administrador y Cajera</span>
+                        </li>
+                        <li id="btn-tour-reportes" class="flex items-center bg-white/5 p-2.5 rounded-xl border border-white/10 backdrop-blur-sm transition-all duration-300 hover-glow cursor-pointer select-none">
+                            <i class="material-icons mr-3 text-yellow-300 text-lg">check_circle</i>
+                            <span class="font-semibold text-[13px]">Reportes de Ventas en Tiempo Real</span>
+                        </li>
+                        <li id="btn-tour-soporte" class="flex items-center bg-white/5 p-2.5 rounded-xl border border-white/10 backdrop-blur-sm transition-all duration-300 hover-glow cursor-pointer select-none">
+                            <i class="material-icons mr-3 text-yellow-300 text-lg">check_circle</i>
+                            <span class="font-semibold text-[13px]">Soporte Multi-Sucursal</span>
+                        </li>
+                    </ul>
+
+                    <div class="flex items-center justify-start opacity-80 mt-2">
+                        <div class="flex -space-x-2 mr-3">
+                            <div class="w-6 h-6 rounded-full bg-blue-200 border border-white flex justify-center items-center"><i class="material-icons text-[12px] text-blue-600">store</i></div>
+                            <div class="w-6 h-6 rounded-full bg-yellow-200 border border-white flex justify-center items-center"><i class="material-icons text-[12px] text-yellow-600">restaurant</i></div>
+                            <div class="w-6 h-6 rounded-full bg-green-200 border border-white flex justify-center items-center"><i class="material-icons text-[12px] text-green-600">local_mall</i></div>
+                        </div>
+                        <span class="text-[11px] font-medium">+500 empresas operando</span>
+                    </div>
+                </div>
+
+                <div class="w-full mt-5 pt-4 border-t border-blue-400/50 space-y-2 relative z-10">
+                    <p class="text-xs font-semibold text-gray-200">¿Eres nuevo? ¡Comienza ahora!</p>
+                    <a href="#" id="show-register-company" class="w-full block text-center bg-white text-purple-600 py-2.5 px-4 rounded-xl hover:bg-gray-50 transition-all font-bold border border-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 text-sm">
+                        <i class="material-icons align-middle mr-2 text-[18px]">storefront</i>Registrar mi Empresa
+                    </a>
+                    <p class="text-xs font-semibold text-gray-200 pt-1">¿Ya tienes tu cuenta de cajera?</p>
+                    <a href="#" id="show-cashier-login" class="w-full block text-center bg-white text-yellow-600 py-2.5 px-4 rounded-xl hover:bg-gray-50 transition-all font-bold border border-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 text-sm">
+                        <i class="material-icons align-middle mr-2 text-[18px]">person_pin</i>Inicia Sesión Como Cajera
+                    </a>
+                    
+                    <div class="text-center pt-3 opacity-60 text-[11px]">
+                        Parte del ecosistema <span class="font-bold">Nexus Business</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="auth-forms-container" class="w-7/12 relative flex flex-col justify-start items-center px-12 pt-10 pb-6 bg-gray-50 h-full">
+                
+                <img src="logo_nexus_sin_fondo.png" alt="NEXUS POS Logo" class="w-36 h-36 object-contain mb-2 drop-shadow-sm">
+                
+                <div id="login-container" class="w-full max-w-md flex-grow flex flex-col justify-center">
+                    <div class="text-center mb-5">
+                        <span class="text-blue-600 text-xs font-bold uppercase tracking-wider">¡Bienvenido de vuelta!</span>
+                        <h1 class="text-2xl font-bold text-gray-800 mt-1">Inicia Sesión Administrador</h1>
+                    </div>
+                    <form id="login-form" class="w-full">
+                        <div class="mb-4">
+                            <label for="login-email" class="block text-gray-700 text-sm font-bold mb-1.5 ml-1 text-left">Correo Electrónico</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                                    <i class="material-icons text-gray-400 text-lg">email</i>
+                                </span>
+                                <input type="email" id="login-email" name="email" class="w-full pl-10 pr-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition text-sm" required>
+                            </div>
+                        </div>
+                        <div class="mb-5">
+                            <label for="login-password" class="block text-gray-700 text-sm font-bold mb-1.5 ml-1 text-left">Contraseña</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                                    <i class="material-icons text-gray-400 text-lg">lock</i>
+                                </span>
+                                <input type="password" id="login-password" name="password" class="w-full pl-10 pr-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition text-sm" required>
+                            </div>
+                        </div>
+                        <button type="submit" id="login-btn" class="w-full bg-blue-600 text-white py-2.5 px-4 rounded-xl hover:bg-blue-700 transition-all font-bold shadow-lg shadow-blue-200 active:scale-[0.98] text-sm flex justify-center items-center h-10">
+                            <span id="login-btn-text">Entrar</span>
+                            <span id="login-btn-spinner" class="btn-spinner hidden"></span>
+                        </button>
+                    </form>
+                    
+                    <div class="mt-4 text-center w-full">
+                        <a href="#" id="show-forgot-password-modal" class="text-xs font-semibold text-blue-600 hover:text-blue-800 transition">¿Olvidaste tu correo o tu contraseña?</a>
+                    </div>
+                </div>
+
+                <div id="register-container" class="hidden w-full max-w-md flex-grow flex flex-col justify-center">
+                    <h1 class="text-2xl font-bold text-center text-gray-800 mb-4">Crear Cuenta Personal</h1>
+                    <p class="text-red-500 text-xs mb-4 bg-red-50 p-3 rounded-xl border border-red-100">Opción no disponible: Solo se permite el registro de Administradores de Empresa.</p>
+                    <div class="mt-3 text-center w-full">
+                        <a href="#" id="show-login" class="text-blue-600 text-sm font-semibold hover:underline">Volver al Inicio de Sesión</a>
+                    </div>
+                </div>
+
+                <div id="register-company-container" class="hidden w-full max-w-md flex-grow flex flex-col justify-center">
+                    <h1 class="text-2xl font-bold text-center text-gray-800 mb-5">Registrar mi Empresa</h1>
+                    <form id="register-company-form" class="w-full">
+                        <div class="mb-3">
+                            <label for="company-name" class="block text-gray-700 text-sm font-bold mb-1 ml-1 text-left">Nombre de la Empresa</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                                    <i class="material-icons text-gray-400 text-lg">business</i>
+                                </span>
+                                <input type="text" id="company-name" name="companyName" class="w-full pl-10 pr-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition text-sm" placeholder='Ej. Fruvers "la zorra"' required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="company-admin-email" class="block text-gray-700 text-sm font-bold mb-1 ml-1 text-left">
+                                Correo Electrónico 
+                                <span class="font-normal text-[10px] text-gray-500">(Corporativo)</span>
+                            </label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                                    <i class="material-icons text-gray-400 text-lg">email</i>
+                                </span>
+                                <input type="email" id="company-admin-email" name="adminEmail" class="w-full pl-10 pr-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition text-sm" placeholder="correo@miempresa.com" required>
+                            </div>
+                        </div>
+                        <div class="mb-5">
+                            <label for="company-admin-password" class="block text-gray-700 text-sm font-bold mb-1 ml-1 text-left">Contraseña (Admin)</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                                    <i class="material-icons text-gray-400 text-lg">lock</i>
+                                </span>
+                                <input type="password" id="company-admin-password" name="adminPassword" class="w-full pl-10 pr-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition text-sm" placeholder="Mínimo 6 caracteres" required>
+                            </div>
+                        </div>
+                        <button type="submit" id="register-company-btn" class="w-full bg-green-600 text-white py-2.5 px-4 rounded-xl hover:bg-green-700 transition-all font-bold shadow-lg shadow-green-200 active:scale-[0.98] text-sm">Registrar Empresa</button>
+                    </form>
+                    <div class="mt-4 text-center w-full">
+                        <a href="#" id="show-login-from-company-register" class="text-blue-600 text-xs font-semibold hover:underline">¿Ya tienes empresa? Inicia Sesión</a>
+                    </div>
+                </div>
+
+                <div id="cashier-login-container" class="hidden w-full max-w-md flex-grow flex flex-col justify-center">
+                    <h1 class="text-2xl font-bold text-center text-gray-800 mb-5">Inicia Sesión Como Cajera</h1>
+                    <form id="cashier-login-form" class="w-full">
+                        <div class="mb-4">
+                            <label for="cashier-email" class="block text-gray-700 text-sm font-bold mb-1.5 ml-1 text-left">Correo de Cajera</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                                    <i class="material-icons text-gray-400 text-lg">email</i>
+                                </span>
+                                <input type="email" id="cashier-email" name="email" class="w-full pl-10 pr-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 shadow-sm transition text-sm" required>
+                            </div>
+                        </div>
+                        <div class="mb-5">
+                            <label for="cashier-password" class="block text-gray-700 text-sm font-bold mb-1.5 ml-1 text-left">Contraseña</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                                    <i class="material-icons text-gray-400 text-lg">lock</i>
+                                </span>
+                                <input type="password" id="cashier-password" name="password" class="w-full pl-10 pr-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 shadow-sm transition text-sm" required>
+                            </div>
+                        </div>
+                        <button type="submit" id="cashier-login-btn" class="w-full bg-yellow-500 text-white py-2.5 px-4 rounded-xl hover:bg-yellow-600 transition-all font-bold shadow-lg shadow-yellow-200 active:scale-[0.98] text-sm">Entrar como Cajera</button>
+                    </form>
+                    <div class="mt-4 text-center w-full">
+                        <a href="#" id="show-login-from-cashier-login" class="text-blue-600 text-xs font-semibold hover:underline">Volver al Inicio de Sesión (Admin)</a>
+                    </div>
+                </div>
+
+
+                <div id="tour-inventario-container" class="hidden w-full max-w-md flex-grow flex flex-col justify-center relative">
+                    <a href="#" class="btn-return-login absolute top-0 left-0 flex items-center text-[11px] font-bold text-gray-400 hover:text-blue-600 transition uppercase tracking-wider">
+                        <i class="material-icons text-[14px] mr-1">arrow_back</i> Volver al Inicio
+                    </a>
+
+                    <div class="text-center mb-5 mt-4">
+                        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-50 text-blue-600 mb-3 border border-blue-100">
+                            <i class="material-icons text-2xl">inventory_2</i>
+                        </div>
+                        <h1 class="text-2xl font-bold text-gray-800">Inventario Avanzado</h1>
+                    </div>
+                    <div class="text-sm text-gray-600 bg-white p-5 rounded-xl border border-gray-100 shadow-sm text-justify leading-relaxed">
+                        Domina tu catálogo con precisión y cumple con la normativa legal vigente sin esfuerzo. Nuestro motor de inventario calcula automáticamente los precios finales basándose en tu costo, aplicando de inmediato los diferentes tipos de IVA y generando alertas preventivas si excedes el margen de ganancia máximo permitido por la SUNDDE. Además, su potente arquitectura multimoneda gestiona tus valores en tiempo real, respaldando toda tu información en nuestro sistema híbrido incluso si te quedas sin conexión a internet.
+                    </div>
+                </div>
+
+                <div id="tour-modulos-container" class="hidden w-full max-w-md flex-grow flex flex-col justify-center relative">
+                    <a href="#" class="btn-return-login absolute top-0 left-0 flex items-center text-[11px] font-bold text-gray-400 hover:text-blue-600 transition uppercase tracking-wider">
+                        <i class="material-icons text-[14px] mr-1">arrow_back</i> Volver al Inicio
+                    </a>
+
+                    <div class="text-center mb-5 mt-4">
+                        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-50 text-blue-600 mb-3 border border-blue-100">
+                            <i class="material-icons text-2xl">admin_panel_settings</i>
+                        </div>
+                        <h1 class="text-2xl font-bold text-gray-800">Módulos Seguros</h1>
+                    </div>
+                    <div class="text-sm text-gray-600 bg-white p-5 rounded-xl border border-gray-100 shadow-sm text-justify leading-relaxed">
+                        NEXUS POS establece una separación inteligente de roles para maximizar la seguridad de tu comercio. El entorno de Administrador te otorga control gerencial absoluto para gestionar inventarios, empleados, respaldos y estadísticas globales. Por otro lado, el módulo de Cajera está diseñado para la máxima agilidad operativa, limitándose exclusivamente a la facturación rápida, el control de ingresos o gastos diarios y los cierres de caja, garantizando así que tus finanzas corporativas estén blindadas contra descuadres.
+                    </div>
+                </div>
+
+                <div id="tour-reportes-container" class="hidden w-full max-w-md flex-grow flex flex-col justify-center relative">
+                    <a href="#" class="btn-return-login absolute top-0 left-0 flex items-center text-[11px] font-bold text-gray-400 hover:text-blue-600 transition uppercase tracking-wider">
+                        <i class="material-icons text-[14px] mr-1">arrow_back</i> Volver al Inicio
+                    </a>
+
+                    <div class="text-center mb-5 mt-4">
+                        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-50 text-blue-600 mb-3 border border-blue-100">
+                            <i class="material-icons text-2xl">query_stats</i>
+                        </div>
+                        <h1 class="text-2xl font-bold text-gray-800">Reportes en Tiempo Real</h1>
+                    </div>
+                    <div class="text-sm text-gray-600 bg-white p-5 rounded-xl border border-gray-100 shadow-sm text-justify leading-relaxed">
+                        Obtén una visión transparente y al instante de cada transacción realizada con nuestro avanzado registro histórico. El sistema te permite auditar las ventas dinámicamente, filtrando por sucursales o cajeras específicas, y buscando facturas exactas mediante el nombre o documento de identidad del cliente. Revisa al detalle los métodos de pago utilizados (divisas, efectivo o punto), junto con el desglose exacto de los productos vendidos e impuestos aplicados, asegurando una contabilidad impecable.
+                    </div>
+                </div>
+
+                <div id="tour-soporte-container" class="hidden w-full max-w-md flex-grow flex flex-col justify-center relative">
+                    <a href="#" class="btn-return-login absolute top-0 left-0 flex items-center text-[11px] font-bold text-gray-400 hover:text-blue-600 transition uppercase tracking-wider">
+                        <i class="material-icons text-[14px] mr-1">arrow_back</i> Volver al Inicio
+                    </a>
+
+                    <div class="text-center mb-5 mt-4">
+                        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-50 text-blue-600 mb-3 border border-blue-100">
+                            <i class="material-icons text-2xl">store_mall_directory</i>
+                        </div>
+                        <h1 class="text-2xl font-bold text-gray-800">Soporte Multi-Sucursal</h1>
+                    </div>
+                    <div class="text-sm text-gray-600 bg-white p-5 rounded-xl border border-gray-100 shadow-sm text-justify leading-relaxed">
+                        Diseñado para escalar junto con tu visión empresarial, este módulo te permite expandir tu presencia física manteniendo una gestión totalmente centralizada. Registra y administra múltiples sedes comerciales desde un único panel maestro, asignando personal autorizado e inventarios de forma independiente a cada locación. Monitorea el rendimiento individual de tus sucursales y consolida la información gerencial en tiempo real, garantizando una operatividad fluida en todo tu ecosistema de negocios.
+                    </div>
+                </div>
+
+                <div class="w-full mt-auto pt-4 border-t border-gray-200/60 flex flex-col items-center gap-3">
+                    
+                    <div class="w-full flex justify-center items-center gap-6 opacity-60">
+                        <div class="flex items-center" title="Sistema Homologado">
+                            <i class="material-icons text-[16px] mr-1">verified_user</i>
+                            <span class="text-[10px] font-semibold uppercase">Homologado</span>
+                        </div>
+                        <div class="flex items-center" title="Encriptación de datos">
+                            <i class="material-icons text-[16px] mr-1">lock</i>
+                            <span class="text-[10px] font-semibold uppercase">Seguro</span>
+                        </div>
+                        <div class="flex items-center" title="Soporte Técnico Activo">
+                            <i class="material-icons text-[16px] mr-1">support_agent</i>
+                            <span class="text-[10px] font-semibold uppercase">Soporte 24/7</span>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-center items-center gap-6 w-full max-w-sm bg-gray-100/80 rounded-lg py-1.5 px-4 border border-gray-200 shadow-sm">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_6px_rgba(34,197,94,0.6)]"></span>
+                            <span class="text-[10px] text-gray-600 font-bold uppercase tracking-wide">Servidores Nexus Online</span>
+                        </div>
+                        <div class="h-3 w-px bg-gray-300"></div>
+                        <div class="flex items-center gap-1">
+                            <i class="material-icons text-[14px] text-green-600">attach_money</i>
+                            <span class="text-[10px] font-bold text-gray-700 uppercase tracking-wide">Tasa BCV: <span id="tasa-bcv-display" class="text-blue-700">Cargando...</span></span>
+                        </div>
+                    </div>
+
+                </div>
+        </div>
+    </div>
+    
+    <div id="message-box" class="message-box"></div>
+
+    <div id="forgot-password-modal" class="modal-overlay hidden">
+        <div class="modal-content w-11/12 max-w-sm rounded-2xl p-6">
+            <h2 class="text-xl font-bold mb-2 text-gray-800">Recuperar Contraseña</h2>
+            <p class="text-gray-500 mb-5 text-xs">Ingresa el correo electrónico asociado a tu cuenta para recibir un enlace de restablecimiento.</p>
+            <form id="forgot-password-form">
+                <div class="mb-5">
+                    <label for="forgot-email" class="block text-gray-700 text-sm font-bold mb-1.5 ml-1 text-left">Correo Electrónico</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                            <i class="material-icons text-gray-400 text-lg">email</i>
+                        </span>
+                        <input type="email" id="forgot-email" name="email" class="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" required>
+                    </div>
+                </div>
+                <div class="flex flex-col-reverse sm:flex-row justify-end space-y-2 space-y-reverse sm:space-y-0 sm:space-x-2">
+                    <button type="button" id="close-forgot-password-modal" class="px-5 py-2 text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition font-semibold w-full sm:w-auto text-sm">Cancelar</button>
+                    <button type="submit" id="send-reset-email-btn" class="px-5 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition font-bold w-full sm:w-auto shadow-md text-sm">
+                        <span id="send-reset-text">Enviar Enlace</span>
+                        <span id="send-reset-spinner" class="spinner w-4 h-4 border-white border-l-blue-500 ml-2 hidden"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+<script type="module">
+    import { initializeApp } from "../js/firebase/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from "../js/firebase/firebase-auth.js";
+    import { getFirestore, doc, getDoc } from "../js/firebase/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDN9mZ1n-OkC-Qz52eTCOy4yJH7M0U9zYI",
+        authDomain: "nexus-pos-75593.firebaseapp.com",
+        projectId: "nexus-pos-75593",
+        storageBucket: "nexus-pos-75593.firebasestorage.app",
+        messagingSenderId: "626840984883",
+        appId: "1:626840984883:web:08d56544ee28bc8e637246",
+        measurementId: "G-K1EQVJWJHG"
+    };
+    const VPS_BACKEND_URL = 'https://api.nexusposgobal.com'; 
+
+    let app, auth, db;
+    let esLoginManual = false; // MAGIA: Esta variable evita la carrera de eventos
+
+    if (navigator.onLine) {
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            console.log("🔥 Firebase inicializado online");
+        } catch (error) {
+            console.error("Error inicializando Firebase:", error);
+        }
+    }
+
+    // --- Funciones de Apoyo (Peticiones) ---
+    async function signIn(email, password) {
+        return await signInWithEmailAndPassword(auth, email, password);
+    }
+
+    async function resetPassword(email) {
+         return await sendPasswordResetEmail(auth, email);
+    }
+
+    async function registerCompanyAndAdmin(companyName, adminEmail, adminPassword) {
+        const response = await fetch(`${VPS_BACKEND_URL}/registerCompanyAndAdmin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ companyName, adminEmail, adminPassword }),
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `Error del servidor: ${response.status}`);
+        }
+        return await response.json(); 
+    }
+
+    // =========================================================================
+    // 3. LÓGICA DE INTERFAZ Y EVENTOS (AQUÍ EMPIEZA EL DOMContentLoaded)
+    // =========================================================================
+    document.addEventListener('DOMContentLoaded', async () => {
+        // --- Referencias del DOM ---
+        const loadingContainer = document.getElementById('app-loading');
+        const appContent = document.getElementById('app-content');
+        const loginForm = document.getElementById('login-form');
+        const cashierLoginForm = document.getElementById('cashier-login-form');
+        const registerCompanyForm = document.getElementById('register-company-form');
+        const forgotPasswordForm = document.getElementById('forgot-password-form');
+        const forgotPasswordModal = document.getElementById('forgot-password-modal');
+        const messageBox = document.getElementById('message-box');
+        document.getElementById('login-btn-text').classList.add('hidden');
+        document.getElementById('login-btn-spinner').classList.remove('hidden');
+        document.getElementById('login-btn').disabled = true;
+
+        // Al terminar la carga (sea éxito o error):
+        document.getElementById('login-btn-text').classList.remove('hidden');
+        document.getElementById('login-btn-spinner').classList.add('hidden');
+        document.getElementById('login-btn').disabled = false;
+
+        // --- EVENTOS DEL MENÚ INTERACTIVO (TOUR) ---
+        document.getElementById('btn-tour-inventario')?.addEventListener('click', () => toggleForms('tour-inventario'));
+        document.getElementById('btn-tour-modulos')?.addEventListener('click', () => toggleForms('tour-modulos'));
+        document.getElementById('btn-tour-reportes')?.addEventListener('click', () => toggleForms('tour-reportes'));
+        document.getElementById('btn-tour-soporte')?.addEventListener('click', () => toggleForms('tour-soporte'));
+
+        // Botones de "Volver al Inicio" en los tours
+        document.querySelectorAll('.btn-return-login').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                toggleForms('login');
+            });
+        });
+
+        // [IMPORTANTE] Protección contra fallo de IPC
+        if (typeof window.nexusAPI === 'undefined') {
+            console.warn("NexusAPI no detectado. Si estás en el navegador esto es normal.");
+            mostrarLogin();
+            return;
+        }
+
+if (auth) {
+    onAuthStateChanged(auth, async (user) => {
+        if (esLoginManual) return; 
+
+        // Retrasamos la lectura para que el video termine tranquilo (7.5 segundos)
+        setTimeout(async () => {
+            try {
+                const sesionLocal = await window.nexusAPI.obtenerSesionLocal();
+
+                if (user) {
+                    if (!sesionLocal) {
+                        console.log("Sesión local no encontrada. Sincronizando cierre...");
+                        await signOut(auth); // <--- AHORA SÍ EXISTE
+                        if (loadingContainer) loadingContainer.classList.add('hidden');
+                        mostrarLogin();
+                        return;
+                    }
+
+                    const idTokenResult = await user.getIdTokenResult();
+                    const role = idTokenResult.claims.role;
+
+                    await window.nexusAPI.guardarUsuarioLocal({
+                        uid: user.uid,
+                        email: user.email,
+                        role: role,
+                        companyId: idTokenResult.claims.companyId || 'nexus_pos_id',
+                        branchId: idTokenResult.claims.branchId || null
+                    });
+
+                    window.nexusAPI.abrirVentanaPrincipal(role === 'admin' ? 'inicio.html' : 'inicio_cajera.html');
+                } else {
+                    if (sesionLocal && !navigator.onLine) {
+                        window.nexusAPI.abrirVentanaPrincipal(sesionLocal.role === 'admin' ? 'inicio.html' : 'inicio_cajera.html');
+                    } else {
+                        if (loadingContainer) loadingContainer.classList.add('hidden');
+                        mostrarLogin();
+                    }
+                }
+            } catch (error) {
+                console.error("Error en validación cruzada:", error);
+                if (loadingContainer) loadingContainer.classList.add('hidden');
+                mostrarLogin();
+            }
+        }, 7500); 
+    });
+}
+
+else {  
+  try {
+        const sesionLocal = await window.nexusAPI.obtenerSesionLocal();
+        if (loadingContainer) loadingContainer.classList.add('hidden'); // OCULTAR SPINNER
+        
+        if (sesionLocal) {
+            window.nexusAPI.abrirVentanaPrincipal(sesionLocal.role === 'admin' ? 'inicio.html' : 'inicio_cajera.html');
+        } else { 
+            mostrarLogin(); 
+        }
+        
+    } 
+        catch (error) {
+            if (loadingContainer) loadingContainer.classList.add('hidden'); // OCULTAR SPINNER
+            mostrarLogin();
+        }
+}
+
+        // --- 2. LOGIN PRINCIPAL ---
+        if (loginForm) {
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                esLoginManual = true; // Bloquea al detector automático para que no aborte la descarga
+
+                // Limpiamos los espacios accidentales para que SQLite no falle
+                const email = loginForm['login-email'].value.trim();
+                const password = loginForm['login-password'].value.trim();
+
+                try {
+                    if (navigator.onLine) {
+                        // --- MECANISMO DE SEGURIDAD (Asegura que Firebase exista) ---
+                        if (!auth || !db) {
+                            console.log("Re-inicializando Firebase...");
+                            app = initializeApp(firebaseConfig);
+                            auth = getAuth(app);
+                            db = getFirestore(app);
+                        }
+
+                        const userCred = await signIn(email, password);
+                        const idToken = await userCred.user.getIdTokenResult();
+                        const companyId = idToken.claims.companyId;
+                        
+                        let companyDataString = null;
+
+                        // --- BUSCAMOS EL DOCUMENTO DE LA EMPRESA ---
+                        if (companyId && db) {
+                            const companyDoc = await getDoc(doc(db, 'companies', companyId));
+                            if (companyDoc.exists()) {
+                                companyDataString = JSON.stringify(companyDoc.data());
+                                console.log("Datos de empresa empaquetados correctamente.");
+                            }
+                        }
+
+                        // --- GUARDAMOS EN EL DISCO DURO ---
+                        await window.nexusAPI.guardarUsuarioLocal({
+                            uid: userCred.user.uid,
+                            email: userCred.user.email,
+                            role: idToken.claims.role || 'admin',
+                            companyId: companyId || 'nexus_pos_id',
+                            branchId: idToken.claims.branchId || null,
+                            companyData: companyDataString // ¡La magia ocurre aquí!
+                        });
+                        
+                        showMessage("Inicio exitoso y datos sincronizados", "success");
+                        window.nexusAPI.abrirVentanaPrincipal(idToken.claims.role === 'admin' ? 'inicio.html' : 'inicio_cajera.html');
+                        
+                    } else {
+                        // MODO OFFLINE (Se mantiene intacto)
+                        const user = await window.nexusAPI.loginLocal(email, password);
+                        if (user) {
+                            window.location.href = user.role === 'admin' ? 'inicio.html' : 'inicio_cajera.html';
+                        } else {
+                            showMessage("Credenciales inválidas en este equipo", "error");
+                        }
+                    }
+                } catch (err) {
+                    esLoginManual = false; // Rehabilitar auto-login si hay error
+                    console.error("Detalle del error:", err);
+                    showMessage("Error al entrar: " + err.message, "error");
+                }
+            });
+        }
+
+        // Formulario Cajera
+        if (cashierLoginForm) {
+            cashierLoginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = cashierLoginForm['cashier-email'].value.trim();
+                const password = cashierLoginForm['cashier-password'].value.trim();
+                
+                if (navigator.onLine) {
+                    try {
+                        await signIn(email, password);
+                        showMessage("Cajera: Sesión iniciada.", "success");
+                    } catch (e) { showMessage("Error de autenticación.", "error"); }
+                } else {
+                    const user = await window.nexusAPI.loginLocal(email, password);
+                    if (user && user.role === 'cajera') {
+                        window.nexusAPI.abrirVentanaPrincipal('inicio_cajera.html');
+                    } else { showMessage("Acceso denegado offline.", "error"); }
+                }
+            });
+        }
+
+        // Formulario Registro Empresa
+        if (registerCompanyForm) {
+            registerCompanyForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const companyName = registerCompanyForm['company-name'].value;
+                const adminEmail = registerCompanyForm['company-admin-email'].value.trim();
+                const adminPassword = registerCompanyForm['company-admin-password'].value.trim();
+
+                try {
+                    showMessage("Registrando empresa...", "info"); 
+                    const result = await registerCompanyAndAdmin(companyName, adminEmail, adminPassword);
+                    if (result && (result.success || result.message)) { 
+                        showMessage("¡Registro exitoso!", "success");
+                        await signIn(adminEmail, adminPassword);
+                    }
+                } catch (error) {
+                    showMessage(error.message, "error");
+                }
+            });
+        }
+
+        // Formulario Recuperar Contraseña
+        if (forgotPasswordForm) {
+            forgotPasswordForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = forgotPasswordForm['forgot-email'].value.trim();
+                showLoadingSpinner(true);
+                try {
+                    await resetPassword(email);
+                    showMessage("Correo de recuperación enviado.", "success");
+                    closeModal();
+                } catch (error) {
+                    showMessage("Error al enviar el correo.", "error");
+                } finally {
+                    showLoadingSpinner(false);
+                }
+            });
+        }
+
+        // --- 3. FUNCIONES AUXILIARES DE INTERFAZ ---
+        function mostrarLogin() {
+            if (appContent) appContent.classList.remove('hidden');
+            toggleForms('login');
+            document.body.style.display = 'block'; // Ajustado porque el padre ahora maneja el layout
+        }
+
+        function toggleForms(target) {
+            
+            const containers = [
+                'login-container', 
+                'register-container', 
+                'register-company-container', 
+                'cashier-login-container',
+                'tour-inventario-container', 
+                'tour-modulos-container', 
+                'tour-reportes-container', 
+                'tour-soporte-container'
+            ];
+            
+            containers.forEach(c => {
+                const el = document.getElementById(c);
+                if (el) el.classList.add('hidden');
+            });
+            
+            const targetEl = document.getElementById(target + '-container');
+            if (targetEl) targetEl.classList.remove('hidden');
+        }
+
+        function showMessage(msg, type) {
+            if (!messageBox) return;
+            const div = document.createElement('div');
+            div.className = `p-3 mb-2 rounded text-white font-bold shadow-lg ${type === 'success' ? 'bg-green-500' : 'bg-red-500'}`;
+            div.textContent = msg;
+            messageBox.appendChild(div);
+            setTimeout(() => div.remove(), 3000);
+        }
+
+        function showLoadingSpinner(isLoading) {
+            const btn = document.getElementById('send-reset-email-btn');
+            const text = document.getElementById('send-reset-text');
+            const spinner = document.getElementById('send-reset-spinner');
+            if (!btn) return;
+            btn.disabled = isLoading;
+            if (isLoading) {
+                text.classList.add('hidden');
+                spinner.classList.remove('hidden');
+            } else {
+                text.classList.remove('hidden');
+                spinner.classList.add('hidden');
+            }
+        }
+
+        function closeModal() {
+            if (forgotPasswordModal) forgotPasswordModal.classList.add('hidden');
+        }
+
+        document.getElementById('show-register-company')?.addEventListener('click', (e) => { e.preventDefault(); toggleForms('register-company'); });
+        document.getElementById('show-cashier-login')?.addEventListener('click', (e) => { e.preventDefault(); toggleForms('cashier-login'); });
+        document.getElementById('show-login')?.addEventListener('click', (e) => { e.preventDefault(); toggleForms('login'); });
+        document.getElementById('show-login-from-company-register')?.addEventListener('click', (e) => { e.preventDefault(); toggleForms('login'); });
+        document.getElementById('show-login-from-cashier-login')?.addEventListener('click', (e) => { e.preventDefault(); toggleForms('login'); });
+        document.getElementById('show-forgot-password-modal')?.addEventListener('click', (e) => { e.preventDefault(); if (forgotPasswordModal) forgotPasswordModal.classList.remove('hidden'); });
+        document.getElementById('close-forgot-password-modal')?.addEventListener('click', (e) => { e.preventDefault(); closeModal(); });
+
+    }); 
+
+
+// --- LÓGICA DE LA BARRA DE TÍTULO PERSONALIZADA ---
+document.getElementById('btn-minimize-custom')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (window.nexusAPI) window.nexusAPI.minimize();
+});
+
+document.getElementById('btn-close-custom')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (window.nexusAPI) window.nexusAPI.close();
+});
+// --------------------------------------------------
+
+
+async function cargarTasaKiosco() {
+    const tasaDisplay = document.getElementById('tasa-bcv-display');
+    if (!tasaDisplay) return;
+
+    try {
+        const API_URL = 'https://scarping.nexusposgobal.com/api/tasas';
+        const response = await fetch(API_URL);
+        
+        if (response.ok) {
+            const data = await response.json();
+            
+            // 2. Extraemos el valor del USD validando la nueva estructura
+            if (data.success && data.rates && data.rates.USD) {
+                // Formateamos a 2 decimales para que se vea elegante en la pantalla del Kiosco
+                const tasaFormateada = parseFloat(data.rates.USD).toFixed(2);
+                tasaDisplay.textContent = `Bs. ${tasaFormateada}`;
+                return;
+            }
+        }
+        
+        throw new Error("La estructura de la tasa no es válida o está incompleta");
+        
+    } catch (error) {
+        console.error("❌ Error al cargar la tasa del día en el Kiosco:", error);
+        tasaDisplay.textContent = "Bs. --";
+    }
+}
+
+
+cargarTasaKiosco();
+cargarTasaKiosco();
+// ----------------------------------------------
+
+</script>
+</body>
+</html>

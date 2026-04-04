@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="logo_nexus.png">
+    <title>Tasas de Cambio BCV - Actualización</title>
+    <script src="../node_modules/chart.js/dist/chart.umd.js"></script>
+<style>
+
+    .back-button { display: none !important; }
+    .back-button:hover { background-color: #0056b3; }
+
+    .modulo-tasa-global {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important; 
+        justify-content: flex-start !important;
+        width: 100% !important;
+        
+
+        padding: 40px 50px !important; 
+        
+        box-sizing: border-box;
+    }
+
+    .main-card {
+        background-color: transparent;
+        width: 100%;
+        display: flex;
+        flex-direction: row !important; /* Fuerza la dirección en fila */
+        flex-wrap: nowrap !important;   /* Prohíbe terminantemente que se bajen de línea */
+        justify-content: space-between; 
+        align-items: stretch; 
+        gap: 25px; 
+    }
+
+    .rates-wrapper-card {
+        display: flex;
+        flex-direction: row;
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+        overflow: hidden; 
+        flex-wrap: wrap; 
+        align-items: stretch; 
+        
+        /* FUERZA LA MITAD EXACTA DE LA PANTALLA */
+        flex: 0 0 calc(50% - 12.5px) !important; 
+        width: calc(50% - 12.5px) !important; 
+        max-width: none !important; 
+        margin: 0 !important; 
+    }
+
+    /* Diseño interno de la tarjeta fusionada (se mantiene intacto) */
+    .rates-wrapper-card > .update-card,
+    .rates-wrapper-card > .bcv-card {
+        background-color: transparent !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        width: 100% !important; 
+        flex: 1 1 250px !important;
+        padding: 25px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        box-sizing: border-box;
+    }
+    .rates-wrapper-card > .update-card {
+        border-right: 1px solid #e2e8f0;
+    }
+
+    .recommendation-card { 
+    background-color: #ffffff; 
+    border-radius: 16px; 
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); 
+    padding: 24px; 
+    margin: 0;
+    
+    flex: 0 0 calc(50% - 12.5px) !important;
+    width: calc(50% - 12.5px) !important;
+    
+    /* SOLUCIÓN: Altura fija para que no crezca infinitamente */
+    height: 800px !important; 
+    
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    border: 1px solid #e0e0e0; 
+}
+
+    .gemini-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+        gap: 10px;
+    }
+    .gemini-icon {
+        background: -webkit-linear-gradient(45deg, #4285f4, #9b72cb, #d96570);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 26px;
+    }
+    .gemini-header h3 {
+        font-size: 1.25em;
+        font-weight: 500;
+        color: #1f1f1f;
+        margin: 0;
+        font-family: 'Roboto', sans-serif;
+    }
+
+    
+    .gemini-response-box {
+    flex-grow: 1;
+    overflow-y: auto !important; 
+    padding: 5px 10px 15px 0;
+    margin-bottom: 10px;
+    text-align: left;
+    }
+
+
+    .gemini-response-box::-webkit-scrollbar {
+        width: 6px;
+    }
+    .gemini-response-box::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .gemini-response-box::-webkit-scrollbar-thumb {
+        background: #e0e0e0;
+        border-radius: 10px;
+    }
+    .gemini-response-box::-webkit-scrollbar-thumb:hover {
+        background: #d0d0d0;
+    }
+
+
+    .gemini-response-box p {
+        color: #1f1f1f;
+        font-size: 1em;
+        line-height: 1.6;
+        margin: 0;
+        white-space: pre-wrap; 
+        word-wrap: break-word;
+    }
+
+    /* Buscador estilo "Píldora" de Google */
+    .gemini-input-wrapper {
+        display: flex;
+        align-items: center;
+        background-color: #f0f4f9; /* Gris muy claro característico de Gemini */
+        border-radius: 24px; 
+        padding: 6px 16px;
+        gap: 10px;
+        transition: background-color 0.2s, box-shadow 0.2s;
+        margin-top: 15px;
+    }
+    .gemini-input-wrapper:focus-within {
+        background-color: #ffffff;
+        box-shadow: 0 0 0 1px #e0e0e0, 0 2px 6px rgba(0,0,0,0.05);
+    }
+    .gemini-input-wrapper input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        outline: none;
+        padding: 10px 0;
+        font-size: 0.95em;
+        color: #1f1f1f;
+        font-family: 'Roboto', sans-serif;
+    }
+    .gemini-input-wrapper input::placeholder {
+        color: #444746; /* Gris oscuro para el placeholder */
+    }
+
+    /* Botón de enviar minimalista */
+    .gemini-send-btn {
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        color: #1a73e8; /* Azul Google */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px;
+        border-radius: 50%;
+        transition: background-color 0.2s;
+    }
+    .gemini-send-btn:hover {
+        background-color: rgba(26, 115, 232, 0.1);
+    }
+    .gemini-send-btn .material-icons {
+        font-size: 22px;
+    }
+
+    .ai-suggestion-chip {
+        background-color: #f0f4f9;
+        color: #444746;
+        border: 1px solid #e0e0e0;
+        padding: 6px 14px;
+        border-radius: 16px;
+        font-size: 0.85em;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+
+    .ai-suggestion-chip:hover {
+        background-color: #e3f2fd;
+        color: #1a73e8;
+        border-color: #1a73e8;
+    }
+
+    .current-rate-box {
+        background-color: #e6f7ff; 
+        border: 1px solid #91d5ff;
+        border-radius: 6px;
+        padding: 15px;
+        margin-bottom: 20px;
+        width: 100%;
+        text-align: left;
+    }
+    .current-rate-box p { margin: 0 0 5px 0; font-size: 0.9em; color: #333; }
+    
+    .current-rate-value {
+        font-size: 1.5em;
+        font-weight: bold;
+        color: #0056b3;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .copy-button-container { display: flex; flex-direction: column; align-items: flex-end; }
+    .copy-info {
+        font-size: 0.65em; /* Reducido un poco más */
+        color: #0056b3;
+        text-align: right;
+        margin-bottom: 3px;
+        font-weight: bold;
+        width: 100%;
+        opacity: 0.8; /* Lo hace un poco más discreto */
+    }
+    
+    .copy-button {
+        background-color: #007BFF; 
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.75em; /* Fuente más pequeña */
+        padding: 4px 8px;   /* Padding reducido para hacerlo más compacto */
+        transition: background-color 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .copy-button:hover { background-color: #0056b3; }
+    .copy-button span.icon {
+        font-size: 1em; 
+    }
+
+    .update-card h3 { font-size: 1.4em; font-weight: bold; margin-top: 0; margin-bottom: 25px; color: #333; }
+    .update-card form { width: 100%; display: flex; flex-direction: column; align-items: center; }
+    
+    .update-card input {
+        width: 100%; padding: 15px; margin-bottom: 18px; border: 1px solid #ccc; 
+        border-radius: 4px; text-align: center; font-size: 1.1em; box-sizing: border-box; 
+    }
+    
+    .update-card button[type="submit"] {
+        background-color: #006400; color: white; padding: 15px; border: none;
+        border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; 
+        font-size: 1.1em; transition: background-color 0.3s;
+    }
+    .update-card button[type="submit"]:hover { background-color: #005600; }
+    
+    .feedback-message {
+        padding: 12px; margin-top: 20px; border-radius: 6px; font-weight: bold;
+        text-align: center; width: 100%; box-sizing: border-box; display: none; 
+        opacity: 0; transition: opacity 0.5s, max-height 0.5s ease-out; 
+        max-height: 0; overflow: hidden;
+    }
+    .feedback-message.show { opacity: 1; max-height: 100px; }
+    .feedback-message.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .feedback-message.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+    .disclaimer-box {
+        background-color: #f8f8f8; border: 1px solid #ddd; border-radius: 6px;
+        padding: 12px; margin-top: 25px; text-align: left; font-size: 0.9em; 
+        color: #555; line-height: 1.4;
+    }
+    .disclaimer-box h4 { margin-top: 0; margin-bottom: 6px; font-size: 1.1em; font-weight: bold; }
+
+    /* =======================================================================
+       4. ELEMENTOS INTERNOS: TARJETA BCV
+       ======================================================================= */
+    .bcv-header { display: flex; align-items: center; justify-content: center; margin-bottom: 25px; }
+    .bcv-header img { width: 55px; margin-right: 15px; } 
+    .bcv-title { font-size: 1.4em; font-weight: bold; } 
+    
+    .bcv-subtitle {
+        font-weight: bold; font-size: 1.1em; margin-top: 12px; margin-bottom: 15px;
+        border-top: 1px solid #eee; padding-top: 15px; width: 100%; text-align: left;
+    }
+    
+    .rates-table { width: 100%; border-collapse: collapse; }
+    .rates-table th, .rates-table td { padding: 12px 5px; text-align: right; border-bottom: 1px solid #eee; }
+    .rates-table th:first-child, .rates-table td:first-child { text-align: left; }
+    .rates-table th { font-size: 0.9em; font-weight: bold; color: #555; background-color: #f9f9f9; text-transform: uppercase; }
+    
+    .rate-currency-name { font-weight: bold; font-size: 1em; } 
+    .rate-value { font-weight: bold; color: #006400; font-family: monospace; } 
+    .rate-variation { font-weight: bold; width: 80px; }
+    .var-up { color: #155724; } 
+    .var-down { color: #721c24; } 
+    
+    .update-time { font-size: 0.9em; color: #888; margin-top: 18px; } 
+    
+    .chart-container {
+        width: 100%; height: 200px; margin-top: 20px; border-radius: 4px;
+        display: flex; overflow: hidden; border: 1px solid #eee;
+        justify-content: center; align-items: center;
+    }
+
+    /* =======================================================================
+       5. MODAL DE CONFIRMACIÓN
+       ======================================================================= */
+    .custom-modal-backdrop {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background-color: rgba(0, 0, 0, 0.7); display: none;
+        justify-content: center; align-items: center; z-index: 1000;
+    }
+    .custom-modal-content {
+        background-color: white; border-radius: 12px; width: 90%; max-width: 400px;
+        padding: 30px; text-align: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); position: relative;
+    }
+    .modal-header {
+        display: flex; align-items: center; justify-content: center; margin-bottom: 20px;
+        border-bottom: 3px solid #006400; padding-bottom: 10px;
+    }
+    .modal-icon { font-size: 2em; color: #ffc107; margin-right: 10px; }
+    .modal-header h4 { margin: 0; font-size: 1.4em; color: #333; }
+    .modal-body { font-size: 1em; color: #555; margin-bottom: 30px; text-align: center; }
+    .modal-buttons { display: flex; justify-content: space-between; gap: 15px; }
+    .modal-button {
+        padding: 12px 10px; border: none; border-radius: 8px; cursor: pointer;
+        font-weight: bold; font-size: 1em; flex: 1; transition: opacity 0.2s;
+    }
+    .modal-button:hover { opacity: 0.9; }
+    #confirmCopy { background-color: #dc3545; color: white; }
+    #cancelCopy { background-color: #e0e0e0; color: #333; border: 1px solid #ccc; }
+
+    /* =======================================================================
+       6. RESPONSIVIDAD (MEDIA QUERIES)
+       ======================================================================= */
+    @media (max-width: 850px) {
+        .rates-wrapper-card { flex-direction: column; }
+        .rates-wrapper-card > .update-card {
+            border-right: none;
+            border-bottom: 1px solid #e2e8f0;
+        }
+    }
+</style>
+</head>
+<body onload="displayRandomRecommendation()">
+
+<div id="loading-message">Cargando...</div>
+<div id="unauthorized-message" style="display: none;">No autorizado.</div>
+
+<main class="modulo-tasa-global" id="app-container" style="display: none;">
+    <div class="user-info-bar" id="userInfoBar"></div>
+
+    <div class="main-card">
+    
+    <div class="rates-wrapper-card">
+        
+        <div class="update-card">
+            <h3>Actualizar Tasa Principal (USD)</h3>
+
+            <div class="current-rate-box">
+                <p>Tasa USD actual en tu sistema:</p>
+                <div class="current-rate-value">
+                    <span id="currentCompanyRate">Cargando...</span>
+                    <div class="copy-button-container">
+                        <span class="copy-info">Pasar tasa USD BCV</span>
+                        <button class="copy-button" id="copyRateButton" title="Copiar Tasa USD de la tabla BCV">
+                            <span class="icon">&#x2398;</span> Copiar Tasa
+                        </button>
+                    </div>
+                </div>
+                <p style="font-size:0.75em; margin-top: 5px; color: #888;">Última actualización: <span id="companyRateTimestamp">...</span></p>
+            </div>
+            
+            <form id="updateForm">
+                <input type="number" id="updatedRate" placeholder="Colocar la nueva tasa (USD)" step="0.00000001">
+                <button type="submit">Guardar Nueva Tasa</button>
+            </form>
+
+            <div id="successMessage" class="feedback-message success">Tasa actualizada correctamente.</div>
+            <div id="errorMessage" class="feedback-message error">Error al actualizar la tasa. Por favor, verifica la consola para más detalles.</div>
+
+            <div class="disclaimer-box">
+                <h4>A tener en cuenta:</h4>
+                <ol>
+                    <li>Esta información de tasas de cambio del "BANCO CENTRAL DE VENEZUELA" es totalmente legítima, ya que se obtienen los datos de las tasas en tiempo real cada vez que entras en el apartado de "CAMBIAR VALOR GLOBAL".</li>
+                    <li>NO es ilegal sacar esta información directamente de su página OFICIAL, siempre y cuando se cumpla con sus "POLITICAS DE PRIVACIDAD", como se hizo en este caso.</li>
+                </ol>
+            </div>
+        </div>
+    
+        <div class="bcv-card">
+            <div class="bcv-header">
+                <img src="bcv.png" alt="BCV Logo">
+                <div>
+                    <div class="bcv-title">Banco Central de Venezuela</div>
+                </div>
+            </div>
+    
+            <div class="bcv-subtitle">Tipo de Cambio de Referencia</div>
+
+            <div id="rates-container" style="width: 100%;">
+                <div id="loading">Cargando tasas...</div>
+            </div>
+    
+            <div class="chart-container">
+                <canvas id="usdVesChart" style="width: 100%; height: 100%;"></canvas>
+            </div>
+
+            <div class="update-time">
+                Datos obtenidos: <span id="last-update">...</span>
+            </div>
+        </div>
+
+    </div> 
+    
+    <div class="recommendation-card">
+        <div class="gemini-header">
+            <span class="material-icons gemini-icon">auto_awesome</span>
+            <h3>Nexus IA</h3>
+        </div>
+
+        <div id="ai-response-container" class="gemini-response-box">
+            <p id="recommendationText">Analizando indicadores financieros...</p>
+        </div>
+
+        <div id="ai-suggestions" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; justify-content: flex-start;">
+        </div>
+
+        <div class="gemini-input-wrapper">
+            <input type="text" id="ai-input" placeholder="Pregunta algo sobre tu negocio...">
+            <button id="send-ai" class="gemini-send-btn" title="Consultar a Nexus IA">
+                <span class="material-icons">send</span>
+            </button>
+        </div>
+    </div>
+
+</div>
+
+
+</main>
+
+<div id="copyConfirmModal" class="custom-modal-backdrop">
+    <div class="custom-modal-content">
+        <div class="modal-header">
+            <span class="modal-icon">&#x26A0;</span> <h4>Confirmación Requerida</h4>
+        </div>
+        <div class="modal-body">
+            <p>¿Desea pasar la tasa de cambio <span id="modalRateValue" style="font-weight: bold; color: #dc3545;">[VALOR]</span> USD/VES obtenida del BCV al campo para actualizar la tasa actual del sistema?</p>
+        </div>
+        <div class="modal-buttons">
+            <button class="modal-button" id="confirmCopy">Sí, Aplicar Tasa</button>
+            <button class="modal-button" id="cancelCopy">Cancelar</button>
+        </div>
+    </div>
+</div>
+<script type="module">
+    const loadingMessage = document.getElementById('loading-message');
+    const unauthorizedMessage = document.getElementById('unauthorized-message');
+    const appContainer = document.getElementById('app-container');
+    const userInfoBar = document.getElementById('userInfoBar');
+    const updateForm = document.getElementById('updateForm');
+    const updatedRateInput = document.getElementById('updatedRate');
+    const successMessage = document.getElementById('successMessage');
+    const errorMessage = document.getElementById('errorMessage');
+    const currentCompanyRateSpan = document.getElementById('currentCompanyRate');
+    const companyRateTimestampSpan = document.getElementById('companyRateTimestamp');
+    const copyRateButton = document.getElementById('copyRateButton');
+    const recommendationText = document.getElementById('recommendationText');
+    
+    const copyConfirmModal = document.getElementById('copyConfirmModal');
+    const modalRateValueSpan = document.getElementById('modalRateValue');
+    const confirmCopyButton = document.getElementById('confirmCopy');
+    const cancelCopyButton = document.getElementById('cancelCopy');
+
+    let companyId = null;
+    let chartInstance = null;
+    let conversacionIniciada = false;
+
+    function formatearRespuestaIA(texto) {
+        if (!texto) return "";
+        let html = texto;
+        
+        // 1. Traduce Títulos (### Texto) a Encabezados azules elegantes
+        html = html.replace(/### (.*)/g, '<div style="color: #1a73e8; font-weight: bold; font-size: 1.1em; margin-top: 15px; margin-bottom: 8px; border-bottom: 1px solid #d2e3fc; padding-bottom: 3px;">$1</div>');
+        
+        // 2. Traduce Negritas (**Texto**) a etiquetas <strong>
+        html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        
+        // 3. Traduce Viñetas (* Texto o - Texto) a puntos estilizados
+        html = html.replace(/^[\*\-] (.*)/gm, '<div style="margin-left: 15px; margin-bottom: 5px; display: flex;"><span style="color: #1a73e8; margin-right: 8px;">•</span><span>$1</span></div>');
+        
+        // 4. Limpia saltos de línea extra para que no se vea tan separado
+        html = html.replace(/\n\n/g, '<br><br>');
+
+        return html;
+    }
+    
+    async function obtenerConsejoIA() {
+        const textElement = document.getElementById('recommendationText');
+        textElement.innerHTML = '<em style="color: #64748b;">Analizando la economía y evaluando indicadores...</em>';
+
+        try {
+            const respuesta = await window.nexusAPI.consultarIA({
+                // Mejoramos la instrucción para evitar rellenos y asegurar un análisis útil
+                mensaje: "Analiza la tasa de cambio actual y dame un consejo financiero estratégico de máximo 3 líneas para mi negocio en Venezuela. Ve directo al grano, sin saludos.",
+                contexto: "Panel de Tasa Global Nexus. Rol: Analista financiero experto."
+            });
+            textElement.innerHTML = `<strong style="color: #1a73e8;">Consejo del día:</strong> ${respuesta}`;
+        } catch (e) {
+            textElement.innerHTML = "<span style='color: #ef4444;'>El servicio de Inteligencia Financiera no está disponible temporalmente.</span>";
+        }
+    }
+
+
+    document.getElementById('send-ai').addEventListener('click', async () => {
+    const input = document.getElementById('ai-input');
+    const container = document.getElementById('ai-response-container');
+    const prompt = input.value.trim();
+
+    if (!prompt) return;
+
+    input.value = ""; 
+    
+    if (!conversacionIniciada) {
+        container.innerHTML = ""; 
+    }
+
+    // 1. Mostrar mensaje del usuario
+    container.innerHTML += `<div style="text-align: right; margin-top: 15px;"><span style="background-color: #e3f2fd; color: #0d47a1; padding: 8px 14px; border-radius: 18px; display: inline-block; font-size: 0.95em; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">${prompt}</span></div>`;
+    
+    const loadingId = 'loading-' + Date.now();
+    container.innerHTML += `<div id="${loadingId}" style="display: flex; align-items: center; gap: 8px; margin-top: 15px;"><span class="gemini-icon material-icons" style="font-size: 18px; animation: spin 2s linear infinite;">auto_awesome</span><em style="color: #64748b; font-size: 0.9em;">Nexus IA está procesando...</em></div>`;
+    
+    container.scrollTop = container.scrollHeight;
+
+    // === NUEVA LÓGICA: OBTENER DATOS REALES PARA LA IA ===
+    let datosMercado = "";
+    try {
+        const historial = await window.nexusAPI.obtenerHistorialTasas();
+        const resumenHistorial = historial.map(h => `${h.fecha}: ${h.valor}`).join(", ");
+        const tasaHoy = document.querySelector('.rate-value')?.textContent || "No disponible";
+        
+        datosMercado = `
+        DATOS REALES DEL MERCADO ACTUAL (BCV):
+        - Tasa de hoy: ${tasaHoy}
+        - Historial de los últimos días: ${resumenHistorial}
+        `;
+    } catch (err) {
+        console.error("No se pudo obtener el historial para el contexto de la IA", err);
+    }
+
+    let contextoDinamico = `Eres Nexus IA, el asistente experto en finanzas para negocios en Venezuela. 
+    Tu misión es dar consejos prácticos, cercanos y fáciles de entender para un comerciante.
+    ${datosMercado}
+
+    REGLAS DE LENGUAJE:
+    1. Habla de forma profesional pero cercana (como un socio consultor).
+    2. Usa términos claros: En lugar de "exposición a la devaluación", di "evitar que tus bolívares pierdan valor".
+    3. En lugar de "indexación proactiva", di "ajustar tus precios al momento según la tasa del día".
+    4. Explica el PORQUÉ de las cosas (ej: "Haz esto para que no pierdas dinero al reponer mercancía").
+    5. Si la conversación es continua, NO saludes ni te presentes. Ve directo a la explicación.
+
+    ESTILO DE FORMATO:
+    - Usa **negritas** para conceptos clave.
+    - Usa viñetas (*) para listas.
+    - Separa bien los párrafos para que no se vea amontonado.`;
+    
+    if (conversacionIniciada) {
+        contextoDinamico += " REGLA ESTRICTA: Esta es una conversación continua. NO digas 'Hola', 'Buen día', ni te presentes. Responde directa y analíticamente a lo que se te pregunta usando formato Markdown (usa ** para negritas y * para viñetas).";
+    } else {
+        conversacionIniciada = true;
+    }
+
+    try {
+        const respuestaCruda = await window.nexusAPI.consultarIA({
+            mensaje: prompt,
+            contexto: contextoDinamico
+        });
+        
+        document.getElementById(loadingId).remove();
+
+        // Pasamos la respuesta de la IA por nuestro nuevo traductor
+        const respuestaFormateada = formatearRespuestaIA(respuestaCruda);
+
+        // Inyectamos el cuadro de respuesta con el texto ya formateado
+        container.innerHTML += `
+            <div style="background-color: #f0f4f9; padding: 16px; border-radius: 12px; margin-top: 15px; border-left: 4px solid #1a73e8; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+                <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 8px;">
+                    <span class="material-icons" style="color: #1a73e8; font-size: 18px;">auto_awesome</span>
+                    <strong style="color: #1a73e8; font-size: 0.95em;">Nexus IA</strong>
+                </div>
+                <div style="color: #1f1f1f; line-height: 1.6; white-space: pre-wrap; margin: 0; font-size: 0.95em; font-family: 'Roboto', sans-serif;">${respuestaFormateada}</div>
+            </div>`;
+        
+        container.scrollTop = container.scrollHeight;
+
+    } catch (e) {
+        if (document.getElementById(loadingId)) document.getElementById(loadingId).remove();
+        container.innerHTML += `<p style="color: #ef4444; margin-top: 10px; font-size: 0.9em;">Error: Problemas de enlace con el servidor local de IA.</p>`;
+    }
+});
+
+
+// === LISTA DE 30 PREGUNTAS FRECUENTES (NEXUS POS) ===
+const faqNexus = [
+    "¿Cómo vender más?", "¿Cómo ser más rentable?", "¿Qué es el IGTF?", 
+    "¿Bajar gastos fijos?", "¿Cómo fijar precios?", "¿Invertir en divisas?", 
+    "¿Qué es stock mínimo?", "¿Evitar pérdidas?", "¿Margen de ganancia?", 
+    "¿Cómo ahorrar hoy?", "¿Estrategia de ventas?", "¿Análisis de costos?",
+    "¿Subir ticket promedio?", "¿Punto de equilibrio?", "¿Control de merma?",
+    "¿Flujo de caja?", "¿Indexar precios?", "¿Costo de reposición?",
+    "¿Ventas por sucursal?", "¿Retener clientes?", "¿Promociones útiles?",
+    "¿Dolarización fiscal?", "¿Ahorro en bolívares?", "¿Invertir excedentes?",
+    "¿Rotación de stock?", "¿Evitar multas SENIAT?", "¿Optimizar nómina?",
+    "¿Nuevos productos?", "¿Efectivo o punto?", "¿Crédito a clientes?"
+];
+
+// Función para mostrar 3 sugerencias aleatorias
+function cargarSugerenciasAleatorias() {
+    const container = document.getElementById('ai-suggestions');
+    container.innerHTML = ""; // Limpiar
+    
+    // Mezclar y sacar 3
+    const shuffled = faqNexus.sort(() => 0.5 - Math.random());
+    const seleccionadas = shuffled.slice(0, 3);
+
+    seleccionadas.forEach(pregunta => {
+        const chip = document.createElement('div');
+        chip.className = 'ai-suggestion-chip';
+        chip.textContent = pregunta;
+        chip.onclick = () => {
+            document.getElementById('ai-input').value = pregunta;
+            document.getElementById('send-ai').click(); // Enviar automáticamente
+        };
+        container.appendChild(chip);
+    });
+}
+
+// === SOPORTE PARA TECLA ENTER EN LA BARRA ===
+document.getElementById('ai-input').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault(); // Evitar salto de línea
+        document.getElementById('send-ai').click();
+    }
+});
+
+// Llamar a la función de sugerencias al cargar
+cargarSugerenciasAleatorias();
+
+
+    window.displayRandomRecommendation = function() {
+        const index = Math.floor(Math.random() * venezuelanRecommendations.length);
+        if (recommendationText) {
+            recommendationText.textContent = venezuelanRecommendations[index];
+        }
+    }
+
+    function showFeedback(element) {
+        element.style.display = 'block';
+        setTimeout(() => element.classList.add('show'), 10); 
+    }
+
+    function hideFeedback(element) {
+        element.classList.remove('show');
+        setTimeout(() => element.style.display = 'none', 500); 
+    }
+    
+    function clearFeedback() {
+        hideFeedback(successMessage);
+        hideFeedback(errorMessage);
+    }
+
+async function inicializarLocal() {
+    try {
+        const sesion = await window.nexusAPI.obtenerSesionLocal();
+        
+        // Se elimina la validación de sesion.role === 'admin'
+        if (sesion) {
+            companyId = sesion.companyId;
+            
+            loadingMessage.style.display = 'none';
+            appContainer.style.display = 'flex';
+            userInfoBar.style.display = 'flex';
+
+            obtenerTasaGuardada(); 
+            getExchangeRates(); 
+            setTimeout(obtenerConsejoIA, 1500);
+
+        } else {
+            // Si ni siquiera hay sesión iniciada, redirigir o mostrar error
+            loadingMessage.style.display = 'none';
+            unauthorizedMessage.style.display = 'block';
+            unauthorizedMessage.textContent = "No se detectó una sesión activa.";
+        }
+    } catch (error) {
+        console.error("Error validando sesión:", error);
+        loadingMessage.style.display = 'none';
+        unauthorizedMessage.style.display = 'block';
+    }
+}
+
+    // === 2. LEER TASA DE SQLITE ===
+async function obtenerTasaGuardada() {
+    try {
+        // Pedimos el historial real a la base de datos
+        const historial = await window.nexusAPI.obtenerHistorialTasas(); 
+        
+        // Si hay datos en el historial, tomamos el primero (que es el de hoy)
+        if (historial && historial.length > 0) {
+            const ultimaTasa = historial[0]; 
+            
+            // Usamos TUS variables originales respetando los 8 decimales
+            currentCompanyRateSpan.textContent = parseFloat(ultimaTasa.valor).toFixed(8);
+            
+            // Convertimos la fecha ISO a un formato más legible
+            const fechaFormateada = new Date(ultimaTasa.fecha + 'T00:00:00').toLocaleDateString('es-VE');
+            companyRateTimestampSpan.textContent = fechaFormateada;
+            
+        } else {
+            currentCompanyRateSpan.textContent = '0.00000000';
+            companyRateTimestampSpan.textContent = 'No registrada';
+        }
+    } catch (error) {
+        console.error("Error al obtener tasa guardada:", error);
+        
+        // Verificamos que las variables existan antes de poner "Error" para evitar el TypeError
+        if (typeof currentCompanyRateSpan !== 'undefined' && currentCompanyRateSpan) {
+            currentCompanyRateSpan.textContent = 'Error';
+        }
+        if (typeof companyRateTimestampSpan !== 'undefined' && companyRateTimestampSpan) {
+            companyRateTimestampSpan.textContent = 'Error';
+        }
+    }
+}
+
+function renderUSDVesChart(currentRate, historialReal = []) {
+    const ctx = document.getElementById('usdVesChart');
+    if (!ctx) return;
+    
+    const baseRate = parseFloat(currentRate);
+    let labels = [];
+    let dataPoints = [];
+    let esSimulacion = true;
+
+    // 1. Lógica de obtención de datos
+    if (historialReal && historialReal.length > 0) {
+        esSimulacion = false;
+        const ultimos7 = historialReal.slice(-7); 
+        labels = ultimos7.map(d => {
+            const date = new Date(d.fecha + 'T00:00:00');
+            return date.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit' });
+        });
+        dataPoints = ultimos7.map(d => parseFloat(d.valor));
+    } else {
+        labels = ['Día -6', 'Día -5', 'Día -4', 'Día -3', 'Día -2', 'Ayer', 'Hoy'];
+        dataPoints = [
+            baseRate * 0.935, baseRate * 0.960, baseRate * 0.948, 
+            baseRate * 0.975, baseRate * 0.960, baseRate * 0.995, baseRate 
+        ].map(n => parseFloat(n.toFixed(4)));
+    }
+
+    // 2. Preparar etiquetas de fecha completa para el Tooltip
+    const today = new Date(); 
+    today.setHours(0, 0, 0, 0); 
+    const dateLabels = [];
+    const dateFormatter = new Intl.DateTimeFormat('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    for (let i = 0; i < 7; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - (6 - i)); 
+        dateLabels.push(dateFormatter.format(date));
+    }
+
+    // === AJUSTE DE ELEVACIÓN Y ESCALA ===
+    const vMin = Math.min(...dataPoints);
+    const vMax = Math.max(...dataPoints);
+    
+    // Calculamos un margen para que la línea respire, pero forzamos el zoom en la variación
+    // Si la diferencia es pequeña, el margen es pequeño para que la subida se note "grande"
+    const rango = vMax - vMin;
+    const paddingGrafico = rango > 0 ? rango * 0.2 : 1; 
+
+    if (chartInstance) chartInstance.destroy(); 
+
+    chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'USD/VES',
+                data: dataPoints,
+                borderColor: '#1a73e8', 
+                backgroundColor: 'rgba(26, 115, 232, 0.1)', 
+                borderWidth: 4,             // Línea más gruesa para resaltar tendencia
+                pointRadius: 4, 
+                pointBackgroundColor: '#1a73e8',
+                tension: 0.1,               // Línea más directa para reflejar firmeza/subida
+                fill: true,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                title: {
+                    display: true,
+                    text: esSimulacion ? 'Tendencia del Mercado (Simulada)' : 'Evolución de Tasa BCV (7 Días Real)',
+                    color: '#333',
+                    font: { size: 14, weight: 'bold' }
+                },
+                tooltip: {
+                    callbacks: {
+                        title: function(tooltipItems) {
+                            const index = tooltipItems[0].dataIndex;
+                            return esSimulacion ? `${labels[index]} (${dateLabels[index]})` : dateLabels[index];
+                        },
+                        label: function(context) {
+                            return 'Tasa: ' + context.parsed.y.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 4});
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { 
+                    display: true, 
+                    grid: { display: false }, 
+                    ticks: { font: { size: 10 } } 
+                },
+                y: {
+                    display: true, 
+                    // ZOOM DINÁMICO: Forzamos la escala a centrarse en el cambio de bolívares
+                    min: Math.floor(vMin - paddingGrafico), 
+                    max: Math.ceil(vMax + paddingGrafico), 
+                    ticks: {
+                        // Mostramos 2 decimales en el eje para dar importancia a los enteros
+                        callback: function(value) { 
+                            return value.toLocaleString('es-VE', {minimumFractionDigits: 2}); 
+                        },
+                        font: { size: 10 }
+                    }
+                }
+            }
+        }
+    });
+}
+
+async function getExchangeRates() {
+    const ratesContainer = document.getElementById('rates-container');
+    const lastUpdateSpan = document.getElementById('last-update');
+    
+    if (!ratesContainer || !lastUpdateSpan) return;
+    
+    const API_URL = 'http://localhost:3000/api/tasas';
+    
+    const currencyNames = {
+        'USD': 'Dólar Estadounidense', 'EUR': 'Euro', 'CNY': 'Yuan Chino',
+        'TRY': 'Lira Turca', 'RUB': 'Rublo Ruso',
+    };
+
+    try {
+        ratesContainer.innerHTML = '<div class="text-blue-500" style="padding: 10px;">Conectando con el Cerebro Nexus...</div>';
+        
+        const response = await fetch(API_URL);
+        if (!response.ok) throw new Error('El servidor local no respondió correctamente.');
+        
+        const data = await response.json();
+        const currentRates = data.rates;
+        
+        let tableHTML = `
+            <table class="rates-table">
+                <thead><tr><th>Moneda</th><th>Tasa BCV</th><th>Var. 24h</th></tr></thead>
+                <tbody>
+        `;
+        
+        let usdRateValue = null;
+
+        for (const currency in currentRates) {
+            const rawValue = currentRates[currency].toString().trim().replace(',', '.');
+            const currentRate = parseFloat(rawValue);
+            
+            if (isNaN(currentRate)) continue; 
+            
+            const formattedRate = currentRate.toFixed(8); 
+            
+            const variation = (Math.random() * (1.02 - 0.98) + 0.98); 
+            const prevRate = currentRate / variation;
+            const varPct = ((currentRate - prevRate) / prevRate) * 100;
+
+            if (currency === 'USD') usdRateValue = currentRate;
+            
+            tableHTML += `
+                <tr>
+                    <td class="rate-currency-name">${currency} (${currencyNames[currency] || currency})</td>
+                    <td class="rate-value">${formattedRate}</td>
+                    <td class="rate-variation ${varPct >= 0 ? 'var-up' : 'var-down'}">
+                        ${varPct >= 0 ? '▲' : '▼'} ${Math.abs(varPct).toFixed(2)}%
+                    </td>
+                </tr>
+            `;
+        }
+
+        tableHTML += `</tbody></table>`;
+        ratesContainer.innerHTML = tableHTML;
+        
+        // --- ACTUALIZACIÓN DE DATOS Y GRÁFICO ---
+        if (usdRateValue !== null) {
+            
+            // CORRECCIÓN CLAVE: Usamos tu variable original copyRateButton
+            copyRateButton.dataset.rateValue = usdRateValue.toFixed(8);
+            
+            // Llamada al historial para el gráfico (Datos Reales)
+            try {
+                const historialReal = await window.nexusAPI.obtenerHistorialTasas();
+                renderUSDVesChart(usdRateValue, historialReal);
+            } catch (chartError) {
+                console.error("Error al cargar historial para gráfico:", chartError);
+                renderUSDVesChart(usdRateValue);
+            }
+        }
+
+        lastUpdateSpan.textContent = new Date().toLocaleString();
+
+    } catch (error) {
+        console.error('❌ Error de conexión:', error);
+        ratesContainer.innerHTML = `
+            <div style="color: #dc2626; text-align: center; padding: 20px; border: 1px dashed #dc2626; border-radius: 8px;">
+                <strong>Error de Conexión</strong><br>
+                No se pudo contactar con el Cerebro Nexus.<br>
+                <small>${error.message}</small>
+            </div>`;
+        lastUpdateSpan.textContent = 'Error de enlace';
+    }
+}
+
+    // === 5. GUARDAR LA NUEVA TASA EN SQLITE Y EN EL SERVIDOR XEON ===
+    updateForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearFeedback(); 
+
+        const newRate = updatedRateInput.value;
+        if (!newRate || isNaN(newRate)) {
+            showFeedback(errorMessage);
+            setTimeout(() => { hideFeedback(errorMessage); }, 5000);
+            return;
+        }
+
+        try {
+            const tasaParsed = parseFloat(newRate);
+            
+            // 🟢 LLAMADA A ELECTRON/SQLITE (Cerebro Local)
+            const resultado = await window.nexusAPI.guardarTasaBCV(tasaParsed);
+            
+            if(resultado.success) {
+                
+                // 🟢 LLAMADA AL SERVIDOR XEON (Puerto 3004)
+                if (navigator.onLine && companyId) {
+                    try {
+                        const xeonResponse = await fetch('http://192.168.0.113:3004/api/companias/tasa_de_cambio', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            empresa_ID: companyId,
+                            tasa: tasaParsed,
+                            fecha_actualizacion: new Date().toISOString()
+                        })
+                    });
+
+                        if (!xeonResponse.ok) {
+                            console.warn("⚠️ La tasa se guardó en SQLite, pero el Xeon respondió con error:", xeonResponse.status);
+                        } else {
+                            console.log("✅ Tasa sincronizada con éxito en el puerto 3004.");
+                        }
+                    } catch (netError) {
+                        console.warn("⚠️ Sin conexión con el Xeon en el puerto 3004.", netError);
+                    }
+                }
+
+                updatedRateInput.value = ''; 
+                showFeedback(successMessage);
+                setTimeout(() => { hideFeedback(successMessage); }, 50000);
+                obtenerTasaGuardada(); // Refrescar vista
+            } else {
+                throw new Error("Error interno de SQLite");
+            }
+        } catch (error) {
+            console.error("Error al guardar la tasa:", error);
+            showFeedback(errorMessage);
+            setTimeout(() => { hideFeedback(errorMessage); }, 5000);
+        }
+    });
+
+    // === 6. LÓGICA DEL MODAL DE COPIADO ===
+    copyRateButton.addEventListener('click', () => {
+        const rateValue = copyRateButton.dataset.rateValue;
+        if (!rateValue) {
+            alert('No se ha cargado una tasa USD para copiar.'); 
+            return;
+        }
+        modalRateValueSpan.textContent = rateValue;
+        clearFeedback(); 
+        copyConfirmModal.style.display = 'flex';
+    });
+
+    confirmCopyButton.addEventListener('click', () => {
+        const rateValue = copyRateButton.dataset.rateValue;
+        if (rateValue) {
+            updatedRateInput.value = rateValue;
+            updatedRateInput.focus();
+        }
+        copyConfirmModal.style.display = 'none';
+    });
+
+    cancelCopyButton.addEventListener('click', () => {
+        copyConfirmModal.style.display = 'none';
+    });
+
+
+    
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        inicializarLocal();
+    } else {
+        document.addEventListener('DOMContentLoaded', inicializarLocal);
+    }
+
+</script>
+</body>
+</html>

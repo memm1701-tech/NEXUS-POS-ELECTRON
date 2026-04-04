@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anulación y Modificación de Ventas</title>
+    <link rel="icon" type="image/png" href="https://placehold.co/16x16/000000/FFFFFF?text=VT">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        .sales-container {
+            width: 100%; 
+            max-width: 1600px; 
+            box-sizing: border-box;
+            margin: 1rem auto;
+            display: flex; 
+            flex-direction: column; 
+            gap: 20px;
+        }
+        .sales-list-panel {
+            flex: 0 0 30%; 
+            max-width: 30%;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            border-right: 1px solid #e0e0e0;
+            padding-right: 20px;
+        }
+        .sale-details-panel {
+            flex: 1; 
+            min-width: 0;
+            padding-left: 20px;
+        }
+        .table-responsive-wrapper {
+            overflow-y: auto;
+            max-height: 70vh; 
+            border-radius: 8px; 
+            border: 1px solid #e0e0e0;
+        }
+        .sales-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed; 
+        }
+        .sales-table th, .sales-table td {
+            border: none;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 8px 5px; 
+            text-align: left;
+            font-size: 0.85em; 
+        }
+        .sales-table th {
+            background-color: #f2f2f2;
+            color: #444;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .sales-table tr:hover td {
+            background-color: #e6f7ff;
+            cursor: pointer;
+        }
+        .search-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 1em;
+            background-color: #fff;
+        }
+        .details-form input[type="text"],
+        .details-form input[type="number"],
+        .details-form select,
+        .details-form textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #3b82f6; 
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .hidden { display: none !important; }
+        @media (max-width: 1024px) {
+            .sales-container { flex-direction: column; }
+            .sales-list-panel, .sale-details-panel {
+                flex: 1;
+                max-width: 100%;
+                padding-right: 0;
+                border-right: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="main-content flex justify-center w-full"> 
+        <div class="sales-container">
+            <div class="mb-6 pb-4 border-b border-gray-200 flex items-center">
+               <button onclick="window.location.href='../../inicio_cajera.html';"
+                        class="flex items-center text-sm font-semibold text-gray-600 hover:text-red-600 transition duration-150 mr-6">
+                    <span class="material-icons mr-1 text-xl">arrow_back</span>
+                    Volver
+                </button>
+                <h1 class="text-3xl font-bold text-gray-800 flex items-center">
+                    <span class="material-icons text-red-600 mr-3 text-4xl">manage_history</span>
+                    Anulación y Modificación de Ventas
+                </h1>
+            </div>
+
+            <div class="flex flex-row w-full" style="gap: 20px;">
+                <div class="sales-list-panel">
+                    <h2 class="text-2xl font-bold text-gray-800 text-center flex items-center justify-center">
+                        <span class="material-icons text-blue-600 mr-2">list_alt</span>
+                        Ventas Procesadas
+                    </h2>
+                    
+                    <div class="flex flex-col gap-2">
+                        <input type="text" id="search-input" class="search-input" placeholder="Buscar por Nombre o CI...">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-xs text-gray-500 font-bold ml-1">DESDE LAS:</label>
+                                <input type="time" id="time-start" class="search-input !py-1" title="Hora de inicio">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500 font-bold ml-1">HASTA LAS:</label>
+                                <input type="time" id="time-end" class="search-input !py-1" title="Hora de fin">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive-wrapper">
+                        <table class="sales-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50%;">Cliente (Nombre/CI)</th>
+                                    <th style="width: 30%;">Fecha/Hora</th>
+                                    <th style="width: 20%;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sales-table-body">
+                                <tr><td colspan="3" class="text-center py-4 text-gray-500">Cargando ventas...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="sale-details-panel">
+                    <h2 class="text-2xl font-bold text-gray-800 text-center flex items-center justify-center mb-4">
+                        <span class="material-icons text-green-600 mr-2">edit_note</span>
+                        Modificación de Venta
+                    </h2>
+
+                    <div id="loading-details" class="text-center py-10 hidden">
+                        <div class="spinner mx-auto mb-3"></div>
+                        <p class="text-gray-600">Cargando detalles...</p>
+                    </div>
+
+                    <form id="sale-details-form" class="details-form">
+                        <p id="no-sale-selected" class="text-center py-10 text-gray-500">
+                            Selecciona una venta de la izquierda para ver y editar sus detalles.
+                        </p>
+
+                        <div id="details-fields" class="grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
+                            <div class="form-group col-span-full border-b pb-4 mb-4">
+                                <h3 class="text-xl font-semibold text-blue-600">Información General</h3>
+                            </div>
+                            <div class="form-group">
+                                <label class="block text-sm font-medium text-gray-700">Cliente</label>
+                                <input type="text" id="sale-customer-display" disabled class="bg-gray-100">
+                            </div>
+                            <div class="form-group">
+                                <label class="block text-sm font-medium text-gray-700">Cédula/CI</label>
+                                <input type="text" id="sale-ci-display" disabled class="bg-gray-100">
+                            </div>
+                            <div class="form-group">
+                                <label class="block text-sm font-medium text-gray-700">ID de Documento</label>
+                                <input type="text" id="sale-doc-id" disabled class="bg-gray-100">
+                            </div>
+                            <div class="form-group">
+                                <label class="block text-sm font-medium text-gray-700">Fecha y Hora</label>
+                                <input type="text" id="sale-date" disabled class="bg-gray-100">
+                            </div>
+
+                            <div class="form-group col-span-full border-t pt-4 mt-4">
+                                <h3 class="text-xl font-semibold text-blue-600 mb-3">Productos</h3>
+                                <div id="sale-items-container" class="border p-3 rounded-md bg-gray-50"></div>
+                            </div>
+
+                            <div class="form-group col-span-full border-t pt-4 mt-4">
+                                <h3 class="text-xl font-semibold text-blue-600 mb-3">Pagos</h3>
+                                <div id="sale-payment-methods-container" class="border p-3 rounded-md bg-gray-50"></div>
+                            </div>
+
+                            <div class="form-group col-span-full mt-4 text-right">
+                                <button type="submit" id="btn-save-sale" class="bg-green-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-600">
+                                    <span>Guardar Cambios</span>
+                                </button>
+                            </div>
+
+                            <div class="form-group col-span-full border-t pt-4 mt-4 flex justify-between items-end">
+                                <div class="text-left">
+                                    <label class="block text-xl font-bold text-gray-700">TOTAL ORIGINAL</label>
+                                    <div id="display-original-total" class="text-4xl font-extrabold text-green-600">$ 0.00</div>
+                                </div>
+                                <div class="text-right">
+                                    <label class="block text-xl font-bold text-gray-700">TOTAL MODIFICADO</label>
+                                    <div id="display-final-amount" class="text-4xl font-extrabold text-gray-900">$ 0.00</div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, doc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyDN9mZ1n-OkC-Qz52eTCOy4yJH7M0U9zYI",
+            authDomain: "nexus-pos-75593.firebaseapp.com",
+            projectId: "nexus-pos-75593",
+            storageBucket: "nexus-pos-75593.firebasestorage.app",
+            messagingSenderId: "626840984883",
+            appId: "1:626840984883:web:08d56544ee28bc8e637246",
+            measurementId: "G-K1EQVJWJHG"
+        };
+        
+        const ALL_PAYMENT_METHODS = ["efectivo", "pagomovil", "dolar", "debito", "biopago", "transferencia", "deposito", "credito", "tarjetaCredito"];
+        const ALL_PAYMENT_METHODS_DISPLAY = ALL_PAYMENT_METHODS.map(m => m.charAt(0).toUpperCase() + m.slice(1)); 
+
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let userId, companyId, branchId, bcvRate = 1, allSales = [], selectedSaleDocId = null;
+
+        const salesTableBody = document.getElementById('sales-table-body');
+        const searchInput = document.getElementById('search-input');
+        const timeStartInput = document.getElementById('time-start');
+        const timeEndInput = document.getElementById('time-end');
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const idTokenResult = await user.getIdTokenResult();
+                userId = user.uid;
+                companyId = idTokenResult.claims.companyId;
+                branchId = idTokenResult.claims.branchId;
+                const bcvDoc = await getDoc(doc(db, `companies/${companyId}/exchange/bcv`));
+                if (bcvDoc.exists()) bcvRate = parseFloat(bcvDoc.data().rate) || 1;
+                loadSales();
+                setupListeners();
+            }
+        });
+
+        function loadSales() {
+            const path = `companies/${companyId}/branches/${branchId}/cashiers/${userId}/salesProcessed`;
+            onSnapshot(collection(db, path), (snapshot) => {
+                allSales = snapshot.docs.map(d => ({ docId: d.id, ...d.data() }))
+                    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+                renderTable();
+            });
+        }
+
+        function format12h(date) {
+            let hours = date.getHours();
+            let minutes = date.getMinutes();
+            let ampm = hours >= 12 ? 'pm' : 'am';
+            hours = hours % 12;
+            hours = hours ? hours : 12; 
+            minutes = minutes < 10 ? '0' + minutes : minutes;
+            return hours + ':' + minutes + ' ' + ampm;
+        }
+
+        function renderTable() {
+            const search = searchInput.value.toLowerCase();
+            const startVal = timeStartInput.value;
+            const endVal = timeEndInput.value;
+
+            const filtered = allSales.filter(s => {
+                const matchesText = (s.customerName || '').toLowerCase().includes(search) || (s.customerIdNumber || '').toLowerCase().includes(search);
+                let matchesTime = true;
+                if (s.createdAt) {
+                    const date = new Date(s.createdAt);
+                    const timeString = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+                    if (startVal && timeString < startVal) matchesTime = false;
+                    if (endVal && timeString > endVal) matchesTime = false;
+                }
+                return matchesText && matchesTime;
+            });
+
+            salesTableBody.innerHTML = filtered.map(s => {
+                const d = new Date(s.createdAt || Date.now());
+                return `
+                    <tr onclick="window.viewSaleDetails('${s.docId}')">
+                        <td><div class="font-medium">${s.customerName || 'N/A'}</div><div class="text-xs text-gray-400">${s.customerIdNumber || ''}</div></td>
+                        <td><div>${format12h(d)}</div><div class="text-xs text-gray-400">${d.toLocaleDateString()}</div></td>
+                        <td><button class="text-blue-600 font-bold text-xs">EDITAR</button></td>
+                    </tr>`;
+            }).join('') || '<tr><td colspan="3" class="text-center py-4">Sin resultados</td></tr>';
+        }
+
+        function setupListeners() {
+            searchInput.oninput = renderTable;
+            timeStartInput.oninput = renderTable;
+            timeEndInput.oninput = renderTable;
+            document.getElementById('sale-details-form').onsubmit = saveChanges;
+        }
+
+        window.viewSaleDetails = (docId) => {
+            const s = allSales.find(x => x.docId === docId);
+            if (!s) return;
+            selectedSaleDocId = docId;
+            document.getElementById('no-sale-selected').classList.add('hidden');
+            document.getElementById('details-fields').classList.remove('hidden');
+            document.getElementById('sale-doc-id').value = docId;
+            document.getElementById('sale-customer-display').value = s.customerName || '';
+            document.getElementById('sale-ci-display').value = s.customerIdNumber || '';
+            document.getElementById('display-original-total').textContent = `$ ${(s.total || 0).toFixed(2)}`;
+            const d = new Date(s.createdAt);
+            document.getElementById('sale-date').value = `${d.toLocaleDateString()} ${format12h(d)}`;
+            
+            const itemsCont = document.getElementById('sale-items-container');
+            itemsCont.innerHTML = '';
+            JSON.parse(s.items || '[]').forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'grid grid-cols-4 gap-2 border-b pb-2 mb-2 items-center';
+                div.innerHTML = `<div class="col-span-2 text-sm">${item.name}</div>
+                    <input type="number" data-item-id="${item.id}" data-price="${item.price}" value="${item.quantity}" oninput="recalculate()" class="border rounded p-1 text-sm">
+                    <div class="text-right text-sm">$ ${(item.price * item.quantity).toFixed(2)}</div>`;
+                itemsCont.appendChild(div);
+            });
+
+            const payCont = document.getElementById('sale-payment-methods-container');
+            payCont.innerHTML = '';
+            Object.entries(JSON.parse(s.payments || '{}')).forEach(([method, amount]) => {
+                if (amount > 0) addPaymentRow(method, amount);
+            });
+            const addBtn = document.createElement('button');
+            addBtn.type = 'button';
+            addBtn.className = 'text-blue-500 text-xs mt-2 underline';
+            addBtn.textContent = '+ Añadir pago';
+            addBtn.onclick = () => addPaymentRow('efectivo', 0);
+            payCont.appendChild(addBtn);
+            recalculate();
+        };
+
+        function addPaymentRow(method, amount) {
+            const cont = document.getElementById('sale-payment-methods-container');
+            const div = document.createElement('div');
+            div.className = 'payment-row grid grid-cols-3 gap-2 mb-2';
+            div.innerHTML = `
+                <select class="p-1 border rounded text-xs">${ALL_PAYMENT_METHODS_DISPLAY.map(m => `<option value="${m.toLowerCase()}" ${method.toLowerCase() === m.toLowerCase() ? 'selected' : ''}>${m}</option>`).join('')}</select>
+                <input type="number" value="${amount}" step="0.01" oninput="recalculate()" class="p-1 border rounded text-xs">
+                <button type="button" onclick="this.parentElement.remove(); recalculate()" class="text-red-500 font-bold">X</button>`;
+            cont.insertBefore(div, cont.lastChild);
+        }
+
+        window.recalculate = () => {
+            let total = 0;
+            document.querySelectorAll('#sale-payment-methods-container .payment-row').forEach(row => {
+                const m = row.querySelector('select').value;
+                const a = parseFloat(row.querySelector('input').value) || 0;
+                total += (m === 'dolar') ? a * bcvRate : a;
+            });
+            document.getElementById('display-final-amount').textContent = `$ ${total.toFixed(2)}`;
+        };
+
+        async function saveChanges(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-save-sale');
+            btn.disabled = true;
+            const items = Array.from(document.querySelectorAll('#sale-items-container input')).map(inp => ({
+                id: inp.getAttribute('data-item-id'),
+                quantity: parseFloat(inp.value),
+                price: parseFloat(inp.getAttribute('data-price'))
+            }));
+            const payments = {};
+            document.querySelectorAll('#sale-payment-methods-container .payment-row').forEach(row => {
+                payments[row.querySelector('select').value] = parseFloat(row.querySelector('input').value) || 0;
+            });
+            const newTotal = items.reduce((acc, curr) => acc + (curr.quantity * curr.price), 0);
+            try {
+                const ref = doc(db, `companies/${companyId}/branches/${branchId}/cashiers/${userId}/salesProcessed`, selectedSaleDocId);
+                await updateDoc(ref, { total: newTotal, items: JSON.stringify(items), payments: JSON.stringify(payments), updatedAt: Date.now() });
+                alert('Venta guardada');
+            } catch (err) {
+                console.error(err);
+            } finally { btn.disabled = false; }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS POS GOBAL - Sistema de Facturación</title>
+    <link rel="icon" type="image/png" href="logo_nexus.png">
+    <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <link href="../node_modules/material-icons/iconfont/material-icons.css" rel="stylesheet">
+    <script src="tailwindcss.js"></script>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #FFFFFF;
+            margin: 0;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cccccc;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+
+        .app-container {
+            display: flex;
+            width: 100%;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 280px;
+            background-color: #F8F8F8;
+            color: #4A4A4A;
+            padding: 1.5rem 1rem;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+            height: 100vh;
+            overflow-y: auto;
+            
+            position: fixed; 
+            top: 0;
+            left: 0;
+            z-index: 50;
+        }
+
+        .sidebar-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+            position: relative;
+        }
+
+        .sidebar-header h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #333333;
+            margin-top: 0.5rem;
+        }
+
+        .sidebar-header p {
+            font-size: 0.875rem;
+            color: #6B6B6B;
+        }
+
+        .sidebar-branch-selection,
+        .sidebar-dollar-rate-input {
+            padding: 1rem;
+            background-color: #F0F0F0;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.03);
+        }
+
+        .sidebar-branch-selection label,
+        .sidebar-dollar-rate-input label {
+            color: #4A4A4A;
+            margin-bottom: 0.25rem;
+            display: block;
+            font-weight: 500;
+        }
+
+        .sidebar-branch-selection select,
+        .sidebar-dollar-rate-input input {
+            background-color: #FFFFFF;
+            border: 1px solid #E0E0E0;
+            color: #333333;
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .sidebar-dollar-rate-input input[type="number"] {
+            appearance: textfield;
+        }
+        .sidebar-dollar-rate-input input::-webkit-outer-spin-button,
+        .sidebar-dollar-rate-input input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .sidebar-nav ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar-nav ul li {
+            margin-bottom: 0.25rem;
+        }
+
+        .sidebar-nav ul li a {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            color: #4A4A4A;
+            text-decoration: none;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s ease, color 0.2s ease;
+            position: relative; 
+        }
+
+        .sidebar-nav ul li a:hover {
+            background-color: #E0F2F7;
+            color: #0288D1;
+        }
+
+        .sidebar-nav .dropdown.open > a {
+            background-color: #E0F2F7;
+            color: #0288D1;
+        }
+        
+        .sidebar-nav .dropdown.open > a::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background-color: #0288D1;
+        }
+
+        .sidebar-nav .dropdown > ul {
+            display: none;
+            padding-left: 1.5rem;
+            margin-top: 0.25rem;
+            border-left: 2px solid rgba(0, 0, 0, 0.03);
+            padding-bottom: 0.5rem;
+        }
+
+        .sidebar-nav .dropdown.open > ul {
+            display: block;
+        }
+
+        .sidebar-nav .dropdown ul li a {
+            padding: 0.5rem 1rem;
+            font-size: 0.95rem;
+            color: #6B6B6B;
+        }
+
+        .sidebar-nav .dropdown ul li a:hover {
+            background-color: #F0F0F0;
+            color: #0288D1;
+        }
+        
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-100%);
+                position: fixed;
+                height: 100vh;
+                z-index: 1000;
+                transition: transform 0.3s ease-in-out;
+                box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .app-container {
+                display: block;
+            }
+
+            .main-content {
+    flex: 1;
+    overflow-y: auto;
+    background-color: #F3F4F6; /* El fondo gris de la app */
+    width: 100%;
+}
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-100%);
+                position: fixed;
+                height: 100vh;
+                z-index: 1000;
+                transition: transform 0.3s ease-in-out;
+                box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            }
+        }
+
+        .main-content {
+            flex-grow: 1;
+            padding: 0 !important; 
+            margin: 0; 
+            background-color: #FFFFFF; 
+            min-height: 100vh;
+            margin-left: 280px; 
+            width: calc(100% - 280px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        #dynamic-content-area {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Centra el contenido inyectado */
+    justify-content: flex-start;
+}
+
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #0288D1;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            animation: spin 1s linear infinite;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .info-message-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .info-message-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            position: relative;
+        }
+
+        .info-message-content .close-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #9ca3af;
+        }
+
+        .info-message-content .material-icons {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .info-message-content h3 {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+
+        .info-message-content p {
+            margin-bottom: 1.5rem;
+            color: #4b5563;
+        }
+
+        .info-message-content button {
+            background-color: #0288D1;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+
+        .info-message-content button:hover {
+            background-color: #0177BB;
+        }
+
+        .info-message-content.success .material-icons { color: #10b981; }
+        .info-message-content.error .material-icons { color: #ef4444; }
+        .info-message-content.info .material-icons { color: #0288D1; }
+
+    </style>
+</head>
+<body>
+   <div class="app-container">
+        <div class="fixed top-0 left-0 w-full z-20 bg-white p-4 shadow-md flex items-center justify-between lg:hidden">
+            <div class="flex items-center">
+                <img src="logo_nexus.png" alt="Logo NEXUS POS" class="rounded-full" style="width: 40px; height: 40px; object-fit: cover;">
+                <h3 class="ml-2 text-lg font-bold">NEXUS POS GOBAL</h3>
+            </div>
+            <button id="menu-toggle" class="p-2 text-gray-500 hover:text-gray-900 focus:outline-none">
+                <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+        </div>
+
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="logo_nexus.png" alt="Logo NEXUS POS" class="rounded-full mx-auto mb-2" style="display: block; width: 120px; height: 120px; object-fit: cover;">
+                <h3>NEXUS POS GOBAL</h3>
+                <div class="flex items-center ml-3 mt-1 text-xs font-medium text-gray-500">
+                <span id="status-circle" class="w-2.5 h-2.5 rounded-full bg-green-500 mr-2 shadow-[0_0_5px_rgba(34,197,94,0.6)] transition-colors duration-300"></span>
+                <span id="status-text">Conectado (Online)</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="#" data-page="index_inicio_admin/inicio/house.html"><i class="material-icons">home</i> Inicio</a></li>
+                    
+<li class="dropdown">
+    <a href="#"><i class="material-icons">store</i>Tienda online</a>
+    <ul>
+        <li><a href="#" id="tienda-online-link"><i class="material-icons">store</i>Tienda</a></li>
+        <li><a href="#" data-page="index_inicio_admin/tienda_online/configuracion.html"><i class="material-icons">settings</i> Configuracion</a></li>
+    </ul>
+</li>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="dropdown">
+                        <a href="#"><i class="material-icons">bar_chart</i> Estadísticas</a>
+                        <ul>
+                            <li><a href="#" data-page="index_inicio_admin/estadisticas/generales.html"><i class="material-icons">show_chart</i> Generales</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/estadisticas/especificas.html"><i class="material-icons">trending_up</i> Específicas</a></li>
+                        </ul>
+                    </li>
+
+                    <li><a href="administracion/inicio_administracion.html"><i class="material-icons">cases</i> Administración Gerencial</a></li>
+
+                    <li class="dropdown">
+                        <a href="#"><i class="material-icons">inventory</i> Gestión de inventario</a>
+                        <ul>
+                            <li><a href="#" data-page="index_inicio_admin/gestion_de_inventario/inventario.html"><i class="material-icons">inventory_2</i> Inventario</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/gestion_de_inventario/entradas_de_inventario.html"><i class="material-icons">add_box</i> Entradas de inventario</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/gestion_de_inventario/salidas_de_inventario.html"><i class="material-icons">unarchive</i> Salidas de inventario</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/gestion_de_inventario/traspasos_de_inventario.html"><i class="material-icons">sync_alt</i> Traspasos de inventario</a></li>
+                            <li><a href="index_inicio_admin/gestion_de_inventario/integracion_de_inventario_por_excel.html"><i class="material-icons">inventory_2</i> Integración De Inventario Por Excel</a></li>
+                        </ul>
+                    </li>
+                    <li class="dropdown">
+                        <a href="#"><i class="material-icons">payments</i> Movimientos de caja</a>
+                        <ul>
+                            <li><a href="#" data-page="index_inicio_admin/movimientos_de_caja/historial_de_cierres.html"><i class="material-icons">history</i> Historial de Cierres</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/movimientos_de_caja/historial_de_ventas.html"><i class="material-icons">list_alt</i> Historial de Ventas</a></li>
+                        </ul>
+                    </li>
+
+                    <li>
+                        <a href="#" onclick="loadPageContent('index_inicio_admin/tasa_del_dia/cambiar_valor_global.html'); return false;">
+                            <i class="material-icons">attach_money</i> Tasa del dia
+                        </a>
+                    </li>
+                    
+
+                    <li class="dropdown">
+                        <a href="#"><i class="material-icons">storage</i> Datos básicos</a>
+                        <ul>
+                            <li><a href="#" data-page="index_inicio_admin/datos_basicos/usuarios.html"><i class="material-icons">group</i>Gestión de Cajeras</a></li>
+                            <li><a href="#" data-page="payment_methods.html"><i class="material-icons">credit_card</i> Métodos de pago</a></li>
+                            <li><a href="#" data-page="index_inicio_admin\datos_basicos\gestion_de_clientes.html"><i class="material-icons">person_pin</i>Gestión de Clientes</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/datos_basicos/gestion_de_empleados.html"><i class="material-icons">badge</i>Gestión de Empleados</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/datos_basicos/categoria_de_productos.html"><i class="material-icons">category</i> Categoria de producto</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/datos_basicos/unidades_de_empaque.html"><i class="material-icons">straighten</i> Unidades de Empaque</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/datos_basicos/sucursales.html "><i class="material-icons">location_city</i> Sucursales</a></li>
+                        </ul>
+                    </li>
+
+                        <li class="dropdown">
+                        <a href="#"><i class="material-icons">lock</i>Generador De Claves</a>
+                        <ul>
+                            <li><a href="#" data-page="index_inicio_admin/generador_de_claves/Generar_clave_de_administrador.html">Generar Clave De Administrador </a></li>
+                            
+                        </ul>
+                    </li>
+
+                    <li class="dropdown">
+                        <a href="#"><i class="material-icons">lock</i>Respaldo de datos</a>
+                        <ul>
+                            <li><a href="#" data-page="backup_data.html">Respaldar datos</a></li>
+                            <li><a href="#" data-page="restore_data.html">Restaurar datos</a></li>
+                        </ul>
+                    </li>
+                    <li class="dropdown">
+                        <a href="#"><i class="material-icons">currency_exchange</i> Cambios masivos de precios</a>
+                        <ul>
+                            <li><a href="#" data-page="index_inicio_admin/cambios_masivos_de_precios/actualizar_precios.html">Actualizar precios</a></li>
+                        </ul>
+                    </li>
+                    <li class="dropdown">
+                        <a href="#"><i class="material-icons">qr_code</i> Generador de códigos de barra</a>
+                        <ul>
+                            <li><a href="#" data-page="index_inicio_admin/generador_de_codigos_de_barra/generar_codigos.html">Generar códigos</a></li>
+                        </ul>
+                    </li>
+
+                    <li>
+                        <a href="#" onclick="loadPageContent('index_inicio_admin/configuracion/general_y_otros.html'); return false;">
+                            <i class="material-icons">settings</i> Configuración
+                        </a>
+                    </li>
+
+                    <li><a href="#" data-page="help.html"><i class="material-icons">help_outline</i> Ayuda</a></li>
+                    <li><a href="#" data-page="about.html"><i class="material-icons">info</i> Acerca de</a></li>
+                    <li id="logout-menu-item"><a href="#"><i class="material-icons">exit_to_app</i> Cerrar sesión</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div id="dynamic-content-area">
+                <h2 class="text-2xl font-bold mb-6 text-gray-800">Cargando...</h2>
+                <div class="spinner"></div>
+            </div>
+        </main>
+    </div>
+    
+    <div id="info-message-modal" class="info-message-modal hidden">
+        <div class="info-message-content rounded-lg p-6 relative">
+            <button class="close-button material-icons" id="close-info-message-modal">close</button>
+            <span id="info-message-icon" class="material-icons"></span>
+            <h3 id="info-message-title" class="text-xl font-bold mb-3"></h3>
+            <p id="info-message-text" class="text-gray-700 mb-4"></p>
+            <button id="info-message-ok-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md">Aceptar</button>
+        </div>
+    </div>
+
+<script type="module">
+
+    const SERVER_URL = "http://192.168.0.113:3000";
+    const LOCAL_URL = "http://localhost:3000";
+
+   window.currentCompanyId = null;
+
+    const userInfo = document.getElementById('user-info');
+    const dynamicContentArea = document.getElementById('dynamic-content-area');
+    const sidebarBranchSelect = document.getElementById('branch-select');
+
+    const infoMessageModal = document.getElementById('info-message-modal');
+    const infoMessageContent = infoMessageModal ? infoMessageModal.querySelector('.info-message-content') : null;
+    const infoMessageIcon = document.getElementById('info-message-icon');
+    const infoMessageTitle = document.getElementById('info-message-title');
+    const infoMessageText = document.getElementById('info-message-text');
+    const infoMessageOkBtn = document.getElementById('info-message-ok-btn');
+    const closeInfoMessageModal = document.getElementById('close-info-message-modal');
+
+    let estadoConexion = navigator.onLine; 
+    let sincronizando = false; 
+    let userCompanyId = null;
+    const statusCircle = document.getElementById('status-circle');
+    const statusText = document.getElementById('status-text');
+
+
+    function showLoadingSpinner() {
+        if (!dynamicContentArea) return;
+        let spinner = dynamicContentArea.querySelector('.spinner');
+        if (!spinner) {
+            spinner = document.createElement('div');
+            spinner.className = 'spinner';
+            dynamicContentArea.appendChild(spinner);
+        }
+        dynamicContentArea.style.position = 'relative';
+        dynamicContentArea.style.minHeight = '200px';
+        spinner.classList.remove('hidden');
+    }
+
+    function hideLoadingSpinner() {
+        if (!dynamicContentArea) return;
+        const spinner = dynamicContentArea.querySelector('.spinner');
+        if (spinner) spinner.classList.add('hidden');
+        dynamicContentArea.style.minHeight = 'auto';
+    }
+
+    function ocultarLoading() {
+        const spinner = document.getElementById('loading-spinner');
+        if (spinner) spinner.style.display = 'none';
+    }
+
+    function showInfoMessage(message, type = 'info', title = 'Información') {
+        return new Promise((resolve) => {
+            if (!infoMessageModal) { resolve(true); return; }
+            infoMessageContent.className = 'info-message-content rounded-lg p-6 relative ' + type;
+            let iconName = '';
+            switch (type) {
+                case 'success': iconName = 'check_circle'; break;
+                case 'error': iconName = 'error'; break;
+                case 'info': iconName = 'info'; break;
+                case 'confirm': iconName = 'help_outline'; break;
+                default: iconName = 'info';
+            }
+            if (infoMessageIcon) infoMessageIcon.textContent = iconName;
+            if (infoMessageTitle) infoMessageTitle.textContent = title;
+            if (infoMessageText) infoMessageText.textContent = message;
+
+            if (infoMessageOkBtn) {
+                infoMessageOkBtn.textContent = 'Aceptar';
+                infoMessageOkBtn.onclick = () => { hideInfoMessage(); resolve(true); };
+            }
+            if (closeInfoMessageModal) {
+                closeInfoMessageModal.onclick = () => { hideInfoMessage(); resolve(type !== 'confirm'); };
+            }
+            infoMessageModal.classList.remove('hidden');
+        });
+    }
+
+    function hideInfoMessage() {
+        if (infoMessageModal) infoMessageModal.classList.add('hidden');
+    }
+
+    function actualizarUIConexion(online) {
+        estadoConexion = online;
+        if (!statusCircle || !statusText) return;
+        if (online) {
+            statusCircle.classList.remove('bg-red-500', 'shadow-[0_0_5px_rgba(239,68,68,0.6)]');
+            statusCircle.classList.add('bg-green-500', 'shadow-[0_0_5px_rgba(34,197,94,0.6)]');
+            statusText.textContent = 'Conectado (Online)';
+            statusText.classList.remove('text-red-500');
+            statusText.classList.add('text-gray-500');
+        } else {
+            statusCircle.classList.remove('bg-green-500', 'shadow-[0_0_5px_rgba(34,197,94,0.6)]');
+            statusCircle.classList.add('bg-red-500', 'shadow-[0_0_5px_rgba(239,68,68,0.6)]');
+            statusText.textContent = 'Desconectado (Modo Local)';
+            statusText.classList.remove('text-gray-500');
+            statusText.classList.add('text-red-500');
+        }
+    }
+
+// Definimos la función como parte de 'window' para que sea accesible desde el onclick del HTML
+window.loadPageContent = function(pageUrl) {
+    const mainContent = document.getElementById('dynamic-content-area');
+    if (!mainContent) {
+        console.error("No se encontró el contenedor 'dynamic-content-area'");
+        return;
+    }
+
+    if (typeof mostrarLoading === 'function') mostrarLoading();
+
+    fetch(pageUrl)
+        .then(response => {
+            if (!response.ok) throw new Error(`Error cargando: ${pageUrl}`);
+            return response.text();
+        })
+        .then(html => {
+            // 1. Inyectamos el HTML
+            mainContent.innerHTML = html;
+            
+            // 2. Reiniciamos el scroll arriba para la nueva vista
+            mainContent.scrollTop = 0;
+            
+            // 3. Ejecutar scripts internos de la vista cargada
+            const scripts = mainContent.querySelectorAll("script");
+            scripts.forEach(oldScript => {
+                const newScript = document.createElement("script");
+                // Copiamos atributos (src, type, etc)
+                Array.from(oldScript.attributes).forEach(attr => {
+                    newScript.setAttribute(attr.name, attr.value);
+                });
+                // Copiamos el contenido del script
+                newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                // Reemplazamos para forzar la ejecución
+                oldScript.parentNode.replaceChild(newScript, oldScript);
+            });
+
+            if (typeof ocultarLoading === 'function') ocultarLoading();
+        })
+        .catch(error => {
+            console.error('Error de navegación:', error);
+            mainContent.innerHTML = `<div class="p-10 text-red-500">Error al cargar la página: ${error.message}</div>`;
+            if (typeof ocultarLoading === 'function') ocultarLoading();
+        });
+}
+
+    function listenForBranches(companyId) {
+        if (!companyId || !sidebarBranchSelect || companyId === 'nexus_pos_id' || !navigator.onLine) return;
+        try {
+            const branchesCollectionRef = collection(db, `companies/${companyId}/branches`);
+            const q = query(branchesCollectionRef);
+
+            onSnapshot(q, (snapshot) => {
+                sidebarBranchSelect.innerHTML = '';
+                if (snapshot.empty) {
+                    sidebarBranchSelect.innerHTML = '<option value="">No hay sucursales</option>';
+                } else {
+                    snapshot.forEach((docSnap) => {
+                        const branch = docSnap.data();
+                        const option = document.createElement('option');
+                        option.value = docSnap.id;
+                        option.textContent = branch.name || 'Sucursal sin nombre';
+                        sidebarBranchSelect.appendChild(option);
+                    });
+                }
+            }, (error) => {
+                console.error("Error al escuchar sucursales:", error);
+                sidebarBranchSelect.innerHTML = '<option value="">Error de carga</option>';
+            });
+        } catch (e) {
+            console.log("No se pueden escuchar sucursales offline.");
+        }
+    }
+
+
+console.log("🔌 Iniciando Nexus POS Global con base de datos local...");
+iniciarSesionLocal();
+
+async function iniciarSesionLocal() {
+        try {
+            if (!window.nexusAPI) {
+                console.error("Puente NexusAPI no detectado");
+                return;
+            }
+
+            // Consultamos al Cerebro Local (SQLite)
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
+            
+            if (sesion && sesion.companyId) {
+                console.log("✅ Sesión validada localmente:", sesion.companyId);
+                window.currentCompanyId = sesion.companyId;
+                localStorage.setItem('companyId', sesion.companyId);
+
+                // Cargar datos de empresa y luego la vista
+                await aplicarDatosEmpresa(sesion.company_data);
+                loadPageContent('index_inicio_admin/inicio/house.html');
+                
+                // Iniciar sincronización si hay internet
+                if (navigator.onLine) iniciarSincronizacionSilenciosa();
+            } else {
+                console.warn("No hay sesión. Volviendo a Login.");
+                window.location.href = "login.html";
+            }
+        } catch (error) {
+            console.error("Error en arranque:", error);
+            window.location.href = "login.html";
+        }
+    }
+
+async function aplicarDatosEmpresa(companyDataRaw) {
+    const companyDisplay = document.getElementById('company-name-display');
+    if (!companyDisplay) return;
+    try {
+        if (companyDataRaw) {
+            const data = JSON.parse(companyDataRaw);
+            companyDisplay.textContent = data.name || "Mi Empresa Local";
+        }
+    } catch (e) {
+        companyDisplay.textContent = "Nexus POS Local";
+    }
+}
+
+    
+function cargarVistaDinamica(url) {
+        const mainContent = document.getElementById('main-content');
+        if (!mainContent) return;
+
+        if (typeof mostrarLoading === 'function') mostrarLoading();
+
+        fetch(url)
+            .then(response => {
+                if (!response.ok) throw new Error("Error HTTP " + response.status);
+                return response.text();
+            })
+            .then(html => {
+                mainContent.innerHTML = html;
+                
+                // Si tienes scripts dentro de las vistas, necesitas esta línea para que corran
+                const scripts = mainContent.querySelectorAll("script");
+                scripts.forEach(oldScript => {
+                    const newScript = document.createElement("script");
+                    Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                    newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                    oldScript.parentNode.replaceChild(newScript, oldScript);
+                });
+
+                if (typeof ocultarLoading === 'function') ocultarLoading();
+            })
+            .catch(error => {
+                console.error('Error cargando la vista:', error);
+                mainContent.innerHTML = `<h2 style="color:red; text-align:center; padding:20px;">No se pudo cargar la vista: ${url}</h2>`;
+                if (typeof ocultarLoading === 'function') ocultarLoading();
+            });
+    }
+
+async function ejecutarSalida() {
+    try {
+        // 1. Limpieza del "Cerebro" (SQLite) vía Puente NexusAPI
+        if (window.nexusAPI && typeof window.nexusAPI.cerrarSesionLocal === 'function') {
+            await window.nexusAPI.cerrarSesionLocal();
+        }
+        
+        // 2. Limpieza de llaves y estados en el Navegador
+        localStorage.removeItem('companyId');
+        window.currentCompanyId = null;
+        
+        // Si usas la variable userCompanyId que declaramos para la tienda:
+        if (typeof userCompanyId !== 'undefined') userCompanyId = null;
+
+        console.log("Sesión cerrada exitosamente en SQLite y LocalStorage.");
+
+        // 3. Redirección final
+        window.location.href = 'index.html';
+    } catch (error) {
+        console.error("Error crítico al cerrar sesión:", error);
+        // Forzamos la salida al login aunque falle la base de datos local
+        window.location.href = 'index.html';
+    }
+}
+
+
+const logoutBtn = document.getElementById('logout-menu-item') || document.getElementById('logout-btn');
+
+if (logoutBtn) {
+    logoutBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-60 z-[9999] flex justify-center items-center backdrop-blur-sm transition-opacity';
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
+                <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-yellow-100 mb-4 border-4 border-yellow-50">
+                    <span class="material-icons text-4xl text-yellow-500">warning_amber</span>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Seguridad del Sistema</h3>
+                <p class="text-sm text-gray-600 mb-6 leading-relaxed">
+                    Al cerrar sesión se eliminará el acceso rápido de este equipo. <br><br>
+                    <strong class="text-red-500">Recuerda: Si no tienes conexión a internet, no podrás volver a iniciar sesión hasta recuperar la red.</strong>
+                </p>
+                <div class="flex justify-center gap-3">
+                    <button id="btn-cancelar-logout" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition-colors">
+                        Cancelar
+                    </button>
+                    <button id="btn-confirmar-logout" class="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 shadow-md transition-colors">
+                        Sí, Salir
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        document.getElementById('btn-cancelar-logout').addEventListener('click', () => modal.remove());
+
+        document.getElementById('btn-confirmar-logout').addEventListener('click', async () => {
+            modal.remove(); 
+            if (typeof mostrarLoading === 'function') mostrarLoading();
+            
+            try {
+                // Limpiamos la base de datos local (SQLite)
+                if (window.nexusAPI && typeof window.nexusAPI.cerrarSesionLocal === 'function') {
+                    await window.nexusAPI.cerrarSesionLocal();
+                }
+                
+                // Limpiamos variables
+                localStorage.clear();
+                window.currentCompanyId = null;
+                
+                // Redireccionamos
+                window.nexusAPI.cerrarYVolverAlLogin();
+            } catch (error) {
+                console.error("Error al cerrar sesión:", error);
+                window.nexusAPI.cerrarYVolverAlLogin();
+            }
+        });
+    }); 
+}
+
+        document.querySelectorAll(".sidebar-nav .dropdown > a").forEach((dropdownToggle) => {
+            dropdownToggle.addEventListener("click", (e) => {
+                e.preventDefault();
+                const clickedParentLi = dropdownToggle.closest(".dropdown");
+                document.querySelectorAll(".sidebar-nav .dropdown").forEach((li) => {
+                    if (li !== clickedParentLi && li.classList.contains("open")) {
+                        li.classList.remove("open");
+                    }
+                });
+                clickedParentLi.classList.toggle("open");
+            });
+        });
+
+        document.querySelectorAll(".sidebar-nav a[data-page]").forEach((link) => {
+            link.addEventListener("click", (e) => {
+                e.preventDefault();
+                const pageUrl = e.target.dataset.page;
+                if (pageUrl) loadPageContent(pageUrl);
+                if (window.innerWidth < 1024) {
+                    const sidebar = document.querySelector('.sidebar');
+                    if(sidebar) sidebar.classList.remove('open');
+                }
+            });
+        });
+
+        const menuToggleBtn = document.getElementById('menu-toggle') || document.getElementById('menu-btn');
+        const sidebar = document.querySelector('.sidebar') || document.getElementById('sidebar');
+        if (menuToggleBtn && sidebar) {
+            menuToggleBtn.addEventListener('click', () => sidebar.classList.toggle('open'));
+        }
+
+        const tiendaOnlineLink = document.getElementById('tienda-online-link');
+        if (tiendaOnlineLink) {
+            tiendaOnlineLink.addEventListener('click', (e) => { 
+                e.preventDefault();
+                if (!userCompanyId || userCompanyId === 'nexus_pos_id') {
+                    showInfoMessage("No se pudo cargar la Tienda Online. El ID de la empresa no está disponible.", 'error', 'Error de Carga'); 
+                    return; 
+                }
+                const finalUrl = `https://nexusposgobal.com/index_inicio_admin/tienda_online/tienda.html?company=${userCompanyId}`;
+                window.open(finalUrl, '_blank'); 
+            });
+        }
+
+        // Eventos de Sincronización
+        actualizarUIConexion(navigator.onLine);
+        window.addEventListener('online', () => {
+            actualizarUIConexion(true);
+            iniciarSincronizacionSilenciosa();
+        });
+        window.addEventListener('offline', () => {
+            actualizarUIConexion(false);
+        });
+
+        setInterval(() => {
+            if (estadoConexion && !sincronizando) iniciarSincronizacionSilenciosa();
+        }, 120000); 
+
+
+    async function cargarPanelOffline(sesion) {
+        userCompanyId = sesion.companyId;
+        
+        const emailDisplay = document.getElementById('user-email-display');
+        const roleDisplay = document.getElementById('user-role-display');
+        const companyDisplay = document.getElementById('company-name-display');
+
+        if (emailDisplay) emailDisplay.textContent = sesion.email;
+        if (roleDisplay) roleDisplay.textContent = sesion.role.toUpperCase();
+
+        let companyName = "Modo Offline (Local)";
+        
+        // LA MAGIA DE DESEMPAQUETADO DEL JSON
+        if (sesion.company_data) {
+            try {
+                const dataEmpresa = JSON.parse(sesion.company_data);
+                companyName = dataEmpresa.name || companyName;
+                console.log(`Cargando offline. Plan activo: ${dataEmpresa.plan ? dataEmpresa.plan.nombre_plan : 'No definido'}`);
+            } catch (e) {
+                console.error("Error parseando JSON de SQLite:", e);
+            }
+        }
+        
+        if (companyDisplay) companyDisplay.textContent = companyName;
+
+        // Cargar vista principal internamente
+        loadPageContent('index_inicio_admin/inicio/house.html');
+        ocultarLoading();
+    }
+
+    async function iniciarSincronizacionSilenciosa() {
+        if (sincronizando) return; 
+        sincronizando = true;
+        try {
+            const ping = await fetch('https://www.google.com/favicon.ico', { mode: 'no-cors', cache: 'no-store' });
+            if (ping) {
+                actualizarUIConexion(true); 
+                if (statusText) statusText.textContent = 'Sincronizando...';
+                
+                if (window.nexusAPI && typeof window.nexusAPI.procesarColaSync === 'function') {
+                    const resultado = await window.nexusAPI.procesarColaSync(); 
+                    if (resultado && resultado.exito) {
+                        console.log(`✅ Sincronización exitosa: ${resultado.registros_subidos} registros subidos.`);
+                    }
+                }
+                if (statusText) statusText.textContent = 'Conectado (Online)';
+            }
+        } catch (error) {
+            actualizarUIConexion(false);
+        } finally {
+            sincronizando = false; 
+        }
+    }
+
+</script>
+</body>
+</html>

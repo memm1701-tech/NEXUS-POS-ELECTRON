@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bienvenido a NEXUS POS</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* Definimos el espacio de 20px como una variable */
+            --border-gap: 20px;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex; 
+            flex-direction: column;
+            background-color: #f9fafb;
+        }
+
+        /* Estilos para CENTRALIZAR el contenido y asegurar el borde de 20px */
+        .main-content {
+            flex-grow: 1; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* El recuadro está a 20px de los bordes del espacio disponible */
+            padding: var(--border-gap); 
+        }
+        
+        /* Estilos de Tarjetas INTERACTIVAS */
+        .feature-card {
+            transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+            cursor: pointer;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.2), 0 4px 6px -2px rgba(30, 58, 138, 0.1);
+        }
+        
+        /* Estilos del Recuadro Principal */
+        .main-card {
+            padding: 1.5rem;
+            max-width: 100%; /* Por defecto en móvil */
+            width: 100%;
+        }
+        
+        /* Estilos de Tipografía */
+        h1 {
+            font-size: 2rem; 
+            font-weight: 900;
+            color: #1e3a8a;
+            margin-bottom: 0.5rem;
+        }
+
+        p.subtitle {
+            font-size: 1rem; 
+            color: #4a5568;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-icon {
+            font-size: 4rem;
+            margin-bottom: 0.5rem;
+            color: #1e3a8a;
+        }
+
+        /* Media query para pantallas más grandes (tabletas y escritorio) */
+        @media (min-width: 768px) {
+            .main-content {
+                padding: var(--border-gap); 
+            }
+            .main-card {
+                padding: 3rem;
+                /* ANCHO AUMENTADO A 1600PX */
+                max-width: 1600px; 
+            }
+            h1 {
+                font-size: 3rem;
+            }
+            p.subtitle {
+                font-size: 1.125rem;
+                margin-bottom: 2rem;
+            }
+            .feature-icon {
+                font-size: 5rem;
+                margin-bottom: 1rem;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <main class="main-content"> 
+        
+        <div class="bg-white p-6 md:p-12 rounded-xl shadow-2xl text-center main-card">
+            
+            <h1 class="font-extrabold text-gray-900 mb-2">¡NEXUS POS! Tu Negocio, Optimizado.</h1>
+            <p class="text-lg text-gray-500 mb-8 subtitle">
+                Una plataforma inteligente para ventas, inventario y reportes financieros.
+            </p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mb-10">
+                
+                <div class="p-6 rounded-xl flex flex-col items-center shadow-md feature-card border-blue-200" style="background-color: #e6f7ff; border: 1px solid #b3e0ff;">
+                    <div class="feature-icon">👥</div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Gestión de Equipos</h3>
+                    <p>
+                        Administra roles de acceso, crea perfiles de cajeras y garantiza la seguridad y el control de todas tus operaciones con facilidad.
+                    </p>
+                </div>
+                
+                <div class="p-6 rounded-xl flex flex-col items-center shadow-md feature-card border-blue-200" style="background-color: #e6f7ff; border: 1px solid #b3e0ff;">
+                    <div class="feature-icon">📦</div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Inventario Inteligente</h3>
+                    <p>
+                        Simplifica el registro de productos. Añade existencias por unidades de empaque (bulto, cesta, saco o unidad) y mantén un control detallado al instante.
+                    </p>
+                </div>
+                
+                <div class="p-6 rounded-xl flex flex-col items-center shadow-md feature-card border-blue-200" style="background-color: #e6f7ff; border: 1px solid #b3e0ff;">
+                    <div class="feature-icon">📊</div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Reportes Clave</h3>
+                    <p>
+                        Accede a cierres de caja e historial de ventas de todas las sucursales para un análisis rápido del rendimiento y la toma de decisiones informadas.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="mt-10 mb-8">
+                <a href="#" onclick="window.loadPageContent('index_inicio_admin/datos_basicos/sucursales.html'); return false;" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition duration-300 transform hover:scale-105">
+                    ¡Empieza Creando Una Sucursal!
+                </a>
+            </div>
+            
+            <div class="mt-6 pt-6 border-t border-gray-200 text-center">
+                <h3 class="text-xl font-semibold text-gray-700 mb-4">Síguenos en nuestras redes sociales</h3>
+                <div class="flex justify-center space-x-6 mb-6">
+                    <a href="#" class="text-gray-600 hover:text-blue-600 transition duration-150">Facebook</a>
+                    <a href="#" class="text-gray-600 hover:text-blue-600 transition duration-150">Instagram</a>
+                    <a href="#" class="text-gray-600 hover:text-blue-600 transition duration-150">TikTok</a>
+                    <a href="#" class="text-gray-600 hover:text-blue-600 transition duration-150">X (Twitter)</a>
+                </div>
+                <p class="text-sm text-gray-500">
+                    © 2025 NEXUS POS. Todos los derechos reservados.<br>
+                    Contacto: <a href="mailto:nexusposgobal@gmail.com" class="text-blue-600 hover:underline">nexusposgobal@gmail.com</a>
+                </p>
+            </div>
+            
+            <div class="text-center mt-8 p-4 rounded-xl">
+                <p class="text-base text-gray-700 leading-relaxed">
+                    NEXUS POS es tu socio estratégico. Olvídate de las tareas manuales y ¡CONCENTRATE EN HACER CRECER TU NEGOCIO!. Hemos diseñado una interfaz limpia e intuitiva, poniendo la gestión completa de tus puntos de venta al alcance de tu mano.
+                </p>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

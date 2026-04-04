@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración de Red - Nexus POS</title>
+    <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <link href="../node_modules/material-icons/iconfont/material-icons.css" rel="stylesheet">
+    <script src="tailwindcss.js"></script>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .nexus-card {
+            background-color: #FFFFFF;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        .nexus-input {
+            border: 1px solid #E0E0E0;
+            border-radius: 0.25rem;
+            padding: 0.75rem;
+            width: 100%;
+            transition: border-color 0.2s;
+        }
+        .nexus-input:focus-within {
+            border-color: #0288D1;
+            outline: none;
+        }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button {
+            -webkit-appearance: none; margin: 0;
+        }
+        .ip-box {
+            width: 50px;
+            text-align: center;
+            background: transparent;
+            outline: none;
+            font-family: monospace;
+        }
+        .ip-box::placeholder {
+            color: #d1d5db; /* Gris muy claro para que se vea que está en blanco */
+        }
+    </style>
+</head>
+<body class="p-6 flex justify-center">
+    <div class="w-full max-w-3xl space-y-6">
+        
+        <div class="flex items-center space-x-3 mb-2">
+            <i class="material-icons text-3xl text-gray-700">settings</i>
+            <h2 class="text-2xl font-bold text-gray-800">Configuración de Sistema</h2>
+        </div>
+
+        <div class="nexus-card p-6 border-l-4 border-orange-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800 flex items-center">
+                        <i class="material-icons mr-2 text-orange-500">warning</i>
+                        Desactivar Validación de Stock
+                    </h3>
+                    <p class="text-sm text-gray-500 mt-1">Permite facturar productos aunque no haya existencia en el Servidor Main.</p>
+                </div>
+                <input type="checkbox" id="local-discount-stock" class="h-6 w-6 cursor-pointer">
+            </div>
+            <div class="mt-4 bg-orange-50 p-3 rounded text-xs text-orange-700 italic font-medium">
+                * Por defecto, Nexus POS siempre valida el stock. Marque esta casilla solo si desea vender en negativo.
+            </div>
+        </div>
+
+        <div class="nexus-card p-8 space-y-6">
+            <div class="border-b pb-4">
+                <h3 class="text-lg font-bold text-gray-800 flex items-center">
+                    <i class="material-icons mr-2 text-blue-600">dns</i>
+                    Configuración de Red Local
+                </h3>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                <div class="p-4 bg-blue-50 rounded-lg flex items-center justify-between border border-blue-100">
+                    <span class="font-medium text-blue-800 text-sm">¿Esta PC es el Servidor (Main)?</span>
+                    <input type="checkbox" id="local-is-server" class="h-6 w-6 cursor-pointer">
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">IP de la PC Principal</label>
+                    
+                    <div id="ip-wrapper" class="nexus-input flex justify-between items-center text-lg bg-white relative">
+                        
+                        <div id="ip-boxes" class="flex w-full justify-between items-center">
+                            <input type="text" id="ip1" maxlength="3" class="ip-box">
+                            <span class="text-gray-400 font-bold">.</span>
+                            <input type="text" id="ip2" maxlength="3" class="ip-box">
+                            <span class="text-gray-400 font-bold">.</span>
+                            <input type="text" id="ip3" maxlength="3" class="ip-box">
+                            <span class="text-gray-400 font-bold">.</span>
+                            <input type="text" id="ip4" maxlength="3" class="ip-box">
+                        </div>
+
+                        <input type="text" id="ip-localhost" value="localhost" disabled 
+                               class="w-full bg-transparent text-center text-gray-500 font-mono hidden outline-none">
+                    </div>
+
+                    <p class="text-[11px] text-gray-400 font-medium text-right">Deje en blanco si no conoce la IP.</p>
+                </div>
+            </div>
+        </div>
+
+        <button id="saveBtn" class="w-full bg-[#0288D1] hover:bg-[#0177BB] text-white font-bold py-4 rounded shadow-md transition-all flex items-center justify-center uppercase tracking-widest">
+            <i class="material-icons mr-2">save</i> Guardar Configuración
+        </button>
+
+        <p id="statusMsg" class="text-center font-bold text-sm h-6"></p>
+    </div>
+
+    <script>
+        (function() {
+            const isServerCb = document.getElementById('local-is-server');
+            const allowNoStockCb = document.getElementById('local-discount-stock');
+            const saveBtn = document.getElementById('saveBtn');
+            const statusMsg = document.getElementById('statusMsg');
+            
+            // Referencias del Input
+            const ipWrapper = document.getElementById('ip-wrapper');
+            const ipBoxesContainer = document.getElementById('ip-boxes');
+            const ipLocalhost = document.getElementById('ip-localhost');
+            const ipInputs = [
+                document.getElementById('ip1'),
+                document.getElementById('ip2'),
+                document.getElementById('ip3'),
+                document.getElementById('ip4')
+            ];
+
+            // Genera la IP uniendo los 4 cuadros. Si todos están vacíos, devuelve cadena vacía
+            const getFullIP = () => {
+                const p1 = ipInputs[0].value;
+                const p2 = ipInputs[1].value;
+                const p3 = ipInputs[2].value;
+                const p4 = ipInputs[3].value;
+                if (!p1 && !p2 && !p3 && !p4) return ""; 
+                return `${p1 || '0'}.${p2 || '0'}.${p3 || '0'}.${p4 || '0'}`;
+            };
+
+            // Recibe la IP de la base de datos y la pinta. Si viene nula/vacía, los deja en blanco.
+            const setFullIP = (ip) => {
+                if (!ip || ip === 'localhost' || ip === '127.0.0.1') {
+                    ipInputs.forEach(i => i.value = "");
+                    return;
+                }
+                const parts = ip.split('.');
+                parts.forEach((p, i) => { if(ipInputs[i]) ipInputs[i].value = p; });
+            };
+
+            async function init() {
+                try {
+                    if (!window.nexusAPI) return;
+                    
+                    const isServer = await window.nexusAPI.obtenerConfiguracion('isServer');
+                    const serverIP = await window.nexusAPI.obtenerConfiguracion('serverIP');
+                    const allowNoStock = await window.nexusAPI.obtenerConfiguracion('allowNoStock');
+
+                    isServerCb.checked = (isServer === true || isServer === "true");
+                    allowNoStockCb.checked = (allowNoStock === true || allowNoStock === "true");
+                    
+                    // Si no hay configuración guardada en la base de datos, serverIP vendrá vacío y se mostrará en blanco.
+                    setFullIP(serverIP);
+
+                    actualizarEstadoIP();
+                } catch (e) {
+                    console.error("Error al leer config:", e);
+                }
+            }
+
+            function actualizarEstadoIP() {
+                const isServer = isServerCb.checked;
+                
+                if (isServer) {
+                    // Ocultar 4 cuadros, mostrar 'localhost'
+                    ipBoxesContainer.classList.add('hidden');
+                    ipLocalhost.classList.remove('hidden');
+                    
+                    ipWrapper.classList.add('bg-gray-100');
+                    ipWrapper.classList.remove('bg-white');
+                } else {
+                    // Mostrar 4 cuadros, ocultar 'localhost'
+                    ipBoxesContainer.classList.remove('hidden');
+                    ipLocalhost.classList.add('hidden');
+                    
+                    ipWrapper.classList.remove('bg-gray-100');
+                    ipWrapper.classList.add('bg-white');
+                }
+            }
+
+            isServerCb.addEventListener('change', actualizarEstadoIP);
+
+            // Funcionalidad tipo Windows: Salto automático al escribir 3 dígitos
+            ipInputs.forEach((input, index) => {
+                input.addEventListener('input', (e) => {
+                    e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                    if (e.target.value.length === 3 && index < 3) {
+                        ipInputs[index + 1].focus();
+                    }
+                });
+            });
+
+            saveBtn.addEventListener('click', async () => {
+                statusMsg.textContent = "Guardando...";
+                statusMsg.className = "text-center font-bold text-[#0288D1]";
+
+                try {
+                    const finalIP = isServerCb.checked ? "localhost" : getFullIP();
+
+                    await window.nexusAPI.guardarConfiguracion('isServer', isServerCb.checked);
+                    await window.nexusAPI.guardarConfiguracion('serverIP', finalIP);
+                    await window.nexusAPI.guardarConfiguracion('allowNoStock', allowNoStockCb.checked);
+
+                    statusMsg.textContent = "✅ Configuración guardada correctamente. Reinicie el sistema.";
+                    statusMsg.className = "text-center font-bold text-green-600";
+                    setTimeout(() => statusMsg.textContent = "", 4000);
+                } catch (e) {
+                    statusMsg.textContent = "❌ Error al guardar.";
+                    statusMsg.className = "text-center font-bold text-red-600";
+                }
+            });
+
+            init();
+        })();
+    </script>
+</body>
+</html>
