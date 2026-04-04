@@ -3007,8 +3007,8 @@ async buscarCliente() {
                 rif: rifFinal,
                 nombre: nombre,
                 direccion: direccion,
-                telefono: "", 
-                correo: "",   
+                telefono: "00000000000", // 🟢 Dato genérico para evitar rechazos del backend Mongoose
+                correo: "sin@correo.com", // 🟢 Dato genérico para evitar rechazos del backend Mongoose
                 empresa_ID: companyIdActual,
                 fecha_modificacion: new Date().toISOString()
             };
@@ -3044,8 +3044,14 @@ async buscarCliente() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(objetoCliente)
                 })
-                .then(res => {
-                    if (res.ok) console.log("✅ Cliente sincronizado en Xeon Global.");
+                .then(async (res) => {
+                    if (res.ok) {
+                        console.log("✅ Cliente sincronizado en Xeon Global.");
+                    } else {
+                        // 🟢 TRAMPA DE ERRORES: Nos dirá exactamente qué no le gustó al servidor si falla
+                        const errData = await res.json();
+                        console.warn("⚠️ El Xeon rechazó el registro. Motivo:", errData);
+                    }
                 })
                 .catch(() => console.warn("📡 Modo Offline: Se sincronizará después."));
             }
@@ -3056,7 +3062,7 @@ async buscarCliente() {
         }
     },
 
-configurarEventos() {
+    configurarEventos() {
         // Captura de elementos
         this.ui.searchBtn = document.getElementById('search-client-btn');
         this.ui.searchInput = document.getElementById('client-search');
@@ -3065,13 +3071,17 @@ configurarEventos() {
 
         // 1. Evento del botón buscar (Lupa)
         if (this.ui.searchBtn) {
-            this.ui.searchBtn.onclick = () => this.buscarCliente();
+            this.ui.searchBtn.onclick = (e) => {
+                e.preventDefault(); // 🟢 Evita cualquier acción por defecto del botón
+                this.buscarCliente();
+            };
         }
 
         // 2. Lógica de Enter en el Buscador (Búsqueda o Apertura de Formulario)
         if (this.ui.searchInput) {
             this.ui.searchInput.onkeydown = (e) => {
                 if (e.key === 'Enter') {
+                    e.preventDefault(); // 🟢 CRÍTICO: Bloquea el envío doble del navegador
                     if (this.ui.newPrompt && !this.ui.newPrompt.classList.contains('hidden')) {
                         this.mostrarFormulario();
                     } else {
@@ -3088,6 +3098,7 @@ configurarEventos() {
             if (input) {
                 input.onkeydown = (e) => {
                     if (e.key === 'Enter') {
+                        e.preventDefault(); // 🟢 CRÍTICO: Bloquea el envío doble del navegador
                         console.log("⌨️ Enter detectado en formulario: Guardando cliente...");
                         this.agregarCliente();
                     }
@@ -3097,14 +3108,22 @@ configurarEventos() {
 
         // 4. Botones manuales
         if (this.ui.showFormBtn) {
-            this.ui.showFormBtn.onclick = () => this.mostrarFormulario();
+            this.ui.showFormBtn.onclick = (e) => {
+                e.preventDefault(); // 🟢 Evita rebote
+                this.mostrarFormulario();
+            };
         }
 
         if (this.ui.addBtn) {
-            this.ui.addBtn.onclick = () => this.agregarCliente();
+            this.ui.addBtn.onclick = (e) => {
+                e.preventDefault(); // 🟢 Evita que el clic del botón dispare eventos extra
+                this.agregarCliente();
+            };
         }
     }
-};
+}; // 🟢 AQUÍ ESTABA EL ERROR: ESTA LLAVE CIERRA EL OBJETO GESTORCLIENTES
+
+// --- FUNCIONES INDEPENDIENTES (FUERA DEL OBJETO) ---
 
 async function sincronizarClientesPendientes() {
     if (!navigator.onLine) return;
@@ -3114,10 +3133,10 @@ async function sincronizarClientesPendientes() {
         if (!clientesLocales || clientesLocales.length === 0) return;
 
         let subidosNuevos = 0;
+        console.log("🔄 Verificando clientes locales pendientes de subir...");
 
         for (const cliente of clientesLocales) {
             try {
-                // 🟢 BLINDAJE: Nos aseguramos de que el RIF tenga la "V" antes de enviar
                 let rifNormalizado = cliente.rif.replace(/[-\s]/g, '').toUpperCase();
                 if (/^\d+$/.test(rifNormalizado)) rifNormalizado = 'V' + rifNormalizado;
 
@@ -3135,19 +3154,21 @@ async function sincronizarClientesPendientes() {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(clienteSeguro)
-                });
+                }).catch(() => { /* Ignoramos errores de caída de red limpia */ });
 
-                if (res.status === 201) {
+                if (res && res.status === 201) {
                     subidosNuevos++;
                 } 
                 
             } catch (innerError) {
-                break; 
+                continue; 
             }
         }
 
         if (subidosNuevos > 0) {
-            console.log(`🚀 [Motor Sync] ${subidosNuevos} clientes sincronizados.`);
+            console.log(`🚀 [Motor Sync] ${subidosNuevos} nuevos clientes respaldados en la nube.`);
+        } else {
+            console.log(`✅ Todos los clientes locales ya están sincronizados.`);
         }
 
     } catch (error) {
@@ -3155,46 +3176,24 @@ async function sincronizarClientesPendientes() {
     }
 }
 
+// 🟢 DISPARADORES LIMPIOS (Sin bucles infinitos ni duplicados)
 
+// 1. Al arrancar el sistema: Inicializamos el gestor y hacemos un solo escaneo 5 segundos después
 document.addEventListener('DOMContentLoaded', () => {
+    if (typeof GestorClientes !== 'undefined') {
+        GestorClientes.inicializar();
+    }
     setTimeout(sincronizarClientesPendientes, 5000);
 });
 
+// 2. Cuando el internet regresa: Hacemos un solo escaneo para subir lo que se vendió offline
 window.addEventListener('online', () => {
-    console.log("🌐 Internet restablecido. Sincronizando datos...");
-    setTimeout(sincronizarClientesPendientes, 1000);
-});
-
-setInterval(() => {
-    if (navigator.onLine) sincronizarClientesPendientes();
-}, 300000);
-
-
-window.addEventListener('online', () => {
-    console.log("🌐 Red detectada por el sistema operativo...");
-    setTimeout(sincronizarClientesPendientes, 1000); 
+    console.log("🌐 Internet restablecido. Sincronizando datos pendientes...");
+    if (typeof messageBox === 'function') messageBox("Conexión restablecida. Sincronizando...", 'bg-blue-500');
+    setTimeout(sincronizarClientesPendientes, 2000);
 });
 
 
-
-// C. Al arrancar (Fundamental)
-document.addEventListener('DOMContentLoaded', () => {
-    // Le damos 2 segundos después de cargar la página para intentar la primera sync
-    setTimeout(sincronizarClientesPendientes, 3000);
-});
-
-// ESCUCHADOR DE INTERNET
-window.addEventListener('online', () => {
-    if (typeof messageBox === 'function') messageBox("Conexión restablecida. Sincronizando datos...", 'bg-blue-500');
-    sincronizarClientesPendientes();
-});
-
-// Arrancar el módulo automáticamente
-document.addEventListener('DOMContentLoaded', () => {
-    GestorClientes.inicializar();
-});
-    
-// HACK: Adjuntar funciones al objeto global 'window' para que el HTML pueda llamarlas directamente.
 window.addItem = addItem;
 window.GestorClientes = GestorClientes;
 window.clearCart = clearCart;
