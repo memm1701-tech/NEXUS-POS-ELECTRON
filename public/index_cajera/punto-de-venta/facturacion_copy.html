@@ -202,14 +202,7 @@
             </div>
         </div>
     </div>
-    
-    <div class="w-full md:w-1/2 flex items-start justify-end pt-11 md:pt-[3.8rem]">
-        <button id="btn-quick-sale" 
-                onclick="openQuickSaleModal()" 
-                class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md shadow-lg transition duration-300 ease-in-out w-full md:w-auto">
-            <i class="fas fa-hand-holding-usd mr-2"></i> Venta Rápida(F)
-        </button>
-    </div>
+
 </div>
             
             <div class="flex flex-col md:grid md:grid-cols-10 md:gap-x-8">
@@ -334,40 +327,6 @@
             </div>
         </div>
     </div>
-
-<div id="quick-sale-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
-    <div id="quick-sale-content" class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 relative transition-all duration-300">
-        
-        <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2 text-center">Venta Rápida (Sin Inventario)</h2>
-        
-        <div class="space-y-4">
-            
-            <div>
-                <label for="quick-sale-name" class="block text-sm font-medium text-gray-700">Nombre del Producto</label>
-                <input type="text" id="quick-sale-name" class="w-full border rounded-lg p-3 text-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Ej: Carne, Pollo, Papa" required>
-            </div>
-            
-            <div class="flex space-x-4">
-                <div class="flex-1">
-                    <label for="quick-sale-price" class="block text-sm font-medium text-gray-700">Precio de Venta (Bs)</label>
-                    <input type="number" id="quick-sale-price" class="w-full border rounded-lg p-3 text-lg text-right" placeholder="0.00" step="0.01" min="0.01" required>
-                </div>
-                <div class="flex-1">
-                    <label for="quick-sale-quantity" class="block text-sm font-medium text-gray-700">Cantidad</label>
-                    <input type="number" id="quick-sale-quantity" class="w-full border rounded-lg p-3 text-lg text-right" placeholder="1" value="" step="0.001" min="0.001" required>
-                </div>
-            </div>
-            
-        </div>
-        
-        <div class="mt-6 flex justify-between">
-            <button onclick="closeQuickSaleModal()" class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg transition duration-300">Cancelar(Esc)</button>
-            <button id="btn-process-quick-sale" onclick="processQuickSale()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out">Añadir al Carrito</button>
-        </div>
-        
-        <button onclick="closeQuickSaleModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-xl font-bold">×</button>
-    </div>
-</div>
 
 <div id="payment-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
     <div id="payment-content" class="bg-white rounded-lg shadow-lg w-full max-w-4xl p-6 relative transition-all duration-500 ease-in-out">
@@ -867,6 +826,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let barcodeFocus = -1;
     let filteredProducts = [];
     let tipoEmisionFiscal = "TICKET_NO_FISCAL";
+    let isSearchingClient = false;
 
 function filterProducts(query, type, resultsId) {
 
@@ -983,9 +943,6 @@ document.addEventListener('keydown', (event) => {
     // Estados de visibilidad de los modales
     const paymentModal = document.getElementById('payment-modal');
     const isPaymentVisible = paymentModal && (paymentModal.style.display === 'flex' || !paymentModal.classList.contains('hidden'));
-    const quickSaleModal = document.getElementById('quick-sale-modal');
-    const isQuickSaleVisible = quickSaleModal && (quickSaleModal.style.display === 'flex' || !quickSaleModal.classList.contains('hidden'));
-
     // A. NAVEGACIÓN (Flechas y Enter en buscadores) - PRIORIDAD MÁXIMA
     if (activeElement.id === "product-search" || activeElement.id === "barcode-search") {
         const isProduct = activeElement.id === "product-search";
@@ -1046,10 +1003,6 @@ document.addEventListener('keydown', (event) => {
             event.preventDefault();
             if (typeof closePaymentModal === 'function') closePaymentModal();
         }
-        if (isQuickSaleVisible) {
-            event.preventDefault();
-            if (typeof closeQuickSaleModal === 'function') closeQuickSaleModal();
-        }
     }
 
     // D. ATAJO ENTER (Confirmar venta en Métodos de Pago)
@@ -1067,10 +1020,7 @@ document.addEventListener('keydown', (event) => {
             event.preventDefault();
             if (typeof newInvoice === 'function') newInvoice();
         }
-        else if (key === 'f') { // Venta Rápida
-            event.preventDefault();
-            if (typeof openQuickSaleModal === 'function') openQuickSaleModal();
-        }
+        
         else if (key === 'c') { // Barra de búsqueda de Clientes
             event.preventDefault();
             document.getElementById('client-search')?.focus();
@@ -1234,94 +1184,6 @@ async function validarAccesoYIniciar() {
 validarAccesoYIniciar();
 
 
-window.addItemToCart = function(quickSaleItem) {
-    
-    // Llama a la función central, pasando el objeto de Venta Rápida completo 
-    // y la cantidad (el segundo argumento).
-    if (typeof updateCartAndRender === 'function') {
-        updateCartAndRender(quickSaleItem, quickSaleItem.cantidad);
-    } else {
-        // Este mensaje solo se muestra si updateCartAndRender no existe (lo cual es poco probable si ya está definida).
-        console.error('Error: La función principal updateCartAndRender no es accesible.');
-        alert('Error Crítico: El sistema de carrito no es accesible.');
-    }
-};
-
-    // 📄 INICIO DE CÓDIGO JAVASCRIPT
-// --- Funciones para el Modal de Venta Rápida ---
-
-// 1. Mostrar el modal
-window.openQuickSaleModal = function() {
-    const modal = document.getElementById('quick-sale-modal');
-    modal.classList.remove('hidden');
-    // Opcional: enfocar el primer campo al abrir
-    document.getElementById('quick-sale-name').focus();
-}
-
-// 2. Ocultar el modal
-window.closeQuickSaleModal = function() {
-    const modal = document.getElementById('quick-sale-modal');
-    modal.classList.add('hidden');
-    
-    // Opcional: limpiar los campos al cerrar
-    document.getElementById('quick-sale-name').value = '';
-    document.getElementById('quick-sale-price').value = '';
-    document.getElementById('quick-sale-quantity').value = '1';
-}
-
-// 3. Procesar la venta rápida y añadir al carrito
-// 3. Procesar la venta rápida y añadir al carrito
-window.processQuickSale = function() {
-    const nameInput = document.getElementById('quick-sale-name');
-    const priceInput = document.getElementById('quick-sale-price');
-    const quantityInput = document.getElementById('quick-sale-quantity');
-
-    const nombre = nameInput.value.trim();
-    const precioVenta = parseFloat(priceInput.value);
-    const cantidad = parseFloat(quantityInput.value);
-
-    // Validación básica de campos
-    if (!nombre || nombre.length === 0) {
-        alert('Por favor, ingresa el nombre del producto.');
-        nameInput.focus();
-        return;
-    }
-    if (isNaN(precioVenta) || precioVenta <= 0) {
-        alert('Por favor, ingresa un precio de venta válido.');
-        priceInput.focus();
-        return;
-    }
-    if (isNaN(cantidad) || cantidad <= 0) {
-        alert('Por favor, ingresa una cantidad válida.');
-        quantityInput.focus();
-        return;
-    }
-    
-    // Cálculo: Precio * Cantidad
-    const subtotal = precioVenta * cantidad;
-
-    // Crear el objeto del producto para el carrito
-    const quickSaleItem = {
-        // Usamos un ID temporal o genérico para productos sin inventario
-        id: 'QUICK-' + Date.now(), 
-        codigo: 'VTA-RAPIDA', 
-        nombre: nombre,
-        precio: precioVenta,
-        cantidad: cantidad,
-        // Almacenamos el subtotal total de la línea
-        subtotal: subtotal,
-        // Marcamos como un producto de venta rápida para diferenciar
-        isQuickSale: true
-    };
-    
-    // 🚩 CAMBIO CLAVE: Llama a la nueva función que crearemos abajo.
-    addItemToCart(quickSaleItem);
-    
-    // Cierra el modal después de añadir el producto
-    closeQuickSaleModal(); 
-};
-
-
 
 function updateCartAndRender(producto, cantidad) {
     // 1. Extraer precio y tasa de IVA (Alicuota)
@@ -1372,45 +1234,41 @@ function updateCartAndRender(producto, cantidad) {
     }
 }
 
+function normalizarIdentificacion(idInput) {
+    if (!idInput) return '';
+    
+    // Limpiamos todo rastro de espacios y guiones ingresados por el usuario
+    let limpio = idInput.replace(/[-\s]/g, '').toUpperCase();
+    
+    // 1. Asignación inteligente de letra si el usuario solo ingresó números
+    if (/^\d+$/.test(limpio)) {
+        if (limpio.length === 9) {
+            limpio = 'J' + limpio; // Si tiene 9 números exactos, asumimos Jurídico (J)
+        } else {
+            limpio = 'V' + limpio; // Si tiene menos, asumimos Venezolano (V)
+        }
+    }
+    
+    // 2. Formateo Visual (Añadir los guiones)
+    if (/^[VJEGPC]\d{9}$/.test(limpio)) {
+        // Formato RIF Completo (Ej: J-30123456-7)
+        return `${limpio.charAt(0)}-${limpio.substring(1, 9)}-${limpio.charAt(9)}`;
+    } else if (/^[VE]\d{6,8}$/.test(limpio)) {
+        // Formato Cédula (Ej: V-20315990)
+        return `${limpio.charAt(0)}-${limpio.substring(1)}`;
+    }
+    
+    return limpio; // Por si ingresan un pasaporte o dato extranjero, lo devuelve limpio
+}
+
+
 function validarRIF(rif) {
     if (!rif) return false;
-    
-    // 1. Limpiar el RIF (quitar guiones y espacios, pasar a mayúsculas)
-    rif = rif.replace(/[-\s]/g, '').toUpperCase();
-    
-    // 2. Validar longitud básica (Letra + 1 a 9 dígitos)
-    // Se permite V/E (Cédula) o J/G/V/E/P/C (RIF completo con 9 dígitos)
-    const regexBásico = /^[VJEGPC]\d{1,9}$/;
-    if (!regexBásico.test(rif)) return false;
-
-    // 3. Si es solo cédula (V o E) con menos de 9 dígitos, rellenar con ceros a la izquierda
-    const tipo = rif.charAt(0);
-    let numeros = rif.substring(1);
-    
-    if ((tipo === 'V' || tipo === 'E') && numeros.length < 9) {
-        numeros = numeros.padStart(9, '0');
-        rif = tipo + numeros;
-    }
-
-    // 4. Si después del relleno no tiene exactamente 10 caracteres (Letra + 9 números), es inválido
-    if (rif.length !== 10) return false;
-
-    // 5. Algoritmo Módulo 11 (Dígito Verificador)
-    const valoresTipo = { 'V': 1, 'E': 2, 'J': 3, 'P': 4, 'G': 5, 'C': 5 }; // 'C' se calcula igual que 'G'
-    const multiplicadores = [4, 3, 2, 7, 6, 5, 4, 3, 2];
-    
-    let suma = valoresTipo[tipo] * multiplicadores[0];
-    
-    for (let i = 0; i < 8; i++) {
-        suma += parseInt(numeros.charAt(i)) * multiplicadores[i + 1];
-    }
-    
-    let digitoEsperado = 11 - (suma % 11);
-    if (digitoEsperado === 11 || digitoEsperado === 10) digitoEsperado = 0;
-    
-    const digitoReal = parseInt(numeros.charAt(8));
-    
-    return digitoEsperado === digitoReal;
+    // Limpiamos los guiones solo para que la expresión regular valide la matemática pura
+    const limpio = rif.replace(/[-\s]/g, '').toUpperCase();
+    // Validamos que sea una letra válida seguida de 6 a 9 números
+    const regexConLetra = /^[VJEGPC]\d{6,9}$/;
+    return regexConLetra.test(limpio);
 }
     
 
@@ -2904,6 +2762,7 @@ function setupBarcodeSearchListener() {
 const GestorClientes = {
     lista: [], 
     selectedCustomer: null,
+    isAddingClient: false,
 
     // Referencias al DOM (Mismos IDs de tu HTML)
     ui: {
@@ -2936,28 +2795,50 @@ const GestorClientes = {
         }
     },
 
-    buscarCliente() {
-        const searchValue = this.ui.searchInput.value.trim().toLowerCase();
+    // Variable de control (fuera de la función) para evitar peticiones duplicadas
+
+
+async buscarCliente() {
+        // 1. Bloqueo de seguridad: Si ya hay una búsqueda en curso, ignoramos la nueva
+        if (isSearchingClient) return; 
+
+        const searchValueRaw = this.ui.searchInput.value.trim();
+        const searchValue = searchValueRaw.toUpperCase();
         
-        // Resetear la vista
+        // Resetear la vista antes de buscar
         this.ui.foundMessage.classList.add('hidden');
         this.ui.newPrompt.classList.add('hidden');
         this.ui.addForm.classList.add('hidden');
         this.selectedCustomer = null;
 
-        if (!searchValue) return;
+        if (!searchValueRaw) return;
 
-        // Búsqueda ultrarrápida en memoria local (0 latencia)
-        const clienteEncontrado = this.lista.find(c => 
-            c.rif.toLowerCase() === searchValue || 
-            c.nombre.toLowerCase().includes(searchValue)
-        );
+        isSearchingClient = true; // Activamos el bloqueo
+        
+        // 🔥 PREPARAMOS LOS DATOS PARA UNA BÚSQUEDA A PRUEBA DE BALAS
+        const searchNormalizado = normalizarIdentificacion(searchValueRaw);
+        const searchLimpio = searchValueRaw.replace(/[-\s]/g, '').toUpperCase();
 
-if (clienteEncontrado) {
-            // Cliente existe
+        console.log(`🔍 Buscando cliente (Local): ${searchNormalizado}`);
+
+        // --- BÚSQUEDA 100% LOCAL (Instantánea) ---
+        let clienteEncontrado = this.lista.find(c => {
+            const rifDB = c.rif.toUpperCase();
+            const rifDBLimpio = rifDB.replace(/[-\s]/g, '');
+            
+            // Compara: Exacto formateado, exacto limpio, o asumiendo V / J
+            return rifDB === searchNormalizado || 
+                   rifDBLimpio === searchLimpio || 
+                   rifDBLimpio === ('V' + searchLimpio) ||
+                   rifDBLimpio === ('J' + searchLimpio) ||
+                   c.nombre.toUpperCase().includes(searchValue);
+        });
+
+        // --- Procesamiento del Resultado ---
+        if (clienteEncontrado) {
             this.selectedCustomer = clienteEncontrado;
             
-            // 🟢 MAGIA: Clonamos el cliente a la variable vieja para que el sistema no se bloquee
+            // Sincronización con variables globales para compatibilidad del sistema
             selectedCustomer = clienteEncontrado;
             selectedCustomer.name = clienteEncontrado.nombre;
             selectedCustomer.ci = clienteEncontrado.rif;
@@ -2965,7 +2846,15 @@ if (clienteEncontrado) {
             this.ui.foundName.textContent = clienteEncontrado.nombre;
             this.ui.foundId.textContent = clienteEncontrado.rif;
             this.ui.foundMessage.classList.remove('hidden');
-        } 
+        } else {
+            // Al no depender de Internet, mostramos el prompt de registro inmediatamente
+            console.log("❌ Cliente no está en el PC. Abriendo registro de una vez.");
+            this.ui.newPrompt.classList.remove('hidden');
+            // 🔥 PRECARGAMOS EL RIF YA FORMATEADO BONITO
+            this.ui.newId.value = searchNormalizado; 
+        }
+
+        isSearchingClient = false; // Liberamos el bloqueo
     },
 
     limpiarSeleccion() {
@@ -2975,95 +2864,99 @@ if (clienteEncontrado) {
     },
 
     mostrarFormulario() {
-        // Ocultamos el aviso de "¿Desea agregarlo?"
         this.ui.newPrompt.classList.add('hidden');
-        // Mostramos el contenedor de los 3 inputs (Nombre, CI, Dirección)
         this.ui.addForm.classList.remove('hidden');
         
-        // Foco automático al nombre para rapidez del cajero
+
         setTimeout(() => this.ui.newName.focus(), 100);
     },
     
     async agregarCliente() {
+        // 1. ESCUDO ANTIBLOQUEO: Usamos 'this' para referirnos a la variable del objeto
+        if (this.isAddingClient) return;
+
         const nombre = this.ui.newName.value.trim();
-        let rif = this.ui.newId.value.trim(); // Usamos let para poder limpiarlo
+        let idInput = this.ui.newId.value.trim().toUpperCase();
         const direccion = this.ui.newAddress.value.trim() || 'No especificada';
 
-        if (!nombre || !rif) {
-            if (typeof messageBox === 'function') messageBox('Razón Social y RIF/Cédula son obligatorios.', 'bg-red-500');
+        if (!nombre || !idInput) {
+            if (typeof messageBox === 'function') messageBox('Nombre y Cédula/RIF son obligatorios.', 'bg-red-500');
             return;
         }
 
-        // --- INICIO MODIFICACIÓN: VALIDACIÓN DE RIF ---
-        // Forzamos mayúsculas y quitamos guiones para la validación
-        rif = rif.replace(/[-\s]/g, '').toUpperCase();
-        
-        // Si el usuario no puso letra inicial (V, J, etc.), asumimos 'V' por defecto para facilitar el uso
-        if (/^\d+$/.test(rif)) {
-            rif = 'V' + rif;
+        // 🔥 LA MAGIA OCURRE AQUÍ: Pasamos el input por el normalizador inteligente
+        let rifFinal = normalizarIdentificacion(idInput);
+
+        if (!validarRIF(rifFinal)) {
+            if (typeof messageBox === 'function') messageBox('Identificación no válida.', 'bg-red-600');
+            return;
         }
 
-        if (!validarRIF(rif)) {
-            if (typeof messageBox === 'function') messageBox('El RIF o Cédula ingresado tiene un formato o dígito verificador inválido.', 'bg-red-600');
-            this.ui.newId.focus(); // Devolvemos el foco al input para que lo corrija
-            return; // Detenemos el guardado
-        }
-        // --- FIN MODIFICACIÓN ---
+        this.isAddingClient = true; // 🔒 Bloqueamos el proceso
 
-        const sesion = await window.nexusAPI.obtenerSesionLocal();
-        const companyId = sesion ? sesion.companyId : 'DEFAULT';
+        try {
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
+            const companyIdActual = sesion ? sesion.companyId : 'DEFAULT';
 
-        const nuevoCliente = {
-            rif: rif, // Guardamos el RIF ya limpio y validado
-            nombre: nombre,
-            direccion: direccion,
-            telefono: '',
-            correo: '',
-            empresa_ID: companyId
-        };
+            const objetoCliente = {
+                rif: rifFinal, // Ahora sí se guarda como J-06500004-0
+                nombre: nombre,
+                direccion: direccion,
+                telefono: "00000000000", 
+                correo: "sin@correo.com", 
+                empresa_ID: companyIdActual,
+                fecha_modificacion: new Date().toISOString()
+            };
 
-        // 1. Guardar localmente siempre primero (Cerebro SQLite)
-        // 1. Guardar localmente siempre primero (Cerebro SQLite)
-        const resultado = await window.nexusAPI.guardarClienteLocal(nuevoCliente);
+            // 1. Guardado local prioritario (SQLite)
+            const resultado = await window.nexusAPI.guardarClienteLocal(objetoCliente);
 
-        if (resultado && !resultado.error) {
-            this.selectedCustomer = nuevoCliente;
-            
-            // 🟢 MAGIA: Clonamos el cliente nuevo a la variable vieja
-            selectedCustomer = nuevoCliente;
-            selectedCustomer.name = nuevoCliente.nombre;
-            selectedCustomer.ci = nuevoCliente.rif;
-            
-            // Actualizar vista UI
-            this.ui.addForm.classList.add('hidden');
+            if (resultado && !resultado.error) {
+                // --- ACTUALIZACIÓN VISUAL Y DE MEMORIA ---
+                this.selectedCustomer = objetoCliente;
+                selectedCustomer = objetoCliente; 
+                selectedCustomer.name = objetoCliente.nombre;
+                selectedCustomer.ci = objetoCliente.rif;
+                
+                this.ui.foundName.textContent = objetoCliente.nombre;
+                this.ui.foundId.textContent = objetoCliente.rif;
+                this.ui.foundMessage.classList.remove('hidden');
 
-            // --- MEJORA: LIMPIEZA DE CAMPOS TRAS ÉXITO ---
-            this.ui.newName.value = '';
-            this.ui.newId.value = '';
-            this.ui.newAddress.value = '';
-            this.ui.searchInput.value = ''; // Limpia el buscador para la siguiente venta
+                // --- LIMPIEZA DE INTERFAZ ---
+                this.ui.addForm.classList.add('hidden');
+                this.ui.newPrompt.classList.add('hidden'); 
+                this.ui.newName.value = '';
+                this.ui.newId.value = '';
+                this.ui.newAddress.value = '';
+                this.ui.searchInput.value = '';
 
-            // 2. Intentar Sincronizar de inmediato con el Xeon
-            try {
-                const response = await fetch('http://192.168.0.113:3002/api/clientes', {
+                await this.cargarTodos(); 
+                if (typeof messageBox === 'function') messageBox(`Cliente registrado y seleccionado.`, 'bg-green-500');
+
+                // 2. SINCRONIZACIÓN EN SEGUNDO PLANO
+                fetch('https://clientes.nexusposgobal.com/api/clientes', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(nuevoCliente)
-                });
-
-                if (response.ok) {
-                    console.log("☁️ Sincronización instantánea exitosa.");
-                }
-            } catch (err) {
-                console.warn("📡 Modo Offline: Cliente en cola para sincronización futura.");
+                    body: JSON.stringify(objetoCliente)
+                })
+                .then(async (res) => {
+                    if (res.ok) {
+                        console.log("✅ Cliente sincronizado en Xeon Global.");
+                    } else {
+                        const errData = await res.json();
+                        console.warn("⚠️ El Xeon rechazó el registro. Motivo:", errData);
+                    }
+                })
+                .catch(() => console.warn("📡 Modo Offline: Se sincronizará después."));
             }
-
-            await this.cargarTodos();
-            if (typeof messageBox === 'function') messageBox(`Cliente registrado con éxito.`, 'bg-green-500');
+        } catch (err) {
+            console.error("Error al agregar cliente:", err);
+        } finally {
+            this.isAddingClient = false; // 🔓 Liberamos el bloqueo siempre al finalizar
         }
     },
 
-configurarEventos() {
+    configurarEventos() {
         // Captura de elementos
         this.ui.searchBtn = document.getElementById('search-client-btn');
         this.ui.searchInput = document.getElementById('client-search');
@@ -3072,13 +2965,17 @@ configurarEventos() {
 
         // 1. Evento del botón buscar (Lupa)
         if (this.ui.searchBtn) {
-            this.ui.searchBtn.onclick = () => this.buscarCliente();
+            this.ui.searchBtn.onclick = (e) => {
+                e.preventDefault(); // 🟢 Evita cualquier acción por defecto del botón
+                this.buscarCliente();
+            };
         }
 
         // 2. Lógica de Enter en el Buscador (Búsqueda o Apertura de Formulario)
         if (this.ui.searchInput) {
             this.ui.searchInput.onkeydown = (e) => {
                 if (e.key === 'Enter') {
+                    e.preventDefault(); // 🟢 CRÍTICO: Bloquea el envío doble del navegador
                     if (this.ui.newPrompt && !this.ui.newPrompt.classList.contains('hidden')) {
                         this.mostrarFormulario();
                     } else {
@@ -3095,6 +2992,7 @@ configurarEventos() {
             if (input) {
                 input.onkeydown = (e) => {
                     if (e.key === 'Enter') {
+                        e.preventDefault(); // 🟢 CRÍTICO: Bloquea el envío doble del navegador
                         console.log("⌨️ Enter detectado en formulario: Guardando cliente...");
                         this.agregarCliente();
                     }
@@ -3104,90 +3002,93 @@ configurarEventos() {
 
         // 4. Botones manuales
         if (this.ui.showFormBtn) {
-            this.ui.showFormBtn.onclick = () => this.mostrarFormulario();
+            this.ui.showFormBtn.onclick = (e) => {
+                e.preventDefault(); // 🟢 Evita rebote
+                this.mostrarFormulario();
+            };
         }
 
         if (this.ui.addBtn) {
-            this.ui.addBtn.onclick = () => this.agregarCliente();
+            this.ui.addBtn.onclick = (e) => {
+                e.preventDefault(); // 🟢 Evita que el clic del botón dispare eventos extra
+                this.agregarCliente();
+            };
         }
     }
-};
+}; // 🟢 AQUÍ ESTABA EL ERROR: ESTA LLAVE CIERRA EL OBJETO GESTORCLIENTES
+
+// --- FUNCIONES INDEPENDIENTES (FUERA DEL OBJETO) ---
 
 async function sincronizarClientesPendientes() {
-    console.log("🔄 [Motor Sync] Verificando conexión con Xeon...");
-    
+    if (!navigator.onLine) return;
+
     try {
-        // 1. Intentamos un "ping" rápido al Xeon para ver si está ahí
-        // Usamos HEAD para que sea una petición ligera
-        await fetch('http://192.168.0.113:3002/api/clientes/test', { method: 'HEAD', mode: 'no-cors' });
-        
-        console.log("📡 [Motor Sync] Xeon detectado. Buscando clientes locales...");
+        const clientesLocales = await window.nexusAPI.obtenerClientesLocal();
+        if (!clientesLocales || clientesLocales.length === 0) return;
 
-        // 2. Traemos los clientes de SQLite
-        const clientes = await window.nexusAPI.obtenerClientesLocal();
-        
-        if (!clientes || clientes.length === 0) {
-            console.log("✅ [Motor Sync] Nada que sincronizar.");
-            return;
-        }
+        let subidosNuevos = 0;
+        console.log("🔄 Verificando clientes locales pendientes de subir...");
 
-        let sincronizados = 0;
-        for (const cliente of clientes) {
+        for (const cliente of clientesLocales) {
             try {
-                const res = await fetch('http://192.168.0.113:3002/api/clientes', {
+                // 🔥 MANTENEMOS EL FORMATO: Usamos la normalizadora para respetar la 'J' y los guiones
+                let rifSeguro = normalizarIdentificacion(cliente.rif);
+
+                const clienteSeguro = {
+                    rif: rifSeguro,
+                    nombre: cliente.nombre,
+                    direccion: cliente.direccion || 'No especificada',
+                    telefono: cliente.telefono || '00000000000',
+                    correo: cliente.correo || 'sin@correo.com',
+                    empresa_ID: cliente.empresa_ID || window.companyId || 'DEFAULT',
+                    fecha_modificacion: cliente.fecha_modificacion || new Date().toISOString()
+                };
+
+                const res = await fetch('https://clientes.nexusposgobal.com/api/clientes', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(cliente)
-                });
+                    body: JSON.stringify(clienteSeguro)
+                }).catch(() => { /* Ignoramos errores de caída de red limpia */ });
 
-                if (res.ok) sincronizados++;
+                // Cubrimos 200 (Actualizado) y 201 (Creado)
+                if (res && (res.status === 201 || res.status === 200)) {
+                    subidosNuevos++;
+                } 
+                
             } catch (innerError) {
-                // Si falla uno, probablemente la red se cayó de nuevo
-                break;
+                continue; 
             }
         }
 
-        if (sincronizados > 0) {
-            console.log(`🚀 [Motor Sync] ¡Éxito! ${sincronizados} clientes sincronizados.`);
-            if (typeof messageBox === 'function') messageBox(`Nube actualizada: ${sincronizados} clientes nuevos.`, 'bg-blue-600');
+        if (subidosNuevos > 0) {
+            console.log(`🚀 [Motor Sync] ${subidosNuevos} nuevos clientes respaldados en la nube.`);
+        } else {
+            console.log(`✅ Todos los clientes locales ya están sincronizados.`);
         }
 
     } catch (error) {
-        console.warn("⚠️ [Motor Sync] Xeon aún no es alcanzable. Esperando próxima señal.");
+        console.warn("⚠️ [Motor Sync] Pausado temporalmente.");
     }
 }
 
-// A. Disparador por evento de red
-window.addEventListener('online', () => {
-    console.log("🌐 Red detectada por el sistema operativo...");
-    setTimeout(sincronizarClientesPendientes, 1000); // 5 segundos de gracia
-});
+// 🟢 DISPARADORES LIMPIOS (Sin bucles infinitos ni duplicados)
 
-// B. Vigilancia Activa (Cada 60 segundos por si el evento falla)
-setInterval(() => {
-    if (navigator.onLine) {
-        sincronizarClientesPendientes();
+// 1. Al arrancar el sistema: Inicializamos el gestor y hacemos un solo escaneo 5 segundos después
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof GestorClientes !== 'undefined') {
+        GestorClientes.inicializar();
     }
-}, 60000); 
-
-// C. Al arrancar (Fundamental)
-document.addEventListener('DOMContentLoaded', () => {
-    // Le damos 2 segundos después de cargar la página para intentar la primera sync
-    setTimeout(sincronizarClientesPendientes, 3000);
+    setTimeout(sincronizarClientesPendientes, 5000);
 });
 
-// ESCUCHADOR DE INTERNET
+// 2. Cuando el internet regresa: Hacemos un solo escaneo para subir lo que se vendió offline
 window.addEventListener('online', () => {
-    if (typeof messageBox === 'function') messageBox("Conexión restablecida. Sincronizando datos...", 'bg-blue-500');
-    sincronizarClientesPendientes();
+    console.log("🌐 Internet restablecido. Sincronizando datos pendientes...");
+    if (typeof messageBox === 'function') messageBox("Conexión restablecida. Sincronizando...", 'bg-blue-500');
+    setTimeout(sincronizarClientesPendientes, 2000);
 });
 
-// Arrancar el módulo automáticamente
-document.addEventListener('DOMContentLoaded', () => {
-    GestorClientes.inicializar();
-});
-    
-// HACK: Adjuntar funciones al objeto global 'window' para que el HTML pueda llamarlas directamente.
+
 window.addItem = addItem;
 window.GestorClientes = GestorClientes;
 window.clearCart = clearCart;

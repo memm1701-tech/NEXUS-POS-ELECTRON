@@ -34,11 +34,14 @@ if (fs.existsSync(configPath)) {
 
 const Database = require('better-sqlite3');
 const dbPath = path.join(dbDir, 'nexus_pos.db');
-const serverDbPath = path.join(dbDir, 'nexus-local-server.db');
-let serverDb = null;
-const db = new Database(dbPath);
-
+const db = new Database(dbPath, { timeout: 10000 }); 
 console.log("🚀 Cerebro Conectado en:", dbPath);
+
+try {
+    db.pragma('journal_mode = WAL');
+} catch (e) {
+    console.warn("⚠️ Aviso: La base de datos está ocupada por el Servidor Maestro. Iniciando sin modo WAL forzado.");
+}
 
 function inicializarTablas() {
 
@@ -347,11 +350,25 @@ ipcMain.handle('obtener-tasa-bcv', async () => {
 
 // SOLO ESTA LÍNEA PARA EL TÚNEL (Sin lógica extra, solo redirige al handle de arriba)
 server.get('/api/tasas', async (req, res) => {
-    const data = await ipcMain.emit('obtener-tasa-bcv'); // Esto es conceptual, mejor llama a la función directamente
-    res.json(await ipcMain.callHandler('obtener-tasa-bcv')); 
+    try {
+        const response = await axios.get('https://www.bcv.org.ve/', axiosConfigBCV);
+        const $ = cheerio.load(response.data);
+        const usd = parseFloat($('#dolar strong').text().trim().replace(',', '.'));
+        res.json({ success: true, rates: { USD: usd } });
+    } catch (error) {
+        res.json({ success: false, error: error.message });
+    }
 });
 
-server.listen(3003); 
+server.listen(PORT, () => {
+    console.log(`🔗 Servidor local Express escuchando en el puerto ${PORT}`);
+}).on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+        console.warn(`⚠️ Nota: El puerto ${PORT} ya está en uso (Normal si el servidor maestro PM2 está encendido).`);
+    } else {
+        console.error("❌ Error en Express:", err);
+    }
+});
 
 ipcMain.on('cerrar-y-volver-login', (event) => {
     const currentWin = BrowserWindow.fromWebContents(event.sender);
@@ -532,9 +549,10 @@ ipcMain.handle('obtener-sesion-local', async () => {
 
 ipcMain.handle('leer-puertos', async () => await SerialPort.list());
 
-ipcMain.handle('sincronizar-categorias-local', async (event, inicializarTablas) => {
+// 🔥 SOLUCIÓN 3: Nombres de variables correctos y guardado en la tabla correcta
+ipcMain.handle('sincronizar-categorias-local', async (event, categories) => {
     try {
-        const stmt = db.prepare(`INSERT OR REPLACE INTO categories (id, nombre, fecha_sincro) VALUES (?, ?, ?)`);
+        const stmt = db.prepare(`INSERT OR REPLACE INTO categorias_locales (id, company_id, nombre, estado_sync, fecha_modificacion) VALUES (?, '', ?, 1, ?)`);
         
         const transaction = db.transaction((cats) => {
             for (const cat of cats) {
@@ -591,8 +609,8 @@ ipcMain.handle('guardar-configuracion', async (event, clave, valor) => {
         // 1. Guardar en SQLite (Para configuraciones de interfaz e impresoras)
         const valorTexto = String(valor);
         const stmt = db.prepare(`
-            INSERT OR REPLACE INTO configuracion (clave, valor, fecha_actualizacion) 
-            VALUES (?, ?, ?)
+            INSERT INTO productos_locales (id, company_id, branch_id, codigo, nombre, precio, porcentaje_ganancia, categoria, status, imagen, datos_json, estado_sync, fecha_modificacion)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
         `);
         stmt.run(clave, valorTexto, new Date().toISOString());
 
@@ -698,50 +716,42 @@ ipcMain.handle('procesar-cola-sync', async () => {
 
 ipcMain.handle('sincronizar-producto-servidor', async (event, p) => {
     try {
-        // 🛠️ TRADUCTOR UNIVERSAL: Atrapa el dato sin importar cómo lo envíe el frontend
         const idProducto = p.id || p.producto_ID;
         const idEmpresa = p.company_id || p.empresa_ID;
         const idSucursal = p.branch_id || p.sucursal_ID || 'sucursal_1';
         const precioVenta = p.precio_venta !== undefined ? p.precio_venta : (p.precio || 0);
+        
+        // Capturamos el porcentaje del objeto p
+        const porcentaje = p.porcentaje_ganancia || 0;
 
         const local = db.prepare('SELECT * FROM productos_locales WHERE id = ?').get(idProducto);
         let resultado;
 
         if (!local) {
+            // 🔥 INSERT: Agregamos porcentaje_ganancia en las columnas y en los VALUES
             const stmt = db.prepare(`
-                INSERT INTO productos_locales (id, company_id, branch_id, codigo, nombre, precio, categoria, status, imagen, datos_json, estado_sync, fecha_modificacion)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+                INSERT INTO productos_locales (id, company_id, branch_id, codigo, nombre, precio, porcentaje_ganancia, categoria, status, imagen, datos_json, estado_sync, fecha_modificacion)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
             `);
-            resultado = stmt.run(idProducto, idEmpresa, idSucursal, p.codigo, p.nombre, precioVenta, p.categoria, p.status, p.imagen, p.datos_json, p.fecha_modificacion);
+            resultado = stmt.run(idProducto, idEmpresa, idSucursal, p.codigo, p.nombre, precioVenta, porcentaje, p.categoria, p.status, p.imagen, p.datos_json, p.fecha_modificacion);
         } else {
+            // 🔥 UPDATE: Agregamos porcentaje_ganancia = ?
             const stmt = db.prepare(`
                 UPDATE productos_locales
-                SET codigo = ?, nombre = ?, precio = ?, categoria = ?, status = ?, imagen = ?, datos_json = ?, estado_sync = 1, fecha_modificacion = ?
+                SET codigo = ?, nombre = ?, precio = ?, porcentaje_ganancia = ?, categoria = ?, status = ?, imagen = ?, datos_json = ?, estado_sync = 1, fecha_modificacion = ?
                 WHERE id = ?
             `);
-            // Usamos idProducto y precioVenta para evitar errores de undefined
-            resultado = stmt.run(p.codigo, p.nombre, precioVenta, p.categoria, p.status, p.imagen, p.datos_json, p.fecha_modificacion, idProducto);
+            resultado = stmt.run(p.codigo, p.nombre, precioVenta, porcentaje, p.categoria, p.status, p.imagen, p.datos_json, p.fecha_modificacion, idProducto);
         }
 
+        // ... resto de la lógica de envío de señales a las ventanas ...
         if (resultado && resultado.changes > 0) {
-            console.log("📢 [MAIN] Cambios guardados en SQLite. Buscando ventanas...");
-            const ventanasAbiertas = BrowserWindow.getAllWindows();
-            console.log(`📢 [MAIN] Encontradas ${ventanasAbiertas.length} ventanas abiertas.`);
-            
-            ventanasAbiertas.forEach((ventana, i) => {
-                if (!ventana.isDestroyed()) {
-                    console.log(`📢 [MAIN] Enviando 'productos-actualizados' a la ventana #${i}...`);
-                    ventana.webContents.send('productos-actualizados');
-                } else {
-                    console.log(`📢 [MAIN] Ventana #${i} destruida, saltando.`);
-                }
+            BrowserWindow.getAllWindows().forEach(ventana => {
+                if (!ventana.isDestroyed()) ventana.webContents.send('productos-actualizados');
             });
-        } else {
-            console.log("📢 [MAIN] SQLite no reportó cambios nuevos (resultado.changes es 0). No se envía señal.");
         }
 
         return resultado;
-        
     } catch (e) {
         console.error("❌ Error en sincronizar-producto-servidor:", e);
         return { error: e.message };
@@ -827,9 +837,9 @@ async function createSplashScreen() {
 
 async function createWindow() {
 
-    await rellenarHuecosHistorial();
     sembrarDatosIniciales();
     await asegurarHistorialInicial();
+    await rellenarHuecosHistorial();
 
     //Menu.setApplicationMenu(null);
 
@@ -924,17 +934,28 @@ async function rellenarHuecosHistorial() {
 
 function sembrarDatosIniciales() {
     const datosBCV = [
-    {f: '2026-03-12', v: 440.97},
-    {f: '2026-03-11', v: 438.21},
-    {f: '2026-03-10', v: 438.21},
-    {f: '2026-03-09', v: 433.17},
-    {f: '2026-03-08', v: 431.01},
-    {f: '2026-03-07', v: 431.01},
-    {f: '2026-03-06', v: 431.01}
+        {f: '2026-03-12', v: 440.97},
+        {f: '2026-03-11', v: 438.21},
+        {f: '2026-03-10', v: 438.21},
+        {f: '2026-03-09', v: 433.17},
+        {f: '2026-03-08', v: 431.01},
+        {f: '2026-03-07', v: 431.01},
+        {f: '2026-03-06', v: 431.01}
     ];
-    const insert = db.prepare("INSERT OR IGNORE INTO historial_tasas (fecha, valor, fuente) VALUES (?, ?, 'BCV')");
-    datosBCV.forEach(d => insert.run(d.f, d.v));
-    console.log("🌱 Datos históricos sembrados correctamente.");
+
+    try {
+        // 🔥 MEJORA: Definimos la transacción para insertar todo en un solo bloque
+        const insert = db.prepare("INSERT OR IGNORE INTO historial_tasas (fecha, valor, fuente) VALUES (?, ?, 'BCV')");
+        
+        const sembrarTodo = db.transaction((datos) => {
+            for (const d of datos) insert.run(d.f, d.v);
+        });
+
+        sembrarTodo(datosBCV);
+        console.log("🌱 Datos históricos sembrados correctamente.");
+    } catch (error) {
+        console.error("⚠️ Error al sembrar datos (Base de datos ocupada):", error.message);
+    }
 }
 
 win.webContents.on('context-menu', (e) => e.preventDefault());

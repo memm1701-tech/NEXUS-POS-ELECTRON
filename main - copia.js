@@ -8,7 +8,7 @@ const express = require('express');
 const cors = require('cors');
 const server = express();
 const PORT = 3000;
-const dbDir = path.join(app.getPath('userData'), 'data'); 
+const dbDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
 const axios = require('axios');
 const cheerio = require('cheerio');
@@ -17,13 +17,16 @@ const https = require('https');
 if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir);
 
 const configPath = path.join(dbDir, 'config.json');
-let config = { isServer: false, serverIP: 'localhost' };
+let config = { isServer: false, serverIP: 'localhost', allowNoStock: false, geminiApiKey: "AIzaSyAPKpaQrze48wBpt2CwXxGDvATb8lgYpFo" };
 let win;    
 let sistemaPrincipalAbierto = false;
 let splash;
 
 if (fs.existsSync(configPath)) {
-    config = JSON.parse(fs.readFileSync(configPath));
+    try {
+        const contenido = fs.readFileSync(configPath, 'utf8');
+        config = JSON.parse(contenido);
+    } catch (e) { console.error("Error al leer config.json:", e); }
 } else {
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 }
@@ -31,9 +34,12 @@ if (fs.existsSync(configPath)) {
 
 const Database = require('better-sqlite3');
 const dbPath = path.join(dbDir, 'nexus_pos.db');
+const serverDbPath = path.join(dbDir, 'nexus-local-server.db');
+let serverDb = null;
 const db = new Database(dbPath);
-
 console.log("🚀 Cerebro Conectado en:", dbPath);
+db.pragma('journal_mode = WAL');
+db.pragma('busy_timeout = 5000');
 
 function inicializarTablas() {
 
@@ -175,85 +181,6 @@ if (stmtCheck.get().count === 0) {
     db.prepare("INSERT INTO correlativos (tipo, ultimo_numero, prefijo) VALUES (?, ?, ?)").run('NOTA_ENTREGA', 0, 'NE-');
 }
 
-// Ruta de tasas: SIEMPRE disponible para el consumo local del HTML
-server.get('/api/tasas', async (req, res) => {
-    const url = 'https://www.bcv.org.ve/';
-    try {
-        console.log("🌐 Nexus POS: Solicitando tasas al BCV...");
-        const { data } = await axios.get(url, axiosConfigBCV);
-        const $ = cheerio.load(data);
-        
-        const rates = {};
-        const currencyMap = { 'dolar': 'USD', 'euro': 'EUR', 'yuan': 'CNY', 'lira': 'TRY', 'rublo': 'RUB' };
-
-        Object.keys(currencyMap).forEach(id => {
-            const currencyDiv = $(`#${id}`);
-            if (currencyDiv.length > 0) {
-                const currencyValue = currencyDiv.find('strong').text().trim();
-                const label = currencyMap[id];
-                if (currencyValue) rates[label] = currencyValue;
-            }
-        });
-
-        if (Object.keys(rates).length === 0) throw new Error("Estructura BCV no encontrada");
-
-        console.log("✅ Tasas BCV obtenidas correctamente.");
-        res.json({ rates });
-    } catch (error) {
-        console.error('❌ Error Scraping BCV:', error.message);
-        res.status(500).json({ error: 'No se pudieron obtener las tasas.' });
-    }
-});
-
-
-    server.post('/api/sincronizar-desde-xeon', (req, res) => {
-        const productos = req.body; 
-        try {
-            const insert = db.prepare(`
-                INSERT OR REPLACE INTO productos_locales 
-                (id, company_id, branch_id, codigo, nombre, precio, categoria, status, imagen, datos_json, estado_sync, fecha_modificacion)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
-            `);
-
-            const transaccion = db.transaction((lista) => {
-                for (const p of lista) {
-                    insert.run(
-                        p.producto_ID || p.id,          // id
-                        p.empresa_ID || p.company_id,   // company_id
-                        p.sucursal_ID || p.branch_id,   // branch_id
-                        String(p.codigo),               // codigo
-                        p.nombre,                       // nombre
-                        p.precio_venta || p.precio,     // precio
-                        p.categoria || 'Sin Cat.',      // categoria
-                        p.status !== undefined ? p.status : 0, // status
-                        p.imagen || '',                 // imagen
-                        JSON.stringify(p),              // datos_json
-                        p.fecha_modificacion || p.updatedAt || new Date().toISOString() // fecha
-                    );
-                }
-            });
-
-            transaccion(productos);
-            BrowserWindow.getAllWindows().forEach(ventana => {
-                if (!ventana.isDestroyed()) ventana.webContents.send('productos-actualizados');
-            });
-            res.json({ exito: true, conteo: productos.length });
-            
-        } catch (e) {
-            console.error("Error sincronizando:", e);
-            res.status(500).json({ error: e.message });
-        }
-    });
-
-server.listen(PORT, () => {
-    console.log(`🚀 Cerebro Local Nexus POS escuchando en puerto ${PORT}`);
-});
-
-
-
-
-
-// --- CONFIGURACIÓN GEMINI ---
 const GEMINI_API_KEY = "AIzaSyAPKpaQrze48wBpt2CwXxGDvATb8lgYpFo"; 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
@@ -265,8 +192,6 @@ ipcMain.handle('consultar-ia-nexus', async (event, { mensaje, contexto }) => {
 
         const prompt = `Eres un consultor financiero experto de Nexus POS en Venezuela. 
         Tono: Profesional y técnico. Contexto: ${contexto}. Pregunta: ${mensaje}`;
-
-        // Generación de contenido con el modelo validado
         const result = await model.generateContent(prompt);
         const response = await result.response;
         return response.text().trim();
@@ -282,9 +207,6 @@ ipcMain.handle('consultar-ia-nexus', async (event, { mensaje, contexto }) => {
     }
 });
 
-
-
-// Handler para obtener los últimos 7 o 30 días para el gráfico
 ipcMain.handle('obtener-historial-tasas', async () => {
     try {
         return db.prepare(`
@@ -298,6 +220,7 @@ ipcMain.handle('obtener-historial-tasas', async () => {
         return [];
     }
 });
+
 
 // Handler para guardar una tasa manualmente o por scraping
 ipcMain.handle('guardar-tasa-historial', async (event, { fecha, valor }) => {
@@ -386,36 +309,50 @@ ipcMain.handle('guardar-tasa-bcv', async (event, tasa) => {
     }
 });
 
+// --- RUTA UNIFICADA: SCRAPING, HISTORIAL Y RESPUESTA ---
 ipcMain.handle('obtener-tasa-bcv', async () => {
     try {
         const url = 'https://www.bcv.org.ve/';
         const response = await axios.get(url, {
             httpsAgent: new https.Agent({ rejectUnauthorized: false }),
-            headers: { 'User-Agent': 'Mozilla/5.0' }
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' }
         });
 
         const $ = cheerio.load(response.data);
-        const tasaDolar = $('#dolar strong').text().trim().replace(',', '.');
-        const valorNum = parseFloat(tasaDolar);
+        
+        // Extraemos todas las tasas de una vez para que tu tabla no salga vacía
+        const rates = {
+            'USD': parseFloat($('#dolar strong').text().trim().replace(',', '.')),
+            'EUR': parseFloat($('#euro strong').text().trim().replace(',', '.')),
+            'CNY': parseFloat($('#yuan strong').text().trim().replace(',', '.')),
+            'TRY': parseFloat($('#lira strong').text().trim().replace(',', '.')),
+            'RUB': parseFloat($('#rublo strong').text().trim().replace(',', '.'))
+        };
 
-        if (!isNaN(valorNum)) {
+        if (!isNaN(rates.USD)) {
             const hoy = new Date().toISOString().split('T')[0];
             
-            // GUARDADO AUTOMÁTICO EN EL HISTORIAL
-            const stmt = db.prepare(`
-                INSERT OR IGNORE INTO historial_tasas (fecha, valor, fuente) 
-                VALUES (?, ?, 'BCV')
-            `);
-            stmt.run(hoy, valorNum);
+            // GUARDADO AUTOMÁTICO EN EL HISTORIAL (Solo USD para el gráfico)
+            db.prepare(`INSERT OR IGNORE INTO historial_tasas (fecha, valor, fuente) VALUES (?, ?, 'BCV')`)
+              .run(hoy, rates.USD);
             
-            return valorNum;
+            // Retornamos el objeto completo para que el dashboard funcione
+            return { success: true, rates };
         }
-        return null;
+        return { success: false, error: "Datos no numéricos" };
     } catch (error) {
-        console.error('Error en Scraping BCV:', error.message);
-        return null;
+        console.error('❌ Error en Scraping Nexus:', error.message);
+        return { success: false, error: error.message };
     }
 });
+
+// SOLO ESTA LÍNEA PARA EL TÚNEL (Sin lógica extra, solo redirige al handle de arriba)
+server.get('/api/tasas', async (req, res) => {
+    const data = await ipcMain.emit('obtener-tasa-bcv'); // Esto es conceptual, mejor llama a la función directamente
+    res.json(await ipcMain.callHandler('obtener-tasa-bcv')); 
+});
+
+server.listen(3003); 
 
 ipcMain.on('cerrar-y-volver-login', (event) => {
     const currentWin = BrowserWindow.fromWebContents(event.sender);
@@ -460,6 +397,80 @@ ipcMain.handle('obtener-productos-local', async (event, empresaId) => {
         return []; 
     }
 });
+
+
+// 1. Guardar la venta con todos los campos fiscales de tu tabla
+ipcMain.handle('guardar-venta-local', async (event, v) => {
+    try {
+        // 1. PRE-VALIDACIÓN Y DESCUENTO: Hablar con el Servidor Maestro primero
+        const urlServidor = config.isServer ? `http://localhost:${PORT}` : `http://${config.serverIP}:${PORT}`;
+        
+        // Extraemos los productos
+        const ventaData = typeof v.datos_json === 'string' ? JSON.parse(v.datos_json) : v.datos_json;
+        const itemsParaDescontar = (ventaData.productos || []).map(p => ({
+            id: p.id || p.producto_id,
+            cantidad: p.cantidad
+        }));
+
+        if (itemsParaDescontar.length > 0) {
+            try {
+                // Petición al servidor maestro ANTES de guardar localmente
+                const respuestaStock = await axios.post(`${urlServidor}/api/maestro/descontar-stock`, { items: itemsParaDescontar });
+                
+                if (!respuestaStock.data.exito) {
+                    return { error: `Venta cancelada: ${respuestaStock.data.mensaje}` };
+                }
+                console.log("📦 Nexus POS: Stock validado y descontado en el Servidor Maestro.");
+                
+            } catch (errorAxios) {
+                console.error("❌ Error de red o stock al validar:", errorAxios.message);
+                // Extraemos el mensaje de error si viene del backend (ej. 400 Stock insuficiente), si no, es caída de red
+                const mensajeError = errorAxios.response?.data?.mensaje || "Pérdida de conexión con el Servidor Maestro.";
+                return { error: `Venta cancelada: ${mensajeError}` };
+            }
+        }
+
+        // 2. GUARDADO LOCAL: Solo se ejecuta si el bloque anterior fue exitoso
+        const stmt = db.prepare(`
+            INSERT INTO ventas_locales (
+                id, company_id, branch_id, cashier_id, numero_factura, 
+                numero_control, cliente_nombre, cliente_rif, monto_exento, 
+                base_imponible, monto_iva, monto_igtf, monto_total, 
+                tasa_bcv, metodo_pago, datos_json, estado_sync
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        `);
+        
+        const resultadoLocal = stmt.run(
+            v.id, v.company_id, v.branch_id, v.cashier_id, v.numero_factura,
+            v.numero_control, v.cliente_nombre, v.cliente_rif, v.monto_exento,
+            v.base_imponible, v.monto_iva, v.monto_igtf, v.monto_total,
+            v.tasa_bcv, v.metodo_pago, v.datos_json
+        );
+
+        return resultadoLocal;
+    } catch (e) {
+        console.error("❌ Error en ciclo de venta (Validación + Local):", e.message);
+        return { error: e.message };
+    }
+});
+
+ipcMain.handle('obtener-proximo-correlativo', async (event, tipo) => {
+    try {
+        // Ahora siempre le preguntamos al servidor de PM2 (localhost o IP remota)
+        const ipDestino = config.isServer ? 'localhost' : config.serverIP;
+        const respuesta = await axios.post(`http://${ipDestino}:${PORT}/api/maestro/obtener-correlativo`, { tipo });
+        return respuesta.data;
+    } catch (e) { 
+        console.error("❌ Error obteniendo correlativo:", e.message);
+        return { error: "No se pudo conectar con el servidor maestro de PM2." }; 
+    }
+});
+
+// 3. Obtener una venta específica (Para reimpresiones)
+ipcMain.handle('obtener-venta-por-id', async (event, id) => {
+    return db.prepare('SELECT * FROM ventas_locales WHERE id = ?').get(id);
+});
+
 
 ipcMain.handle('guardar-sesion-local', async (event, datos) => {
     // datos.role debería ser 'cajera' o 'admin'
@@ -557,25 +568,92 @@ ipcMain.handle('leer-impresoras', async (event) => {
 
 ipcMain.handle('obtener-configuracion', async (event, clave) => {
     try {
+        // 1. Si no se envía una clave, devolvemos el objeto config completo (isServer, serverIP, etc.)
+        // Esto es lo que usarán tus HTML para saber a qué IP apuntar.
+        if (!clave) {
+            return config; 
+        }
+
+        // 2. Si se envía una clave, buscamos en la tabla SQLite (como lo hacías antes)
         const stmt = db.prepare('SELECT valor FROM configuracion WHERE clave = ?');
         const resultado = stmt.get(clave);
+        
+        // Retornamos el valor de la BD o null si no existe
         return resultado ? resultado.valor : null;
+        
     } catch (error) {
-        console.error(`❌ Error obteniendo la configuración [${clave}]:`, error.message);
+        console.error(`❌ Error obteniendo la configuración [${clave || 'GLOBAL'}]:`, error.message);
         return null;
     }
 });
 
 ipcMain.handle('guardar-configuracion', async (event, clave, valor) => {
     try {
+        // 1. Guardar en SQLite (Para configuraciones de interfaz e impresoras)
+        const valorTexto = String(valor);
         const stmt = db.prepare(`
             INSERT OR REPLACE INTO configuracion (clave, valor, fecha_actualizacion) 
             VALUES (?, ?, ?)
         `);
-        stmt.run(clave, valor, new Date().toISOString());
+        stmt.run(clave, valorTexto, new Date().toISOString());
+
+        // 2. ACTUALIZACIÓN FÍSICA Y GESTIÓN DE PROCESOS (Solo para llaves de red/sistema)
+        const llavesFisicas = ['isServer', 'serverIP', 'allowNoStock', 'geminiApiKey'];
+        
+        if (llavesFisicas.includes(clave)) {
+            console.log(`📂 Nexus POS: Sincronizando ${clave} con el archivo físico...`);
+            
+            // Leemos el archivo actual para mantener la integridad de otros datos
+            let configActual = {};
+            if (fs.existsSync(configPath)) {
+                configActual = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            }
+
+            // Mapeamos el valor con su tipo de dato correcto para el JSON
+            if (clave === 'isServer') configActual.isServer = (valor === true || valor === "true");
+            else if (clave === 'serverIP') configActual.serverIP = valor;
+            else if (clave === 'allowNoStock') configActual.allowNoStock = (valor === true || valor === "true");
+            else if (clave === 'geminiApiKey') configActual.geminiApiKey = valor;
+
+            // Escritura real en disco (NEXUS-POS-ELECTRON\data\config.json)
+            fs.writeFileSync(configPath, JSON.stringify(configActual, null, 2), 'utf8');
+            
+            // Actualizamos la variable global en memoria de main.js
+            config = configActual;
+            console.log("✅ Archivo config.json actualizado físicamente.");
+
+            // --- LÓGICA DE AUTOMATIZACIÓN PM2 ---
+
+            // CASO ACTIVAR: La PC se convierte en Servidor Maestro
+            if (clave === 'isServer' && configActual.isServer === true) {
+                console.log("🚀 Activando motor de base de datos maestro en segundo plano...");
+                
+                // Iniciamos el proceso server.js, le ponemos nombre y guardamos para el inicio de Windows
+                const comandoActivar = `pm2 start server.js --name "Nexus-Cerebro" --watch && pm2 save`;
+                
+                exec(comandoActivar, (err) => {
+                    if (err) console.error("❌ PM2 no pudo iniciar el servidor:", err.message);
+                    else console.log("✅ PM2: Servidor Nexus-Cerebro activo y vigilado.");
+                });
+            }
+
+            // CASO REVERTIR: La PC vuelve a ser solo una Caja (Modo Cliente)
+            if (clave === 'isServer' && configActual.isServer === false) {
+                console.log("🧹 Limpiando procesos de servidor para modo Caja...");
+                
+                // Eliminamos el proceso y forzamos el guardado para que no inicie con Windows
+                const comandoLimpiar = `pm2 delete Nexus-Cerebro && pm2 save --force`;
+                
+                exec(comandoLimpiar, (err) => {
+                    if (err) console.log("ℹ️ PM2: No había procesos activos para eliminar.");
+                    else console.log("✅ PM2: Proceso eliminado. Esta PC ya no intentará ser Servidor.");
+                });
+            }
+        }
+
         return { success: true };
     } catch (error) {
-        console.error(`❌ Error al guardar la configuración [${clave}]:`, error.message);
+        console.error(`❌ Error al guardar configuración [${clave}]:`, error.message);
         return { error: error.message };
     }
 });
@@ -884,3 +962,5 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
 });
+
+

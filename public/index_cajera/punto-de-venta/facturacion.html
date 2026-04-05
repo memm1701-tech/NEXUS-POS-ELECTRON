@@ -202,14 +202,7 @@
             </div>
         </div>
     </div>
-    
-    <div class="w-full md:w-1/2 flex items-start justify-end pt-11 md:pt-[3.8rem]">
-        <button id="btn-quick-sale" 
-                onclick="openQuickSaleModal()" 
-                class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md shadow-lg transition duration-300 ease-in-out w-full md:w-auto">
-            <i class="fas fa-hand-holding-usd mr-2"></i> Venta Rápida(F)
-        </button>
-    </div>
+
 </div>
             
             <div class="flex flex-col md:grid md:grid-cols-10 md:gap-x-8">
@@ -334,40 +327,6 @@
             </div>
         </div>
     </div>
-
-<div id="quick-sale-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
-    <div id="quick-sale-content" class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 relative transition-all duration-300">
-        
-        <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2 text-center">Venta Rápida (Sin Inventario)</h2>
-        
-        <div class="space-y-4">
-            
-            <div>
-                <label for="quick-sale-name" class="block text-sm font-medium text-gray-700">Nombre del Producto</label>
-                <input type="text" id="quick-sale-name" class="w-full border rounded-lg p-3 text-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Ej: Carne, Pollo, Papa" required>
-            </div>
-            
-            <div class="flex space-x-4">
-                <div class="flex-1">
-                    <label for="quick-sale-price" class="block text-sm font-medium text-gray-700">Precio de Venta (Bs)</label>
-                    <input type="number" id="quick-sale-price" class="w-full border rounded-lg p-3 text-lg text-right" placeholder="0.00" step="0.01" min="0.01" required>
-                </div>
-                <div class="flex-1">
-                    <label for="quick-sale-quantity" class="block text-sm font-medium text-gray-700">Cantidad</label>
-                    <input type="number" id="quick-sale-quantity" class="w-full border rounded-lg p-3 text-lg text-right" placeholder="1" value="" step="0.001" min="0.001" required>
-                </div>
-            </div>
-            
-        </div>
-        
-        <div class="mt-6 flex justify-between">
-            <button onclick="closeQuickSaleModal()" class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg transition duration-300">Cancelar(Esc)</button>
-            <button id="btn-process-quick-sale" onclick="processQuickSale()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out">Añadir al Carrito</button>
-        </div>
-        
-        <button onclick="closeQuickSaleModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-xl font-bold">×</button>
-    </div>
-</div>
 
 <div id="payment-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
     <div id="payment-content" class="bg-white rounded-lg shadow-lg w-full max-w-4xl p-6 relative transition-all duration-500 ease-in-out">
@@ -984,9 +943,6 @@ document.addEventListener('keydown', (event) => {
     // Estados de visibilidad de los modales
     const paymentModal = document.getElementById('payment-modal');
     const isPaymentVisible = paymentModal && (paymentModal.style.display === 'flex' || !paymentModal.classList.contains('hidden'));
-    const quickSaleModal = document.getElementById('quick-sale-modal');
-    const isQuickSaleVisible = quickSaleModal && (quickSaleModal.style.display === 'flex' || !quickSaleModal.classList.contains('hidden'));
-
     // A. NAVEGACIÓN (Flechas y Enter en buscadores) - PRIORIDAD MÁXIMA
     if (activeElement.id === "product-search" || activeElement.id === "barcode-search") {
         const isProduct = activeElement.id === "product-search";
@@ -1047,10 +1003,6 @@ document.addEventListener('keydown', (event) => {
             event.preventDefault();
             if (typeof closePaymentModal === 'function') closePaymentModal();
         }
-        if (isQuickSaleVisible) {
-            event.preventDefault();
-            if (typeof closeQuickSaleModal === 'function') closeQuickSaleModal();
-        }
     }
 
     // D. ATAJO ENTER (Confirmar venta en Métodos de Pago)
@@ -1068,10 +1020,7 @@ document.addEventListener('keydown', (event) => {
             event.preventDefault();
             if (typeof newInvoice === 'function') newInvoice();
         }
-        else if (key === 'f') { // Venta Rápida
-            event.preventDefault();
-            if (typeof openQuickSaleModal === 'function') openQuickSaleModal();
-        }
+        
         else if (key === 'c') { // Barra de búsqueda de Clientes
             event.preventDefault();
             document.getElementById('client-search')?.focus();
@@ -1235,94 +1184,6 @@ async function validarAccesoYIniciar() {
 validarAccesoYIniciar();
 
 
-window.addItemToCart = function(quickSaleItem) {
-    
-    // Llama a la función central, pasando el objeto de Venta Rápida completo 
-    // y la cantidad (el segundo argumento).
-    if (typeof updateCartAndRender === 'function') {
-        updateCartAndRender(quickSaleItem, quickSaleItem.cantidad);
-    } else {
-        // Este mensaje solo se muestra si updateCartAndRender no existe (lo cual es poco probable si ya está definida).
-        console.error('Error: La función principal updateCartAndRender no es accesible.');
-        alert('Error Crítico: El sistema de carrito no es accesible.');
-    }
-};
-
-    // 📄 INICIO DE CÓDIGO JAVASCRIPT
-// --- Funciones para el Modal de Venta Rápida ---
-
-// 1. Mostrar el modal
-window.openQuickSaleModal = function() {
-    const modal = document.getElementById('quick-sale-modal');
-    modal.classList.remove('hidden');
-    // Opcional: enfocar el primer campo al abrir
-    document.getElementById('quick-sale-name').focus();
-}
-
-// 2. Ocultar el modal
-window.closeQuickSaleModal = function() {
-    const modal = document.getElementById('quick-sale-modal');
-    modal.classList.add('hidden');
-    
-    // Opcional: limpiar los campos al cerrar
-    document.getElementById('quick-sale-name').value = '';
-    document.getElementById('quick-sale-price').value = '';
-    document.getElementById('quick-sale-quantity').value = '1';
-}
-
-// 3. Procesar la venta rápida y añadir al carrito
-// 3. Procesar la venta rápida y añadir al carrito
-window.processQuickSale = function() {
-    const nameInput = document.getElementById('quick-sale-name');
-    const priceInput = document.getElementById('quick-sale-price');
-    const quantityInput = document.getElementById('quick-sale-quantity');
-
-    const nombre = nameInput.value.trim();
-    const precioVenta = parseFloat(priceInput.value);
-    const cantidad = parseFloat(quantityInput.value);
-
-    // Validación básica de campos
-    if (!nombre || nombre.length === 0) {
-        alert('Por favor, ingresa el nombre del producto.');
-        nameInput.focus();
-        return;
-    }
-    if (isNaN(precioVenta) || precioVenta <= 0) {
-        alert('Por favor, ingresa un precio de venta válido.');
-        priceInput.focus();
-        return;
-    }
-    if (isNaN(cantidad) || cantidad <= 0) {
-        alert('Por favor, ingresa una cantidad válida.');
-        quantityInput.focus();
-        return;
-    }
-    
-    // Cálculo: Precio * Cantidad
-    const subtotal = precioVenta * cantidad;
-
-    // Crear el objeto del producto para el carrito
-    const quickSaleItem = {
-        // Usamos un ID temporal o genérico para productos sin inventario
-        id: 'QUICK-' + Date.now(), 
-        codigo: 'VTA-RAPIDA', 
-        nombre: nombre,
-        precio: precioVenta,
-        cantidad: cantidad,
-        // Almacenamos el subtotal total de la línea
-        subtotal: subtotal,
-        // Marcamos como un producto de venta rápida para diferenciar
-        isQuickSale: true
-    };
-    
-    // 🚩 CAMBIO CLAVE: Llama a la nueva función que crearemos abajo.
-    addItemToCart(quickSaleItem);
-    
-    // Cierra el modal después de añadir el producto
-    closeQuickSaleModal(); 
-};
-
-
 
 function updateCartAndRender(producto, cantidad) {
     // 1. Extraer precio y tasa de IVA (Alicuota)
@@ -1373,16 +1234,39 @@ function updateCartAndRender(producto, cantidad) {
     }
 }
 
+function normalizarIdentificacion(idInput) {
+    if (!idInput) return '';
+    
+    // Limpiamos todo rastro de espacios y guiones ingresados por el usuario
+    let limpio = idInput.replace(/[-\s]/g, '').toUpperCase();
+    
+    // 1. Asignación inteligente de letra si el usuario solo ingresó números
+    if (/^\d+$/.test(limpio)) {
+        if (limpio.length === 9) {
+            limpio = 'J' + limpio; // Si tiene 9 números exactos, asumimos Jurídico (J)
+        } else {
+            limpio = 'V' + limpio; // Si tiene menos, asumimos Venezolano (V)
+        }
+    }
+    
+    // 2. Formateo Visual (Añadir los guiones)
+    if (/^[VJEGPC]\d{9}$/.test(limpio)) {
+        // Formato RIF Completo (Ej: J-30123456-7)
+        return `${limpio.charAt(0)}-${limpio.substring(1, 9)}-${limpio.charAt(9)}`;
+    } else if (/^[VE]\d{6,8}$/.test(limpio)) {
+        // Formato Cédula (Ej: V-20315990)
+        return `${limpio.charAt(0)}-${limpio.substring(1)}`;
+    }
+    
+    return limpio; // Por si ingresan un pasaporte o dato extranjero, lo devuelve limpio
+}
+
+
 function validarRIF(rif) {
     if (!rif) return false;
-    
-    // 1. Limpiar espacios y guiones
+    // Limpiamos los guiones solo para que la expresión regular valide la matemática pura
     const limpio = rif.replace(/[-\s]/g, '').toUpperCase();
-    
-    // 2. Si son solo números (6 a 9 dígitos), es válido para procesar como cédula
-    if (/^\d{6,9}$/.test(limpio)) return true;
-    
-    // 3. Si incluyó letra, validamos el formato estándar (Letra + números)
+    // Validamos que sea una letra válida seguida de 6 a 9 números
     const regexConLetra = /^[VJEGPC]\d{6,9}$/;
     return regexConLetra.test(limpio);
 }
@@ -1493,9 +1377,9 @@ function renderCart() {
         
         // --- CORRECCIÓN: Compatibilidad Español/Inglés y prevención de undefined ---
         const precioItem = item.precio !== undefined ? item.precio : (item.price || 0);
-        const cantidadItem = item.cantidad !== undefined ? item.cantidad : (item.quantity || 0);
-        const nombreItem = item.nombre !== undefined ? item.nombre : (item.name || 'Producto');
-        const tasaItem = item.tasa !== undefined ? item.tasa : dolarExchangeRate; 
+        const cantidadItem = item.cantidad || 0; // 🟢 Simplificado: Solo busca 'cantidad'
+        const nombreItem = item.nombre || item.name || 'Producto';
+        const tasaItem = item.tasa !== undefined ? item.tasa : dolarExchangeRate;
         
         // --- LÓGICA DE CÁLCULO ---
         let itemTotalBs = 0;
@@ -1632,12 +1516,22 @@ function updateGlobalIVAConfig(value) {
     
 function updateCartItemQuantity(index, newQuantity) {
     const quantity = parseFloat(newQuantity);
+    
     if (isNaN(quantity) || quantity <= 0) {
         messageBox("La cantidad debe ser un número positivo.", 'bg-red-500');
         renderCart();
         return;
     }
-    cart[index].quantity = quantity;
+
+    // 🟢 ESTANDARIZACIÓN: Usamos 'cantidad' para que coincida con el resto del sistema
+    const item = cart[index];
+    item.cantidad = quantity; 
+    
+    // 🔥 RE-CALCULAR VALORES (Importante para que el total cambie en la tabla)
+    item.subtotal = item.precio * item.cantidad;
+    item.baseImponible = item.subtotal / (1 + (item.tasaIva / 100));
+    item.montoIva = item.subtotal - item.baseImponible;
+
     localStorage.setItem('cart', JSON.stringify(cart));
     renderCart();
 }
@@ -2362,8 +2256,8 @@ async function saveInvoice() {
     if (cart.length > 0) {
         try {
             const subtotal = cart.reduce((sum, item) => {
-                const p = item.precio !== undefined ? item.precio : (item.price || 0);
-                const q = item.cantidad !== undefined ? item.cantidad : (item.quantity || 0);
+                const p = item.precio || 0;
+                const q = item.cantidad || 0; // 🟢 Cambiado a 'cantidad'
                 return sum + (p * q);
             }, 0);
             const ivaRate = 0;
@@ -2915,52 +2809,63 @@ const GestorClientes = {
 
 
 async buscarCliente() {
-    // 1. Bloqueo de seguridad: Si ya hay una búsqueda en curso, ignoramos la nueva
-    if (isSearchingClient) return; 
+        // 1. Bloqueo de seguridad: Si ya hay una búsqueda en curso, ignoramos la nueva
+        if (isSearchingClient) return; 
 
-    const searchValue = this.ui.searchInput.value.trim().toUpperCase();
-    
-    // Resetear la vista antes de buscar
-    this.ui.foundMessage.classList.add('hidden');
-    this.ui.newPrompt.classList.add('hidden');
-    this.ui.addForm.classList.add('hidden');
-    this.selectedCustomer = null;
-
-    if (!searchValue) return;
-
-    isSearchingClient = true; // Activamos el bloqueo
-    console.log(`🔍 Buscando cliente (Local): ${searchValue}`);
-
-    // --- BÚSQUEDA 100% LOCAL (Instantánea) ---
-    // Incluimos lógica flexible para detectar 'V' automática o búsqueda por nombre
-    let clienteEncontrado = this.lista.find(c => {
-        const rifDB = c.rif.toUpperCase();
-        return rifDB === searchValue || 
-               rifDB === ('V' + searchValue) || 
-               c.nombre.toUpperCase().includes(searchValue);
-    });
-
-    // --- Procesamiento del Resultado ---
-    if (clienteEncontrado) {
-        this.selectedCustomer = clienteEncontrado;
+        const searchValueRaw = this.ui.searchInput.value.trim();
+        const searchValue = searchValueRaw.toUpperCase();
         
-        // Sincronización con variables globales para compatibilidad del sistema
-        selectedCustomer = clienteEncontrado;
-        selectedCustomer.name = clienteEncontrado.nombre;
-        selectedCustomer.ci = clienteEncontrado.rif;
-        
-        this.ui.foundName.textContent = clienteEncontrado.nombre;
-        this.ui.foundId.textContent = clienteEncontrado.rif;
-        this.ui.foundMessage.classList.remove('hidden');
-    } else {
-        // Al no depender de Internet, mostramos el prompt de registro inmediatamente
-        console.log("❌ Cliente no está en el PC. Abriendo registro de una vez.");
-        this.ui.newPrompt.classList.remove('hidden');
-        this.ui.newId.value = searchValue; 
-    }
+        // Resetear la vista antes de buscar
+        this.ui.foundMessage.classList.add('hidden');
+        this.ui.newPrompt.classList.add('hidden');
+        this.ui.addForm.classList.add('hidden');
+        this.selectedCustomer = null;
 
-    isSearchingClient = false; // Liberamos el bloqueo
-},
+        if (!searchValueRaw) return;
+
+        isSearchingClient = true; // Activamos el bloqueo
+        
+        // 🔥 PREPARAMOS LOS DATOS PARA UNA BÚSQUEDA A PRUEBA DE BALAS
+        const searchNormalizado = normalizarIdentificacion(searchValueRaw);
+        const searchLimpio = searchValueRaw.replace(/[-\s]/g, '').toUpperCase();
+
+        console.log(`🔍 Buscando cliente (Local): ${searchNormalizado}`);
+
+        // --- BÚSQUEDA 100% LOCAL (Instantánea) ---
+        let clienteEncontrado = this.lista.find(c => {
+            const rifDB = c.rif.toUpperCase();
+            const rifDBLimpio = rifDB.replace(/[-\s]/g, '');
+            
+            // Compara: Exacto formateado, exacto limpio, o asumiendo V / J
+            return rifDB === searchNormalizado || 
+                   rifDBLimpio === searchLimpio || 
+                   rifDBLimpio === ('V' + searchLimpio) ||
+                   rifDBLimpio === ('J' + searchLimpio) ||
+                   c.nombre.toUpperCase().includes(searchValue);
+        });
+
+        // --- Procesamiento del Resultado ---
+        if (clienteEncontrado) {
+            this.selectedCustomer = clienteEncontrado;
+            
+            // Sincronización con variables globales para compatibilidad del sistema
+            selectedCustomer = clienteEncontrado;
+            selectedCustomer.name = clienteEncontrado.nombre;
+            selectedCustomer.ci = clienteEncontrado.rif;
+            
+            this.ui.foundName.textContent = clienteEncontrado.nombre;
+            this.ui.foundId.textContent = clienteEncontrado.rif;
+            this.ui.foundMessage.classList.remove('hidden');
+        } else {
+            // Al no depender de Internet, mostramos el prompt de registro inmediatamente
+            console.log("❌ Cliente no está en el PC. Abriendo registro de una vez.");
+            this.ui.newPrompt.classList.remove('hidden');
+            // 🔥 PRECARGAMOS EL RIF YA FORMATEADO BONITO
+            this.ui.newId.value = searchNormalizado; 
+        }
+
+        isSearchingClient = false; // Liberamos el bloqueo
+    },
 
     limpiarSeleccion() {
         this.selectedCustomer = null;
@@ -2989,8 +2894,8 @@ async buscarCliente() {
             return;
         }
 
-        let rifFinal = idInput.replace(/[-\s]/g, '');
-        if (/^\d+$/.test(rifFinal)) rifFinal = 'V' + rifFinal;
+        // 🔥 LA MAGIA OCURRE AQUÍ: Pasamos el input por el normalizador inteligente
+        let rifFinal = normalizarIdentificacion(idInput);
 
         if (!validarRIF(rifFinal)) {
             if (typeof messageBox === 'function') messageBox('Identificación no válida.', 'bg-red-600');
@@ -3004,11 +2909,11 @@ async buscarCliente() {
             const companyIdActual = sesion ? sesion.companyId : 'DEFAULT';
 
             const objetoCliente = {
-                rif: rifFinal,
+                rif: rifFinal, // Ahora sí se guarda como J-06500004-0
                 nombre: nombre,
                 direccion: direccion,
-                telefono: "00000000000", // 🟢 Dato genérico para evitar rechazos del backend Mongoose
-                correo: "sin@correo.com", // 🟢 Dato genérico para evitar rechazos del backend Mongoose
+                telefono: "00000000000", 
+                correo: "sin@correo.com", 
                 empresa_ID: companyIdActual,
                 fecha_modificacion: new Date().toISOString()
             };
@@ -3048,7 +2953,6 @@ async buscarCliente() {
                     if (res.ok) {
                         console.log("✅ Cliente sincronizado en Xeon Global.");
                     } else {
-                        // 🟢 TRAMPA DE ERRORES: Nos dirá exactamente qué no le gustó al servidor si falla
                         const errData = await res.json();
                         console.warn("⚠️ El Xeon rechazó el registro. Motivo:", errData);
                     }
@@ -3137,15 +3041,15 @@ async function sincronizarClientesPendientes() {
 
         for (const cliente of clientesLocales) {
             try {
-                let rifNormalizado = cliente.rif.replace(/[-\s]/g, '').toUpperCase();
-                if (/^\d+$/.test(rifNormalizado)) rifNormalizado = 'V' + rifNormalizado;
+                // 🔥 MANTENEMOS EL FORMATO: Usamos la normalizadora para respetar la 'J' y los guiones
+                let rifSeguro = normalizarIdentificacion(cliente.rif);
 
                 const clienteSeguro = {
-                    rif: rifNormalizado,
+                    rif: rifSeguro,
                     nombre: cliente.nombre,
                     direccion: cliente.direccion || 'No especificada',
-                    telefono: cliente.telefono || '',
-                    correo: cliente.correo || '',
+                    telefono: cliente.telefono || '00000000000',
+                    correo: cliente.correo || 'sin@correo.com',
                     empresa_ID: cliente.empresa_ID || window.companyId || 'DEFAULT',
                     fecha_modificacion: cliente.fecha_modificacion || new Date().toISOString()
                 };
@@ -3156,7 +3060,8 @@ async function sincronizarClientesPendientes() {
                     body: JSON.stringify(clienteSeguro)
                 }).catch(() => { /* Ignoramos errores de caída de red limpia */ });
 
-                if (res && res.status === 201) {
+                // Cubrimos 200 (Actualizado) y 201 (Creado)
+                if (res && (res.status === 201 || res.status === 200)) {
                     subidosNuevos++;
                 } 
                 
