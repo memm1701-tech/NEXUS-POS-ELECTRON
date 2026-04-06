@@ -34,7 +34,15 @@ contextBridge.exposeInMainWorld('nexusAPI', {
     onProductosCambiados: (callback) => {
         ipcRenderer.removeAllListeners('productos-actualizados'); 
         ipcRenderer.on('productos-actualizados', () => callback());
-    }
+    },
+    guardarSucursalLocal: (sucursal) => ipcRenderer.invoke('guardar-sucursal-local', sucursal),
+    obtenerSucursalesLocal: (companyId) => ipcRenderer.invoke('obtener-sucursales-local', companyId),
+    obtenerInventarioSucursal: (datos) => ipcRenderer.invoke('obtener-inventario-sucursal', datos),
+    guardarStockSucursal: (datos) => ipcRenderer.invoke('guardar-stock-sucursal', datos),
+
+
+
+    
 });
 
 console.log('✅ Puente NexusAPI establecido correctamente.');

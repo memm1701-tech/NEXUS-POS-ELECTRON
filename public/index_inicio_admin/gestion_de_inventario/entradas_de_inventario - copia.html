@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entrada de Inventario Móvil</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <script src="tailwindcss.js"></script>
     <style>
         /* Base Styles: Mobile-First Approach */
         body {
@@ -336,11 +336,6 @@
 <body>
     <div class="container">
         <h1>Entrada de Inventario</h1>
-        <div class="user-info">
-            <p><strong>Usuario:</strong> <span id="userIdDisplay">Cargando...</span></p>
-            <p><strong>Compañía:</strong> <span id="companyIdDisplay">Cargando...</span></p>
-            <p><strong>Rol:</strong> <span id="userRoleDisplay">Cargando...</span></p>
-        </div>
         
         <div class="form-section">
             <div class="input-group-item">
@@ -430,25 +425,7 @@
 
 
     <script type="module">
-        import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, collection, query, where, onSnapshot, getDocs, setDoc, updateDoc, increment, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // setLogLevel('debug'); 
-
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
-        let app;
-        if (getApps().length === 0) {
-            app = initializeApp(firebaseConfig);
-        } else {
-            app = getApp();
-        }
-
-        const db = getFirestore(app);
-        const auth = getAuth(app);
         
         let userCompanyId = null;
         let userBranchId = null;
@@ -469,9 +446,6 @@
         const quantityInput = document.getElementById('quantity-input');
         const addStockBtn = document.getElementById('add-stock-btn');
         const inventoryTableBody = document.getElementById('inventory-table-body');
-        const userIdDisplay = document.getElementById('userIdDisplay');
-        const companyIdDisplay = document.getElementById('companyIdDisplay');
-        const userRoleDisplay = document.getElementById('userRoleDisplay');
         const inventorySearchInput = document.getElementById('inventory-search-input'); 
         
         // Referencias al MODAL (NUEVO)
@@ -501,10 +475,6 @@
                 userCompanyId = claims.companyId;
                 userBranchId = claims.branchId;
                 userRole = claims.role;
-
-                userIdDisplay.textContent = userId;
-                companyIdDisplay.textContent = userCompanyId || 'No disponible';
-                userRoleDisplay.textContent = userRole || 'No disponible';
                 
                 if (userCompanyId) {
                     loadAllProducts(userCompanyId);
