@@ -452,6 +452,7 @@
     let idProductoSeleccionado = null;
     let factorEmpaqueSeleccionado = 1;
     let datosInventarioActual = [];
+    let mapaCategorias = {};
 
     // --- 2. Referencias a Elementos del DOM ---
     const selectorSucursal = document.getElementById('branch-select');
@@ -468,7 +469,6 @@
     async function inicializarModulo() {
         console.log("🚀 [NEXUS] Inicializando Entradas de Inventario...");
         try {
-            // Recuperamos sesión de SQLite local
             const sesion = await window.nexusAPI.obtenerSesionLocal();
 
             if (sesion && sesion.companyId) {
@@ -476,10 +476,14 @@
                 idUsuario = sesion.uid || sesion.id;
                 rolUsuario = sesion.role;
 
-                // Paso 1: Cargar sucursales desde la base de datos local
-                await cargarSucursalesLocal();
+                // --- MOTOR DEL TRADUCTOR ---
+                // Cargamos las categorías para convertir IDs a nombres legibles
+                const categorias = await window.nexusAPI.obtenerCategoriasLocal();
+                categorias.forEach(cat => {
+                    mapaCategorias[cat.id] = cat.nombre;
+                });
 
-                // Aquí estaremos listos para añadir el siguiente paso: cargar catálogo de productos
+                await cargarSucursalesLocal();
             } else {
                 mostrarAlerta("No se detectó una sesión activa. Redirigiendo...", "error");
             }
@@ -664,11 +668,15 @@
         lista.forEach(item => {
             const fila = document.createElement('tr');
             // stock_sucursal es el alias que definimos en el LEFT JOIN del main.js
-            const stock = item.stock_sucursal || 0; 
+            const stock = item.stock_sucursal || 0;
             
+            // --- TRADUCCIÓN EN TIEMPO REAL ---
+            // Buscamos el nombre en el mapa; si no se encuentra, mostramos el ID o "General" como respaldo
+            const nombreCategoria = mapaCategorias[item.categoria] || item.categoria || "General";
+
             fila.innerHTML = `
                 <td class="font-medium text-gray-900">${item.nombre}</td>
-                <td class="text-gray-600">${item.categoria}</td>
+                <td class="text-gray-600">${nombreCategoria}</td> 
                 <td class="text-center">${item.unit || 'UN'}</td>
                 <td class="text-center font-bold text-blue-600">${stock}</td>
                 <td>
@@ -774,7 +782,7 @@
         }, 3000);
     }
 
-    // --- 6. Event Listeners (Buscador con Navegación) ---
+// --- 6. Event Listeners (Buscador con Navegación) ---
 
     entradaBusquedaProducto.addEventListener('input', (e) => {
         focoProducto = -1; // Reiniciamos el foco en cada nueva letra
@@ -807,8 +815,11 @@
                 items[0].click();
             }
         }
+    }); // <--- 🔥 LLAVE CORRECTA: Cierra el evento keydown aquí
 
-        selectorSucursal.addEventListener('change', async (e) => {
+    // --- EVENTOS AHORA LIBERADOS Y FUNCIONALES ---
+
+    selectorSucursal.addEventListener('change', async (e) => {
         idSucursalSeleccionada = e.target.value; // Capturamos el ID real
         console.log(`📍 Nexus POS: Sucursal detectada -> ${idSucursalSeleccionada}`);
         
@@ -835,7 +846,7 @@
         );
         renderizarTablaInventario(filtrados);
     });
-    });
+
 
     // --- 7. Ejecución Inicial ---
     inicializarModulo();

@@ -889,16 +889,22 @@ ipcMain.handle('obtener-sucursales-local', async (event, companyId) => {
 
 ipcMain.handle('obtener-inventario-sucursal', async (event, { companyId, sucursalId }) => {
     try {
+        // 🔥 CAMBIO CLAVE: Usamos INNER JOIN en lugar de LEFT JOIN.
+        // Esto hace que la tabla "nazca" vacía y solo se llene con los productos
+        // que realmente tienen un registro de stock en esta sucursal específica.
         const stmt = db.prepare(`
             SELECT 
-                p.*, 
-                IFNULL(i.stock, 0) as stock_sucursal
-            FROM productos_locales p
-            LEFT JOIN inventario_sucursales i 
-                ON p.id = i.producto_id AND i.sucursal_id = ?
-            WHERE p.company_id = ? AND p.status = 1
+                p.id, 
+                p.nombre, 
+                p.categoria, 
+                p.codigo,
+                IFNULL(json_extract(p.datos_json, '$.unit'), p.unit) as unit,
+                i.stock as stock_sucursal
+            FROM inventario_sucursales i
+            INNER JOIN productos_locales p ON p.id = i.producto_id
+            WHERE p.company_id = ? AND i.sucursal_id = ? AND p.status = 1
         `);
-        return stmt.all(sucursalId, companyId);
+        return stmt.all(companyId, sucursalId);
     } catch (e) {
         console.error("❌ Error en obtener-inventario-sucursal:", e.message);
         return { error: e.message };

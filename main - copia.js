@@ -34,12 +34,14 @@ if (fs.existsSync(configPath)) {
 
 const Database = require('better-sqlite3');
 const dbPath = path.join(dbDir, 'nexus_pos.db');
-const serverDbPath = path.join(dbDir, 'nexus-local-server.db');
-let serverDb = null;
-const db = new Database(dbPath);
+const db = new Database(dbPath, { timeout: 10000 }); 
 console.log("🚀 Cerebro Conectado en:", dbPath);
-db.pragma('journal_mode = WAL');
-db.pragma('busy_timeout = 5000');
+
+try {
+    db.pragma('journal_mode = WAL');
+} catch (e) {
+    console.warn("⚠️ Aviso: La base de datos está ocupada por el Servidor Maestro. Iniciando sin modo WAL forzado.");
+}
 
 function inicializarTablas() {
 
@@ -155,6 +157,32 @@ db.exec(`
             fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
         );
     `);
+
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS inventario_sucursales (
+            producto_id TEXT,
+            sucursal_id TEXT,
+            company_id TEXT,
+            stock REAL DEFAULT 0,
+            estado_sync INTEGER DEFAULT 0,
+            fecha_modificacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (producto_id, sucursal_id) -- Evita duplicados del mismo producto en la misma sucursal
+        );
+    `);
+
+
+    // Asegúrate de que esto se ejecute al arrancar la app
+        db.prepare(`
+            CREATE TABLE IF NOT EXISTS sucursales (
+                id TEXT PRIMARY KEY,
+                company_id TEXT,
+                nombre TEXT,
+                direccion TEXT,
+                telefono TEXT,
+                estado_sync INTEGER DEFAULT 0,
+                fecha_modificacion TEXT
+            )
+        `).run();
 }
 inicializarTablas();
 
@@ -348,11 +376,25 @@ ipcMain.handle('obtener-tasa-bcv', async () => {
 
 // SOLO ESTA LÍNEA PARA EL TÚNEL (Sin lógica extra, solo redirige al handle de arriba)
 server.get('/api/tasas', async (req, res) => {
-    const data = await ipcMain.emit('obtener-tasa-bcv'); // Esto es conceptual, mejor llama a la función directamente
-    res.json(await ipcMain.callHandler('obtener-tasa-bcv')); 
+    try {
+        const response = await axios.get('https://www.bcv.org.ve/', axiosConfigBCV);
+        const $ = cheerio.load(response.data);
+        const usd = parseFloat($('#dolar strong').text().trim().replace(',', '.'));
+        res.json({ success: true, rates: { USD: usd } });
+    } catch (error) {
+        res.json({ success: false, error: error.message });
+    }
 });
 
-server.listen(3003); 
+server.listen(PORT, () => {
+    console.log(`🔗 Servidor local Express escuchando en el puerto ${PORT}`);
+}).on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+        console.warn(`⚠️ Nota: El puerto ${PORT} ya está en uso (Normal si el servidor maestro PM2 está encendido).`);
+    } else {
+        console.error("❌ Error en Express:", err);
+    }
+});
 
 ipcMain.on('cerrar-y-volver-login', (event) => {
     const currentWin = BrowserWindow.fromWebContents(event.sender);
@@ -533,9 +575,10 @@ ipcMain.handle('obtener-sesion-local', async () => {
 
 ipcMain.handle('leer-puertos', async () => await SerialPort.list());
 
-ipcMain.handle('sincronizar-categorias-local', async (event, inicializarTablas) => {
+// 🔥 SOLUCIÓN 3: Nombres de variables correctos y guardado en la tabla correcta
+ipcMain.handle('sincronizar-categorias-local', async (event, categories) => {
     try {
-        const stmt = db.prepare(`INSERT OR REPLACE INTO categories (id, nombre, fecha_sincro) VALUES (?, ?, ?)`);
+        const stmt = db.prepare(`INSERT OR REPLACE INTO categorias_locales (id, company_id, nombre, estado_sync, fecha_modificacion) VALUES (?, '', ?, 1, ?)`);
         
         const transaction = db.transaction((cats) => {
             for (const cat of cats) {
@@ -592,8 +635,8 @@ ipcMain.handle('guardar-configuracion', async (event, clave, valor) => {
         // 1. Guardar en SQLite (Para configuraciones de interfaz e impresoras)
         const valorTexto = String(valor);
         const stmt = db.prepare(`
-            INSERT OR REPLACE INTO configuracion (clave, valor, fecha_actualizacion) 
-            VALUES (?, ?, ?)
+            INSERT INTO productos_locales (id, company_id, branch_id, codigo, nombre, precio, porcentaje_ganancia, categoria, status, imagen, datos_json, estado_sync, fecha_modificacion)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
         `);
         stmt.run(clave, valorTexto, new Date().toISOString());
 
@@ -699,50 +742,42 @@ ipcMain.handle('procesar-cola-sync', async () => {
 
 ipcMain.handle('sincronizar-producto-servidor', async (event, p) => {
     try {
-        // 🛠️ TRADUCTOR UNIVERSAL: Atrapa el dato sin importar cómo lo envíe el frontend
         const idProducto = p.id || p.producto_ID;
         const idEmpresa = p.company_id || p.empresa_ID;
         const idSucursal = p.branch_id || p.sucursal_ID || 'sucursal_1';
         const precioVenta = p.precio_venta !== undefined ? p.precio_venta : (p.precio || 0);
+        
+        // Capturamos el porcentaje del objeto p
+        const porcentaje = p.porcentaje_ganancia || 0;
 
         const local = db.prepare('SELECT * FROM productos_locales WHERE id = ?').get(idProducto);
         let resultado;
 
         if (!local) {
+            // 🔥 INSERT: Agregamos porcentaje_ganancia en las columnas y en los VALUES
             const stmt = db.prepare(`
-                INSERT INTO productos_locales (id, company_id, branch_id, codigo, nombre, precio, categoria, status, imagen, datos_json, estado_sync, fecha_modificacion)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+                INSERT INTO productos_locales (id, company_id, branch_id, codigo, nombre, precio, porcentaje_ganancia, categoria, status, imagen, datos_json, estado_sync, fecha_modificacion)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
             `);
-            resultado = stmt.run(idProducto, idEmpresa, idSucursal, p.codigo, p.nombre, precioVenta, p.categoria, p.status, p.imagen, p.datos_json, p.fecha_modificacion);
+            resultado = stmt.run(idProducto, idEmpresa, idSucursal, p.codigo, p.nombre, precioVenta, porcentaje, p.categoria, p.status, p.imagen, p.datos_json, p.fecha_modificacion);
         } else {
+            // 🔥 UPDATE: Agregamos porcentaje_ganancia = ?
             const stmt = db.prepare(`
                 UPDATE productos_locales
-                SET codigo = ?, nombre = ?, precio = ?, categoria = ?, status = ?, imagen = ?, datos_json = ?, estado_sync = 1, fecha_modificacion = ?
+                SET codigo = ?, nombre = ?, precio = ?, porcentaje_ganancia = ?, categoria = ?, status = ?, imagen = ?, datos_json = ?, estado_sync = 1, fecha_modificacion = ?
                 WHERE id = ?
             `);
-            // Usamos idProducto y precioVenta para evitar errores de undefined
-            resultado = stmt.run(p.codigo, p.nombre, precioVenta, p.categoria, p.status, p.imagen, p.datos_json, p.fecha_modificacion, idProducto);
+            resultado = stmt.run(p.codigo, p.nombre, precioVenta, porcentaje, p.categoria, p.status, p.imagen, p.datos_json, p.fecha_modificacion, idProducto);
         }
 
+        // ... resto de la lógica de envío de señales a las ventanas ...
         if (resultado && resultado.changes > 0) {
-            console.log("📢 [MAIN] Cambios guardados en SQLite. Buscando ventanas...");
-            const ventanasAbiertas = BrowserWindow.getAllWindows();
-            console.log(`📢 [MAIN] Encontradas ${ventanasAbiertas.length} ventanas abiertas.`);
-            
-            ventanasAbiertas.forEach((ventana, i) => {
-                if (!ventana.isDestroyed()) {
-                    console.log(`📢 [MAIN] Enviando 'productos-actualizados' a la ventana #${i}...`);
-                    ventana.webContents.send('productos-actualizados');
-                } else {
-                    console.log(`📢 [MAIN] Ventana #${i} destruida, saltando.`);
-                }
+            BrowserWindow.getAllWindows().forEach(ventana => {
+                if (!ventana.isDestroyed()) ventana.webContents.send('productos-actualizados');
             });
-        } else {
-            console.log("📢 [MAIN] SQLite no reportó cambios nuevos (resultado.changes es 0). No se envía señal.");
         }
 
         return resultado;
-        
     } catch (e) {
         console.error("❌ Error en sincronizar-producto-servidor:", e);
         return { error: e.message };
@@ -803,6 +838,92 @@ ipcMain.handle('eliminar-categoria-local', async (event, id) => {
     }
 });
 
+ipcMain.handle('guardar-sucursal-local', async (event, sucursal) => {
+    try {
+        // CORRECCIÓN: Respetar la fecha y el estado de sync si provienen de la nube
+        const fechaAUsar = sucursal.fecha_modificacion || new Date().toISOString();
+        const estadoSync = sucursal.estado_sync !== undefined ? sucursal.estado_sync : 0;
+
+        const stmt = db.prepare(`
+            INSERT INTO sucursales (
+                id, 
+                company_id, 
+                nombre, 
+                direccion, 
+                telefono, 
+                estado_sync, 
+                fecha_modificacion
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                nombre = excluded.nombre,
+                direccion = excluded.direccion,
+                telefono = excluded.telefono,
+                fecha_modificacion = excluded.fecha_modificacion,
+                estado_sync = excluded.estado_sync
+        `);
+
+        return stmt.run(
+            sucursal.id,           // ID único de la sucursal
+            sucursal.company_id,   // ID de la empresa dueña
+            sucursal.nombre,
+            sucursal.direccion,
+            sucursal.telefono,
+            estadoSync,            // Usar el estado dinámico (0 o 1)
+            fechaAUsar             // Usar la fecha correcta
+        );
+    } catch (e) {
+        console.error("❌ Error al guardar sucursal:", e);
+        return { error: e.message };
+    }
+});
+
+ipcMain.handle('obtener-sucursales-local', async (event, companyId) => {
+    try {
+        return db.prepare("SELECT * FROM sucursales WHERE company_id = ?").all(companyId);
+    } catch (e) {
+        return { error: e.message };
+    }
+});
+
+
+ipcMain.handle('obtener-inventario-sucursal', async (event, { companyId, sucursalId }) => {
+    try {
+        const stmt = db.prepare(`
+            SELECT 
+                p.*, 
+                IFNULL(i.stock, 0) as stock_sucursal
+            FROM productos_locales p
+            LEFT JOIN inventario_sucursales i 
+                ON p.id = i.producto_id AND i.sucursal_id = ?
+            WHERE p.company_id = ? AND p.status = 1
+        `);
+        return stmt.all(sucursalId, companyId);
+    } catch (e) {
+        console.error("❌ Error en obtener-inventario-sucursal:", e.message);
+        return { error: e.message };
+    }
+});
+
+ipcMain.handle('guardar-stock-sucursal', async (event, { productoId, sucursalId, companyId, cantidad, operacion }) => {
+    try {
+        const fecha = new Date().toISOString();
+        const sql = operacion === 'SUMAR' 
+            ? `INSERT INTO inventario_sucursales (producto_id, sucursal_id, company_id, stock, fecha_modificacion)
+               VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT(producto_id, sucursal_id) DO UPDATE SET
+               stock = stock + excluded.stock, fecha_modificacion = excluded.fecha_modificacion`
+            : `INSERT INTO inventario_sucursales (producto_id, sucursal_id, company_id, stock, fecha_modificacion)
+               VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT(producto_id, sucursal_id) DO UPDATE SET
+               stock = excluded.stock, fecha_modificacion = excluded.fecha_modificacion`;
+
+        return db.prepare(sql).run(productoId, sucursalId, companyId, cantidad, fecha);
+    } catch (e) {
+        return { error: e.message };
+    }
+});
+
 
 
 async function createSplashScreen() {
@@ -828,9 +949,9 @@ async function createSplashScreen() {
 
 async function createWindow() {
 
-    await rellenarHuecosHistorial();
     sembrarDatosIniciales();
     await asegurarHistorialInicial();
+    await rellenarHuecosHistorial();
 
     //Menu.setApplicationMenu(null);
 
@@ -925,17 +1046,28 @@ async function rellenarHuecosHistorial() {
 
 function sembrarDatosIniciales() {
     const datosBCV = [
-    {f: '2026-03-12', v: 440.97},
-    {f: '2026-03-11', v: 438.21},
-    {f: '2026-03-10', v: 438.21},
-    {f: '2026-03-09', v: 433.17},
-    {f: '2026-03-08', v: 431.01},
-    {f: '2026-03-07', v: 431.01},
-    {f: '2026-03-06', v: 431.01}
+        {f: '2026-03-12', v: 440.97},
+        {f: '2026-03-11', v: 438.21},
+        {f: '2026-03-10', v: 438.21},
+        {f: '2026-03-09', v: 433.17},
+        {f: '2026-03-08', v: 431.01},
+        {f: '2026-03-07', v: 431.01},
+        {f: '2026-03-06', v: 431.01}
     ];
-    const insert = db.prepare("INSERT OR IGNORE INTO historial_tasas (fecha, valor, fuente) VALUES (?, ?, 'BCV')");
-    datosBCV.forEach(d => insert.run(d.f, d.v));
-    console.log("🌱 Datos históricos sembrados correctamente.");
+
+    try {
+        // 🔥 MEJORA: Definimos la transacción para insertar todo en un solo bloque
+        const insert = db.prepare("INSERT OR IGNORE INTO historial_tasas (fecha, valor, fuente) VALUES (?, ?, 'BCV')");
+        
+        const sembrarTodo = db.transaction((datos) => {
+            for (const d of datos) insert.run(d.f, d.v);
+        });
+
+        sembrarTodo(datosBCV);
+        console.log("🌱 Datos históricos sembrados correctamente.");
+    } catch (error) {
+        console.error("⚠️ Error al sembrar datos (Base de datos ocupada):", error.message);
+    }
 }
 
 win.webContents.on('context-menu', (e) => e.preventDefault());
