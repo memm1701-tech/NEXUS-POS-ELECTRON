@@ -157,6 +157,32 @@ db.exec(`
             fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
         );
     `);
+
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS inventario_sucursales (
+            producto_id TEXT,
+            sucursal_id TEXT,
+            company_id TEXT,
+            stock REAL DEFAULT 0,
+            estado_sync INTEGER DEFAULT 0,
+            fecha_modificacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (producto_id, sucursal_id) -- Evita duplicados del mismo producto en la misma sucursal
+        );
+    `);
+
+
+    // Asegúrate de que esto se ejecute al arrancar la app
+        db.prepare(`
+            CREATE TABLE IF NOT EXISTS sucursales (
+                id TEXT PRIMARY KEY,
+                company_id TEXT,
+                nombre TEXT,
+                direccion TEXT,
+                telefono TEXT,
+                estado_sync INTEGER DEFAULT 0,
+                fecha_modificacion TEXT
+            )
+        `).run();
 }
 inicializarTablas();
 
@@ -808,6 +834,98 @@ ipcMain.handle('eliminar-categoria-local', async (event, id) => {
         return stmt.run(id);
     } catch (e) {
         console.error("Error al eliminar categoría local:", e);
+        return { error: e.message };
+    }
+});
+
+ipcMain.handle('guardar-sucursal-local', async (event, sucursal) => {
+    try {
+        // CORRECCIÓN: Respetar la fecha y el estado de sync si provienen de la nube
+        const fechaAUsar = sucursal.fecha_modificacion || new Date().toISOString();
+        const estadoSync = sucursal.estado_sync !== undefined ? sucursal.estado_sync : 0;
+
+        const stmt = db.prepare(`
+            INSERT INTO sucursales (
+                id, 
+                company_id, 
+                nombre, 
+                direccion, 
+                telefono, 
+                estado_sync, 
+                fecha_modificacion
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                nombre = excluded.nombre,
+                direccion = excluded.direccion,
+                telefono = excluded.telefono,
+                fecha_modificacion = excluded.fecha_modificacion,
+                estado_sync = excluded.estado_sync
+        `);
+
+        return stmt.run(
+            sucursal.id,           // ID único de la sucursal
+            sucursal.company_id,   // ID de la empresa dueña
+            sucursal.nombre,
+            sucursal.direccion,
+            sucursal.telefono,
+            estadoSync,            // Usar el estado dinámico (0 o 1)
+            fechaAUsar             // Usar la fecha correcta
+        );
+    } catch (e) {
+        console.error("❌ Error al guardar sucursal:", e);
+        return { error: e.message };
+    }
+});
+
+ipcMain.handle('obtener-sucursales-local', async (event, companyId) => {
+    try {
+        return db.prepare("SELECT * FROM sucursales WHERE company_id = ?").all(companyId);
+    } catch (e) {
+        return { error: e.message };
+    }
+});
+
+
+ipcMain.handle('obtener-inventario-sucursal', async (event, { companyId, sucursalId }) => {
+    try {
+        // 🔥 CAMBIO CLAVE: Usamos INNER JOIN en lugar de LEFT JOIN.
+        // Esto hace que la tabla "nazca" vacía y solo se llene con los productos
+        // que realmente tienen un registro de stock en esta sucursal específica.
+        const stmt = db.prepare(`
+            SELECT 
+                p.id, 
+                p.nombre, 
+                p.categoria, 
+                p.codigo,
+                IFNULL(json_extract(p.datos_json, '$.unit'), p.unit) as unit,
+                i.stock as stock_sucursal
+            FROM inventario_sucursales i
+            INNER JOIN productos_locales p ON p.id = i.producto_id
+            WHERE p.company_id = ? AND i.sucursal_id = ? AND p.status = 1
+        `);
+        return stmt.all(companyId, sucursalId);
+    } catch (e) {
+        console.error("❌ Error en obtener-inventario-sucursal:", e.message);
+        return { error: e.message };
+    }
+});
+
+ipcMain.handle('guardar-stock-sucursal', async (event, { productoId, sucursalId, companyId, cantidad, operacion }) => {
+    try {
+        const fecha = new Date().toISOString();
+        const sql = operacion === 'SUMAR' 
+            ? `INSERT INTO inventario_sucursales (producto_id, sucursal_id, company_id, stock, fecha_modificacion)
+               VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT(producto_id, sucursal_id) DO UPDATE SET
+               stock = stock + excluded.stock, fecha_modificacion = excluded.fecha_modificacion`
+            : `INSERT INTO inventario_sucursales (producto_id, sucursal_id, company_id, stock, fecha_modificacion)
+               VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT(producto_id, sucursal_id) DO UPDATE SET
+               stock = excluded.stock, fecha_modificacion = excluded.fecha_modificacion`;
+
+        return db.prepare(sql).run(productoId, sucursalId, companyId, cantidad, fecha);
+    } catch (e) {
         return { error: e.message };
     }
 });

@@ -4,343 +4,354 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entrada de Inventario Móvil</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* Base Styles: Mobile-First Approach */
-        body {
-            font-family: 'Roboto', sans-serif;
-            background-color: #f3f4f6;
-            margin: 0;
-            padding: 0;
-            min-height: 100vh; 
-        }
+    <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <script src="tailwindcss.js"></script>
+<style>
+    body {
+        font-family: 'Roboto', sans-serif;
+        background-color: #f3f4f6;
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+    }
+
+    .container {
+        background-color: transparent;
+        padding: 20px;
+        border-radius: 0;
+        box-shadow: none;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box;
+        text-align: center;
+        margin: 0;
+    }
+
+    @media (min-width: 768px) {
         .container {
-            background-color: #ffffff;
-            padding: 20px; 
-            border-radius: 0; 
-            box-shadow: none; 
-            width: 100%; 
-            max-width: 1200px; 
-            box-sizing: border-box;
-            text-align: center;
-            margin: 0 auto;
-        }
-        /* Desktop/Tablet Styles */
-        @media (min-width: 768px) {
-            .container {
-                padding: 40px;
-                border-radius: 10px;
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-                width: 90%;
-            }
-        }
-
-        h1 {
-            color: #333;
-            margin-bottom: 15px; 
-            font-size: 1.8em; 
-            font-weight: 600;
-        }
-        .user-info {
-            background-color: #f0f4f8;
-            padding: 12px; 
-            border-radius: 8px;
-            margin-bottom: 20px;
-            text-align: left;
-            border: 1px solid #e2e8f0;
-            font-size: 0.9rem; 
-        }
-        .user-info p {
-            margin: 3px 0;
-        }
-
-        .form-section {
-            display: flex;
-            flex-direction: column;
-            gap: 15px; 
-            margin-bottom: 20px;
-            text-align: left;
-        }
-        
-        .input-group-item {
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            flex: 1; 
-        }
-
-        .form-section label {
-            font-weight: bold;
-            color: #555;
-            margin-bottom: 5px;
-            font-size: 0.95em;
-        }
-        .form-section input[type="text"],
-        .form-section input[type="number"],
-        .form-section select {
-            width: 100%;
-            padding: 14px; 
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            box-sizing: border-box;
-            font-size: 1em;
-            appearance: none;
-            background-color: white; 
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%234a5568'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 1rem center;
-            background-size: 1.5em;
-            cursor: pointer;
-        }
-        
-        #final-stock-display {
-            background-color: #e9ecef;
-            cursor: default;
-            font-weight: bold;
-            color: #495057;
-        }
-
-        .btn-submit {
-            background-color: #007bff;
-            color: white;
-            padding: 18px 30px; 
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1em;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            margin-top: 15px;
+            padding: 20px 40px;
             width: 100%;
         }
-        .btn-submit:hover {
-            background-color: #0056b3;
-        }
-        .table-container {
-            margin-top: 20px; 
-            overflow-x: auto; 
-        }
-        table {
-            width: 100%;
-            min-width: 700px; 
-            border-collapse: collapse;
-        }
-        th, td {
-            border: 1px solid #e0e0e0;
-            padding: 10px; 
-            text-align: left;
-            font-size: 0.85em; 
-        }
-        th {
-            background-color: #007bff;
-            color: white;
-            font-weight: 600;
-        }
-        tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-        tr:hover {
-            background-color: #f1f1f1;
-        }
-        #product-results {
-            position: absolute;
-            top: calc(100% + 1px); 
-            left: 0;
-            right: 0;
-            background-color: white;
-            border: 1px solid #ddd;
-            border-top: none;
-            border-radius: 0 0 8px 8px;
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 10;
-        }
-        .result-item {
-            padding: 12px; 
-            cursor: pointer;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-        .result-item:hover {
-            background-color: #f9f9f9;
-        }
-        .placeholder-message {
-            text-align: center;
-            padding: 20px;
-            color: #718096;
-            font-style: italic;
-        }
+    }
 
-        /* Estilo para el contenedor de botones en la tabla */
-        .action-buttons {
-            display: flex;
-            gap: 5px; 
-            white-space: nowrap; 
-        }
-        
-        /* Estilo para el botón de editar stock (Amarillo) */
-        .edit-stock-btn {
-            background-color: #ffc107; 
-            color: #212529; 
-            padding: 8px 10px;
-            border: none;
-            border-radius: 4px;
-            font-size: 0.8em;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        .edit-stock-btn:hover {
-            background-color: #e0a800; 
-        }
+    h1 {
+        color: #333;
+        margin-bottom: 25px;
+        font-size: 2.2em;
+        font-weight: 700;
+        letter-spacing: -1px;
+    }
 
-        /* Estilo para el botón de eliminar stock (Rojo) */
-        .delete-stock-btn {
-            background-color: #dc3545; 
-            color: white; 
-            padding: 8px 10px;
-            border: none;
-            border-radius: 4px;
-            font-size: 0.8em;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        .delete-stock-btn:hover {
-            background-color: #c82333;
-        }
+    .form-section {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 25px;
+        text-align: left;
+    }
 
-        /* Estilos para el scroll en la tabla */
-        .table-scroll-wrapper {
-            max-height: 450px; 
-            overflow-y: auto; 
-        }
-        #inventory-table th {
-            position: sticky;
-            top: 0;
-            z-index: 2; 
-        }
-        /* Estilo para el campo de búsqueda de inventario */
-        #inventory-search-input {
-            padding: 10px; 
-            font-size: 1em;
-            margin-bottom: 10px;
-        }
+    .input-group-item {
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        flex: 1;
+    }
 
-        /* ************************************************* */
-        /* ************* ESTILOS DEL MODAL ***************** */
-        /* ************************************************* */
+    .form-section label {
+        font-weight: bold;
+        color: #4a5568;
+        margin-bottom: 6px;
+        font-size: 0.95em;
+    }
 
-        .modal-backdrop {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5); /* Fondo oscuro semitransparente */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s ease;
-        }
+    .form-section input[type="text"],
+    .form-section input[type="number"],
+    .form-section select {
+        width: 100%;
+        padding: 14px;
+        border: 1px solid #cbd5e0;
+        border-radius: 8px;
+        box-sizing: border-box;
+        font-size: 1em;
+        appearance: none;
+        background-color: white;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%234a5568'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 1rem center;
+        background-size: 1.5em;
+    }
 
-        .modal-backdrop.active {
-            opacity: 1;
-            visibility: visible;
-        }
+    #final-stock-display {
+        background-color: #edf2f7;
+        cursor: default;
+        font-weight: 800;
+        color: #2d3748;
+        border: 1px solid #cbd5e0;
+    }
 
-        .modal-content {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 450px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-            transform: translateY(-50px);
-            transition: transform 0.3s ease;
-        }
-        
-        .modal-backdrop.active .modal-content {
-            transform: translateY(0);
-        }
+    .btn-submit {
+        background-color: #007bff;
+        color: white;
+        padding: 18px 30px;
+        border: none;
+        border-radius: 8px;
+        font-size: 1.1em;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.3s, transform 0.1s;
+        margin-top: 10px;
+        width: 100%;
+    }
 
-        .modal-header {
-            display: flex;
-            align-items: center;
-            padding-bottom: 15px;
-            margin-bottom: 15px;
-            border-bottom: 1px solid #eee;
-        }
-        
-        /* Simulación del icono de Advertencia (triángulo) */
-        .warning-icon {
-            color: #ff9800; /* Naranja/Amarillo de advertencia */
-            font-size: 2em;
-            margin-right: 15px;
-            line-height: 1;
-        }
-        .warning-icon::before {
-            content: "\26A0"; /* Carácter Unicode para el signo de advertencia */
-        }
+    .btn-submit:hover {
+        background-color: #0056b3;
+    }
 
-        .modal-header h3 {
-            margin: 0;
-            font-size: 1.1em;
-            font-weight: 700;
-            color: #333;
-        }
+    .btn-submit:active {
+        transform: scale(0.99);
+    }
 
-        .modal-body p {
-            font-size: 0.9em;
-            color: #555;
-            line-height: 1.5;
-            text-align: left;
-            margin-bottom: 20px;
-        }
+    .table-container {
+        margin-top: 30px;
+        overflow-x: auto;
+    }
 
-        .modal-footer {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            border-top: 1px solid #eee;
-            padding-top: 15px;
-        }
+    table {
+        width: 100%;
+        min-width: 700px;
+        border-collapse: collapse;
+        background-color: white;
+        border-radius: 10px;
+        overflow: hidden;
+    }
 
-        .modal-btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: background-color 0.2s;
-        }
+    th, td {
+        border: 1px solid #e2e8f0;
+        padding: 14px;
+        text-align: left;
+        font-size: 0.9em;
+    }
 
-        #modal-btn-cancel {
-            background-color: #6c757d; /* Gris */
-            color: white;
-        }
-        #modal-btn-cancel:hover {
-            background-color: #5a6268;
-        }
+    th {
+        background-color: #007bff;
+        color: white;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
 
-        #modal-btn-confirm {
-            background-color: #dc3545; /* Rojo */
-            color: white;
-        }
-        #modal-btn-confirm:hover {
-            background-color: #c82333;
-        }
-    </style>
+    tr:nth-child(even) {
+        background-color: #f7fafc;
+    }
+
+    tr:hover {
+        background-color: #edf2f7;
+    }
+
+    #product-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: white;
+        border-radius: 0 0 8px 8px; /* Redondeado solo abajo */
+        max-height: 250px;
+        overflow-y: auto;
+        z-index: 9999; /* Prioridad máxima sobre otros inputs */
+        display: none; 
+        border: 1px solid #cbd5e0;
+        border-top: none;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    #product-results.activo {
+        display: block !important;
+    }
+
+    .result-item {
+        padding: 12px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #edf2f7;
+        transition: background-color 0.2s;
+        text-align: left; /* Asegura alineación a la izquierda */
+    }
+
+    .result-item.autocomplete-active {
+        background-color: #bfdbfe !important; /* Azul intenso */
+        border-left: 4px solid #2563eb !important; /* Franja azul oscuro */
+        outline: none !important;
+        color: #1e3a8a;
+    }
+
+    .result-item:hover {
+        background-color: #ebf8ff; /* Azul Nexus */
+    }
+
+    .placeholder-message {
+        text-align: center;
+        padding: 30px;
+        color: #a0aec0;
+        font-style: italic;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+
+    .edit-stock-btn, .delete-stock-btn {
+        padding: 8px 14px;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.85em;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+    .edit-stock-btn {
+        background-color: #ecc94b;
+        color: #744210;
+    }
+
+    .edit-stock-btn:hover {
+        background-color: #d69e2e;
+    }
+
+    .delete-stock-btn {
+        background-color: #f56565;
+        color: white;
+    }
+
+    .delete-stock-btn:hover {
+        background-color: #c53030;
+    }
+
+    .table-scroll-wrapper {
+        max-height: 600px;
+        overflow-y: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    #inventory-table th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    #inventory-search-input {
+        padding: 14px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e0;
+        width: 100%;
+        margin-bottom: 15px;
+        box-sizing: border-box;
+    }
+
+    .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.6);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .modal-backdrop.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .modal-content {
+        background-color: #fff;
+        padding: 30px;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 480px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        transform: translateY(-20px);
+        transition: transform 0.3s ease;
+    }
+
+    .modal-backdrop.active .modal-content {
+        transform: translateY(0);
+    }
+
+    .modal-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+        border-bottom: 1px solid #edf2f7;
+        padding-bottom: 15px;
+    }
+
+    .warning-icon {
+        color: #ed8936;
+        font-size: 2.2em;
+        margin-right: 15px;
+    }
+
+    .warning-icon::before {
+        content: "\26A0";
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.3em;
+        font-weight: 800;
+        color: #2d3748;
+    }
+
+    .modal-body p {
+        font-size: 1.05em;
+        color: #4a5568;
+        line-height: 1.6;
+        margin-bottom: 25px;
+        text-align: left;
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+
+    .modal-btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 700;
+        transition: filter 0.2s;
+    }
+
+    .modal-btn:hover {
+        filter: brightness(0.9);
+    }
+
+    #modal-btn-cancel {
+        background-color: #edf2f7;
+        color: #4a5568;
+    }
+
+    #modal-btn-confirm {
+        background-color: #e53e3e;
+        color: white;
+    }
+</style>
 </head>
 <body>
     <div class="container">
         <h1>Entrada de Inventario</h1>
-        <div class="user-info">
-            <p><strong>Usuario:</strong> <span id="userIdDisplay">Cargando...</span></p>
-            <p><strong>Compañía:</strong> <span id="companyIdDisplay">Cargando...</span></p>
-            <p><strong>Rol:</strong> <span id="userRoleDisplay">Cargando...</span></p>
-        </div>
         
         <div class="form-section">
             <div class="input-group-item">
@@ -430,613 +441,415 @@
 
 
     <script type="module">
-        import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, collection, query, where, onSnapshot, getDocs, setDoc, updateDoc, increment, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    // --- 1. Variables de Estado Global (En Español) ---
+    let idEmpresa = null;
+    let idSucursalSeleccionada = null;
+    let idUsuario = null;
+    let rolUsuario = null;
+    let focoProducto = -1;
+    let listaProductos = [];
+    let listaEmpaques = [];
+    let idProductoSeleccionado = null;
+    let factorEmpaqueSeleccionado = 1;
+    let datosInventarioActual = [];
+    let mapaCategorias = {};
 
-        // setLogLevel('debug'); 
+    // --- 2. Referencias a Elementos del DOM ---
+    const selectorSucursal = document.getElementById('branch-select');
+    const entradaBusquedaProducto = document.getElementById('product-search');
+    const selectorEmpaque = document.getElementById('packaging-unit-select');
+    const visorStockFinal = document.getElementById('final-stock-display');
+    const contenedorResultadosBusqueda = document.getElementById('product-results');
+    const entradaCantidad = document.getElementById('quantity-input');
+    const botonRegistrar = document.getElementById('add-stock-btn');
+    const cuerpoTablaInventario = document.getElementById('inventory-table-body');
+    const entradaBusquedaInventario = document.getElementById('inventory-search-input');
 
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
-        let app;
-        if (getApps().length === 0) {
-            app = initializeApp(firebaseConfig);
-        } else {
-            app = getApp();
-        }
+    // --- 3. Inicialización del Módulo ---
+    async function inicializarModulo() {
+        console.log("🚀 [NEXUS] Inicializando Entradas de Inventario...");
+        try {
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
 
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        
-        let userCompanyId = null;
-        let userBranchId = null;
-        let userId = null;
-        let userRole = null;
-        let allProducts = [];
-        let allPackagings = []; 
-        let selectedProductId = null;
-        let selectedPackagingFactor = 1; 
-        
-        let currentInventoryData = []; 
+            if (sesion && sesion.companyId) {
+                idEmpresa = sesion.companyId;
+                idUsuario = sesion.uid || sesion.id;
+                rolUsuario = sesion.role;
 
-        const branchSelect = document.getElementById('branch-select');
-        const productSearchInput = document.getElementById('product-search');
-        const packagingUnitSelect = document.getElementById('packaging-unit-select');
-        const finalStockDisplayInput = document.getElementById('final-stock-display'); 
-        const productResultsDiv = document.getElementById('product-results');
-        const quantityInput = document.getElementById('quantity-input');
-        const addStockBtn = document.getElementById('add-stock-btn');
-        const inventoryTableBody = document.getElementById('inventory-table-body');
-        const userIdDisplay = document.getElementById('userIdDisplay');
-        const companyIdDisplay = document.getElementById('companyIdDisplay');
-        const userRoleDisplay = document.getElementById('userRoleDisplay');
-        const inventorySearchInput = document.getElementById('inventory-search-input'); 
-        
-        // Referencias al MODAL (NUEVO)
-        const customDeleteModal = document.getElementById('custom-delete-modal');
-        const modalTextMessage = document.getElementById('modal-text-message');
-        const modalBtnCancel = document.getElementById('modal-btn-cancel');
-        const modalBtnConfirm = document.getElementById('modal-btn-confirm');
-        
-        let unsubscribeFromInventory = null;
-        let currentSelectedBranchId = null;
-        
-
-        // Authentication state listener
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                const tokenResult = await user.getIdTokenResult();
-                const claims = tokenResult.claims;
-
-                if (!claims.companyId) {
-                    console.log("User claims not found in token. Forcing a refresh...");
-                    showCustomAlert("Actualizando información del usuario. Por favor espere...", "info");
-                    await user.getIdToken(true);
-                    return;
-                }
-
-                userId = user.uid;
-                userCompanyId = claims.companyId;
-                userBranchId = claims.branchId;
-                userRole = claims.role;
-
-                userIdDisplay.textContent = userId;
-                companyIdDisplay.textContent = userCompanyId || 'No disponible';
-                userRoleDisplay.textContent = userRole || 'No disponible';
-                
-                if (userCompanyId) {
-                    loadAllProducts(userCompanyId);
-                    if (userRole === 'admin') {
-                        branchSelect.disabled = false;
-                        populateBranchSelect(userCompanyId);
-                    } else if (userRole === 'cajera' && userBranchId) {
-                        branchSelect.disabled = true;
-                        const assignedBranch = await getDoc(doc(db, 'companies', userCompanyId, 'branches', userBranchId));
-                        if (assignedBranch.exists()) {
-                            const option = document.createElement('option');
-                            option.value = userBranchId;
-                            option.textContent = assignedBranch.data().name;
-                            branchSelect.innerHTML = ''; 
-                            branchSelect.appendChild(option);
-                            option.selected = true;
-                            
-                            setupRealtimeListener(userCompanyId, userBranchId);
-                            currentSelectedBranchId = userBranchId;
-                        }
-                    } else {
-                        console.error("Error: Rol o sucursal no definidos para este usuario.");
-                        showCustomAlert("Error: Rol o sucursal no definidos. Verifique la configuración de backend.", "error");
-                    }
-                } else {
-                    console.error("Error: No se pudo obtener la información de la compañía. Verifique la configuración de autenticación.");
-                    showCustomAlert("Error al cargar la aplicación. Verifique su conexión.", "error");
-                }
-            } else {
-                console.log('No authenticated user, trying to sign in with initial token.');
-                try {
-                    if (initialAuthToken) {
-                        await signInWithCustomToken(auth, initialAuthToken);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                } catch (error) {
-                    console.error('Sign-in error:', error);
-                    showCustomAlert("Error de inicio de sesión. Intente recargar la página.", "error");
-                }
-            }
-        });
-
-        // Event listener para el cambio de sucursal
-        branchSelect.addEventListener('change', (e) => {
-            const newBranchId = e.target.value;
-            if (newBranchId) {
-                currentSelectedBranchId = newBranchId;
-                setupRealtimeListener(userCompanyId, newBranchId);
-            } else {
-                currentSelectedBranchId = null;
-                setupRealtimeListener(userCompanyId, null); 
-            }
-        });
-
-        // Event listener para la búsqueda de inventario
-        inventorySearchInput.addEventListener('input', (e) => filterInventoryTable(e.target.value));
-
-
-        // Event listeners para la retroalimentación en tiempo real (Formulario Superior)
-        productSearchInput.addEventListener('input', (e) => {
-            handleProductSearch(e.target.value);
-        });
-
-        productResultsDiv.addEventListener('click', (e) => {
-            const resultItem = e.target.closest('.result-item');
-            if (resultItem) {
-                selectedProductId = resultItem.dataset.id;
-                productSearchInput.value = resultItem.textContent;
-                productResultsDiv.innerHTML = '';
-                
-                const productName = resultItem.textContent;
-                updatePackagingSelect(productName);
-                updateFinalStockDisplay(); 
-            }
-        });
-        
-        packagingUnitSelect.addEventListener('change', (e) => {
-            const selectedOption = e.target.options[e.target.selectedIndex];
-            selectedPackagingFactor = parseFloat(selectedOption.dataset.conversionFactor) || 1;
-            updateFinalStockDisplay(); 
-        });
-        
-        quantityInput.addEventListener('input', updateFinalStockDisplay); 
-        
-        // Event listener for add stock button
-        addStockBtn.addEventListener('click', addInventoryEntry);
-
-
-        // *******************************************************************
-        // ********************* LÓGICA DEL MODAL ****************************
-        // *******************************************************************
-        
-        let pendingDeletion = { productId: null, productName: null };
-
-        function showDeleteModal(productId, productName) {
-            if (!userCompanyId || !currentSelectedBranchId) {
-                showCustomAlert('Error: Seleccione una sucursal primero.', "error");
-                return;
-            }
-
-            pendingDeletion.productId = productId;
-            pendingDeletion.productName = productName;
-            
-            // Establecer el texto de la advertencia
-            modalTextMessage.innerHTML = `
-                ¿Estás seguro de que deseas ELIMINAR COMPLETAMENTE el registro de inventario de 
-                "${productName}" en esta sucursal.?
-                <br><br>
-                Esta acción es irreversible.
-            `;
-            
-            customDeleteModal.classList.add('active');
-        }
-
-        function hideDeleteModal() {
-            customDeleteModal.classList.remove('active');
-            pendingDeletion.productId = null;
-            pendingDeletion.productName = null;
-        }
-
-        // Listener para el botón Cancelar del modal
-        modalBtnCancel.addEventListener('click', hideDeleteModal);
-
-        // Listener para el botón Confirmar del modal
-        modalBtnConfirm.addEventListener('click', async () => {
-            if (pendingDeletion.productId && pendingDeletion.productName) {
-                await executeDeleteInventoryEntry(pendingDeletion.productId, pendingDeletion.productName);
-            }
-            hideDeleteModal();
-        });
-
-        // *******************************************************************
-        // ********************* FUNCIONES DE CRUD ***************************
-        // *******************************************************************
-
-        async function populateBranchSelect(companyId) {
-            try {
-                const branchesRef = collection(db, 'companies', companyId, 'branches');
-                const branchesSnapshot = await getDocs(branchesRef);
-                branchSelect.innerHTML = '<option value="" disabled selected>Seleccione una sucursal</option>';
-                
-                branchesSnapshot.forEach(doc => {
-                    const branch = doc.data();
-                    const option = document.createElement('option');
-                    option.value = doc.id;
-                    option.textContent = branch.name;
-                    branchSelect.appendChild(option);
+                // --- MOTOR DEL TRADUCTOR ---
+                // Cargamos las categorías para convertir IDs a nombres legibles
+                const categorias = await window.nexusAPI.obtenerCategoriasLocal();
+                categorias.forEach(cat => {
+                    mapaCategorias[cat.id] = cat.nombre;
                 });
-            } catch (error) {
-                console.error("Error loading branches:", error);
-                branchSelect.innerHTML = '<option value="" disabled selected>Error al cargar sucursales</option>';
-                showCustomAlert("Error al cargar las sucursales. Verifique sus reglas de seguridad y conexión.", "error");
-            }
-        }
 
-        async function loadAllProducts(companyId) {
-            try {
-                const productsRef = collection(db, 'companies', companyId, 'products');
-                const productsSnapshot = await getDocs(productsRef);
-                allProducts = productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                
-                await loadAllPackagings(companyId);
-
-            } catch (error) {
-                console.error("Error loading product catalog:", error);
-                showCustomAlert("Error al cargar los productos. Verifique sus reglas de seguridad y conexión.", "error");
+                await cargarSucursalesLocal();
+            } else {
+                mostrarAlerta("No se detectó una sesión activa. Redirigiendo...", "error");
             }
+        } catch (error) {
+            console.error("❌ Error en inicialización:", error);
         }
-        
-        async function loadAllPackagings(companyId) {
-            try {
-                const packingsRef = collection(db, 'companies', companyId, 'packing');
-                const packingsSnapshot = await getDocs(packingsRef);
-                allPackagings = packingsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            } catch (error) {
-                console.error("Error loading packing catalog:", error);
-                showCustomAlert("Error al cargar las unidades de empaque. Verifique sus reglas de seguridad.", "error");
-            }
-        }
+        await cargarCatalogoProductos();
+    }
 
-        function handleProductSearch(searchTerm) {
-            productResultsDiv.innerHTML = '';
-            if (searchTerm.length < 2) {
+    // --- 4. Funciones de Carga de Datos (SQLite) ---
+    async function cargarSucursalesLocal() {
+        try {
+            console.log("📂 Cargando sucursales desde base de datos local...");
+            const sucursales = await window.nexusAPI.obtenerSucursalesLocal(idEmpresa);
+
+            selectorSucursal.innerHTML = '<option value="" disabled selected>Seleccione una sucursal</option>';
+
+            if (!sucursales || sucursales.length === 0) {
+                selectorSucursal.innerHTML = '<option value="" disabled>Sin sucursales disponibles</option>';
                 return;
             }
-            const filteredProducts = allProducts.filter(p =>
-                p.name.toLowerCase().includes(searchTerm.toLowerCase())
-            );
 
-            filteredProducts.forEach(product => {
-                const resultItem = document.createElement('div');
-                resultItem.classList.add('result-item');
-                resultItem.textContent = product.name;
-                resultItem.dataset.id = product.id;
-                productResultsDiv.appendChild(resultItem);
+            sucursales.forEach(sucursal => {
+                const opcion = document.createElement('option');
+                opcion.value = sucursal.id;
+                opcion.textContent = sucursal.nombre; // Usando el esquema de tu DB local
+                selectorSucursal.appendChild(opcion);
             });
+
+        } catch (error) {
+            console.error("❌ Error al cargar sucursales:", error);
+            mostrarAlerta("Error al leer sucursales locales", "error");
         }
+    }
 
-        function updatePackagingSelect(productName) {
-            packagingUnitSelect.innerHTML = '';
-            packagingUnitSelect.disabled = false;
-            selectedPackagingFactor = 1;
-
-            const productData = allProducts.find(p => p.name.toLowerCase() === productName.toLowerCase());
-            let baseUnitName = productData ? productData.unit : 'unidad';
-
-            // Opción por defecto (Sin conversión)
-            const defaultOption = document.createElement('option');
-            defaultOption.value = "";
-            defaultOption.selected = true;
-            defaultOption.textContent = `Sin especificar (Guardar como ${baseUnitName})`;
-            packagingUnitSelect.appendChild(defaultOption);
-
-            const relevantPackings = allPackagings.filter(p => 
-                p.productType && p.productType.toLowerCase() === productName.toLowerCase()
-            );
-
-            if (relevantPackings.length === 0) {
-                 packagingUnitSelect.innerHTML = '<option value="" selected>No hay unidades de empaque específicas</option>';
-                 packagingUnitSelect.disabled = true;
-            } else {
-                 relevantPackings.forEach(packing => {
-                    const option = document.createElement('option');
-                    const optionText = `${packing.unit} (${packing.quantity} ${packing.measureType})`;
+    async function cargarCatalogoProductos() {
+        try {
+            console.log("📦 [NEXUS] Cargando catálogo de productos desde SQLite...");
+            
+            // Llamada al IPC que configuramos en inventario.html
+            const productosBrutos = await window.nexusAPI.obtenerProductosLocal(idEmpresa);
+            
+            if (productosBrutos && productosBrutos.length > 0) {
+                // Mapeamos los datos para que sean fáciles de usar (Traducción de datos_json)
+                listaProductos = productosBrutos.map(p => {
+                    let info = {};
+                    try {
+                        info = typeof p.datos_json === 'string' ? JSON.parse(p.datos_json) : p.datos_json;
+                    } catch (e) { info = {}; }
                     
-                    option.value = packing.unit;
-                    option.textContent = optionText;
-                    option.dataset.conversionFactor = packing.quantity;
-                    option.dataset.measureType = packing.measureType;
-                    
-                    packagingUnitSelect.appendChild(option);
+                    return {
+                        id: p.id || p.producto_ID,
+                        nombre: info.nombre || p.nombre || "Sin nombre",
+                        categoria: info.categoria || p.categoria || "General",
+                        unidad: info.unit || p.unit || "UN",
+                        codigo: info.codigo || p.codigo || ""
+                    };
                 });
+                console.log(`✅ [NEXUS] ${listaProductos.length} productos listos para búsqueda.`);
             }
+        } catch (error) {
+            console.error("❌ Error al cargar catálogo local:", error);
         }
+    }
 
-        function updateFinalStockDisplay() {
-            const quantity = parseInt(quantityInput.value, 10);
-            
-            if (!selectedProductId || isNaN(quantity) || quantity <= 0) {
-                finalStockDisplayInput.value = '0';
-                return;
-            }
-
-            const productData = allProducts.find(p => p.id === selectedProductId);
-            let baseUnit = productData ? productData.unit : 'unidad';
-
-            let measureType = baseUnit; 
-            if (selectedPackagingFactor > 1) {
-                const selectedOption = packagingUnitSelect.options[packagingUnitSelect.selectedIndex];
-                measureType = selectedOption.dataset.measureType || baseUnit; 
-            }
-
-            const finalStockQuantity = quantity * selectedPackagingFactor;
-            
-            const roundedQuantity = Math.round(finalStockQuantity * 100) / 100;
-
-            finalStockDisplayInput.value = `${roundedQuantity} ${measureType}`;
-        }
-
-        async function addInventoryEntry() {
-            const quantity = parseInt(quantityInput.value, 10);
-
-            if (!userCompanyId || !currentSelectedBranchId || !selectedProductId || isNaN(quantity) || quantity <= 0) {
-                showCustomAlert('Por favor, seleccione una sucursal, un producto y una cantidad válida.', "warning");
-                return;
-            }
-
-            try {
-                const productData = allProducts.find(p => p.id === selectedProductId);
-                if (!productData) {
-                    showCustomAlert("El producto seleccionado no existe.", "error");
-                    return;
-                }
-                
-                let finalStockQuantity = quantity; 
-                let finalUnit = productData.unit; 
-                let logMessage = `Stock guardado como ${finalStockQuantity} ${finalUnit}.`;
-
-
-                if (selectedPackagingFactor > 1) {
-                    finalStockQuantity = quantity * selectedPackagingFactor;
-                    
-                    const selectedOption = packagingUnitSelect.options[packagingUnitSelect.selectedIndex];
-                    finalUnit = selectedOption.dataset.measureType || finalUnit; 
-                    
-                    logMessage = `Conversión aplicada: ${quantity} x ${selectedPackagingFactor} = ${finalStockQuantity} ${finalUnit}`;
-                    showCustomAlert(logMessage, "info");
-                } else {
-                     finalUnit = productData.unit;
-                     logMessage = `Stock guardado como ${finalStockQuantity} ${finalUnit}.`;
-                     showCustomAlert(logMessage, "info");
-                }
-
-                const roundedQuantityToAdd = Math.round(finalStockQuantity * 100) / 100;
-                
-                const inventoryRef = doc(db, 'companies', userCompanyId, 'branches', currentSelectedBranchId, 'inventory', selectedProductId);
-                
-                const docSnap = await getDoc(inventoryRef);
-                
-                if (docSnap.exists()) {
-                    await updateDoc(inventoryRef, {
-                        stock: increment(roundedQuantityToAdd),
-                        name: productData.name,
-                        category: productData.category,
-                        unit: finalUnit, 
-                        updated_at: new Date()
-                    });
-                } else {
-                    await setDoc(inventoryRef, {
-                        productId: selectedProductId,
-                        name: productData.name,
-                        category: productData.category,
-                        unit: finalUnit, 
-                        stock: roundedQuantityToAdd, 
-                        created_at: new Date(),
-                        updated_at: new Date()
-                    });
-                }
-
-                console.log(`Product inventory ${productData.name} updated/created. Stock added: ${roundedQuantityToAdd}`);
-                showCustomAlert(`Inventario de ${productData.name} actualizado. Stock añadido: ${roundedQuantityToAdd} ${finalUnit}.`, "success");
-                
-                // Resetear
-                quantityInput.value = '';
-                productSearchInput.value = '';
-                packagingUnitSelect.innerHTML = '<option value="" selected>Selecciona un producto primero...</option>';
-                packagingUnitSelect.disabled = true;
-                finalStockDisplayInput.value = '0';
-                selectedProductId = null;
-                selectedPackagingFactor = 1;
-
-            } catch (error) {
-                console.error("Error adding inventory entry:", error);
-                showCustomAlert("Error al agregar entrada de inventario. Verifique sus permisos.", "error");
-            }
-        }
-
-        async function editInventoryStock(productId, productName, currentStock, unit) {
-            if (!userCompanyId || !currentSelectedBranchId) {
-                showCustomAlert('Error: Seleccione una sucursal primero.', "error");
-                return;
-            }
-
-            const newStockStr = prompt(
-                `EDITAR STOCK ABSOLUTO\n\nProducto: ${productName}\nStock actual (base): ${currentStock} ${unit}\n\nIngrese la NUEVA cantidad ABSOLUTA de stock (base ${unit}):`
-            );
-            
-            if (newStockStr === null) {
-                return;
-            }
-
-            const newStock = parseFloat(newStockStr);
-            
-            if (isNaN(newStock) || newStock < 0) {
-                showCustomAlert('Cantidad inválida. Por favor, ingrese un número positivo.', "warning");
-                return;
-            }
-            
-            const roundedNewStock = Math.round(newStock * 100) / 100;
-            
-            const inventoryRef = doc(db, 'companies', userCompanyId, 'branches', currentSelectedBranchId, 'inventory', productId);
-
-            try {
-                await updateDoc(inventoryRef, {
-                    stock: roundedNewStock, 
-                    updated_at: new Date()
-                });
-                
-                showCustomAlert(`Stock de ${productName} actualizado a ${roundedNewStock} ${unit}.`, "success");
-                
-            } catch (error) {
-                console.error("Error setting absolute stock:", error);
-                showCustomAlert("Error al actualizar el stock. Verifique sus permisos.", "error");
-            }
-        }
+    // --- Lógica de Búsqueda de Productos (Estilo Facturación) ---
+    function manejarBusquedaProducto(termino) {
+        contenedorResultadosBusqueda.innerHTML = '';
         
-        // FUNCIÓN MODIFICADA: Llama al modal en lugar de confirm()
-        async function deleteInventoryEntry(productId, productName) {
-            showDeleteModal(productId, productName);
+        // 1. Normalizar el término de búsqueda (quitar acentos y minúsculas)
+        const query = termino.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+        if (query.length < 2) {
+            contenedorResultadosBusqueda.classList.remove('activo');
+            return;
         }
 
-        // NUEVA FUNCIÓN: Ejecuta la eliminación (llamada por el modal)
-        async function executeDeleteInventoryEntry(productId, productName) {
-            const inventoryRef = doc(db, 'companies', userCompanyId, 'branches', currentSelectedBranchId, 'inventory', productId);
+        // 2. Filtrar con la misma potencia que en facturación
+        const resultados = listaProductos.filter(p => {
+            const nombreProd = (p.nombre || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const codigoProd = (p.codigo || "").toLowerCase();
+            const categoriaProd = (p.categoria || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            
+            return nombreProd.includes(query) || 
+                   codigoProd.includes(query) || 
+                   categoriaProd.includes(query);
+        });
 
-            try {
-                await deleteDoc(inventoryRef);
-                
-                showCustomAlert(`El registro de inventario para ${productName} ha sido ELIMINADO.`, "success");
-                
-            } catch (error) {
-                console.error("Error deleting inventory entry:", error);
-                showCustomAlert("Error al eliminar el registro de inventario. Verifique sus permisos.", "error");
-            }
-        }
-
-        function getPackagingData(productName, baseUnit) {
-            const relevantPackings = allPackagings.filter(p => 
-                p.productType && p.productType.toLowerCase() === productName.toLowerCase() &&
-                p.measureType && p.measureType.toLowerCase() === baseUnit.toLowerCase()
-            );
-            return relevantPackings.length > 0 ? relevantPackings[0] : null; 
-        }
-
-        function filterInventoryTable(searchTerm = '') {
-            inventoryTableBody.innerHTML = '';
-            const normalizedSearchTerm = searchTerm.toLowerCase().trim();
-
-            if (currentInventoryData.length === 0) {
-                inventoryTableBody.innerHTML = '<td colspan="5" class="placeholder-message">No hay inventario o no se ha seleccionado una sucursal.</td>';
-                return;
-            }
-
-            const filteredData = currentInventoryData.filter(item => 
-                item.name.toLowerCase().includes(normalizedSearchTerm)
-            );
-
-            if (filteredData.length === 0) {
-                inventoryTableBody.innerHTML = '<td colspan="5" class="placeholder-message">No se encontraron productos con ese nombre.</td>';
-                return;
-            }
-
-            filteredData.forEach((item) => {
-                let packagingDisplay = '';
-                const packingData = getPackagingData(item.name, item.unit);
-                
-                if (packingData) {
-                    const conversionFactor = packingData.quantity; 
-                    const packagingUnitName = packingData.unit;      
-                    const packagingCount = item.stock / conversionFactor;
-                    const plural = packagingCount !== 1 ? 's' : '';
-                    packagingDisplay = ` (${Math.round(packagingCount)} ${packagingUnitName}${plural})`;
-                }
-                const stockText = `${item.stock} ${item.unit}${packagingDisplay}`;
-
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${item.name}</td>
-                    <td>${item.category}</td>
-                    <td>${item.unit}</td>
-                    <td>${stockText}</td>
-                    <td>
-                        <div class="action-buttons">
-                            <button class="edit-stock-btn" data-product-id="${item.productId}" data-product-name="${item.name}">Editar</button>
-                            <button class="delete-stock-btn" data-product-id="${item.productId}" data-product-name="${item.name}">Eliminar</button>
+        // 3. Renderizar resultados
+        if (resultados.length > 0) {
+            contenedorResultadosBusqueda.classList.add('activo');
+            
+            resultados.forEach(producto => {
+                const item = document.createElement('div');
+                item.className = "result-item"; 
+                item.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div style="font-weight: bold; color: #2d3748; text-transform: uppercase; font-size: 0.9em;">${producto.nombre}</div>
+                            <div style="font-size: 0.7rem; color: #718096;">
+                                ${producto.categoria} | <span class="font-mono">Cod: ${producto.codigo || 'S/C'}</span>
+                            </div>
                         </div>
-                    </td>
+                        <div style="font-weight: bold; color: #3182ce; font-size: 0.8em;">
+                            ${producto.unidad}
+                        </div>
+                    </div>
                 `;
-                inventoryTableBody.appendChild(row);
-
-                // Agrega el event listener al botón de editar
-                row.querySelector('.edit-stock-btn').addEventListener('click', (e) => {
-                    const btn = e.target;
-                    editInventoryStock(btn.dataset.productId, btn.dataset.productName, item.stock, item.unit);
-                });
-
-                // Agrega el event listener al botón de eliminar (Llama a la función que muestra el modal)
-                row.querySelector('.delete-stock-btn').addEventListener('click', (e) => {
-                    const btn = e.target;
-                    deleteInventoryEntry(btn.dataset.productId, btn.dataset.productName);
-                });
-            });
-        }
-
-        function setupRealtimeListener(companyId, branchId) {
-            if (unsubscribeFromInventory) {
-                unsubscribeFromInventory();
-            }
-
-            if (!companyId || !branchId) {
-                currentInventoryData = [];
-                filterInventoryTable(''); 
-                return;
-            }
-            
-            const inventoryRef = collection(db, 'companies', companyId, 'branches', branchId, 'inventory');
-            unsubscribeFromInventory = onSnapshot(inventoryRef, (snapshot) => {
-                currentInventoryData = []; 
-                snapshot.forEach((doc) => {
-                    const item = doc.data(); 
-                    currentInventoryData.push({ 
-                        productId: doc.id, 
-                        ...item 
-                    });
-                });
-                filterInventoryTable(inventorySearchInput.value); 
                 
-            }, (error) => {
-                console.error("Error listening to inventory changes:", error);
-                showCustomAlert("Error al cargar el inventario. Verifique sus reglas de seguridad.", "error");
+                item.onclick = () => seleccionarProducto(producto);
+                contenedorResultadosBusqueda.appendChild(item);
             });
+        } else {
+            contenedorResultadosBusqueda.classList.remove('activo');
+        }
+    }
+
+    // --- 4.3 Selección de Producto (Asegura cerrar el menú) ---
+    function seleccionarProducto(producto) {
+        idProductoSeleccionado = producto.id;
+        entradaBusquedaProducto.value = producto.nombre;
+        
+        // Limpieza y cierre inmediato
+        contenedorResultadosBusqueda.innerHTML = '';
+        contenedorResultadosBusqueda.classList.remove('activo');
+        
+        console.log(`🎯 Nexus POS: Seleccionado ${producto.nombre}`);
+        
+        // Enfocar el siguiente campo (Cantidad) para agilizar la carga
+        if(entradaCantidad) entradaCantidad.focus();
+
+        if (typeof actualizarSelectEmpaques === 'function') {
+            actualizarSelectEmpaques(producto.nombre, producto.unidad);
+        }
+    }
+
+    function aplicarResaltado(items) {
+        if (!items || items.length === 0) return;
+        
+        // Limpiamos el resaltado de todos
+        items.forEach(el => el.classList.remove("autocomplete-active"));
+        
+        // Aplicamos al índice actual
+        if (focoProducto > -1 && items[focoProducto]) {
+            items[focoProducto].classList.add("autocomplete-active");
+            
+            // Asegura que el scroll siga al resaltado
+            items[focoProducto].scrollIntoView({ block: "nearest" });
+        }
+    }
+
+    async function cargarInventarioSucursal() {
+        if (!idSucursalSeleccionada) return;
+
+        try {
+            console.log(`📂 [NEXUS] Consultando stock para sucursal: ${idSucursalSeleccionada}`);
+            
+            // Llamada al IPC definido en main.js
+            const inventario = await window.nexusAPI.obtenerInventarioSucursal({
+                companyId: idEmpresa,
+                sucursalId: idSucursalSeleccionada
+            });
+
+            if (inventario && !inventario.error) {
+                datosInventarioActual = inventario;
+                renderizarTablaInventario(datosInventarioActual);
+            }
+        } catch (error) {
+            console.error("❌ Error al cargar inventario sucursal:", error);
+        }
+    }
+
+    // --- 4.5 Renderizar Tabla de Inventario ---
+    function renderizarTablaInventario(lista) {
+        cuerpoTablaInventario.innerHTML = '';
+
+        if (lista.length === 0) {
+            cuerpoTablaInventario.innerHTML = `<tr><td colspan="5" class="placeholder-message">No hay productos vinculados.</td></tr>`;
+            return;
         }
 
-        function showCustomAlert(message, type = "success") {
-            const alertDiv = document.createElement('div');
-            alertDiv.textContent = message;
-            let backgroundColor;
-            switch(type) {
-                case "success":
-                    backgroundColor = "#4CAF50";
-                    break;
-                case "error":
-                    backgroundColor = "#f44336";
-                    break;
-                case "warning":
-                    backgroundColor = "#ff9800";
-                    break;
-                case "info":
-                    backgroundColor = "#2196F3";
-                    break;
-                default:
-                    backgroundColor = "#4CAF50";
-            }
-            alertDiv.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background-color: ${backgroundColor};
-                color: white;
-                padding: 15px;
-                border-radius: 5px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                z-index: 1000;
-                transition: opacity 0.5s ease-in-out;
+        lista.forEach(item => {
+            const fila = document.createElement('tr');
+            // stock_sucursal es el alias que definimos en el LEFT JOIN del main.js
+            const stock = item.stock_sucursal || 0;
+            
+            // --- TRADUCCIÓN EN TIEMPO REAL ---
+            // Buscamos el nombre en el mapa; si no se encuentra, mostramos el ID o "General" como respaldo
+            const nombreCategoria = mapaCategorias[item.categoria] || item.categoria || "General";
+
+            fila.innerHTML = `
+                <td class="font-medium text-gray-900">${item.nombre}</td>
+                <td class="text-gray-600">${nombreCategoria}</td> 
+                <td class="text-center">${item.unit || 'UN'}</td>
+                <td class="text-center font-bold text-blue-600">${stock}</td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="edit-stock-btn" onclick="prepararEdicionStock('${item.id}', '${item.nombre}', ${stock})">EDITAR</button>
+                    </div>
+                </td>
             `;
-            document.body.appendChild(alertDiv);
-            setTimeout(() => {
-                alertDiv.style.opacity = '0';
-                setTimeout(() => alertDiv.remove(), 500);
-            }, 3000);
+            cuerpoTablaInventario.appendChild(fila);
+        });
+    }
+
+    // --- 4.6 Registrar Entrada de Mercancía (Versión con Depuración) ---
+    async function registrarEntradaStock() {
+        const valorBarra = entradaCantidad.value;
+        const cantidadInput = parseFloat(valorBarra);
+
+        // 🔍 DEBUG: Ver exactamente qué tiene el sistema en memoria antes de validar
+        console.table({
+            sucursal: idSucursalSeleccionada,
+            producto: idProductoSeleccionado,
+            cantidad_cruda: valorBarra,
+            cantidad_procesada: cantidadInput,
+            empresa: idEmpresa
+        });
+
+        // Validaciones específicas para detectar el culpable
+        if (!idSucursalSeleccionada) {
+            mostrarAlerta("Error: No has seleccionado una sucursal de destino.", "warning");
+            return;
         }
-    </script>
+        if (!idProductoSeleccionado) {
+            mostrarAlerta("Error: Debes buscar y seleccionar un producto de la lista.", "warning");
+            return;
+        }
+        if (isNaN(cantidadInput) || cantidadInput <= 0) {
+            mostrarAlerta("Error: La cantidad debe ser un número mayor a cero.", "warning");
+            return;
+        }
+
+        const cantidadTotalASumar = cantidadInput * factorEmpaqueSeleccionado;
+
+        try {
+            botonRegistrar.disabled = true;
+            botonRegistrar.textContent = "Procesando...";
+
+            const resultado = await window.nexusAPI.guardarStockSucursal({
+                productoId: idProductoSeleccionado,
+                sucursalId: idSucursalSeleccionada,
+                companyId: idEmpresa,
+                cantidad: cantidadTotalASumar,
+                operacion: 'SUMAR' 
+            });
+
+            if (resultado.success) {
+                mostrarAlerta(`✅ ¡Éxito! Stock actualizado: +${cantidadTotalASumar} unidades.`, "success");
+                limpiarFormularioEntrada();
+                await cargarInventarioSucursal(); 
+            } else {
+                throw new Error(resultado.error);
+            }
+        } catch (error) {
+            console.error("❌ Error en IPC:", error);
+            mostrarAlerta("Error al guardar en el Cerebro Local: " + error.message, "error");
+        } finally {
+            botonRegistrar.disabled = false;
+            botonRegistrar.textContent = "Registrar Entrada de Inventario";
+        }
+    }
+
+    function limpiarFormularioEntrada() {
+        entradaBusquedaProducto.value = '';
+        idProductoSeleccionado = null;
+        entradaCantidad.value = '';
+        visorStockFinal.value = '0';
+        selectorEmpaque.disabled = true;
+        selectorEmpaque.innerHTML = '<option value="">Selecciona un producto primero...</option>';
+    }
+
+    // --- 5. Utilidades de Interfaz ---
+    function mostrarAlerta(mensaje, tipo = "success") {
+        const colores = {
+            success: "#10B981", // Verde
+            error: "#EF4444",   // Rojo
+            warning: "#F59E0B", // Naranja
+            info: "#3B82F6"     // Azul
+        };
+
+        const alerta = document.createElement('div');
+        alerta.textContent = mensaje;
+        alerta.style.cssText = `
+            position: fixed; top: 20px; right: 20px;
+            background-color: ${colores[tipo]}; color: white;
+            padding: 15px 25px; border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 10000; transition: all 0.5s ease;
+            font-weight: bold;
+        `;
+        document.body.appendChild(alerta);
+        setTimeout(() => {
+            alerta.style.opacity = '0';
+            setTimeout(() => alerta.remove(), 500);
+        }, 3000);
+    }
+
+// --- 6. Event Listeners (Buscador con Navegación) ---
+
+    entradaBusquedaProducto.addEventListener('input', (e) => {
+        focoProducto = -1; // Reiniciamos el foco en cada nueva letra
+        manejarBusquedaProducto(e.target.value);
+    });
+
+    entradaBusquedaProducto.addEventListener('keydown', (e) => {
+        const items = contenedorResultadosBusqueda.querySelectorAll('.result-item');
+        if (items.length === 0) return;
+
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            focoProducto++;
+            if (focoProducto >= items.length) focoProducto = 0;
+            aplicarResaltado(items);
+        } 
+        else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            focoProducto--;
+            if (focoProducto < 0) focoProducto = items.length - 1;
+            aplicarResaltado(items);
+        } 
+        else if (e.key === "Enter") {
+            e.preventDefault();
+            // Si el usuario tiene algo resaltado, hacemos clic en ello
+            if (focoProducto > -1 && items[focoProducto]) {
+                items[focoProducto].click();
+            } else if (items.length > 0) {
+                // Si no hay nada resaltado pero hay resultados, elegimos el primero
+                items[0].click();
+            }
+        }
+    }); // <--- 🔥 LLAVE CORRECTA: Cierra el evento keydown aquí
+
+    // --- EVENTOS AHORA LIBERADOS Y FUNCIONALES ---
+
+    selectorSucursal.addEventListener('change', async (e) => {
+        idSucursalSeleccionada = e.target.value; // Capturamos el ID real
+        console.log(`📍 Nexus POS: Sucursal detectada -> ${idSucursalSeleccionada}`);
+        
+        if (idSucursalSeleccionada) {
+            await cargarInventarioSucursal(); // Ahora sí llamamos a la carga
+        }
+    });
+
+    // Botón de registro
+    botonRegistrar.addEventListener('click', registrarEntradaStock);
+
+    // Cálculo automático del stock final mientras escribes la cantidad
+    entradaCantidad.addEventListener('input', () => {
+        const cant = parseFloat(entradaCantidad.value) || 0;
+        const total = cant * factorEmpaqueSeleccionado;
+        visorStockFinal.value = total.toFixed(2);
+    });
+
+    // Filtro de búsqueda de la tabla (inventario actual)
+    entradaBusquedaInventario.addEventListener('input', (e) => {
+        const termino = e.target.value.toLowerCase();
+        const filtrados = datosInventarioActual.filter(i => 
+            i.nombre.toLowerCase().includes(termino) || (i.codigo && i.codigo.includes(termino))
+        );
+        renderizarTablaInventario(filtrados);
+    });
+
+
+    // --- 7. Ejecución Inicial ---
+    inicializarModulo();
+</script>
 </body>
 </html>
