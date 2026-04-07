@@ -453,6 +453,7 @@
     let factorEmpaqueSeleccionado = 1;
     let datosInventarioActual = [];
     let mapaCategorias = {};
+    let modoEdicion = false;
 
     // --- 2. Referencias a Elementos del DOM ---
     const selectorSucursal = document.getElementById('branch-select');
@@ -700,10 +701,11 @@
             producto: idProductoSeleccionado,
             cantidad_cruda: valorBarra,
             cantidad_procesada: cantidadInput,
-            empresa: idEmpresa
+            empresa: idEmpresa,
+            modo_edicion: modoEdicion
         });
 
-        // Validaciones específicas para detectar el culpable
+        // Validaciones específicas
         if (!idSucursalSeleccionada) {
             mostrarAlerta("Error: No has seleccionado una sucursal de destino.", "warning");
             return;
@@ -712,12 +714,14 @@
             mostrarAlerta("Error: Debes buscar y seleccionar un producto de la lista.", "warning");
             return;
         }
-        if (isNaN(cantidadInput) || cantidadInput <= 0) {
-            mostrarAlerta("Error: La cantidad debe ser un número mayor a cero.", "warning");
+        if (isNaN(cantidadInput) || cantidadInput < 0) { // Permitimos 0 por si es edición
+            mostrarAlerta("Error: Ingresa una cantidad válida.", "warning");
             return;
         }
 
-        const cantidadTotalASumar = cantidadInput * factorEmpaqueSeleccionado;
+        // Lógica de cálculo: Si editamos, fijamos el valor directo. Si es entrada, aplicamos empaque.
+        const cantidadTotalAFijarOSumar = modoEdicion ? cantidadInput : (cantidadInput * factorEmpaqueSeleccionado);
+        const tipoOperacion = modoEdicion ? 'FIJAR' : 'SUMAR';
 
         try {
             botonRegistrar.disabled = true;
@@ -727,23 +731,31 @@
                 productoId: idProductoSeleccionado,
                 sucursalId: idSucursalSeleccionada,
                 companyId: idEmpresa,
-                cantidad: cantidadTotalASumar,
-                operacion: 'SUMAR' 
+                cantidad: cantidadTotalAFijarOSumar,
+                operacion: tipoOperacion 
             });
 
-            if (resultado.success) {
-                mostrarAlerta(`✅ ¡Éxito! Stock actualizado: +${cantidadTotalASumar} unidades.`, "success");
+            if (resultado && resultado.success) {
+                const mensajeExito = modoEdicion ? "✅ Stock corregido correctamente." : `✅ Entrada registrada: +${cantidadTotalAFijarOSumar} unidades.`;
+                mostrarAlerta(mensajeExito, "success");
+                
+                // --- RESET DE MODO EDICIÓN ---
+                modoEdicion = false;
+                botonRegistrar.textContent = "Registrar Entrada de Inventario";
+                botonRegistrar.classList.remove('bg-amber-500');
+                botonRegistrar.classList.add('bg-blue-600');
+
                 limpiarFormularioEntrada();
-                await cargarInventarioSucursal(); 
+                await cargarInventarioSucursal(); // Refrescar tabla visual
             } else {
-                throw new Error(resultado.error);
+                const errorMsg = resultado ? resultado.error : "Error desconocido en el Cerebro";
+                throw new Error(errorMsg);
             }
         } catch (error) {
-            console.error("❌ Error en IPC:", error);
-            mostrarAlerta("Error al guardar en el Cerebro Local: " + error.message, "error");
+            console.error("❌ Error detallado:", error);
+            mostrarAlerta("No se pudo reflejar el cambio: " + error.message, "error");
         } finally {
             botonRegistrar.disabled = false;
-            botonRegistrar.textContent = "Registrar Entrada de Inventario";
         }
     }
 
@@ -837,6 +849,28 @@
         const total = cant * factorEmpaqueSeleccionado;
         visorStockFinal.value = total.toFixed(2);
     });
+
+    window.prepararEdicionStock = (id, nombre, stockActual) => {
+        console.log(`📝 [NEXUS] Preparando edición para: ${nombre}`);
+        
+        // 1. Llenamos las variables de control
+        idProductoSeleccionado = id;
+        modoEdicion = true;
+
+        // 2. Rellenamos la interfaz
+        entradaBusquedaProducto.value = nombre;
+        entradaCantidad.value = stockActual;
+        visorStockFinal.value = stockActual; // Al editar, el stock final es el mismo que el actual inicialmente
+        
+        // 3. Cambiamos visualmente el botón de registro
+        botonRegistrar.textContent = "Actualizar Stock Total (Fijar)";
+        botonRegistrar.classList.replace('bg-blue-600', 'bg-amber-500'); // Color Nexus para edición
+        
+        // 4. Subimos al formulario con un efecto suave
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        mostrarAlerta(`Editando stock de: ${nombre}`, "info");
+    };
 
     // Filtro de búsqueda de la tabla (inventario actual)
     entradaBusquedaInventario.addEventListener('input', (e) => {

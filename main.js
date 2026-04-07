@@ -159,16 +159,16 @@ db.exec(`
     `);
 
     db.exec(`
-        CREATE TABLE IF NOT EXISTS inventario_sucursales (
-            producto_id TEXT,
-            sucursal_id TEXT,
-            company_id TEXT,
-            stock REAL DEFAULT 0,
-            estado_sync INTEGER DEFAULT 0,
-            fecha_modificacion DATETIME DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (producto_id, sucursal_id) -- Evita duplicados del mismo producto en la misma sucursal
-        );
-    `);
+    CREATE TABLE IF NOT EXISTS inventario_sucursales (
+        producto_id TEXT,
+        sucursal_id TEXT,
+        company_id TEXT,
+        stock REAL DEFAULT 0,
+        estado_sync INTEGER DEFAULT 0,
+        fecha_modificacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (producto_id, sucursal_id)
+    );
+`);
 
 
     // Asegúrate de que esto se ejecute al arrancar la app
@@ -889,16 +889,14 @@ ipcMain.handle('obtener-sucursales-local', async (event, companyId) => {
 
 ipcMain.handle('obtener-inventario-sucursal', async (event, { companyId, sucursalId }) => {
     try {
-        // 🔥 CAMBIO CLAVE: Usamos INNER JOIN en lugar de LEFT JOIN.
-        // Esto hace que la tabla "nazca" vacía y solo se llene con los productos
-        // que realmente tienen un registro de stock en esta sucursal específica.
         const stmt = db.prepare(`
             SELECT 
                 p.id, 
                 p.nombre, 
                 p.categoria, 
                 p.codigo,
-                IFNULL(json_extract(p.datos_json, '$.unit'), p.unit) as unit,
+                -- 🛠️ CORRECCIÓN: Extraemos la unidad del JSON porque la columna p.unit no existe
+                IFNULL(json_extract(p.datos_json, '$.unit'), 'UN') as unit, 
                 i.stock as stock_sucursal
             FROM inventario_sucursales i
             INNER JOIN productos_locales p ON p.id = i.producto_id
@@ -915,18 +913,31 @@ ipcMain.handle('guardar-stock-sucursal', async (event, { productoId, sucursalId,
     try {
         const fecha = new Date().toISOString();
         const sql = operacion === 'SUMAR' 
-            ? `INSERT INTO inventario_sucursales (producto_id, sucursal_id, company_id, stock, fecha_modificacion)
-               VALUES (?, ?, ?, ?, ?)
+            ? `INSERT INTO inventario_sucursales (producto_id, sucursal_id, company_id, stock, fecha_modificacion, estado_sync)
+               VALUES (?, ?, ?, ?, ?, 0)
                ON CONFLICT(producto_id, sucursal_id) DO UPDATE SET
-               stock = stock + excluded.stock, fecha_modificacion = excluded.fecha_modificacion`
-            : `INSERT INTO inventario_sucursales (producto_id, sucursal_id, company_id, stock, fecha_modificacion)
-               VALUES (?, ?, ?, ?, ?)
+               stock = stock + excluded.stock, 
+               fecha_modificacion = excluded.fecha_modificacion,
+               estado_sync = 0`
+            : `INSERT INTO inventario_sucursales (producto_id, sucursal_id, company_id, stock, fecha_modificacion, estado_sync)
+               VALUES (?, ?, ?, ?, ?, 0)
                ON CONFLICT(producto_id, sucursal_id) DO UPDATE SET
-               stock = excluded.stock, fecha_modificacion = excluded.fecha_modificacion`;
+               stock = excluded.stock, 
+               fecha_modificacion = excluded.fecha_modificacion,
+               estado_sync = 0`;
 
-        return db.prepare(sql).run(productoId, sucursalId, companyId, cantidad, fecha);
+        const resultado = db.prepare(sql).run(productoId, sucursalId, companyId, cantidad, fecha);
+
+        // 📡 Notificamos a las ventanas
+        BrowserWindow.getAllWindows().forEach(ventana => {
+            if (!ventana.isDestroyed()) ventana.webContents.send('productos-actualizados');
+        });
+
+        // 🔥 CORRECCIÓN CRÍTICA: Enviamos success: true para que el HTML lo entienda
+        return { success: true, changes: resultado.changes }; 
     } catch (e) {
-        return { error: e.message };
+        console.error("❌ Error en guardar-stock-sucursal:", e.message);
+        return { success: false, error: e.message };
     }
 });
 
