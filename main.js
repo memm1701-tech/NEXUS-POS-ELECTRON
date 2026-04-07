@@ -211,6 +211,14 @@ db.exec(`
         estado_sync INTEGER DEFAULT 0,
         fecha_modificacion DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+    
+    CREATE TABLE IF NOT EXISTS configuracion_cajera (
+        clave TEXT PRIMARY KEY,
+        valor TEXT,
+        fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+
 `);
 
 
@@ -1132,6 +1140,45 @@ ipcMain.handle('obtener-salidas-local', async (event, { companyId, branchId }) =
     } catch (e) {
         console.error("❌ Error al obtener historial de salidas:", e.message);
         return [];
+    }
+});
+
+
+ipcMain.handle('obtener-configuracion-cajera', async (event, clave) => {
+    try {
+        const stmt = db.prepare('SELECT valor FROM configuracion_cajera WHERE clave = ?');
+        const resultado = stmt.get(clave);
+        
+
+        return resultado ? resultado.valor : null;
+    } catch (error) {
+        console.error(`❌ Error al obtener configuracion_cajera [${clave}]:`, error.message);
+        return null;
+    }
+});
+
+
+ipcMain.handle('guardar-configuracion-cajera', async (event, clave, valor) => {
+    try {
+        const fechaActual = new Date().toISOString();
+
+        const valorTexto = typeof valor === 'string' ? valor : JSON.stringify(valor);
+
+        const stmt = db.prepare(`
+            INSERT INTO configuracion_cajera (clave, valor, fecha_actualizacion)
+            VALUES (?, ?, ?)
+            ON CONFLICT(clave) DO UPDATE SET
+                valor = excluded.valor,
+                fecha_actualizacion = excluded.fecha_actualizacion
+        `);
+        
+        const resultado = stmt.run(clave, valorTexto, fechaActual);
+        console.log(`✅ Ajustes de cajera guardados bajo la clave: ${clave}`);
+        
+        return { success: true, changes: resultado.changes };
+    } catch (error) {
+        console.error(`❌ Error al guardar en configuracion_cajera [${clave}]:`, error.message);
+        return { success: false, error: error.message };
     }
 });
 

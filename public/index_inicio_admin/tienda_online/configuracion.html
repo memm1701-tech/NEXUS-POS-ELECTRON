@@ -4,9 +4,8 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configuración de Tienda Online</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <script src="tailwindcss.js"></script>
     <style>
         body {
             background-color: #f3f4f6;
@@ -162,13 +161,7 @@
     </main>
 
 <script type="module">
-    import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInWithCustomToken, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-    const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
+    // --- 1. CONSTANTES Y OPCIONES ---
     const CURRENCY_OPTIONS = [
         { code: 'BS', symbol: 'Bs', position: 'prefix', name: 'Bolívares (Bs5.00)' },
         { code: 'USD', symbol: '$', position: 'prefix', name: 'Dólares ($5.00)' },
@@ -179,24 +172,11 @@
     const DEFAULT_RATE_METHOD = 'RateDB';
     const DEFAULT_MANUAL_RATE = 0.00;
 
-    let app;
-    if (getApps().length === 0 && Object.keys(firebaseConfig).length > 0) {
-        app = initializeApp(firebaseConfig);
-    } else if (getApps().length > 0) {
-        app = getApp();
-    } else {
-        const FAKE_FIREBASE = { firestore: { doc: () => {}, setDoc: () => {}, getDoc: () => ({ exists: () => false, data: () => ({}) }) } };
-        window.getFirestore = () => FAKE_FIREBASE.firestore;
-    }
-
-    const auth = app ? getAuth(app) : null;
-    const db = app ? getFirestore(app) : null;
-
+    // --- 2. VARIABLES DE ESTADO ---
     let userId = null;
     let companyId = null; 
-    let userRole = null;
 
-    // Se eliminaron las referencias a los displays de ID de conexión y usuario
+    // --- 3. REFERENCIAS DOM ---
     const saveConfigBtn = document.getElementById('saveConfigBtn');
     const messageBox = document.getElementById('messageBox');
     const storeNameInput = document.getElementById('storeNameInput');
@@ -204,15 +184,14 @@
     const logoFileInput = document.getElementById('logoFileInput');
     const logoUrlInput = document.getElementById('logoUrlInput'); 
     const logoPreview = document.getElementById('logoPreview');
-    const logoMessage = document.getElementById('logoMessage');
     const deliveryEnabledToggle = document.getElementById('deliveryEnabledToggle');
     const currencySelect = document.getElementById('currencySelect');
     const exchangeRateMethodSelect = document.getElementById('exchangeRateMethodSelect');
     const manualRateContainer = document.getElementById('manualRateContainer');
     const manualExchangeRateInput = document.getElementById('manualExchangeRateInput');
 
+    // --- 4. FUNCIONES DE UTILIDAD Y UI ---
     function showMessage(message, color) {
-        // Solo mostramos errores o mensajes de éxito momentáneos, no estados fijos
         messageBox.textContent = message;
         messageBox.style.color = color;
         if(color === 'green') setTimeout(() => messageBox.textContent = '', 3000);
@@ -243,7 +222,7 @@
             logoPreview.classList.add('hidden');
             logoUrlInput.value = '';
             logoFileInput.value = ''; 
-            throw error;
+            showMessage(error.message, 'red');
         }
     }
 
@@ -253,9 +232,7 @@
             const opt = document.createElement('option');
             opt.value = option.code;
             opt.textContent = option.name;
-            if (option.code === selectedCode) {
-                opt.selected = true;
-            }
+            if (option.code === selectedCode) opt.selected = true;
             currencySelect.appendChild(opt);
         });
     }
@@ -272,80 +249,70 @@
         const input = manualExchangeRateInput;
         let cleanedValue = input.value.replace(',', '.').replace(/[^\d.]/g, '');
         const parts = cleanedValue.split('.');
-        if (parts.length > 2) {
-            cleanedValue = parts[0] + '.' + parts.slice(1).join('');
-        }
+        if (parts.length > 2) cleanedValue = parts[0] + '.' + parts.slice(1).join('');
         input.value = cleanedValue;
     }
 
-    async function loadTiendaConfig() {
-        if (!db || !companyId) return;
-        const tiendaDocPath = `companies/${companyId}/configs/tienda`;
+    // --- 5. LÓGICA DE PERSISTENCIA (SQLITE LOCAL) ---
+    
+    async function inicializar() {
         try {
-            const docSnap = await getDoc(doc(db, tiendaDocPath));
-            if (docSnap.exists()) {
-                const data = docSnap.data();
+            // Obtener sesión del Cerebro Local
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
+            if (sesion) {
+                userId = sesion.uid;
+                companyId = sesion.companyId;
+                await loadTiendaConfig();
+            } else {
+                console.warn("No hay sesión activa.");
+            }
+        } catch (error) {
+            console.error("Error al inicializar configuración:", error);
+        }
+    }
+
+    async function loadTiendaConfig() {
+        try {
+            // Leer desde la tabla 'configuracion' de SQLite
+            const configDataRaw = await window.nexusAPI.obtenerConfiguracion('config_tienda_online');
+            
+            if (configDataRaw) {
+                const data = JSON.parse(configDataRaw);
                 storeNameInput.value = data.storeName || DEFAULT_STORE_NAME;
                 whatsappNumberInput.value = data.whatsappNumber || DEFAULT_WHATSAPP;
                 deliveryEnabledToggle.checked = data.deliveryEnabled !== undefined ? data.deliveryEnabled : true; 
+                
                 const storedLogo = data.logoUrl || '';
                 logoUrlInput.value = storedLogo;
                 if (storedLogo) {
                     logoPreview.src = storedLogo;
                     logoPreview.classList.remove('hidden');
                 }
-                const currencyCode = data.currencyCode || DEFAULT_CURRENCY_CODE;
-                populateCurrencySelect(currencyCode);
+                
+                populateCurrencySelect(data.currencyCode || DEFAULT_CURRENCY_CODE);
                 exchangeRateMethodSelect.value = data.exchangeRateMethod || DEFAULT_RATE_METHOD;
-                manualExchangeRateInput.value = data.manualExchangeRate !== undefined ? data.manualExchangeRate : DEFAULT_MANUAL_RATE;
+                manualExchangeRateInput.value = data.manualExchangeRate || DEFAULT_MANUAL_RATE;
                 handleRateMethodChange(); 
             } else {
                 populateCurrencySelect(DEFAULT_CURRENCY_CODE);
                 handleRateMethodChange();
             }
         } catch (error) {
-            console.error("Error al cargar configuración:", error);
-        }
-    }
-
-    async function extractClaimsAndUpdateUI(user) {
-        try {
-            const idTokenResult = await user.getIdTokenResult();
-            userId = user.uid;
-            companyId = idTokenResult.claims.companyId || null; 
-            if (!companyId) return;
-            await loadTiendaConfig(); 
-        } catch (error) {
-            console.error("Error al procesar el token:", error);
-        }
-    }
-
-    if (auth) {
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                await extractClaimsAndUpdateUI(user);
-            } else {
-                await startAuth();
-            }
-        });
-    }
-
-    async function startAuth() {
-        if (initialAuthToken) {
-            try { await signInWithCustomToken(auth, initialAuthToken); } catch (e) {}
-        } else {
-            try { await signInAnonymously(auth); } catch (e) {}
+            console.error("Error al cargar configuración local:", error);
         }
     }
 
     async function saveTiendaConfiguration() {
-        if (!db || !companyId || !userId) throw new Error("Autenticación incompleta.");
+        if (!companyId) throw new Error("No se detectó el ID de la empresa.");
+        
         const rateMethod = exchangeRateMethodSelect.value;
-        let manualRateValue = null;
+        let manualRateValue = 0;
+        
         if (rateMethod === 'RateManual') {
             manualRateValue = parseFloat(manualExchangeRateInput.value);
             if (isNaN(manualRateValue) || manualRateValue <= 0) throw new Error("Tasa manual inválida.");
         }
+
         const tiendaData = {
             ultimoCambio: new Date().toISOString(),
             modificadoPor: userId,
@@ -357,30 +324,52 @@
             exchangeRateMethod: rateMethod, 
             manualExchangeRate: manualRateValue, 
         };
-        await setDoc(doc(db, `companies/${companyId}/configs/tienda`), tiendaData);
+
+        // Guardar en SQLite mediante el puente de Electron
+        await window.nexusAPI.guardarConfiguracion('config_tienda_online', JSON.stringify(tiendaData));
     }
 
     async function saveConfiguration() {
-        try {
-            await saveTiendaConfiguration();
-            showMessage("✅ Guardado con éxito", 'green');
-        } catch (error) {
-            showMessage(`❌ Error: ${error.message}`, 'red');
-        }
+    try {
+        if (!companyId) throw new Error("Sesión no válida. Por favor, reinicie la aplicación.");
+        
+        saveConfigBtn.disabled = true;
+        saveConfigBtn.textContent = "Guardando localmente...";
+
+        // Consolidación de todos los campos presentes en el frontend
+        const tiendaData = {
+            ultimoCambio: new Date().toISOString(),
+            storeName: storeNameInput.value.trim() || DEFAULT_STORE_NAME,
+            whatsappNumber: whatsappNumberInput.value.trim() || DEFAULT_WHATSAPP,
+            logoUrl: logoUrlInput.value.trim(),
+            deliveryEnabled: deliveryEnabledToggle.checked,
+            currencyCode: currencySelect.value,
+            exchangeRateMethod: exchangeRateMethodSelect.value,
+            manualExchangeRate: parseFloat(manualExchangeRateInput.value) || 0,
+        };
+
+        // Guardado directo en la tabla configuracion_cajera de SQLite mediante el puente de Electron
+        await window.nexusAPI.guardarConfiguracionCajera('config_tienda_online', tiendaData);
+        
+        showMessage("✅ Configuración guardada en esta PC con éxito.", 'green');
+    } catch (error) {
+        showMessage(`❌ Error: ${error.message}`, 'red');
+    } finally {
+        saveConfigBtn.disabled = false;
+        saveConfigBtn.textContent = "Guardar Configuración de Tienda";
     }
+}
     
+    // --- 6. EVENT LISTENERS ---
     logoFileInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) handleLogoFileChange(e.target.files[0]).catch(err => {});
+        if (e.target.files.length > 0) handleLogoFileChange(e.target.files[0]);
     });
 
     exchangeRateMethodSelect.addEventListener('change', handleRateMethodChange);
     manualExchangeRateInput.addEventListener('input', validateManualRateInput);
     saveConfigBtn.addEventListener('click', saveConfiguration);
 
-    document.addEventListener('DOMContentLoaded', () => {
-        populateCurrencySelect(DEFAULT_CURRENCY_CODE);
-        handleRateMethodChange(); 
-    });
+    document.addEventListener('DOMContentLoaded', inicializar);
 </script>
 </body>
 </html>
