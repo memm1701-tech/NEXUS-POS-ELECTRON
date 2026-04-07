@@ -4,9 +4,8 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configuración de Tienda Online</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <script src="tailwindcss.js"></script>
     <style>
         body {
             background-color: #f3f4f6;
@@ -82,96 +81,93 @@
     </style>
 </head>
 <body>
-    <main class="w-full">
-        <div class="container space-y-8">
-            <h1>Configuración de Tienda Online</h1>
+<main class="w-full">
+    <div class="container space-y-8">
+        <h1>Configuración de Tienda Online</h1>
+        
+        <p id="messageBox" class="text-center font-bold h-6"></p>
+
+        <div class="flex flex-col md:flex-row gap-6">
             
-            <p id="messageBox" class="text-center"></p>
+            <div class="space-y-4 text-left p-4 border border-blue-200 bg-blue-50 rounded-md md:flex-1">
+                <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                    <i class="fas fa-store mr-2 text-blue-600"></i> Ajustes de Identidad
+                </h2>
 
-            <div class="flex flex-col md:flex-row gap-6">
+                <div class="space-y-2">
+                    <label for="storeNameInput" class="block text-sm font-medium text-gray-700">Nombre de la Tienda:</label>
+                    <input type="text" id="storeNameInput" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border" placeholder="Ej: Inversiones Nexus C.A.">
+                </div>
+
+                <div class="space-y-2">
+                    <label for="whatsappNumberInput" class="block text-sm font-medium text-gray-700">Número de WhatsApp (Ej: 584120000000):</label>
+                    <input type="text" id="whatsappNumberInput" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border" placeholder="584121234567">
+                </div>
                 
-                <div class="space-y-4 text-left p-4 border border-blue-200 bg-blue-50 rounded-md md:flex-1">
-                    <h2 class="text-lg font-semibold text-gray-800 flex items-center">
-                        <i class="fas fa-store mr-2 text-blue-600"></i> Ajustes Generales de Tienda
-                    </h2>
-
-                    <div class="space-y-2">
-                        <label for="storeNameInput" class="block text-sm font-medium text-gray-700">Nombre de la Tienda:</label>
-                        <input type="text" id="storeNameInput" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border" placeholder="Mi Tienda de Repuestos">
+                <div class="space-y-2">
+                    <label for="logoFileInput" class="block text-sm font-medium text-gray-700">Cargar Logo de la Empresa (Máx 5MB):</label>
+                    <div class="flex items-center space-x-3 p-2 bg-white border border-gray-300 rounded-md shadow-sm">
+                        <input type="file" id="logoFileInput" accept="image/png, image/jpeg" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                        <img id="logoPreview" class="h-10 w-10 object-cover rounded-full border border-gray-300 hidden flex-shrink-0" alt="Vista previa del logo">
                     </div>
-
-                    <div class="space-y-2">
-                        <label for="whatsappNumberInput" class="block text-sm font-medium text-gray-700">Número de WhatsApp (Ej: 584120000000):</label>
-                        <input type="text" id="whatsappNumberInput" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border" placeholder="584121234567">
-                    </div>
-                    
-                    <div class="space-y-2">
-                        <label for="logoFileInput" class="block text-sm font-medium text-gray-700">Cargar Logo de la Empresa (Máx 100KB recomendado):</label>
-                        <div class="flex items-center space-x-3 p-2 bg-white border border-gray-300 rounded-md shadow-sm">
-                            <input type="file" id="logoFileInput" accept="image/png, image/jpeg" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                            <img id="logoPreview" class="h-10 w-10 object-cover rounded-full border border-gray-300 hidden flex-shrink-0" alt="Vista previa del logo">
-                        </div>
-                        <input type="hidden" id="logoUrlInput"> <p id="logoMessage" class="text-xs text-gray-500"></p>
-                    </div>
-
-                    <div class="flex items-center justify-between p-3 bg-white rounded-md shadow-sm">
-                        <span class="text-sm font-medium text-gray-700">Habilitar Opción de Delivery (Envío)</span>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="deliveryEnabledToggle">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
+                    <input type="hidden" id="logoUrlInput"> 
+                    <p id="logoMessage" class="text-xs text-gray-500"></p>
                 </div>
 
-                <div class="space-y-4 text-left p-4 border border-green-200 bg-green-50 rounded-md md:flex-1">
-                    <h2 class="text-lg font-semibold text-gray-800 flex items-center">
-                        <i class="fas fa-money-bill-wave mr-2 text-green-600"></i> Configuración de Moneda
-                    </h2>
-
-                    <div class="space-y-2">
-                        <label for="currencySelect" class="block text-sm font-medium text-gray-700">Seleccionar Moneda de la Tienda:</label>
-                        <select id="currencySelect" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
-                            </select>
-                    </div>
-
-                    <hr class="border-green-300">
-                    <h3 class="text-md font-semibold text-gray-700">Tasa de Cambio (USD a BS)</h3>
-
-                    <div class="space-y-2">
-                        <label for="exchangeRateMethodSelect" class="block text-sm font-medium text-gray-700">Tasa a Dividir (Moneda Secundaria):</label>
-                        <select id="exchangeRateMethodSelect" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
-                            <option value="RateDB">Cargar desde Tasa Guardada en la Base de Datos</option>
-                            <option value="RateManual">Elegir Tasa Manualmente</option>
-                        </select>
-                    </div>
-
-                    <div id="manualRateContainer" class="space-y-2 hidden">
-                        <label for="manualExchangeRateInput" class="block text-sm font-medium text-gray-700">Monto Manual de Tasa (Solo números, usa "." para decimales):</label>
-                        <input type="text" id="manualExchangeRateInput" 
-                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border text-lg font-bold text-center" 
-                               placeholder="Ej: 36.50" 
-                               pattern="[0-9]*[.]?[0-9]*"> 
-                    </div>
+                <div class="flex items-center justify-between p-3 bg-white rounded-md shadow-sm border border-gray-200">
+                    <span class="text-sm font-medium text-gray-700">Habilitar Opción de Delivery (Envío)</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="deliveryEnabledToggle">
+                        <span class="slider"></span>
+                    </label>
                 </div>
-                </div>
-            <button id="saveConfigBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-md shadow-lg transition duration-300 ease-in-out text-xl">
-                Guardar Configuración de Tienda
-            </button>
+            </div>
 
+            <div class="space-y-4 text-left p-4 border border-green-200 bg-green-50 rounded-md md:flex-1">
+                <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                    <i class="fas fa-money-bill-wave mr-2 text-green-600"></i> Configuración de Moneda
+                </h2>
+
+                <div class="space-y-2">
+                    <label for="currencySelect" class="block text-sm font-medium text-gray-700">Seleccionar Moneda de la Tienda:</label>
+                    <select id="currencySelect" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
+                        <option value="BS">Bolívares (BS)</option>
+                        <option value="USD">Dólares (USD)</option>
+                    </select>
+                </div>
+
+                <hr class="border-green-300">
+                <h3 class="text-md font-semibold text-gray-700">Gestión de Tasa de Cambio</h3>
+
+                <div class="space-y-2">
+                    <label for="exchangeRateMethodSelect" class="block text-sm font-medium text-gray-700">Origen de la Tasa:</label>
+                    <select id="exchangeRateMethodSelect" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
+                        <option value="RateDB">Cargar desde Base de Datos (BCV)</option>
+                        <option value="RateManual">Establecer Tasa Manualmente</option>
+                    </select>
+                </div>
+
+                <div id="manualRateContainer" class="space-y-2 hidden">
+                    <label for="manualExchangeRateInput" class="block text-sm font-medium text-gray-700">Monto Manual de Tasa:</label>
+                    <input type="text" id="manualExchangeRateInput" 
+                           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border text-lg font-bold text-center" 
+                           placeholder="Ej: 36.50" 
+                           pattern="[0-9]*[.]?[0-9]*"> 
+                </div>
+            </div>
         </div>
-    </main>
+
+        <button id="saveConfigBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-md shadow-lg transition duration-300 ease-in-out text-xl">
+            Guardar Configuración de Tienda
+        </button>
+    </div>
+</main>
 
 <script type="module">
-    import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInWithCustomToken, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-    const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
+    // --- 1. CONSTANTES Y OPCIONES ---
     const CURRENCY_OPTIONS = [
-        { code: 'BS', symbol: 'Bs', position: 'prefix', name: 'Bolívares (Bs5.00)' },
-        { code: 'USD', symbol: '$', position: 'prefix', name: 'Dólares ($5.00)' },
+        { code: 'BS', symbol: 'Bs', position: 'prefix', name: 'Bolívares (BS)' },
+        { code: 'USD', symbol: '$', position: 'prefix', name: 'Dólares (USD)' },
     ];
     const DEFAULT_CURRENCY_CODE = 'BS';
     const DEFAULT_WHATSAPP = '584120000000';
@@ -179,24 +175,11 @@
     const DEFAULT_RATE_METHOD = 'RateDB';
     const DEFAULT_MANUAL_RATE = 0.00;
 
-    let app;
-    if (getApps().length === 0 && Object.keys(firebaseConfig).length > 0) {
-        app = initializeApp(firebaseConfig);
-    } else if (getApps().length > 0) {
-        app = getApp();
-    } else {
-        const FAKE_FIREBASE = { firestore: { doc: () => {}, setDoc: () => {}, getDoc: () => ({ exists: () => false, data: () => ({}) }) } };
-        window.getFirestore = () => FAKE_FIREBASE.firestore;
-    }
-
-    const auth = app ? getAuth(app) : null;
-    const db = app ? getFirestore(app) : null;
-
+    // --- 2. VARIABLES DE ESTADO ---
     let userId = null;
     let companyId = null; 
-    let userRole = null;
 
-    // Se eliminaron las referencias a los displays de ID de conexión y usuario
+    // --- 3. REFERENCIAS DOM ---
     const saveConfigBtn = document.getElementById('saveConfigBtn');
     const messageBox = document.getElementById('messageBox');
     const storeNameInput = document.getElementById('storeNameInput');
@@ -204,15 +187,14 @@
     const logoFileInput = document.getElementById('logoFileInput');
     const logoUrlInput = document.getElementById('logoUrlInput'); 
     const logoPreview = document.getElementById('logoPreview');
-    const logoMessage = document.getElementById('logoMessage');
     const deliveryEnabledToggle = document.getElementById('deliveryEnabledToggle');
     const currencySelect = document.getElementById('currencySelect');
     const exchangeRateMethodSelect = document.getElementById('exchangeRateMethodSelect');
     const manualRateContainer = document.getElementById('manualRateContainer');
     const manualExchangeRateInput = document.getElementById('manualExchangeRateInput');
 
+    // --- 4. FUNCIONES DE UTILIDAD Y UI ---
     function showMessage(message, color) {
-        // Solo mostramos errores o mensajes de éxito momentáneos, no estados fijos
         messageBox.textContent = message;
         messageBox.style.color = color;
         if(color === 'green') setTimeout(() => messageBox.textContent = '', 3000);
@@ -220,9 +202,10 @@
     
     function convertFileToBase64(file) {
         return new Promise((resolve, reject) => {
-            if (file.size > 150000) { 
-                 reject(new Error("El archivo excede el tamaño máximo recomendado (150KB)."));
-                 return;
+            const LIMITE_5MB = 15 * 1024 * 1024; // 5,242,880 bytes
+            if (file.size > LIMITE_5MB) { 
+                reject(new Error("El archivo es demasiado grande. El límite máximo es de 15MB."));
+                return;
             }
             const reader = new FileReader();
             reader.onload = () => resolve(reader.result);
@@ -243,7 +226,7 @@
             logoPreview.classList.add('hidden');
             logoUrlInput.value = '';
             logoFileInput.value = ''; 
-            throw error;
+            showMessage(error.message, 'red');
         }
     }
 
@@ -253,9 +236,7 @@
             const opt = document.createElement('option');
             opt.value = option.code;
             opt.textContent = option.name;
-            if (option.code === selectedCode) {
-                opt.selected = true;
-            }
+            if (option.code === selectedCode) opt.selected = true;
             currencySelect.appendChild(opt);
         });
     }
@@ -272,80 +253,84 @@
         const input = manualExchangeRateInput;
         let cleanedValue = input.value.replace(',', '.').replace(/[^\d.]/g, '');
         const parts = cleanedValue.split('.');
-        if (parts.length > 2) {
-            cleanedValue = parts[0] + '.' + parts.slice(1).join('');
-        }
+        if (parts.length > 2) cleanedValue = parts[0] + '.' + parts.slice(1).join('');
         input.value = cleanedValue;
     }
 
-    async function loadTiendaConfig() {
-        if (!db || !companyId) return;
-        const tiendaDocPath = `companies/${companyId}/configs/tienda`;
+    // --- 5. LÓGICA DE PERSISTENCIA (SQLITE LOCAL) ---
+    
+    async function inicializar() {
         try {
-            const docSnap = await getDoc(doc(db, tiendaDocPath));
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                storeNameInput.value = data.storeName || DEFAULT_STORE_NAME;
-                whatsappNumberInput.value = data.whatsappNumber || DEFAULT_WHATSAPP;
-                deliveryEnabledToggle.checked = data.deliveryEnabled !== undefined ? data.deliveryEnabled : true; 
-                const storedLogo = data.logoUrl || '';
-                logoUrlInput.value = storedLogo;
-                if (storedLogo) {
-                    logoPreview.src = storedLogo;
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
+            // Solo nos interesa el ID de la empresa
+            if (sesion && sesion.companyId) {
+                companyId = sesion.companyId;
+            } else {
+                // Si no hay sesión, asignamos un ID local por defecto para no bloquear
+                companyId = 'NEXUS-LOCAL'; 
+            }
+            
+            await loadTiendaConfig();
+        } catch (error) { 
+            console.error("Error al arrancar:", error); 
+            companyId = 'NEXUS-LOCAL';
+            await loadTiendaConfig();
+        }
+    }
+
+    async function loadTiendaConfig() {
+    try {
+        // 1. Pedimos la configuración guardada bajo la clave 'config_tienda_online'
+        const configDataRaw = await window.nexusAPI.obtenerConfiguracionCajera('config_tienda_online');
+        
+        if (configDataRaw) {
+            // Convertimos el texto de la base de datos a un objeto de JavaScript
+            const data = typeof configDataRaw === 'string' ? JSON.parse(configDataRaw) : configDataRaw;
+            
+            // 2. Rellenamos cada casilla con el valor guardado o el valor por defecto
+            if (storeNameInput) storeNameInput.value = data.storeName || '';
+            if (whatsappNumberInput) whatsappNumberInput.value = data.whatsappNumber || '';
+            if (deliveryEnabledToggle) deliveryEnabledToggle.checked = !!data.deliveryEnabled; 
+            
+            // 3. Restauramos el Logo (Vista previa)
+            if (data.logoUrl) {
+                if (logoUrlInput) logoUrlInput.value = data.logoUrl;
+                if (logoPreview) {
+                    logoPreview.src = data.logoUrl;
                     logoPreview.classList.remove('hidden');
                 }
-                const currencyCode = data.currencyCode || DEFAULT_CURRENCY_CODE;
-                populateCurrencySelect(currencyCode);
-                exchangeRateMethodSelect.value = data.exchangeRateMethod || DEFAULT_RATE_METHOD;
-                manualExchangeRateInput.value = data.manualExchangeRate !== undefined ? data.manualExchangeRate : DEFAULT_MANUAL_RATE;
-                handleRateMethodChange(); 
-            } else {
-                populateCurrencySelect(DEFAULT_CURRENCY_CODE);
-                handleRateMethodChange();
             }
-        } catch (error) {
-            console.error("Error al cargar configuración:", error);
-        }
-    }
-
-    async function extractClaimsAndUpdateUI(user) {
-        try {
-            const idTokenResult = await user.getIdTokenResult();
-            userId = user.uid;
-            companyId = idTokenResult.claims.companyId || null; 
-            if (!companyId) return;
-            await loadTiendaConfig(); 
-        } catch (error) {
-            console.error("Error al procesar el token:", error);
-        }
-    }
-
-    if (auth) {
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                await extractClaimsAndUpdateUI(user);
-            } else {
-                await startAuth();
+            
+            // 4. Ajustes de Moneda y Tasa
+            if (currencySelect) currencySelect.value = data.currencyCode || 'BS';
+            if (exchangeRateMethodSelect) exchangeRateMethodSelect.value = data.exchangeRateMethod || 'RateDB';
+            
+            if (manualExchangeRateInput) {
+                // Si el valor es 0, lo mostramos como 0.00
+                manualExchangeRateInput.value = data.manualExchangeRate !== undefined ? data.manualExchangeRate : '0.00';
             }
-        });
-    }
 
-    async function startAuth() {
-        if (initialAuthToken) {
-            try { await signInWithCustomToken(auth, initialAuthToken); } catch (e) {}
-        } else {
-            try { await signInAnonymously(auth); } catch (e) {}
+            // 5. 🔥 IMPORTANTE: Disparamos la lógica visual para mostrar/ocultar la tasa manual
+            handleRateMethodChange(); 
+
+            console.log("📂 Configuración cargada y aplicada a la interfaz.");
         }
+    } catch (error) {
+        console.error("❌ Error al cargar configuración desde SQLite:", error);
     }
+}
 
     async function saveTiendaConfiguration() {
-        if (!db || !companyId || !userId) throw new Error("Autenticación incompleta.");
+        if (!companyId) throw new Error("No se detectó el ID de la empresa.");
+        
         const rateMethod = exchangeRateMethodSelect.value;
-        let manualRateValue = null;
+        let manualRateValue = 0;
+        
         if (rateMethod === 'RateManual') {
             manualRateValue = parseFloat(manualExchangeRateInput.value);
             if (isNaN(manualRateValue) || manualRateValue <= 0) throw new Error("Tasa manual inválida.");
         }
+
         const tiendaData = {
             ultimoCambio: new Date().toISOString(),
             modificadoPor: userId,
@@ -357,30 +342,60 @@
             exchangeRateMethod: rateMethod, 
             manualExchangeRate: manualRateValue, 
         };
-        await setDoc(doc(db, `companies/${companyId}/configs/tienda`), tiendaData);
+
+        // Guardar en SQLite mediante el puente de Electron
+        await window.nexusAPI.guardarConfiguracion('config_tienda_online', JSON.stringify(tiendaData));
     }
 
     async function saveConfiguration() {
         try {
-            await saveTiendaConfiguration();
-            showMessage("✅ Guardado con éxito", 'green');
+            // Si por alguna falla de carga companyId está vacío, lo forzamos.
+            // Cero validaciones de "usuario" o "sesión" activa.
+            if (!companyId) companyId = 'NEXUS-LOCAL';
+            
+            saveConfigBtn.disabled = true;
+            saveConfigBtn.textContent = "Guardando localmente...";
+
+            const tiendaData = {
+                ultimoCambio: new Date().toISOString(),
+                company_id: companyId, // Adjuntamos la empresa
+                storeName: storeNameInput.value.trim() || DEFAULT_STORE_NAME,
+                whatsappNumber: whatsappNumberInput.value.trim() || DEFAULT_WHATSAPP,
+                logoUrl: logoUrlInput.value.trim(), 
+                deliveryEnabled: deliveryEnabledToggle.checked,
+                currencyCode: currencySelect.value,
+                exchangeRateMethod: exchangeRateMethodSelect.value, 
+                manualExchangeRate: parseFloat(manualExchangeRateInput.value) || 0, 
+            };
+
+            // Guarda en la tabla configuracion_cajera de SQLite
+            await window.nexusAPI.guardarConfiguracionCajera('config_tienda_online', tiendaData);
+            
+            showMessage("✅ Configuración guardada en esta PC.", 'green');
         } catch (error) {
-            showMessage(`❌ Error: ${error.message}`, 'red');
+            showMessage(`❌ Error al guardar: ${error.message}`, 'red');
+        } finally {
+            saveConfigBtn.disabled = false;
+            saveConfigBtn.textContent = "Guardar Configuración de Tienda";
         }
     }
+
+
     
+    // --- 6. EVENT LISTENERS ---
     logoFileInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) handleLogoFileChange(e.target.files[0]).catch(err => {});
+        if (e.target.files.length > 0) handleLogoFileChange(e.target.files[0]);
     });
 
     exchangeRateMethodSelect.addEventListener('change', handleRateMethodChange);
     manualExchangeRateInput.addEventListener('input', validateManualRateInput);
     saveConfigBtn.addEventListener('click', saveConfiguration);
 
-    document.addEventListener('DOMContentLoaded', () => {
-        populateCurrencySelect(DEFAULT_CURRENCY_CODE);
-        handleRateMethodChange(); 
-    });
+        document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Buscamos la sesión (para tener el ID de empresa)
+    await inicializar(); 
+    // 2. La función inicializar() ya llama internamente a loadTiendaConfig()
+});
 </script>
 </body>
 </html>
