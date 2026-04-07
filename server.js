@@ -103,7 +103,6 @@ if (config.isServer) {
         } catch (e) { res.status(500).json({ error: e.message }); }
     });
 
-    // --- 3. ENDPOINT: CORRELATIVO MAESTRO ---
     server.post('/api/maestro/obtener-correlativo', (req, res) => {
         const { tipo } = req.body;
         try {
@@ -120,8 +119,6 @@ if (config.isServer) {
         } catch (e) { res.status(500).json({ error: e.message }); }
     });
 
-    // --- 4. ENDPOINT: REGISTRAR ENTRADA/AJUSTE DE STOCK (Suma) ---
-    // Este endpoint recibe las cargas de mercancía de las cajas
     server.post('/api/maestro/registrar-entrada', (req, res) => {
         const { items } = req.body;
         try {
