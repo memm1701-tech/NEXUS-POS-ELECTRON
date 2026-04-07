@@ -1857,6 +1857,8 @@ function addProductToCartFromExtendedSearch(productId) {
 
 async function processSale() {
     const confirmBtn = document.getElementById('btn-confirm-payment');
+    
+    // 1. BLOQUEO DE DOBLE CLIC
     if (window.isProcessingSale) {
         console.warn("Venta ya en proceso. Ignorando doble clic.");
         return;
@@ -1868,82 +1870,47 @@ async function processSale() {
         confirmBtn.textContent = 'Procesando...';
     }
 
+    // 2. CAPTURA DE TOTALES Y PAGOS
     const totalElement = document.getElementById('total');
     const total = parseFloat(totalElement ? totalElement.textContent.replace(/[^\d.]/g, '') : '0'); 
-    const subtotalElement = document.getElementById('subtotal');
-    const subtotal = parseFloat(subtotalElement ? subtotalElement.textContent.replace(/[^\d.]/g, '') : '0');
     const montoPagadoElement = document.getElementById('montoPagado');
     const montoPagado = parseFloat(montoPagadoElement ? montoPagadoElement.textContent.replace(/[^\d.]/g, '') : '0');
 
+    // 3. VALIDACIONES INICIALES
     if (cart.length === 0) {
         window.isProcessingSale = false;
-        if (confirmBtn) {
-            confirmBtn.disabled = false;
-            confirmBtn.textContent = 'Confirmar Venta (F3)';
-        }
-        messageBox("El carrito está vacío. No se puede procesar la venta.", 'bg-red-500');
-        return;
+        if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Confirmar Venta (F3)'; }
+        return messageBox("El carrito está vacío.", 'bg-red-500');
     }
     
     if (montoPagado < total) {
         window.isProcessingSale = false;
-        if (confirmBtn) {
-            confirmBtn.disabled = false;
-            confirmBtn.textContent = 'Confirmar Venta (F3)';
-        }
-        messageBox("El monto pagado es insuficiente para cubrir el total de la factura.", 'bg-red-500');
-        return;
+        if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Confirmar Venta (F3)'; }
+        return messageBox("Monto pagado insuficiente.", 'bg-red-500');
     }
     
-    if (!isAuthReady || !userId || !companyId || !branchId) {
-        window.isProcessingSale = false;
-        if (confirmBtn) {
-            confirmBtn.disabled = false;
-            confirmBtn.textContent = 'Confirmar Venta (F3)';
-        }
-        messageBox("Error: La información de usuario/compañía/sucursal no está disponible.", 'bg-red-500');
-        return;
-    }
-
     const clienteActivo = (window.GestorClientes && window.GestorClientes.selectedCustomer) 
                             ? window.GestorClientes.selectedCustomer 
                             : (typeof selectedCustomer !== 'undefined' ? selectedCustomer : null);
 
     if (!clienteActivo) {
         window.isProcessingSale = false;
-        if (confirmBtn) {
-            confirmBtn.disabled = false;
-            confirmBtn.textContent = 'Confirmar Venta (F3)';
-        }
-        messageBox("Por favor, seleccione o agregue un cliente para procesar la venta.", 'bg-red-500');
-        return;
+        if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Confirmar Venta (F3)'; }
+        return messageBox("Debe seleccionar un cliente.", 'bg-red-500');
     }
     
     try {
-        const pagoEfectivoRecibido = parseFloat(document.getElementById('efectivo-amount').value) || 0;
-        const pagoMovilRecibido = parseFloat(document.getElementById('pago-movil-amount').value) || 0;
-        const dolarRecibido = parseFloat(document.getElementById('dolar-amount').value) || 0;
-        const vueltoEfectivoDado = parseFloat(document.getElementById('vuelto-efectivo-amount')?.value) || 0;
-        const vueltoDolarDado = parseFloat(document.getElementById('vuelto-dolar-amount')?.value) || 0;
-        const vueltoPagoMovilDado = parseFloat(document.getElementById('vuelto-pago-movil-amount')?.value) || 0;
-        
-        const efectivoNetoParaCaja = pagoEfectivoRecibido - vueltoEfectivoDado;
-        const dolarNetoParaCaja = dolarRecibido - vueltoDolarDado;
-        const pagoMovilNetoParaCaja = pagoMovilRecibido - vueltoPagoMovilDado;
+        // 4. OBTENCIÓN DE CORRELATIVOS REALES (MAESTRO)
+        // Pedimos al servidor maestro los números oficiales para evitar saltos o duplicados
+        const corrFactura = await window.nexusAPI.obtenerProximoCorrelativo('FORMA_LIBRE');
+        // Asumimos que tienes 'CONTROL_FISCAL' configurado en server.js para el número de control
+        const corrControl = await window.nexusAPI.obtenerProximoCorrelativo('CONTROL_FISCAL');
 
-        const payments = {
-            efectivo: efectivoNetoParaCaja, 
-            pagomovil: pagoMovilNetoParaCaja,
-            dolar: dolarNetoParaCaja,
-            debito: parseFloat(document.getElementById('debito-amount').value) || 0,
-            biopago: parseFloat(document.getElementById('bio-pago-amount').value) || 0,
-            transferencia: parseFloat(document.getElementById('transferencia-amount').value) || 0,
-            deposito: parseFloat(document.getElementById('deposito-amount').value) || 0,
-            credito: parseFloat(document.getElementById('credito-amount').value) || 0,
-            tarjetaCredito: parseFloat(document.getElementById('tarjeta-credito-amount').value) || 0,
-        };
+        if (corrFactura.error || corrControl.error) {
+            throw new Error("No se pudieron obtener los correlativos del Servidor Maestro.");
+        }
 
-        // 🟢 CÁLCULOS FISCALES REALES PARA TU TABLA ventas_locales
+        // 5. CÁLCULOS FISCALES
         let montoExento = 0;
         let baseImponible = 0;
         let montoIva = 0;
@@ -1957,16 +1924,17 @@ async function processSale() {
             }
         });
 
-        // IGTF 3% sobre el pago en dólares (convertido a Bs)
+        const dolarRecibido = parseFloat(document.getElementById('dolar-amount').value) || 0;
         const montoIgtf = dolarRecibido > 0 ? (dolarRecibido * (window.dolarExchangeRate || 1)) * 0.03 : 0;
 
+        // 6. ESTRUCTURA DE LA VENTA
         const newSale = {
             id: `VTA-${Date.now()}`,
             company_id: companyId,
             branch_id: branchId,
             cashier_id: userId,
-            numero_factura: `FAC-${Date.now()}`, // Aquí podrías llamar a obtenerProximoCorrelativo
-            numero_control: `00-${Math.floor(Math.random() * 900000)}`,
+            numero_factura: corrFactura.formato, // Número oficial del Maestro
+            numero_control: corrControl.formato, // Número oficial del Maestro
             cliente_nombre: clienteActivo.nombre || clienteActivo.name || 'CONSUMIDOR FINAL',
             cliente_rif: clienteActivo.rif || clienteActivo.ci || 'V000000000',
             monto_exento: montoExento,
@@ -1975,25 +1943,39 @@ async function processSale() {
             monto_igtf: montoIgtf,
             monto_total: total + montoIgtf,
             tasa_bcv: window.dolarExchangeRate || 1,
-            metodo_pago: JSON.stringify(payments),
-            datos_json: JSON.stringify(cart)
+            metodo_pago: JSON.stringify({
+                efectivo: (parseFloat(document.getElementById('efectivo-amount').value) || 0) - (parseFloat(document.getElementById('vuelto-efectivo-amount')?.value) || 0),
+                pagomovil: (parseFloat(document.getElementById('pago-movil-amount').value) || 0) - (parseFloat(document.getElementById('vuelto-pago-movil-amount')?.value) || 0),
+                dolar: (parseFloat(document.getElementById('dolar-amount').value) || 0) - (parseFloat(document.getElementById('vuelto-dolar-amount')?.value) || 0),
+                debito: parseFloat(document.getElementById('debito-amount').value) || 0,
+                biopago: parseFloat(document.getElementById('bio-pago-amount').value) || 0,
+                transferencia: parseFloat(document.getElementById('transferencia-amount').value) || 0,
+                deposito: parseFloat(document.getElementById('deposito-amount').value) || 0,
+                credito: parseFloat(document.getElementById('credito-amount').value) || 0,
+                tarjetaCredito: parseFloat(document.getElementById('tarjeta-credito-amount').value) || 0,
+            }),
+            datos_json: JSON.stringify({
+                productos: cart,
+                cliente: clienteActivo,
+                tasa: window.dolarExchangeRate
+            })
         };
         
-        // 🟢 FASE REAL: GUARDADO EN SQLITE (Cerebro local)
+        // 7. GUARDADO Y VALIDACIÓN DE STOCK (CRUCIAL)
+        // El main.js ahora intercepta esto, habla con el Maestro y descuenta el stock real
         const respuestaDB = await window.nexusAPI.guardarVentaLocal(newSale);
         
         if (respuestaDB && respuestaDB.error) {
+            // Aquí capturamos si el Maestro dijo "Stock insuficiente"
             throw new Error(respuestaDB.error);
         }
 
-        if (currentInvoiceId) {
-             console.log("🧹 Borrador procesado.");
-             currentInvoiceId = null;
-        }
+        // 8. FINALIZACIÓN EXITOSA
+        if (currentInvoiceId) currentInvoiceId = null;
         
-        if (typeof messageBox === 'function') messageBox("Venta procesada con éxito.", 'bg-green-500');
+        messageBox("✅ Venta procesada y stock actualizado en red.", 'bg-green-500');
 
-        await printInvoice();
+        await printInvoice(); // Esta función también usará los correlativos oficiales ahora
         resetPaymentModalState();        
         clearCart();
         
@@ -2004,24 +1986,15 @@ async function processSale() {
         }
 
         window.isProcessingSale = false; 
-        
-        if (confirmBtn) {
-            confirmBtn.textContent = '✅ Venta Exitosa!'; 
-            confirmBtn.disabled = false; 
-        }
+        if (confirmBtn) { confirmBtn.textContent = '✅ Venta Exitosa!'; confirmBtn.disabled = false; }
 
     } catch (error) {
-        messageBox(`Error: ${error.message || "Fallo al procesar la venta."}`, 'bg-red-500');
-        console.error("Error al procesar la venta:", error);
+        // Manejo de errores (Red, Stock insuficiente, etc)
+        messageBox(`Error: ${error.message}`, 'bg-red-500');
+        console.error("❌ Error en venta:", error);
         window.isProcessingSale = false;
-        if (confirmBtn) {
-            confirmBtn.disabled = false;
-            confirmBtn.textContent = 'Confirmar Venta (F3)';
-        }
+        if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Confirmar Venta (F3)'; }
     }
-
-    cart = []; 
-    renderCart(); 
 }
 
 
@@ -3217,56 +3190,6 @@ async function fetchFacturaConfig() {
     } catch (error) {
         console.error("[CONFIG] Error al buscar la configuración de factura local:", error);
         enableMulticurrency = false; 
-    }
-}
-
-
-async function descontarInventario(cartData) {
-
-    const API_URL = 'https://stock.nexusposgobal.com/api/inventario/procesar-venta';
-    
-    
-    const itemsParaDescontar = cartData.map(item => {
-        return {
-            documentId: item.id, 
-            cantidadADescontar: item.quantity 
-        };
-    });
-    
-    const bodyPayload = {
-        items: itemsParaDescontar, 
-        companyID: companyId,
-        branchID: branchId    
-    };
-
-    try {
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(bodyPayload),
-            credentials: 'omit', 
-        });
-
-        const data = await response.json();
-        
-        if (!response.ok) {
-            const errorMessage = data.message || `Error del servidor (${response.status}): No se pudo completar la venta.`;
-            console.error(`Error de API (${response.status}):`, data);
-            
-            // Reemplace messageBox si usa otra función para notificaciones
-            messageBox(`Error de Venta: ${errorMessage}`, 'bg-red-700'); 
-            return false;
-        }
-
-        console.log("Respuesta de la API de Inventario:", data.message, data.details);
-        return true;
-
-    } catch (error) {
-        console.error("Error de red o CORS al contactar la API de stock:", error);
-        messageBox("Error de Conexión: No se pudo contactar el servidor de inventario. Verifique la red.", 'bg-red-700');
-        return false;
     }
 }
 

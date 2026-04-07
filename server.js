@@ -6,7 +6,6 @@ const Database = require('better-sqlite3');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const https = require('https');
-
 const server = express();
 const PORT = 3000;
 
