@@ -37,9 +37,19 @@
     h1 {
         color: #333;
         margin-bottom: 25px;
-        font-size: 2.2em;
+        font-size: 2.2em; /* Aproximadamente 35px */
         font-weight: 700;
         letter-spacing: -1px;
+    }
+
+    h2 {
+        color: #333;
+        margin-bottom: 20px;
+        /* Reducido para que sea ~11px más pequeño que el H1 */
+        font-size: 1.5em; 
+        font-weight: 700;
+        letter-spacing: -1px;
+        text-align: center; /* Mantiene la simetría con el contenedor */
     }
 
     .form-section {
@@ -607,17 +617,17 @@
         idProductoSeleccionado = producto.id;
         entradaBusquedaProducto.value = producto.nombre;
         
-        // Limpieza y cierre inmediato
+        // Limpieza de buscador
         contenedorResultadosBusqueda.innerHTML = '';
         contenedorResultadosBusqueda.classList.remove('activo');
         
-        console.log(`🎯 Nexus POS: Seleccionado ${producto.nombre}`);
+        // 🔥 DISPARO DE LÓGICA DE EMPAQUE
+        actualizarSelectEmpaques(producto.id, producto.unidad);
         
-        // Enfocar el siguiente campo (Cantidad) para agilizar la carga
-        if(entradaCantidad) entradaCantidad.focus();
-
-        if (typeof actualizarSelectEmpaques === 'function') {
-            actualizarSelectEmpaques(producto.nombre, producto.unidad);
+        // Enfocar cantidad para velocidad de usuario
+        if(entradaCantidad) {
+            entradaCantidad.focus();
+            entradaCantidad.value = ""; // Limpiar valor previo si existe
         }
     }
 
@@ -794,6 +804,57 @@
         }, 3000);
     }
 
+    async function actualizarSelectEmpaques(idProducto, unidadBase = 'UN') {
+        try {
+            console.log(`🔍 [NEXUS] Buscando unidades de empaque para: ${idProducto}`);
+            
+            // 1. Consultar al Cerebro Local (IPC definido en su momento)
+            const empaques = await window.nexusAPI.obtenerEmpaquePorProducto(idProducto);
+            
+            // 2. Limpiar y habilitar el selector
+            selectorEmpaque.innerHTML = '';
+            selectorEmpaque.disabled = false;
+
+            // 3. Añadir SIEMPRE la "Unidad Base" (multiplicador 1)
+            const optBase = document.createElement('option');
+            optBase.value = "1";
+            optBase.textContent = `Unidad Individual (1.00 ${unidadBase})`;
+            selectorEmpaque.appendChild(optBase);
+
+            // 4. Si hay empaques especiales (Bultos, Sacos), los añadimos
+            if (empaques && empaques.length > 0) {
+                empaques.forEach(emp => {
+                    const opt = document.createElement('option');
+                    opt.value = emp.factor_cantidad; // Ejemplo: 24.00
+                    // Mostramos: "Bulto (x24.00 Kilos)"
+                    opt.textContent = `${emp.nombre_unidad} (x${emp.factor_cantidad} ${emp.tipo_medida})`;
+                    selectorEmpaque.appendChild(opt);
+                });
+                mostrarAlerta(`Se encontraron ${empaques.length} empaques vinculados.`, "info");
+            }
+
+            // 5. Resetear el factor al valor de la primera opción (la base)
+            factorEmpaqueSeleccionado = 1;
+            recalcularStockTotal();
+
+        } catch (error) {
+            console.error("❌ Error vinculando empaques:", error);
+            selectorEmpaque.innerHTML = '<option value="1">Error cargando empaques (Usa x1)</option>';
+        }
+    }
+
+    function recalcularStockTotal() {
+        const cantidadIngresada = parseFloat(entradaCantidad.value) || 0;
+        
+        // REGLA MATEMÁTICA: Cantidad de empaques * Factor de conversión
+        const totalCalculado = cantidadIngresada * factorEmpaqueSeleccionado;
+        
+        // Actualizar el visor visual
+        visorStockFinal.value = totalCalculado.toFixed(2);
+        
+        console.log(`🧪 [CÁLCULO NEXUS]: ${cantidadIngresada} x ${factorEmpaqueSeleccionado} = ${totalCalculado}`);
+    }
+
 // --- 6. Event Listeners (Buscador con Navegación) ---
 
     entradaBusquedaProducto.addEventListener('input', (e) => {
@@ -871,6 +932,14 @@
         
         mostrarAlerta(`Editando stock de: ${nombre}`, "info");
     };
+
+    selectorEmpaque.addEventListener('change', (e) => {
+        factorEmpaqueSeleccionado = parseFloat(e.target.value) || 1;
+        recalcularStockTotal();
+    });
+
+    // 2. Cuando el usuario escribe la cantidad (Reemplaza tu listener anterior)
+    entradaCantidad.addEventListener('input', recalcularStockTotal);
 
     // Filtro de búsqueda de la tabla (inventario actual)
     entradaBusquedaInventario.addEventListener('input', (e) => {

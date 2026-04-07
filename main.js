@@ -118,12 +118,12 @@ db.exec(`
 
 
     db.exec(`
-    CREATE TABLE IF NOT EXISTS historial_tasas (
-        fecha DATE PRIMARY KEY, 
-        valor DECIMAL(18, 8) NOT NULL,
-        fuente TEXT DEFAULT 'BCV'
-    );
-`);
+        CREATE TABLE IF NOT EXISTS historial_tasas (
+            fecha DATE PRIMARY KEY, 
+            valor DECIMAL(18, 8) NOT NULL,
+            fuente TEXT DEFAULT 'BCV'
+        );
+    `);
 
     db.exec(`
         CREATE TABLE IF NOT EXISTS ventas_locales (
@@ -170,8 +170,21 @@ db.exec(`
     );
 `);
 
+db.exec(`
+    CREATE TABLE IF NOT EXISTS unidades_empaque (
+        id TEXT PRIMARY KEY,
+        company_id TEXT,
+        product_id TEXT,
+        nombre_unidad TEXT, -- Ej: 'Bulto', 'Cesta'
+        tipo_medida TEXT,   -- Ej: 'Kilos', 'Unidades'
+        factor_cantidad REAL, -- Ej: 24.0
+        estado_sync INTEGER DEFAULT 0,
+        fecha_modificacion DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+`);
 
-    // Asegúrate de que esto se ejecute al arrancar la app
+
+
         db.prepare(`
             CREATE TABLE IF NOT EXISTS sucursales (
                 id TEXT PRIMARY KEY,
@@ -183,6 +196,24 @@ db.exec(`
                 fecha_modificacion TEXT
             )
         `).run();
+
+        db.exec(`
+    CREATE TABLE IF NOT EXISTS salidas_inventario (
+        id TEXT PRIMARY KEY,
+        company_id TEXT,
+        branch_id TEXT,
+        product_id TEXT,
+        cantidad REAL,
+        unidad TEXT,
+        motivo TEXT,
+        observacion TEXT,
+        usuario_id TEXT,
+        estado_sync INTEGER DEFAULT 0,
+        fecha_modificacion DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+`);
+
+
 }
 inicializarTablas();
 
@@ -911,6 +942,22 @@ ipcMain.handle('obtener-inventario-sucursal', async (event, { companyId, sucursa
 
 ipcMain.handle('guardar-stock-sucursal', async (event, { productoId, sucursalId, companyId, cantidad, operacion }) => {
     try {
+        // --- ENLACE CON SERVIDOR MAESTRO ---
+        const ipDestino = config.isServer ? 'localhost' : config.serverIP;
+        
+        // Si estamos sumando stock (Entrada), informamos al Maestro primero
+        if (operacion === 'SUMAR') {
+            try {
+                await axios.post(`http://${ipDestino}:${PORT}/api/maestro/registrar-entrada`, {
+                    items: [{ id: productoId, cantidad: cantidad }]
+                });
+                console.log("📢 Stock sincronizado con el Servidor Maestro (Suma).");
+            } catch (errAxios) {
+                console.warn("⚠️ No se pudo sincronizar con el Maestro, pero se guardará localmente:", errAxios.message);
+            }
+        }
+
+        // --- LÓGICA LOCAL ORIGINAL ---
         const fecha = new Date().toISOString();
         const sql = operacion === 'SUMAR' 
             ? `INSERT INTO inventario_sucursales (producto_id, sucursal_id, company_id, stock, fecha_modificacion, estado_sync)
@@ -928,16 +975,163 @@ ipcMain.handle('guardar-stock-sucursal', async (event, { productoId, sucursalId,
 
         const resultado = db.prepare(sql).run(productoId, sucursalId, companyId, cantidad, fecha);
 
-        // 📡 Notificamos a las ventanas
+        // Notificación a ventanas abierta
         BrowserWindow.getAllWindows().forEach(ventana => {
             if (!ventana.isDestroyed()) ventana.webContents.send('productos-actualizados');
         });
 
-        // 🔥 CORRECCIÓN CRÍTICA: Enviamos success: true para que el HTML lo entienda
         return { success: true, changes: resultado.changes }; 
     } catch (e) {
         console.error("❌ Error en guardar-stock-sucursal:", e.message);
         return { success: false, error: e.message };
+    }
+});
+
+// --- MANEJADORES PARA GESTIÓN DE UNIDADES DE EMPAQUE (LOCAL) ---
+
+// 1. Obtener todos los empaques registrados en la empresa
+ipcMain.handle('obtener-unidades-empaque-local', async (event, companyId) => {
+    try {
+        // Hacemos un JOIN con productos_locales para mostrar el nombre real del producto en la tabla
+        const stmt = db.prepare(`
+            SELECT u.*, p.nombre as nombre_producto 
+            FROM unidades_empaque u
+            LEFT JOIN productos_locales p ON u.product_id = p.id
+            WHERE u.company_id = ?
+            ORDER BY u.fecha_modificacion DESC
+        `);
+        return stmt.all(companyId);
+    } catch (e) {
+        console.error("❌ Error al obtener empaques locales:", e.message);
+        return { error: e.message };
+    }
+});
+
+// 2. Guardar o Actualizar una unidad de empaque (Upsert)
+ipcMain.handle('guardar-unidad-empaque-local', async (event, datos) => {
+    try {
+        const fechaActual = new Date().toISOString();
+        
+        // INSERT OR REPLACE (o ON CONFLICT) para evitar duplicados
+        const stmt = db.prepare(`
+            INSERT INTO unidades_empaque (
+                id, company_id, product_id, nombre_unidad, 
+                tipo_medida, factor_cantidad, estado_sync, fecha_modificacion
+            ) VALUES (?, ?, ?, ?, ?, ?, 0, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                nombre_unidad = excluded.nombre_unidad,
+                tipo_medida = excluded.tipo_medida,
+                factor_cantidad = excluded.factor_cantidad,
+                estado_sync = 0, -- Marcamos para subir al Xeon
+                fecha_modificacion = excluded.fecha_modificacion
+        `);
+
+        const resultado = stmt.run(
+            datos.id, 
+            datos.company_id, 
+            datos.product_id, 
+            datos.nombre_unidad, 
+            datos.tipo_medida, 
+            datos.factor_cantidad, 
+            fechaActual
+        );
+
+        // Notificar a las ventanas que hubo cambios (opcional)
+        BrowserWindow.getAllWindows().forEach(ventana => {
+            if (!ventana.isDestroyed()) ventana.webContents.send('empaques-actualizados');
+        });
+
+        return { success: true, changes: resultado.changes };
+    } catch (e) {
+        console.error("❌ Error al guardar empaque local:", e.message);
+        return { success: false, error: e.message };
+    }
+});
+
+// 3. Eliminar unidad de empaque localmente
+ipcMain.handle('eliminar-unidad-empaque-local', async (event, id) => {
+    try {
+        const resultado = db.prepare('DELETE FROM unidades_empaque WHERE id = ?').run(id);
+        return { success: true, changes: resultado.changes };
+    } catch (e) {
+        console.error("❌ Error al eliminar empaque local:", e.message);
+        return { success: false, error: e.message };
+    }
+});
+
+ipcMain.handle('obtener-empaque-por-producto', async (event, productId) => {
+    try {
+        return db.prepare('SELECT * FROM unidades_empaque WHERE product_id = ?').all(productId);
+    } catch (e) {
+        return [];
+    }
+});
+
+// --- MANEJADORES PARA SALIDAS DE INVENTARIO ---
+
+ipcMain.handle('guardar-salida-local', async (event, datos) => {
+    try {
+        // --- ENLACE CON SERVIDOR MAESTRO ---
+        const ipDestino = config.isServer ? 'localhost' : config.serverIP;
+
+        try {
+            // Solicitamos al maestro descontar el stock global
+            const respuestaMaestro = await axios.post(`http://${ipDestino}:${PORT}/api/maestro/descontar-stock`, {
+                items: [{ id: datos.product_id, cantidad: datos.cantidad }]
+            });
+
+            if (!respuestaMaestro.data.exito) {
+                return { success: false, error: "El Maestro rechazó la salida: Stock insuficiente." };
+            }
+            console.log("📉 Stock descontado correctamente en el Servidor Maestro.");
+        } catch (errAxios) {
+            // Si el servidor maestro no está disponible, lanzamos error para proteger la integridad
+            return { success: false, error: "Error de conexión con el Servidor Maestro: " + errAxios.message };
+        }
+
+        // --- LÓGICA LOCAL ORIGINAL ---
+        const stmt = db.prepare(`
+            INSERT INTO salidas_inventario (
+                id, company_id, branch_id, product_id, cantidad, 
+                unidad, motivo, observacion, usuario_id, estado_sync, fecha_modificacion
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
+        `);
+
+        const resultado = stmt.run(
+            datos.id,
+            datos.company_id,
+            datos.branch_id,
+            datos.product_id,
+            datos.cantidad,
+            datos.unidad,
+            datos.motivo,
+            datos.observacion,
+            datos.usuario_id,
+            datos.fecha_modificacion || new Date().toISOString()
+        );
+
+        return { success: true, changes: resultado.changes };
+    } catch (e) {
+        console.error("❌ Error al guardar salida local:", e.message);
+        return { success: false, error: e.message };
+    }
+});
+
+// 2. Obtener el historial de salidas local (con JOIN para ver nombres de productos)
+ipcMain.handle('obtener-salidas-local', async (event, { companyId, branchId }) => {
+    try {
+        const stmt = db.prepare(`
+            SELECT s.*, p.nombre as nombre_producto 
+            FROM salidas_inventario s
+            LEFT JOIN productos_locales p ON s.product_id = p.id
+            WHERE s.company_id = ? AND s.branch_id = ?
+            ORDER BY s.fecha_modificacion DESC
+            LIMIT 50
+        `);
+        return stmt.all(companyId, branchId);
+    } catch (e) {
+        console.error("❌ Error al obtener historial de salidas:", e.message);
+        return [];
     }
 });
 

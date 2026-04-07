@@ -31,18 +31,19 @@ contextBridge.exposeInMainWorld('nexusAPI', {
     guardarVentaLocal: (venta) => ipcRenderer.invoke('guardar-venta-local', venta),
     obtenerProximoCorrelativo: (tipo) => ipcRenderer.invoke('obtener-proximo-correlativo', tipo),
     obtenerVentaPorId: (id) => ipcRenderer.invoke('obtener-venta-por-id', id),
-    onProductosCambiados: (callback) => {
-        ipcRenderer.removeAllListeners('productos-actualizados'); 
-        ipcRenderer.on('productos-actualizados', () => callback());
-    },
+    onProductosCambiados: (callback) => {ipcRenderer.removeAllListeners('productos-actualizados'); ipcRenderer.on('productos-actualizados', () => callback());},
     guardarSucursalLocal: (sucursal) => ipcRenderer.invoke('guardar-sucursal-local', sucursal),
     obtenerSucursalesLocal: (companyId) => ipcRenderer.invoke('obtener-sucursales-local', companyId),
     obtenerInventarioSucursal: (datos) => ipcRenderer.invoke('obtener-inventario-sucursal', datos),
     guardarStockSucursal: (datos) => ipcRenderer.invoke('guardar-stock-sucursal', datos),
+    obtenerUnidadesEmpaqueLocal: (companyId) => ipcRenderer.invoke('obtener-unidades-empaque-local', companyId),
+    guardarUnidadEmpaqueLocal: (datos) => ipcRenderer.invoke('guardar-unidad-empaque-local', datos),
+    eliminarUnidadEmpaqueLocal: (id) => ipcRenderer.invoke('eliminar-unidad-empaque-local', id),
+    obtenerEmpaquePorProducto: (productId) => ipcRenderer.invoke('obtener-empaque-por-producto', productId),
+    guardarSalidaLocal: (datos) => ipcRenderer.invoke('guardar-salida-local', datos),
+    obtenerSalidasLocal: (filtro) => ipcRenderer.invoke('obtener-salidas-local', filtro),
 
 
-
-    
 });
 
 console.log('✅ Puente NexusAPI establecido correctamente.');

@@ -7,188 +7,232 @@
     <script src="tailwindcss.js"></script>
     <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
 
-    <style>
-        body {
-            font-family: 'Roboto', sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            background-color: #f0f8ff; 
-        }
-        .form-input, .form-select {
-            display: block;
-            width: 100%;
-            padding: 0.8rem; 
-            border: 1px solid #d1d5db;
-            border-radius: 0.5rem;
-            font-size: 1rem; 
-            background-color: #f9fafb;
-            color: #111827;
-            transition: border-color 0.2s;
-        }
-        .form-input:focus, .form-select:focus {
-            outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
-        }
-        #loading-message, #unauthorized-message {
-            font-size: 1.5rem;
-            color: #555;
-            text-align: center;
-            padding: 50px;
-            width: 100%;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .user-info-bar {
-            background-color: #e0e0e0;
-            color: #333;
-            padding: 15px 20px;
-            border-radius: 8px;
-            font-size: 1em;
-            width: 100%;
-            margin-bottom: 20px;
-            text-align: left;
-        }
-        .feedback-message {
-            padding: 10px;
-            margin-top: 15px;
-            border-radius: 4px;
-            text-align: center;
-            font-weight: bold;
-            display: none;
-        }
-        .feedback-message.success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .feedback-message.error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        .search-container {
-            position: relative;
-        }
-        .autocomplete-results {
-            position: absolute;
-            z-index: 10;
-            width: 100%;
-            max-height: 200px;
-            overflow-y: auto;
-            border: 1px solid #ccc;
-            border-top: none;
-            border-radius: 0 0 0.5rem 0.5rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            background-color: white;
-        }
-        .autocomplete-results li {
-            padding: 0.75rem 1rem;
-            cursor: pointer;
-            font-size: 1rem; /* Ajustado */
-            color: #111827;
-        }
-        .autocomplete-results li:hover {
-            background-color: #f3f4f6;
-        }
+<style>
+    body {
+        font-family: 'Roboto', sans-serif;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        background-color: #f3f4f6; /* Fondo gris claro consistente */
+        min-height: 100vh;
+    }
+    
+    /* --- ESTILO EXPANSIVO 100% CON MARGEN LATERAL DE 1 REM --- */
+    .container {
+        background-color: transparent !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box;
+        margin: 0;
+    }
 
-        /* --- Estilos de Tabla y Scroll --- */
-        #packing-units-table, 
-        #packing-units-table th, 
-        #packing-units-table td {
-            border: 1px solid #e5e7eb; 
-            border-collapse: collapse;
-        }
-        
-        #packing-units-scroll-container {
-            max-height: 450px; 
-            overflow-y: auto;
-            border: 1px solid #d1d5db; 
-            border-radius: 0.5rem;
-        }
-        
-        #packing-units-table thead th {
-            position: sticky;
-            top: 0;
-            background-color: #f9fafb; 
-            z-index: 5;
-            box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
-        }
+    /* AQUÍ ESTÁ LA MAGIA: Forzamos el margen interno (padding) directamente en el contenedor principal */
+    #app-container {
+        background-color: transparent !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 20px 1rem !important; /* 20px arriba/abajo, 1rem a los lados */
+        margin: 0 !important;
+        box-sizing: border-box;
+    }
 
-        /* Ajustes para móviles */
-        .main-content {
-            padding: 1rem;
-        }
-        /* El padding del .bg-white ahora se maneja con clases de utilidad */
-        @media (max-width: 640px) {
-            /* MODIFICACIÓN: Título más pequeño en móvil */
-            .text-4xl {
-                font-size: 1.75rem; 
-            }
-            /* MODIFICACIÓN: Etiquetas más pequeñas en móvil */
-            .text-xl {
-                font-size: 1rem; 
-            }
-        }
+    /* Limpiamos el div interno para que no agregue fondos blancos ni sombras extra */
+    #app-container > div {
+        background-color: transparent !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-sizing: border-box;
+    }
 
-        /* --- Estilos Modal y Toast --- */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: none; 
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
+    @media (min-width: 768px) {
+        #app-container {
+            padding: 30px 1rem !important; /* Mantenemos 1rem lateral en PC, pero un poco más de espacio arriba/abajo */
         }
-        .modal-content {
-            background-color: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-            max-width: 450px;
-            width: 90%;
-            animation: fadeIn 0.3s ease-out;
-        }
-        .toast-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 100;
-        }
-        .toast {
-            padding: 15px 20px;
-            border-radius: 6px;
-            color: white;
-            margin-bottom: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
-            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
-            opacity: 0; 
-            transform: translateX(100%);
-            font-size: 0.875rem; /* Ajuste para Toast */
-        }
-        .toast.show {
-            opacity: 1;
-            transform: translateX(0);
-        }
-        .toast.success {
-            background-color: #48bb78; 
-        }
-        .toast.error {
-            background-color: #f56565; 
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-    </style>
+    }
+    /* ----------------------------------------------------------------------- */
+
+    .form-input, .form-select {
+        display: block;
+        width: 100%;
+        padding: 0.8rem; 
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        font-size: 1rem; 
+        background-color: #ffffff;
+        color: #111827;
+        transition: border-color 0.2s;
+        box-sizing: border-box;
+    }
+
+    .form-input:focus, .form-select:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+    }
+
+    #loading-message, #unauthorized-message {
+        font-size: 1.5rem;
+        color: #555;
+        text-align: center;
+        padding: 50px;
+        width: 100%;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .user-info-bar {
+        background-color: #ffffff;
+        color: #333;
+        padding: 15px 20px;
+        border-radius: 8px;
+        font-size: 1em;
+        width: 100%;
+        margin-bottom: 20px;
+        text-align: left;
+        border: 1px solid #e5e7eb;
+    }
+
+    .feedback-message {
+        padding: 10px;
+        margin-top: 15px;
+        border-radius: 4px;
+        text-align: center;
+        font-weight: bold;
+        display: none;
+    }
+
+    .feedback-message.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .feedback-message.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+    .search-container { position: relative; }
+    #product-search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: white;
+        border-radius: 0 0 8px 8px; 
+        max-height: 250px;
+        overflow-y: auto;
+        z-index: 9999; 
+        display: none; 
+        border: 1px solid #cbd5e0;
+        border-top: none;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        padding: 0;
+        margin: 0;
+        list-style: none;
+    }
+
+    #product-search-results.activo {
+        display: block !important;
+    }
+
+    .result-item {
+        padding: 12px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #edf2f7;
+        transition: background-color 0.2s;
+        text-align: left; 
+    }
+
+    .result-item.autocomplete-active {
+        background-color: #bfdbfe !important; /* Azul intenso resaltado */
+        border-left: 4px solid #2563eb !important; /* Franja azul oscuro */
+        outline: none !important;
+        color: #1e3a8a;
+    }
+
+    .result-item:hover {
+        background-color: #ebf8ff; 
+    }
+    /* --- Estilos de Tabla y Scroll --- */
+    #packing-units-table, 
+    #packing-units-table th, 
+    #packing-units-table td {
+        border: 1px solid #e5e7eb; 
+        border-collapse: collapse;
+    }
+    
+    #packing-units-scroll-container {
+        max-height: 450px; 
+        overflow-y: auto;
+        border: 1px solid #d1d5db; 
+        border-radius: 0.5rem;
+        background-color: white;
+    }
+    
+    #packing-units-table thead th {
+        position: sticky;
+        top: 0;
+        background-color: #f9fafb; 
+        z-index: 5;
+        box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+    }
+
+    .main-content { padding: 1rem; }
+    @media (max-width: 640px) {
+        .text-4xl { font-size: 1.75rem; }
+        .text-xl { font-size: 1rem; }
+    }
+
+    /* --- Estilos Modal y Toast --- */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: none; 
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+
+    .modal-content {
+        background-color: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        max-width: 450px;
+        width: 90%;
+        animation: fadeIn 0.3s ease-out;
+    }
+
+    .toast-container { position: fixed; top: 20px; right: 20px; z-index: 100; }
+    .toast {
+        padding: 15px 20px;
+        border-radius: 6px;
+        color: white;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+        transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+        opacity: 0; 
+        transform: translateX(100%);
+        font-size: 0.875rem;
+    }
+
+    .toast.show { opacity: 1; transform: translateX(0); }
+    .toast.success { background-color: #48bb78; }
+    .toast.error { background-color: #f56565; }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
     <script type="module" src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"></script>
     <script type="module" src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"></script>
     <script type="module" src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"></script>
@@ -249,10 +293,11 @@
                         <label for="measure-type" class="block text-lg text-gray-700 font-semibold mb-2">Tipo de Medida:</label>
                         <select id="measure-type" name="measureType" required class="form-select">
                             <option value="">Selecciona una opción</option>
-                            <option value="kilos">Kilos</option>
-                            <option value="libras">Libras</option>
-                            <option value="unidades">Unidades</option>
-                            <option value="litros">Litros</option>
+                            <option value="kilos">Kilogramos (KG)</option>
+                            <option value="libras">Gramos (G)</option>
+                            <option value="unidades">Unidad (UN)</option>
+                            <option value="litros">Litros (L)</option>
+                            <option value="Metros">Metros (M)</option>
                         </select>
                     </div>
                     
@@ -318,436 +363,407 @@
 
 
     <script>
-        // Lógica original del formulario
-        const packagingUnitSelect = document.getElementById('packaging-unit');
-        const otherUnitContainer = document.getElementById('other-unit-container');
-        const otherUnitInput = document.getElementById('other-unit');
+    // Lógica original del formulario (UI)
+    const packagingUnitSelect = document.getElementById('packaging-unit');
+    const otherUnitContainer = document.getElementById('other-unit-container');
+    const otherUnitInput = document.getElementById('other-unit');
 
-        packagingUnitSelect.addEventListener('change', (event) => {
-            if (event.target.value === 'otro') {
-                otherUnitContainer.classList.remove('hidden');
-                otherUnitInput.setAttribute('required', 'true');
-            } else {
-                otherUnitContainer.classList.add('hidden');
-                otherUnitInput.removeAttribute('required');
-                otherUnitInput.value = ''; 
-            }
-        });
-    </script>
+    packagingUnitSelect.addEventListener('change', (event) => {
+        if (event.target.value === 'otro') {
+            otherUnitContainer.classList.remove('hidden');
+            otherUnitInput.setAttribute('required', 'true');
+        } else {
+            otherUnitContainer.classList.add('hidden');
+            otherUnitInput.removeAttribute('required');
+            otherUnitInput.value = ''; 
+        }
+    });
+</script>
+
+<script type="module">
+    // --- 1. Variables de Estado Global ---
+    let idEmpresa = null;
+    let idUsuario = null;
+    let rolUsuario = null;
+    let listaProductos = [];
+    let focoProducto = -1;
+    let idProductoSeleccionado = null;
+    let tiempoEsperaBusqueda;
+
+    // --- 2. Referencias al DOM ---
+    const cargandoMensaje = document.getElementById('loading-message');
+    const appContenedor = document.getElementById('app-container');
+    const barraInfoUsuario = document.getElementById('userInfoBar');
+    const formularioEmpaque = document.getElementById('packaging-form');
+    const cuerpoTablaEmpaque = document.getElementById('packing-units-body');
+    const entradaBusquedaProducto = document.getElementById('product-type');
+    const resultadosBusquedaProducto = document.getElementById('product-search-results');
+    const contenedorToast = document.getElementById('toast-container');
+    const URL_XEON_EMPAQUES = "https://empaque.nexusposgobal.com/api/xeon/empaques/sync";
+    const URL_XEON_LISTAR = "https://empaque.nexusposgobal.com/api/xeon/empaques";
+    const modalEliminar = document.getElementById('delete-modal');
+    const botonConfirmarEliminar = document.getElementById('confirm-delete');
+    const botonCancelarEliminar = document.getElementById('cancel-delete');
+    let idItemAEliminar = null;
     
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, where, getDocs, limit, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"; 
 
-        const loadingMessage = document.getElementById('loading-message');
-        const unauthorizedMessage = document.getElementById('unauthorized-message');
-        const appContainer = document.getElementById('app-container');
-        const userInfoBar = document.getElementById('userInfoBar');
-        const packagingForm = document.getElementById('packaging-form');
-        const successMessage = document.getElementById('successMessage');
-        const errorMessage = document.getElementById('errorMessage');
+    // --- 3. Inicialización del Módulo ---
+    async function inicializarModulo() {
+        console.log("🚀 [NEXUS] Inicializando Unidades de Empaque...");
         
-        // ELEMENTOS DEL DOM
-        const productTypeInput = document.getElementById('product-type');
-        const productSearchResults = document.getElementById('product-search-results');
-        const packingUnitsBody = document.getElementById('packing-units-body');
-        const toastContainer = document.getElementById('toast-container'); 
+        cargandoMensaje.style.display = 'none';
+        appContenedor.style.display = 'flex';
 
-        // ELEMENTOS DEL MODAL DE ELIMINACIÓN
-        const deleteModal = document.getElementById('delete-modal');
-        const confirmDeleteButton = document.getElementById('confirm-delete');
-        const cancelDeleteButton = document.getElementById('cancel-delete');
-        let itemToDeleteId = null; 
+        try {
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
 
-        // Variables globales para Firebase y CompanyId
-        let companyId = null;
-        let debounceTimeout;
+            if (sesion && sesion.companyId) {
+                idEmpresa = sesion.companyId;
+                idUsuario = sesion.uid || sesion.id;
+                rolUsuario = sesion.role;
+
+                console.log(`✅ Sesión detectada para Empresa: ${idEmpresa}`);
+                
+                // Cargamos el catálogo de productos a la memoria apenas entra
+                await cargarCatalogoProductos();
+                await cargarUnidadesEmpaque();
+            } else {
+                console.warn("⚠️ No se encontró sesión local activa.");
+            }
+        } catch (error) {
+            console.error("❌ Error al inicializar sesión local:", error);
+        }
+    }
+
+    async function cargarCatalogoProductos() {
+        try {
+            console.log("📦 [NEXUS] Cargando catálogo de productos desde SQLite...");
+            const productosBrutos = await window.nexusAPI.obtenerProductosLocal(idEmpresa);
+            
+            if (productosBrutos && productosBrutos.length > 0) {
+                listaProductos = productosBrutos.map(p => {
+                    let info = {};
+                    try {
+                        info = typeof p.datos_json === 'string' ? JSON.parse(p.datos_json) : p.datos_json;
+                    } catch (e) { info = {}; }
+                    
+                    return {
+                        id: p.id || p.producto_ID,
+                        nombre: info.nombre || p.nombre || "Sin nombre",
+                        categoria: info.categoria || p.categoria || "General",
+                        unidad: info.unit || p.unit || "UN",
+                        codigo: info.codigo || p.codigo || ""
+                    };
+                });
+                console.log(`✅ [NEXUS] ${listaProductos.length} productos listos para búsqueda.`);
+            }
+        } catch (error) {
+            console.error("❌ Error al cargar catálogo local:", error);
+        }
+    }
+
+    function manejarBusquedaProducto(termino) {
+        resultadosBusquedaProducto.innerHTML = '';
+        
+        const query = termino.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+        if (query.length < 2) {
+            resultadosBusquedaProducto.classList.remove('activo');
+            return;
+        }
+
+        const resultados = listaProductos.filter(p => {
+            const nombreProd = (p.nombre || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const codigoProd = (p.codigo || "").toLowerCase();
+            const categoriaProd = (p.categoria || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            
+            return nombreProd.includes(query) || codigoProd.includes(query) || categoriaProd.includes(query);
+        });
+
+        if (resultados.length > 0) {
+            resultadosBusquedaProducto.classList.add('activo');
+            
+            resultados.forEach(producto => {
+                const item = document.createElement('li'); // Usamos <li> por la estructura HTML
+                item.className = "result-item"; 
+                item.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: bold; color: #2d3748; text-transform: uppercase; font-size: 0.9em;">${producto.nombre}</div>
+                            <div style="font-size: 0.7rem; color: #718096;">
+                                ${producto.categoria} | <span style="font-family: monospace;">Cod: ${producto.codigo || 'S/C'}</span>
+                            </div>
+                        </div>
+                        <div style="font-weight: bold; color: #3182ce; font-size: 0.8em;">
+                            ${producto.unidad}
+                        </div>
+                    </div>
+                `;
+                
+                item.onclick = () => seleccionarProducto(producto);
+                resultadosBusquedaProducto.appendChild(item);
+            });
+        } else {
+            resultadosBusquedaProducto.classList.remove('activo');
+        }
+    }
 
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyDN9mZ1n-OkC-Qz52eTCOy4yJH7M0U9zYI",
-            authDomain: "nexus-pos-75593.firebaseapp.com",
-            projectId: "nexus-pos-75593",
-            storageBucket: "nexus-pos-75593.firebasestorage.app",
-            messagingSenderId: "626840984883",
-            appId: "1:626840984883:web:08d56544ee28bc8e637246",
-            measurementId: "G-K1EQVJWJHG"
+
+    // --- 4. Funciones de Base de Datos (Para completar con IPC) ---
+
+    async function cargarUnidadesEmpaque() {
+    try {
+        // 1. CARGA INICIAL DESDE SQLITE (Velocidad)
+        let empaquesLocales = await window.nexusAPI.obtenerUnidadesEmpaqueLocal(idEmpresa);
+        renderizarTablaEmpaques(empaquesLocales);
+
+        // 2. VALIDACIÓN CON XEON (Descarga/Sincronización)
+        if (navigator.onLine) {
+            console.log("🌐 Validando empaques con servidor Xeon...");
+            const respuesta = await fetch(`${URL_XEON_LISTAR}/${idEmpresa}`);
+            
+            if (respuesta.ok) {
+                const empaquesNube = await respuesta.json();
+                
+                // Sincronizar cada empaque de la nube al SQLite local
+                for (const emp of empaquesNube) {
+                    await window.nexusAPI.guardarUnidadEmpaqueLocal(emp);
+                }
+                
+                // Refrescar tabla con datos actualizados
+                const localesActualizados = await window.nexusAPI.obtenerUnidadesEmpaqueLocal(idEmpresa);
+                renderizarTablaEmpaques(localesActualizados);
+            }
+        }
+    } catch (error) {
+        console.error("❌ Error al cargar empaques:", error);
+        cuerpoTablaEmpaque.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-red-500">Error al conectar con la base de datos.</td></tr>';
+    }
+}
+
+function renderizarTablaEmpaques(lista) {
+    cuerpoTablaEmpaque.innerHTML = '';
+    
+    if (!lista || lista.length === 0) {
+        cuerpoTablaEmpaque.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-500">No hay unidades de empaque registradas.</td></tr>';
+        return;
+    }
+
+    lista.forEach(emp => {
+        const fila = document.createElement('tr');
+        fila.className = "hover:bg-gray-50 transition-colors";
+        fila.innerHTML = `
+            <td class="px-6 py-4 text-sm font-medium text-gray-900">${emp.nombre_producto || 'Producto desconocido'}</td>
+            <td class="px-6 py-4 text-sm text-gray-600">${emp.nombre_unidad}</td>
+            <td class="px-6 py-4 text-sm text-gray-600">${emp.tipo_medida}</td>
+            <td class="px-6 py-4 text-sm font-bold text-blue-600">${emp.factor_cantidad}</td>
+            <td class="px-6 py-4 text-sm">
+                <button onclick="eliminarEmpaque('${emp.id}')" class="text-red-600 hover:text-red-900 font-bold">Eliminar</button>
+            </td>
+        `;
+        cuerpoTablaEmpaque.appendChild(fila);
+    });
+}
+
+    async function buscarProductos(termino) {
+        // Aquí conectaremos con la búsqueda de productos de la empresa
+        console.log("Buscando producto localmente:", termino);
+    }
+
+    function seleccionarProducto(producto) {
+        idProductoSeleccionado = producto.id; // ¡Aquí guardamos el ID crucial!
+        entradaBusquedaProducto.value = producto.nombre;
+        
+        resultadosBusquedaProducto.innerHTML = '';
+        resultadosBusquedaProducto.classList.remove('activo');
+        
+        console.log(`🎯 Nexus POS: Seleccionado ${producto.nombre} (ID: ${producto.id})`);
+        
+        // Enfocamos el siguiente campo para agilizar el flujo
+        document.getElementById('packaging-unit').focus();
+    }
+
+    function aplicarResaltado(items) {
+        if (!items || items.length === 0) return;
+        items.forEach(el => el.classList.remove("autocomplete-active"));
+        if (focoProducto > -1 && items[focoProducto]) {
+            items[focoProducto].classList.add("autocomplete-active");
+            items[focoProducto].scrollIntoView({ block: "nearest" });
+        }
+    }
+
+    function mostrarToastEmpaque(mensaje, tipo = "success") {
+        const toast = document.createElement('div');
+        toast.className = `toast ${tipo}`;
+        toast.textContent = mensaje;
+        contenedorToast.appendChild(toast);
+
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            toast.addEventListener('transitionend', () => toast.remove());
+        }, 5000);
+    }
+
+    // --- 5. Utilidades (Toast y Modales) ---
+
+    function mostrarToast(mensaje, tipo = "success") {
+        const toast = document.createElement('div');
+        toast.className = `toast ${tipo}`;
+        toast.textContent = mensaje;
+        contenedorToast.appendChild(toast);
+
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            toast.addEventListener('transitionend', () => toast.remove());
+        }, 5000);
+    }
+
+// --- 6. Event Listeners (Control de Interfaz y Guardado) ---
+
+    // Evento de Escritura en el Buscador Inteligente
+    entradaBusquedaProducto.addEventListener('input', (e) => {
+        focoProducto = -1; // Reiniciamos el foco en cada nueva letra
+        manejarBusquedaProducto(e.target.value);
+    });
+
+    // Evento de Teclado (Navegación con Flechas y Enter)
+    entradaBusquedaProducto.addEventListener('keydown', (e) => {
+        const items = resultadosBusquedaProducto.querySelectorAll('.result-item');
+        if (items.length === 0) return;
+
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            focoProducto++;
+            if (focoProducto >= items.length) focoProducto = 0;
+            aplicarResaltado(items);
+        } 
+        else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            focoProducto--;
+            if (focoProducto < 0) focoProducto = items.length - 1;
+            aplicarResaltado(items);
+        } 
+        else if (e.key === "Enter") {
+            e.preventDefault();
+            if (focoProducto > -1 && items[focoProducto]) {
+                items[focoProducto].click();
+            } else if (items.length > 0) {
+                // Si no hay resaltado pero hay resultados, elige el primero
+                items[0].click();
+            }
+        }
+    });
+
+    // Cerrar menú de búsqueda al hacer clic fuera del contenedor
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.search-container')) {
+            resultadosBusquedaProducto.classList.remove('activo');
+        }
+    });
+
+    // Procesar el formulario: Guardado Local + Sincronización Xeon
+    formularioEmpaque.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        if (!idProductoSeleccionado) {
+            mostrarToastEmpaque("Error: Selecciona un producto de la lista.", "error");
+            return;
+        }
+
+        const nombreUnidad = document.getElementById('packaging-unit').value;
+        const unidadFinal = nombreUnidad === 'otro' ? document.getElementById('other-unit').value : nombreUnidad;
+
+        // Estructura de datos alineada con el Cerebro (main.js) y Xeon (puerto 3005)
+        const datosEmpaque = {
+            id: `EMP-${Date.now()}`,
+            company_id: idEmpresa,
+            product_id: idProductoSeleccionado,
+            nombre_unidad: unidadFinal,
+            tipo_medida: document.getElementById('measure-type').value,
+            factor_cantidad: parseFloat(document.getElementById('quantity').value),
+            fecha_modificacion: new Date().toISOString()
         };
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app); 
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        try {
+            // 1. GUARDADO LOCAL (SQLite) - Prioridad absoluta para funcionamiento offline
+            const resultadoLocal = await window.nexusAPI.guardarUnidadEmpaqueLocal(datosEmpaque);
 
-        // MODIFICACIÓN DE AUTENTICACIÓN: Se elimina signInAnonymously para evitar el error auth/admin-restricted-operation
-        async function authenticate() {
-            if (initialAuthToken) {
-                try {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } catch (error) {
-                    console.error("Error al iniciar sesión con token personalizado:", error);
-                    // Si el token personalizado falla, asumimos que no hay acceso.
-                    loadingMessage.style.display = 'none';
-                    unauthorizedMessage.style.display = 'block';
-                    appContainer.style.display = 'none';
+            if (resultadoLocal.success) {
+                mostrarToastEmpaque("✅ Guardado localmente", "success");
+                
+                // 2. SINCRONIZACIÓN CON XEON (Carga mediante URL segura)
+                if (navigator.onLine) {
+                    fetch(URL_XEON_EMPAQUES, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(datosEmpaque)
+                    }).then(res => {
+                        if(res.ok) console.log("🌐 Sincronizado con Xeon con éxito");
+                    }).catch(err => console.warn("⚠️ Xeon offline, sincronización pendiente."));
                 }
+
+                // Limpieza de interfaz
+                formularioEmpaque.reset();
+                if(document.getElementById('other-unit-container')) {
+                    document.getElementById('other-unit-container').classList.add('hidden');
+                }
+                idProductoSeleccionado = null;
+                
+                // Refrescar la tabla visual
+                await cargarUnidadesEmpaque();
             } else {
-                // Si no hay token, no hay acceso.
-                console.error("No se encontró el token de autenticación inicial.");
-                loadingMessage.style.display = 'none';
-                unauthorizedMessage.style.display = 'block';
-                appContainer.style.display = 'none';
+                throw new Error(resultadoLocal.error);
             }
+        } catch (error) {
+            console.error("❌ Error en proceso de guardado:", error);
+            mostrarToastEmpaque("Error al procesar la solicitud: " + error.message, "error");
         }
-
-        onAuthStateChanged(auth, async (user) => {
-            // Se añade una verificación temprana para evitar cargar si user no existe o la autenticación falló silenciosamente
-            if (!user && !initialAuthToken) {
-                 loadingMessage.style.display = 'none';
-                 unauthorizedMessage.style.display = 'block';
-                 appContainer.style.display = 'none';
-                 return;
-            }
-
-            if (user) {
-                try {
-                    const idTokenResult = await user.getIdTokenResult();
-                    const role = idTokenResult.claims.role;
-                    companyId = idTokenResult.claims.companyId;
-
-                    if (role === 'admin' && companyId) { 
-                        loadingMessage.style.display = 'none';
-                        unauthorizedMessage.style.display = 'none';
-                        appContainer.style.display = 'flex'; 
-
-                        const userInfoHTML = `
-                            <p><strong>ID de Usuario:</strong> ${user.uid}</p>
-                            <p><strong>ID de Empresa:</strong> ${companyId}</p>
-                            <p><strong>Rol:</strong> ${role}</p>
-                        `;
-                        userInfoBar.innerHTML = userInfoHTML;
-                        userInfoBar.style.display = 'block';
-                        
-                        loadPackingUnits();
-
-                    } else {
-                        loadingMessage.style.display = 'none';
-                        unauthorizedMessage.style.display = 'block';
-                        appContainer.style.display = 'none';
-                    }
-                } catch (error) {
-                    console.error("Error en autenticación:", error);
-                    loadingMessage.style.display = 'none';
-                    unauthorizedMessage.style.display = 'block';
-                    appContainer.style.display = 'none';
-                }
-            } else {
-                loadingMessage.style.display = 'none';
-                unauthorizedMessage.style.display = 'block';
-                appContainer.style.display = 'none';
-            }
-        });
-        
-        // --- Lógica de Búsqueda de Productos (Autocomplete) ---
-
-        async function searchProducts(searchText) {
-            if (!companyId || searchText.length < 2) { 
-                productSearchResults.classList.add('hidden');
-                return;
-            }
-            const productsRef = collection(db, `companies/${companyId}/products`);
-            const startText = searchText.toLowerCase();
-            const endText = startText + '\uf8ff'; 
-            const q = query(productsRef, where('name', '>=', startText), where('name', '<=', endText), limit(10));
-
-            try {
-                const querySnapshot = await getDocs(q);
-                displayResults(querySnapshot);
-            } catch (error) {
-                console.error("Error buscando productos:", error);
-            }
-        }
-
-        function displayResults(snapshot) {
-            productSearchResults.innerHTML = '';
-            if (snapshot.empty) {
-                productSearchResults.classList.add('hidden');
-                return;
-            }
-            snapshot.forEach(doc => {
-                const product = doc.data();
-                const listItem = document.createElement('li');
-                listItem.textContent = product.name;
-                listItem.dataset.productName = product.name; 
-                
-                listItem.addEventListener('click', () => {
-                    productTypeInput.value = listItem.dataset.productName;
-                    productSearchResults.classList.add('hidden');
-                });
-                productSearchResults.appendChild(listItem);
-            });
-            productSearchResults.classList.remove('hidden');
-        }
-
-        productTypeInput.addEventListener('input', (e) => {
-            clearTimeout(debounceTimeout);
-            const searchText = e.target.value.trim();
-
-            if (searchText.length > 1) {
-                debounceTimeout = setTimeout(() => {
-                    searchProducts(searchText.toLowerCase());
-                }, 300);
-            } else {
-                productSearchResults.classList.add('hidden');
-            }
-        });
-        
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.search-container')) {
-                productSearchResults.classList.add('hidden');
-            }
-        });
-        
-        // --- Fin Lógica de Búsqueda de Productos (Autocomplete) ---
+    });
 
 
-        // --- Funciones de Utilidad (Toast y Modal) ---
+    // --- 7. Lógica de Eliminación (Globalizada para botones dinámicos) ---
 
-        /**
-         * Muestra un mensaje de notificación flotante (Toast).
-         * @param {string} message - El mensaje a mostrar.
-         * @param {string} type - 'success' o 'error'.
-         */
-        function showToast(message, type) {
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.textContent = message;
-            toastContainer.appendChild(toast);
+    window.eliminarEmpaque = (id) => {
+        idItemAEliminar = id;
+        modalEliminar.style.display = 'flex'; // Activamos modal de advertencia
+    };
 
-            // Mostrar el toast
-            setTimeout(() => {
-                toast.classList.add('show');
-            }, 10);
+    botonCancelarEliminar.onclick = () => {
+        modalEliminar.style.display = 'none';
+        idItemAEliminar = null;
+    };
 
-            // Ocultar y remover el toast después de 5 segundos
-            setTimeout(() => {
-                toast.classList.remove('show');
-                toast.addEventListener('transitionend', () => toast.remove());
-            }, 5000);
-        }
+    botonConfirmarEliminar.onclick = async () => {
+        if (!idItemAEliminar) return;
 
-        /**
-         * Muestra el modal de confirmación y establece el ID del ítem a eliminar.
-         * @param {string} packingId - El ID del documento a eliminar.
-         */
-        function showDeleteModal(packingId) {
-            itemToDeleteId = packingId;
-            deleteModal.style.display = 'flex';
-        }
+        try {
+            // 1. ELIMINACIÓN LOCAL (SQLite)
+            const resultado = await window.nexusAPI.eliminarUnidadEmpaqueLocal(idItemAEliminar);
 
-        /**
-         * Oculta el modal de confirmación.
-         */
-        function hideDeleteModal() {
-            deleteModal.style.display = 'none';
-            itemToDeleteId = null;
-        }
-
-        // Manejadores de eventos del Modal
-        cancelDeleteButton.addEventListener('click', hideDeleteModal);
-        confirmDeleteButton.addEventListener('click', async () => {
-            if (itemToDeleteId) {
-                const id = itemToDeleteId;
-                hideDeleteModal(); 
-                await handleDeleteConfirmed(id); 
-            }
-        });
-        
-        // --- Fin Funciones de Utilidad ---
-
-
-        // --- Lógica para Cargar, Editar y Eliminar (Tabla) ---
-
-        function createTableRow(doc) {
-            const data = doc.data();
-            const row = document.createElement('tr');
-            row.id = `row-${doc.id}`;
-            
-            const cells = [
-                data.productType || 'N/A',
-                data.unit || 'N/A',
-                data.measureType || 'N/A',
-                data.quantity || 'N/A'
-            ];
-
-            cells.forEach(content => {
-                const cell = document.createElement('td');
-                // Manteniendo el tamaño de texto de la tabla en 'text-sm'
-                cell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-900'; 
-                cell.textContent = content;
-                row.appendChild(cell);
-            });
-
-            const actionCell = document.createElement('td');
-            actionCell.className = 'px-6 py-4 whitespace-nowrap text-sm font-medium';
-            
-            // Botón Editar (Amarillo)
-            const editButton = document.createElement('button');
-            // MODIFICACIÓN: Botones más pequeños
-            editButton.textContent = 'Editar';
-            editButton.className = 'bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-3 rounded transition-colors mr-2 text-xs';
-            editButton.addEventListener('click', () => handleEdit(doc.id, data));
-            
-            // Botón Eliminar (Rojo)
-            const deleteButton = document.createElement('button');
-            // MODIFICACIÓN: Botones más pequeños
-            deleteButton.textContent = 'Eliminar';
-            deleteButton.className = 'bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded transition-colors text-xs';
-            deleteButton.addEventListener('click', () => showDeleteModal(doc.id));
-            
-            actionCell.appendChild(editButton);
-            actionCell.appendChild(deleteButton);
-            row.appendChild(actionCell);
-
-            packingUnitsBody.appendChild(row);
-        }
-
-        async function loadPackingUnits() {
-            if (!companyId) return;
-
-            packingUnitsBody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">Cargando unidades...</td></tr>';
-
-            const packingRef = collection(db, `companies/${companyId}/packing`);
-            const q = query(packingRef);
-
-            try {
-                const querySnapshot = await getDocs(q);
-                
-                if (querySnapshot.empty) {
-                    packingUnitsBody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">No hay unidades de empaque registradas.</td></tr>';
-                    return;
+            if (resultado.success) {
+                // 2. ELIMINACIÓN EN XEON (Si hay conexión)
+                if (navigator.onLine) {
+                    fetch(`https://empaque.nexusposgobal.com/api/xeon/empaques/${idItemAEliminar}`, {
+                        method: 'DELETE'
+                    }).catch(err => console.warn("⚠️ No se pudo eliminar en Xeon, se hará en la próxima sync."));
                 }
 
-                packingUnitsBody.innerHTML = '';
-                querySnapshot.forEach(doc => {
-                    createTableRow(doc);
-                });
-
-            } catch (error) {
-                console.error("Error al cargar las unidades de empaque:", error);
-                packingUnitsBody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-sm text-red-500">Error al cargar. Ver consola.</td></tr>';
+                mostrarToastEmpaque("🗑️ Unidad eliminada correctamente", "success");
+                modalEliminar.style.display = 'none';
+                await cargarUnidadesEmpaque(); // Refrescamos la tabla de inmediato
             }
+        } catch (error) {
+            console.error("❌ Error al eliminar:", error);
+            mostrarToastEmpaque("Error al eliminar la unidad", "error");
         }
+    };
 
-        /**
-         * Función ejecutada después de la confirmación del modal.
-         */
-        async function handleDeleteConfirmed(packingId) {
-            try {
-                const docRef = doc(db, `companies/${companyId}/packing`, packingId);
-                await deleteDoc(docRef);
-
-                const rowToRemove = document.getElementById(`row-${packingId}`);
-                if (rowToRemove) {
-                    rowToRemove.remove();
-                }
-                showToast("Unidad eliminada exitosamente.", 'success');
-            } catch (error) {
-                console.error("Error al eliminar la unidad:", error);
-                showToast(`Error al eliminar: ${error.message}`, 'error');
-            }
-        }
-
-        async function updatePackingUnit(packingId, newData) {
-             try {
-                const docRef = doc(db, `companies/${companyId}/packing`, packingId);
-                await updateDoc(docRef, newData);
-                
-                showToast("Unidad actualizada exitosamente.", 'success');
-                loadPackingUnits(); 
-            } catch (error) {
-                console.error("Error al actualizar la unidad:", error);
-                showToast(`Error al actualizar: ${error.message}`, 'error');
-            }
-        }
-
-        function handleEdit(packingId, currentData) {
-            const newQuantity = prompt(`Editar cantidad para ${currentData.productType} (${currentData.unit} de ${currentData.measureType}):`, currentData.quantity);
-            
-            if (newQuantity !== null && !isNaN(parseFloat(newQuantity)) && parseFloat(newQuantity) > 0) {
-                updatePackingUnit(packingId, { quantity: parseFloat(newQuantity) });
-            } else if (newQuantity !== null) {
-                showToast("Cantidad inválida. Intente de nuevo.", 'error');
-            }
-        }
-        
-        // --- Fin Lógica para Cargar, Editar y Eliminar (Tabla) ---
-
-
-        // --- Lógica para guardar en Firestore ---
-        packagingForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            if (!companyId) {
-                errorMessage.textContent = "Error: La sesión no está cargada correctamente (Falta Company ID).";
-                errorMessage.style.display = 'block';
-                setTimeout(() => { errorMessage.style.display = 'none'; }, 5000);
-                return;
-            }
-
-            const packagingUnit = document.getElementById('packaging-unit').value;
-            const otherUnit = document.getElementById('other-unit').value;
-            const measureType = document.getElementById('measure-type').value;
-            const quantity = parseFloat(document.getElementById('quantity').value);
-            const productType = productTypeInput.value.trim(); 
-
-            if (!productType) {
-                 errorMessage.textContent = "Por favor, busca y selecciona un producto o ingresa su nombre.";
-                errorMessage.style.display = 'block';
-                setTimeout(() => { errorMessage.style.display = 'none'; }, 5000);
-                return;
-            }
-
-            const finalUnit = packagingUnit === 'otro' ? otherUnit : packagingUnit;
-
-            const packingData = {
-                unit: finalUnit,
-                measureType: measureType,
-                quantity: quantity,
-                productType: productType,
-                createdAt: new Date(),
-                createdBy: auth.currentUser ? auth.currentUser.uid : 'unknown'
-            };
-
-            try {
-                const packingCollectionRef = collection(db, `companies/${companyId}/packing`);
-                
-                await addDoc(packingCollectionRef, packingData);
-                
-                errorMessage.style.display = 'none';
-                successMessage.style.display = 'block'; 
-                packagingForm.reset();
-                document.getElementById('other-unit-container').classList.add('hidden');
-                
-                showToast("Unidad de empaque guardada correctamente.", 'success');
-                
-                loadPackingUnits(); 
-                
-                setTimeout(() => { successMessage.style.display = 'none'; }, 5000);
-                
-            } catch (error) {
-                successMessage.style.display = 'none';
-                errorMessage.textContent = `Error al guardar: ${error.message}`;
-                errorMessage.style.display = 'block';
-                setTimeout(() => { errorMessage.style.display = 'none'; }, 7000);
-            }
-        });
-        // --- Fin Lógica para guardar en Firestore ---
-
-
-        authenticate();
-    </script>
+    // Ejecutar inicio
+    inicializarModulo();
+</script>
 
 </body>
 </html>

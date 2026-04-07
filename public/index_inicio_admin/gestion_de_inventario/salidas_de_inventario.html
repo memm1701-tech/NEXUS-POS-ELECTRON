@@ -3,664 +3,588 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Salida de Inventario</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <style>
-        body {
-            font-family: 'Roboto', sans-serif;
-            background-color: #f3f4f6;
-        }
-        .inventory-form-container {
-            /* Mismo estilo de contenedor principal */
-            background-color: #ffffff;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            width: 90%;
-            max-width: 1200px;
-            box-sizing: border-box;
-            margin: 2rem auto;
-        }
-        /* Estilos de Autenticación/Usuario */
-        .user-info {
-            background-color: #f0f4f8;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            text-align: left;
-            border: 1px solid #e2e8f0;
-        }
-        .user-info p {
-            margin: 5px 0;
-            font-size: 1rem;
-            color: #4a5568;
-        }
-        /* Estilos para el campo de búsqueda con autocompletado */
-        .search-group {
-            position: relative;
-            z-index: 10;
-        }
-        #product-results {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background-color: white;
-            border: 1px solid #ddd;
-            border-top: none;
-            border-radius: 0 0 8px 8px;
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 10;
-        }
-        .result-item {
-            padding: 10px;
-            cursor: pointer;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-        .result-item:hover {
-            background-color: #f9f9f9;
-        }
-        /* Estilo para el campo de solo lectura */
-        #final-stock-display {
-            background-color: #e9ecef;
-            cursor: default;
-            font-weight: bold;
-            color: #495057;
-        }
-        /* Estilos para la tabla de transacciones */
-        .transaction-table th {
-            background-color: #f3f4f6;
-            color: #4b5563;
-            padding: 12px 15px;
-            text-align: left;
-            font-weight: 600;
-            border-bottom: 2px solid #e5e7eb;
-        }
-        .transaction-table td {
-            padding: 10px 15px;
-            border-bottom: 1px solid #f3f4f6;
-        }
-        .transaction-table tbody tr:hover {
-            background-color: #f9fafb;
-        }
-        .table-scroll-container {
-            max-height: 400px; /* Limitar la altura para hacerlo desplazable */
-            overflow-y: auto;
-            margin-top: 1.5rem; /* Espacio superior */
-        }
-    </style>
+    <title>Salida de Inventario - Nexus POS</title>
+    <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <script src="tailwindcss.js"></script>
+<style>
+    body {
+        font-family: 'Roboto', sans-serif;
+        background-color: #f3f4f6;
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+    }
+
+    /* --- ESTILO EXPANSIVO NEXUS (100% + 1rem de margen) --- */
+    #app-container {
+        background-color: transparent !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 20px 1rem !important; 
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+    }
+
+    @media (min-width: 768px) {
+        #app-container { padding: 30px 1rem !important; }
+    }
+
+    h1 {
+        color: #333;
+        margin-bottom: 25px;
+        font-size: 2.2em; 
+        font-weight: 700;
+        letter-spacing: -1px;
+        text-align: center;
+    }
+
+    h2 {
+        color: #333;
+        margin-bottom: 20px;
+        font-size: 1.5em; 
+        font-weight: 700;
+        letter-spacing: -1px;
+        text-align: center;
+    }
+
+    /* --- FORMULARIO --- */
+    .form-section {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 25px;
+        text-align: left;
+    }
+
+    .input-group-item {
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        flex: 1;
+    }
+
+    .form-section label {
+        font-weight: bold;
+        color: #4a5568;
+        margin-bottom: 6px;
+        font-size: 0.95em;
+    }
+
+    .form-section input, .form-section select, .form-section textarea {
+        width: 100%;
+        padding: 14px;
+        border: 1px solid #cbd5e0;
+        border-radius: 8px;
+        box-sizing: border-box;
+        font-size: 1em;
+        background-color: white;
+    }
+
+    .form-section input:focus, .form-section select:focus, .form-section textarea:focus {
+        outline: none;
+        border-color: #ef4444;
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+    }
+
+    #final-stock-display {
+        background-color: #fee2e2;
+        cursor: default;
+        font-weight: 800;
+        color: #991b1b;
+        border: 1px solid #fca5a5;
+    }
+
+    .btn-submit {
+        background-color: #ef4444;
+        color: white;
+        padding: 18px 30px;
+        border: none;
+        border-radius: 8px;
+        font-size: 1.1em;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        margin-top: 10px;
+        width: 100%;
+    }
+
+    .btn-submit:hover { background-color: #dc2626; }
+
+    /* --- TABLA DE HISTORIAL (ESTILO ENTRADAS) --- */
+    .table-container {
+        margin-top: 30px;
+        overflow-x: auto;
+    }
+
+    .table-scroll-wrapper {
+        max-height: 600px;
+        overflow-y: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        background-color: white;
+    }
+
+    table {
+        width: 100%;
+        min-width: 700px;
+        border-collapse: collapse;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    th, td {
+        border: 1px solid #e2e8f0;
+        padding: 14px;
+        text-align: left;
+        font-size: 0.9em;
+    }
+
+    th {
+        background-color: #ef4444; 
+        color: white;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    tr:nth-child(even) { background-color: #f7fafc; }
+    tr:hover { background-color: #fff5f5; }
+
+    /* --- BUSCADOR --- */
+    #product-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: white;
+        border-radius: 0 0 8px 8px;
+        max-height: 250px;
+        overflow-y: auto;
+        z-index: 9999;
+        display: none; 
+        border: 1px solid #cbd5e0;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+    #product-results.activo { display: block !important; }
+    .result-item { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #edf2f7; text-align: left; }
+    .result-item.autocomplete-active { background-color: #fee2e2 !important; border-left: 4px solid #ef4444 !important; color: #991b1b; }
+    .no-results-msg { padding: 12px 15px; color: #718096; font-style: italic; text-align: center; }
+</style>
 </head>
-<body class="p-8">
-    <main>
-        <div class="inventory-form-container">
-            <h1 class="text-4xl font-extrabold text-gray-800 text-center mb-8">Salida de Inventario</h1>
-            
-            <div class="user-info">
-                <p><strong>ID de Usuario:</strong> <span id="userIdDisplay">Cargando...</span></p>
-                <p><strong>ID de Compañía:</strong> <span id="companyIdDisplay">Cargando...</span></p>
-                <p><strong>Rol:</strong> <span id="userRoleDisplay">Cargando...</span></p>
+<body>
+<div id="toast-container" class="fixed top-5 right-5 z-[10000] flex flex-col gap-3"></div>
+    <div id="app-container">
+        <h1>Salida de Inventario</h1>
+        
+        <form id="inventory-form" class="form-section">
+            <div class="input-group-item">
+                <label for="storage-location">Sucursal de Retiro:</label>
+                <select id="storage-location" required>
+                    <option value="" disabled selected>Cargando sucursales...</option>
+                </select>
             </div>
-            
-            <div id="message-box" class="hidden mb-6 p-4 rounded-md text-sm text-center font-medium" role="alert"></div>
-            
-            <form id="inventory-form">
-                <div class="flex flex-col gap-6">
-                    
-                    <div class="flex flex-col md:flex-row gap-4">
-                        
-                        <div class="search-group flex-1">
-                            <label for="product-search" class="block text-sm font-medium text-gray-700 mb-1">Busca el Producto:</label>
-                            <input type="text" id="product-search" placeholder="Escribe para buscar el producto..." autocomplete="off" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500" required>
-                            <div id="product-results"></div>
-                        </div>
 
-                        <div class="flex-1">
-                            <label for="packaging-unit-select" class="block text-sm font-medium text-gray-700 mb-1">Unidad de Empaque (Opcional):</label>
-                            <select id="packaging-unit-select" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500" disabled>
-                                <option value="" selected>Selecciona un producto primero...</option> 
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="flex flex-col md:flex-row gap-4">
-                        <div class="flex-1">
-                            <label for="quantity-input" class="block text-sm font-medium text-gray-700 mb-1">Cantidad de Paquetes/Unidades a Retirar:</label>
-                            <input type="number" id="quantity-input" placeholder="Ej: 1" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500" min="0.01" step="0.01" required>
-                        </div>
-
-                        <div class="flex-1">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Total de Stock Base a Restar:</label>
-                            <input type="text" id="final-stock-display" placeholder="0 unidad(es)" readonly class="w-full p-3 border border-gray-300 rounded-md">
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <label for="storage-location" class="block text-sm font-medium text-gray-700 mb-1">Lugar de Retiro (Sucursal):</label>
-                        <select id="storage-location" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500" required>
-                            <option value="">Cargando sucursales...</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="exit-reason" class="block text-sm font-medium text-gray-700 mb-1">Motivo de Salida:</label>
-                        <select id="exit-reason" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500" required>
-                            <option value="">Selecciona el motivo...</option>
-                            <option value="venta">Venta</option>
-                            <option value="desperdicio">Desperdicio</option>
-                            <option value="devolucion">Devolución</option>
-                            <option value="caducidad">Caducidad</option>
-                            <option value="merma">Merma</option>
-                            <option value="otro">Otro</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="observation" class="block text-sm font-medium text-gray-700 mb-1">Observación:</label>
-                        <textarea id="observation" rows="3" placeholder="Añade una nota sobre esta salida..." class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"></textarea>
-                    </div>
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="input-group-item md:w-1/2">
+                    <label for="product-search">Producto a Retirar:</label>
+                    <input type="text" id="product-search" placeholder="Selecciona una sucursal primero..." autocomplete="off" required disabled>
+                    <div id="product-results"></div>
                 </div>
-                
-                <button type="submit" id="register-exit-btn" class="w-full bg-red-500 text-white font-bold py-3 px-6 rounded-md hover:bg-red-600 transition-colors mt-8">
-                    Registrar Salida
-                </button>
-            </form>
 
-            <div id="transaction-log-section">
-                <hr class="my-8 border-gray-300">
-                <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Historial de Últimas Salidas</h2>
-                <div id="transaction-log" class="table-scroll-container">
-                    <p class="text-gray-500 text-center" id="log-status">Cargando transacciones...</p>
-                    </div>
+                <div class="input-group-item md:w-1/2">
+                    <label for="packaging-unit-select">Unidad de Empaque (Conversión):</label>
+                    <select id="packaging-unit-select" disabled>
+                        <option value="1" selected>Unidad Individual (x1)</option> 
+                    </select>
+                </div>
             </div>
+            
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="input-group-item md:w-1/2">
+                    <label for="quantity-input">Cantidad de Paquetes/Unidades:</label>
+                    <input type="number" id="quantity-input" placeholder="Ej: 5" step="0.01" required min="0.01">
+                </div>
+
+                <div class="input-group-item md:w-1/2">
+                    <label>Total de Stock a Restar:</label>
+                    <input type="text" id="final-stock-display" value="0.00" readonly>
+                </div>
             </div>
-    </main>
+
+            <div class="input-group-item">
+                <label for="exit-reason">Motivo de Salida:</label>
+                <select id="exit-reason" required>
+                    <option value="" disabled selected>Selecciona el motivo...</option>
+                    <option value="Venta">Venta</option>
+                    <option value="Desperdicio">Desperdicio</option>
+                    <option value="Devolución">Devolución</option>
+                    <option value="Caducidad">Caducidad</option>
+                    <option value="Merma">Merma</option>
+                    <option value="Uso Interno">Uso Interno</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="observation">Observación:</label>
+                <textarea id="observation" rows="2" placeholder="Añade una nota opcional sobre este retiro..."></textarea>
+            </div>
+            
+            <button type="submit" id="btn-submit-exit" class="btn-submit">
+                Registrar Salida de Inventario
+            </button>
+        </form>
+
+        <hr class="my-8">
+
+        <div class="table-container">
+            <h2>Historial de Últimas Salidas</h2>
+            <div class="table-scroll-wrapper">
+                <table id="transaction-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha / Hora</th>
+                            <th>Producto</th>
+                            <th>Cantidad</th>
+                            <th>Motivo</th>
+                            <th>Sucursal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transaction-log-body">
+                        <tr><td colspan="5" class="text-center py-4 text-gray-500 italic">No hay transacciones recientes.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
     <script type="module">
-        import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        // Importar 'limit' y 'orderBy' de firestore para la consulta del log
-        import { getFirestore, doc, collection, getDocs, getDoc, updateDoc, increment, addDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    // --- 1. VARIABLES DE ESTADO ---
+    let idEmpresa = null;
+    let idSucursalSeleccionada = null;
+    let idUsuario = null;
+    let listaProductosSucursal = []; 
+    let idProductoSeleccionado = null;
+    let factorEmpaque = 1;
+    let focoProducto = -1; // Control de navegación por teclado
 
-        // Configuración de Firebase (se asume que estas variables son inyectadas en el entorno)
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
-        let app;
-        if (getApps().length === 0) {
-            app = initializeApp(firebaseConfig);
-        } else {
-            app = getApp();
-        }
+    // --- 2. REFERENCIAS DOM ---
+    const selectSucursal = document.getElementById('storage-location');
+    const inputBusqueda = document.getElementById('product-search');
+    const contenedorResultados = document.getElementById('product-results');
+    const selectEmpaque = document.getElementById('packaging-unit-select');
+    const inputCantidad = document.getElementById('quantity-input');
+    const visorTotal = document.getElementById('final-stock-display');
+    const formulario = document.getElementById('inventory-form');
+    const cuerpoHistorial = document.getElementById('transaction-log-body');
+    const appContenedor = document.getElementById('app-container');
+    const cargandoMensaje = document.getElementById('loading-message');
 
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        
-        // Variables globales para datos de usuario y aplicación
-        let userCompanyId = null;
-        let userBranchId = null;
-        let userId = null;
-        let userRole = null;
-        let allProducts = [];
-        let allPackagings = []; 
-        let selectedProductId = null; 
-        let selectedPackagingFactor = 1; 
-        
-        // Referencias a elementos del DOM
-        const productSearchInput = document.getElementById('product-search'); 
-        const productResultsDiv = document.getElementById('product-results'); 
-        const packagingUnitSelect = document.getElementById('packaging-unit-select'); 
-        const finalStockDisplayInput = document.getElementById('final-stock-display'); 
-        const quantityInput = document.getElementById('quantity-input'); 
-        
-        const storageLocationSelect = document.getElementById('storage-location');
-        const exitReasonSelect = document.getElementById('exit-reason');
-        const observationInput = document.getElementById('observation');
-        const form = document.getElementById('inventory-form');
+    // URLs de Sincronización Xeon
+    const URL_XEON_SALIDAS = "https://salidaempaque.nexusposgobal.com/api/xeon/salidas/sync";
+    const URL_XEON_LISTAR = "https://salidaempaque.nexusposgobal.com/api/xeon/salidas";
 
-        const userIdDisplay = document.getElementById('userIdDisplay');
-        const companyIdDisplay = document.getElementById('companyIdDisplay');
-        const userRoleDisplay = document.getElementById('userRoleDisplay');
-        const messageBox = document.getElementById('message-box');
-        
-        const transactionLogDiv = document.getElementById('transaction-log');
-        const logStatus = document.getElementById('log-status');
+    // --- 3. INICIALIZACIÓN MAESTRA ---
+    async function inicializar() {
+        try {
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
+            if (sesion && sesion.companyId) {
+                idEmpresa = sesion.companyId;
+                idUsuario = sesion.uid || sesion.id;
 
+                // ACTIVAR INTERFAZ: Asegura que el contenedor se vea de inmediato
+                if(cargandoMensaje) cargandoMensaje.style.display = 'none';
+                if(appContenedor) appContenedor.style.display = 'flex';
 
-        // *******************************************************************
-        // ********************* FUNCIONES DE UTILIDAD ***********************
-        // *******************************************************************
+                await cargarSucursales();
 
-        function showMessage(text, type = 'success') {
-            messageBox.textContent = text;
-            messageBox.classList.remove('hidden', 'bg-red-200', 'text-red-700', 'bg-green-200', 'text-green-700', 'bg-blue-200', 'text-blue-700');
-            
-            switch(type) {
-                case 'error':
-                    messageBox.classList.add('bg-red-200', 'text-red-700');
-                    break;
-                case 'info':
-                    messageBox.classList.add('bg-blue-200', 'text-blue-700');
-                    break;
-                default:
-                    messageBox.classList.add('bg-green-200', 'text-green-700');
-            }
-            
-            setTimeout(() => {
-                messageBox.classList.add('hidden');
-            }, 5000);
-        }
-
-        // *******************************************************************
-        // ********************* FUNCIONES DE CARGA DE DATOS *****************
-        // *******************************************************************
-
-        async function populateStorageLocationSelect(companyId) {
-            try {
-                const branchesRef = collection(db, 'companies', companyId, 'branches');
-                const branchesSnapshot = await getDocs(branchesRef);
-                storageLocationSelect.innerHTML = '<option value="" disabled selected>Selecciona el lugar de retiro...</option>';
-                
-                branchesSnapshot.forEach(doc => {
-                    const branch = doc.data();
-                    const option = document.createElement('option');
-                    option.value = doc.id;
-                    option.textContent = branch.name;
-                    storageLocationSelect.appendChild(option);
-                });
-            } catch (error) {
-                console.error("Error loading branches:", error);
-                showMessage("Error al cargar las sucursales. Verifique sus reglas de seguridad.", "error");
-            }
-        }
-
-        async function loadAllProducts(companyId) {
-            try {
-                const productsRef = collection(db, 'companies', companyId, 'products');
-                const productsSnapshot = await getDocs(productsRef);
-                allProducts = productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                console.log("Product catalog loaded:", allProducts);
-                
-                await loadAllPackagings(companyId); // Cargar las unidades de empaque
-
-            } catch (error) {
-                console.error("Error loading product catalog:", error);
-                showMessage("Error al cargar los productos.", "error");
-            }
-        }
-
-        async function loadAllPackagings(companyId) {
-            try {
-                const packingsRef = collection(db, 'companies', companyId, 'packing');
-                const packingsSnapshot = await getDocs(packingsRef);
-                allPackagings = packingsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                console.log("Packing catalog loaded:", allPackagings);
-            } catch (error) {
-                console.error("Error loading packing catalog:", error);
-                showMessage("Error al cargar las unidades de empaque.", "error");
-            }
-        }
-        
-        /**
-         * Nueva función para cargar y mostrar el historial de transacciones
-         */
-        async function loadTransactionLog(companyId, branchId) {
-            if (!companyId || !branchId) {
-                logStatus.textContent = "Seleccione una sucursal para ver las transacciones.";
-                transactionLogDiv.innerHTML = `<p class="text-gray-500 text-center" id="log-status">${logStatus.textContent}</p>`;
-                return;
-            }
-
-            logStatus.textContent = "Cargando transacciones...";
-            transactionLogDiv.innerHTML = `<p class="text-gray-500 text-center" id="log-status">${logStatus.textContent}</p>`;
-            
-            try {
-                // Modificación: La colección se encuentra en /companies/{companyId}/branches/{branchId}/exit_inventory
-                const logRef = collection(db, 'companies', companyId, 'branches', branchId, 'exit_inventory');
-                const q = query(logRef, orderBy('timestamp', 'desc'), limit(15)); // Últimas 15 salidas
-                const logSnapshot = await getDocs(q);
-                
-                if (logSnapshot.empty) {
-                    logStatus.textContent = "No se encontraron salidas de inventario en esta sucursal.";
-                    transactionLogDiv.innerHTML = `<p class="text-gray-500 text-center">${logStatus.textContent}</p>`;
-                    return;
+                // Si hay sucursal en la sesión, cargar entorno automáticamente
+                if (sesion.branchId) {
+                    selectSucursal.value = sesion.branchId;
+                    idSucursalSeleccionada = sesion.branchId;
+                    await prepararEntornoSucursal();
                 }
-
-                // Generar la tabla HTML
-                let tableHTML = `
-                    <table class="transaction-table w-full text-sm text-left text-gray-500">
-                        <thead class="text-xs text-gray-700 uppercase sticky top-0 bg-white">
-                            <tr>
-                                <th>Fecha/Hora</th>
-                                <th>Producto</th>
-                                <th>Cant. Base Retirada</th>
-                                <th>Motivo</th>
-                                <th>Usuario</th>
-                                <th>Observación</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                `;
-
-                logSnapshot.forEach(doc => {
-                    const log = doc.data();
-                    const timestamp = log.timestamp?.toDate ? log.timestamp.toDate().toLocaleString('es-CL') : 'N/A';
-                    
-                    tableHTML += `
-                        <tr>
-                            <td>${timestamp}</td>
-                            <td class="font-medium text-gray-900">${log.productName}</td>
-                            <td>${log.quantityBase} ${log.unit}</td>
-                            <td>${log.reason.charAt(0).toUpperCase() + log.reason.slice(1)}</td>
-                            <td>${log.userName || 'Usuario: ' + log.userId}</td>
-                            <td class="whitespace-nowrap overflow-hidden text-ellipsis max-w-xs" title="${log.observation || ''}">${log.observation || 'N/A'}</td>
-                        </tr>
-                    `;
-                });
-
-                tableHTML += `
-                        </tbody>
-                    </table>
-                `;
-                
-                // Reemplazar todo el contenido
-                transactionLogDiv.innerHTML = tableHTML;
-
-            } catch (error) {
-                // Este error es el que el usuario estaba viendo
-                console.error("Error al cargar el historial:", error);
-                transactionLogDiv.innerHTML = `<p class="text-red-500 text-center">Error al cargar el historial: ${error.message}. Por favor, verifique sus reglas de seguridad de Firebase.</p>`;
             }
+        } catch (e) { 
+            console.error("❌ [NEXUS] Error al inicializar:", e); 
         }
+    }
 
-
-        // *******************************************************************
-        // ********************* LÓGICA DE BÚSQUEDA Y CONVERSIÓN *************
-        // *******************************************************************
-        
-        function handleProductSearch(searchTerm) {
-            productResultsDiv.innerHTML = '';
-            if (searchTerm.length < 2) {
-                return;
-            }
-            const filteredProducts = allProducts.filter(p =>
-                p.name.toLowerCase().includes(searchTerm.toLowerCase())
-            );
-
-            filteredProducts.forEach(product => {
-                const resultItem = document.createElement('div');
-                resultItem.classList.add('result-item');
-                resultItem.textContent = `${product.name} (${product.unit})`;
-                resultItem.dataset.id = product.id;
-                productResultsDiv.appendChild(resultItem);
+    async function cargarSucursales() {
+        const sucursales = await window.nexusAPI.obtenerSucursalesLocal(idEmpresa);
+        selectSucursal.innerHTML = '<option value="" disabled selected>Selecciona sucursal de retiro...</option>';
+        if(sucursales && sucursales.length > 0) {
+            sucursales.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.nombre;
+                selectSucursal.appendChild(opt);
             });
         }
+    }
 
-        function updatePackagingSelect(productName) {
-            packagingUnitSelect.innerHTML = '';
-            packagingUnitSelect.disabled = false;
-            selectedPackagingFactor = 1;
+    // --- 4. FLUJO DE TRABAJO ---
 
-            const productData = allProducts.find(p => p.name.toLowerCase() === productName.toLowerCase());
-            let baseUnitName = productData ? productData.unit : 'unidad';
+    async function prepararEntornoSucursal() {
+        if (!idSucursalSeleccionada) return;
 
-            // Opción por defecto (Sin conversión - Salida por unidad base)
-            const defaultOption = document.createElement('option');
-            defaultOption.value = "";
-            defaultOption.selected = true;
-            defaultOption.textContent = `Salida por ${baseUnitName}`;
-            packagingUnitSelect.appendChild(defaultOption);
+        inputBusqueda.disabled = false;
+        inputBusqueda.placeholder = "Escribe para buscar producto con stock...";
+        inputBusqueda.value = "";
+        
+        // Cargar catálogo de la sucursal
+        const inventario = await window.nexusAPI.obtenerInventarioSucursal({
+            companyId: idEmpresa,
+            sucursalId: idSucursalSeleccionada
+        });
+        listaProductosSucursal = inventario || [];
 
-            const relevantPackings = allPackagings.filter(p => 
-                p.productType && p.productType.toLowerCase() === productName.toLowerCase()
-            );
+        // Cargar historial de salidas
+        await cargarHistorialSalidas();
+    }
 
-            if (relevantPackings.length === 0) {
-                 packagingUnitSelect.innerHTML = '<option value="" selected>No hay unidades de empaque específicas</option>';
-                 packagingUnitSelect.disabled = true;
-            } else {
-                 relevantPackings.forEach(packing => {
-                    const option = document.createElement('option');
-                    const optionText = `${packing.unit} (${packing.quantity} ${packing.measureType})`;
-                    
-                    option.value = packing.unit;
-                    option.textContent = optionText;
-                    option.dataset.conversionFactor = packing.quantity;
-                    option.dataset.measureType = packing.measureType;
-                    
-                    packagingUnitSelect.appendChild(option);
-                });
-            }
+    async function seleccionarProducto(p) {
+        idProductoSeleccionado = p.id;
+        inputBusqueda.value = p.nombre;
+        contenedorResultados.innerHTML = "";
+        contenedorResultados.classList.remove('activo');
+        
+        // Obtener empaques del Cerebro
+        const empaques = await window.nexusAPI.obtenerEmpaquePorProducto(p.id);
+        selectEmpaque.innerHTML = `<option value="1">Unidad Individual (1.00 ${p.unit || 'UN'})</option>`;
+        selectEmpaque.disabled = false;
+        
+        if (empaques && empaques.length > 0) {
+            empaques.forEach(emp => {
+                const opt = document.createElement('option');
+                opt.value = emp.factor_cantidad;
+                opt.textContent = `${emp.nombre_unidad} (x${emp.factor_cantidad} ${emp.tipo_medida})`;
+                selectEmpaque.appendChild(opt);
+            });
         }
+        
+        factorEmpaque = 1;
+        recalcular();
+        inputCantidad.focus();
+    }
 
-        function updateFinalStockDisplay() {
-            const quantity = parseFloat(quantityInput.value);
-            
-            if (!selectedProductId || isNaN(quantity) || quantity <= 0) {
-                finalStockDisplayInput.value = '0';
-                return;
-            }
+    function recalcular() {
+        const cant = parseFloat(inputCantidad.value) || 0;
+        const total = cant * factorEmpaque;
+        visorTotal.value = `${total.toFixed(2)} unidad(es)`;
+    }
 
-            const productData = allProducts.find(p => p.id === selectedProductId);
-            let baseUnit = productData ? productData.unit : 'unidad';
+    // --- 5. GESTIÓN DE TABLA Y SINCRONIZACIÓN ---
 
-            let measureType = baseUnit; 
-            
-            if (selectedPackagingFactor > 1) {
-                const selectedOption = packagingUnitSelect.options[packagingUnitSelect.selectedIndex];
-                measureType = selectedOption.dataset.measureType || baseUnit; 
-            }
+    async function cargarHistorialSalidas() {
+        try {
+            // Carga local inmediata
+            let historialLocal = await window.nexusAPI.obtenerSalidasLocal({
+                companyId: idEmpresa,
+                branchId: idSucursalSeleccionada
+            });
+            renderizarHistorial(historialLocal);
 
-            const finalStockQuantity = quantity * selectedPackagingFactor;
-            
-            // Redondear a 2 decimales
-            const roundedQuantity = Math.round(finalStockQuantity * 100) / 100;
-
-            finalStockDisplayInput.value = `${roundedQuantity} ${measureType}`;
-        }
-
-        // *******************************************************************
-        // ********************* LÓGICA DE FIREBASE **************************
-        // *******************************************************************
-
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                const tokenResult = await user.getIdTokenResult();
-                const claims = tokenResult.claims;
-
-                if (!claims.companyId) {
-                    showMessage("Actualizando información del usuario. Por favor espere...", "info");
-                    await user.getIdToken(true);
-                    return;
-                }
-
-                userId = user.uid;
-                userCompanyId = claims.companyId;
-                userBranchId = claims.branchId;
-                userRole = claims.role;
-
-                userIdDisplay.textContent = userId;
-                companyIdDisplay.textContent = userCompanyId || 'No disponible';
-                userRoleDisplay.textContent = userRole || 'No disponible';
-                
-                if (userCompanyId) {
-                    await loadAllProducts(userCompanyId); // Carga productos y empaques
-                    await populateStorageLocationSelect(userCompanyId);
-                    
-                    if (userBranchId) {
-                        storageLocationSelect.value = userBranchId;
-                        storageLocationSelect.disabled = true;
-                        // Cargar log inicial si la sucursal está preseleccionada
-                        loadTransactionLog(userCompanyId, userBranchId);
-                    } else {
-                         logStatus.textContent = "Seleccione una sucursal para ver las transacciones.";
+            // Sincronización con Xeon (Descarga)
+            if (navigator.onLine) {
+                const respuesta = await fetch(`${URL_XEON_LISTAR}/${idEmpresa}/${idSucursalSeleccionada}`);
+                if (respuesta.ok) {
+                    const historialNube = await respuesta.json();
+                    for (const item of historialNube) {
+                        await window.nexusAPI.guardarSalidaLocal(item);
                     }
-                } 
-            } else {
-                try {
-                    if (initialAuthToken) {
-                        await signInWithCustomToken(auth, initialAuthToken);
-                    } else {
-                        await signInAnonymously(auth); 
-                    }
-                } catch (error) {
-                    console.error('Sign-in error:', error);
-                    showMessage("Error de inicio de sesión. Intente recargar la página.", "error");
+                    // Refrescar con datos nuevos
+                    const actualizado = await window.nexusAPI.obtenerSalidasLocal({
+                        companyId: idEmpresa,
+                        branchId: idSucursalSeleccionada
+                    });
+                    renderizarHistorial(actualizado);
                 }
             }
-        });
-        
-        // *******************************************************************
-        // ********************* MANEJO DE EVENTOS ***************************
-        // *******************************************************************
+        } catch (error) {
+            console.error("❌ Error en sincronización:", error);
+        }
+    }
 
-        // 1. Manejo de la búsqueda
-        productSearchInput.addEventListener('input', (e) => {
-            handleProductSearch(e.target.value);
-        });
-
-        // 2. Selección del producto de la lista desplegable
-        productResultsDiv.addEventListener('click', (e) => {
-            const resultItem = e.target.closest('.result-item');
-            if (resultItem) {
-                selectedProductId = resultItem.dataset.id;
-                
-                // Muestra solo el nombre del producto en el input
-                const productName = resultItem.textContent.split('(')[0].trim();
-                productSearchInput.value = productName; 
-                
-                productResultsDiv.innerHTML = '';
-                
-                updatePackagingSelect(productName);
-                updateFinalStockDisplay(); 
-            }
-        });
-
-        // 3. Cambio de unidad de empaque o cantidad
-        packagingUnitSelect.addEventListener('change', (e) => {
-            const selectedOption = e.target.options[e.target.selectedIndex];
-            selectedPackagingFactor = parseFloat(selectedOption.dataset.conversionFactor) || 1;
-            updateFinalStockDisplay();
-        });
-        
-        quantityInput.addEventListener('input', updateFinalStockDisplay);
-        
-        // 4. Cargar el historial cuando cambie la sucursal (si no está pre-bloqueada)
-        storageLocationSelect.addEventListener('change', (e) => {
-            if (userCompanyId && e.target.value) {
-                loadTransactionLog(userCompanyId, e.target.value);
-            } else {
-                 logStatus.textContent = "Seleccione una sucursal para ver las transacciones.";
-                 transactionLogDiv.innerHTML = `<p class="text-gray-500 text-center">${logStatus.textContent}</p>`;
-            }
-        });
-
-
-        // 5. Registrar la Salida de Inventario
-        async function registerInventoryExit(event) {
-            event.preventDefault();
-
-            const quantity = parseFloat(quantityInput.value); 
-            const finalStockQuantity = quantity * selectedPackagingFactor; // Cantidad base real a restar
-            const storageLocation = storageLocationSelect.value;
-            const exitReason = exitReasonSelect.value;
-            const observation = observationInput.value;
-            const roundedQuantityToDecrement = Math.round(finalStockQuantity * 100) / 100;
-            
-            const productData = allProducts.find(p => p.id === selectedProductId);
-            let finalUnit = productData ? productData.unit : 'unidad';
-            if (selectedPackagingFactor > 1) {
-                const selectedOption = packagingUnitSelect.options[packagingUnitSelect.selectedIndex];
-                finalUnit = selectedOption.dataset.measureType || finalUnit; 
-            }
-
-
-            if (!userCompanyId || !storageLocation || !selectedProductId || isNaN(quantity) || quantity <= 0 || !exitReason) {
-                showMessage('Por favor, asegúrese de haber iniciado sesión y de que todos los campos requeridos estén llenos.', 'error');
-                return;
-            }
-
-            if (!productData) {
-                showMessage('Producto no encontrado en el catálogo. Intente buscar de nuevo.', 'error');
-                return;
-            }
-            
-            try {
-                // Obtener el usuario actual para el log
-                const currentUser = auth.currentUser; 
-                
-                const inventoryRef = doc(db, 'companies', userCompanyId, 'branches', storageLocation, 'inventory', selectedProductId);
-                
-                // 1. Verificar el stock actual
-                const docSnap = await getDoc(inventoryRef);
-                
-                if (!docSnap.exists() || docSnap.data().unit !== finalUnit) {
-                     showMessage(`Error: Inventario no encontrado o la unidad base registrada ('${docSnap.data()?.unit || 'N/A'}') no coincide con la esperada ('${finalUnit}').`, 'error');
-                     return;
-                }
-                
-                const currentStock = docSnap.data().stock || 0;
-                
-                if (currentStock < roundedQuantityToDecrement) {
-                     showMessage(`Error: Stock insuficiente. Stock actual de ${productData.name}: ${currentStock} ${finalUnit}. Intenta retirar ${roundedQuantityToDecrement}.`, 'error');
-                     return;
-                }
-
-                // 2. Decrementar el stock usando la operación atómica 'increment' con valor negativo
-                // Ruta: /companies/{companyId}/branches/{branchId}/inventory/{productId}
-                await updateDoc(inventoryRef, {
-                    stock: increment(-roundedQuantityToDecrement),
-                    updated_at: new Date()
-                });
-
-                // 3. Registrar la salida en un log de movimientos
-                // Ruta: /companies/{companyId}/branches/{branchId}/exit_inventory
-                const logRef = collection(db, 'companies', userCompanyId, 'branches', storageLocation, 'exit_inventory');
-                
-                await addDoc(logRef, {
-                    type: 'exit',
-                    productId: selectedProductId,
-                    productName: productData.name,
-                    branchId: storageLocation, 
-                    branchName: storageLocationSelect.options[storageLocationSelect.selectedIndex].text,
-                    
-                    quantity: quantity, 
-                    quantityBase: roundedQuantityToDecrement, 
-                    unit: finalUnit,
-                    reason: exitReason,
-                    observation: observation,
-                    userId: userId,
-                    userName: currentUser?.email || 'N/A',
-                    timestamp: new Date()
-                });
-                
-                showMessage(`Salida registrada. Stock de ${productData.name} decreció en ${roundedQuantityToDecrement} ${finalUnit}.`, 'success');
-                
-                // Actualizar el log de transacciones después de una salida exitosa
-                loadTransactionLog(userCompanyId, storageLocation); 
-
-                // Limpiar el formulario
-                form.reset();
-                productResultsDiv.innerHTML = '';
-                packagingUnitSelect.innerHTML = '<option value="" selected>Selecciona un producto primero...</option>';
-                packagingUnitSelect.disabled = true;
-                finalStockDisplayInput.value = '0';
-                selectedProductId = null;
-                selectedPackagingFactor = 1;
-                if (userBranchId) { 
-                    storageLocationSelect.value = userBranchId;
-                }
-                
-            } catch (error) {
-                console.error("Error al registrar la salida de inventario:", error);
-                showMessage('Error al registrar la salida. Verifique sus permisos de escritura o conexión.', 'error');
-            }
+    function renderizarHistorial(lista) {
+        cuerpoHistorial.innerHTML = '';
+        if (!lista || lista.length === 0) {
+            cuerpoHistorial.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500 italic">No hay transacciones registradas.</td></tr>';
+            return;
         }
 
-        // Manejar el envío del formulario
-        form.addEventListener('submit', registerInventoryExit);
+        lista.forEach(h => {
+            const fila = document.createElement('tr');
+            const nombreProd = h.nombre_producto || h.product_id || 'Producto Desconocido';
+            const unidadLimpia = h.unidad ? h.unidad.split(' ')[0] : 'UN';
 
-    </script>
+            fila.innerHTML = `
+                <td class="px-6 py-4 text-xs text-gray-500">${new Date(h.fecha_modificacion).toLocaleString()}</td>
+                <td class="px-6 py-4 text-sm font-bold text-gray-900">${nombreProd}</td>
+                <td class="px-6 py-4 text-sm font-bold text-red-600">-${h.cantidad} ${unidadLimpia}</td>
+                <td class="px-6 py-4 text-sm text-gray-600">${h.motivo}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">${h.branch_id}</td>
+            `;
+            cuerpoHistorial.appendChild(fila);
+        });
+    }
+
+    // --- 6. EVENT LISTENERS ---
+
+    // Cambio de Sucursal
+    selectSucursal.onchange = async (e) => {
+        idSucursalSeleccionada = e.target.value;
+        await prepararEntornoSucursal();
+    };
+
+    // Buscador: Escritura
+    inputBusqueda.oninput = (e) => {
+        const termino = e.target.value.toLowerCase().trim();
+        focoProducto = -1;
+        contenedorResultados.innerHTML = "";
+
+        if (termino.length < 2) {
+            contenedorResultados.classList.remove('activo');
+            return;
+        }
+
+        const filtrados = listaProductosSucursal.filter(p => 
+            p.nombre.toLowerCase().includes(termino) || (p.codigo && p.codigo.includes(termino))
+        );
+
+        if (filtrados.length > 0) {
+            contenedorResultados.classList.add('activo');
+            filtrados.forEach((p, index) => {
+                const item = document.createElement('div');
+                item.className = "result-item";
+                item.innerHTML = `
+                    <div class="flex justify-between">
+                        <strong>${p.nombre}</strong>
+                        <span class="text-red-600 font-bold">Stock: ${p.stock_sucursal} ${p.unit || 'UN'}</span>
+                    </div>
+                `;
+                item.onclick = () => seleccionarProducto(p);
+                contenedorResultados.appendChild(item);
+            });
+        } else {
+            contenedorResultados.classList.add('activo');
+            contenedorResultados.innerHTML = `<div class="no-results-msg px-4 py-3 italic text-gray-500">Producto sin stock en esta sucursal</div>`;
+        }
+    };
+
+    // Buscador: Teclado (Navegación Flechas y Enter)
+    inputBusqueda.addEventListener('keydown', (e) => {
+        const items = contenedorResultados.querySelectorAll('.result-item');
+        if (items.length === 0) return;
+
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            focoProducto++;
+            if (focoProducto >= items.length) focoProducto = 0;
+            aplicarResaltado(items);
+        } 
+        else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            focoProducto--;
+            if (focoProducto < 0) focoProducto = items.length - 1;
+            aplicarResaltado(items);
+        } 
+        else if (e.key === "Enter") {
+            e.preventDefault();
+            if (focoProducto > -1) items[focoProducto].click();
+            else if (items.length > 0) items[0].click();
+        }
+    });
+
+    function aplicarResaltado(items) {
+        items.forEach(el => el.classList.remove("autocomplete-active"));
+        if (focoProducto > -1) {
+            items[focoProducto].classList.add("autocomplete-active");
+            items[focoProducto].scrollIntoView({ block: "nearest" });
+        }
+    }
+
+    inputCantidad.oninput = recalcular;
+    selectEmpaque.onchange = (e) => {
+        factorEmpaque = parseFloat(e.target.value) || 1;
+        recalculate();
+    };
+
+    // --- 7. REGISTRO FINAL ---
+    formulario.onsubmit = async (e) => {
+        e.preventDefault();
+        if (!idProductoSeleccionado) return mostrarToast("Selecciona un producto.", "error");
+
+        const totalARestar = (parseFloat(inputCantidad.value) || 0) * factorEmpaque;
+        const datosSalida = {
+            id: `OUT-${Date.now()}`,
+            company_id: idEmpresa,
+            branch_id: idSucursalSeleccionada,
+            product_id: idProductoSeleccionado,
+            cantidad: totalARestar,
+            unidad: selectEmpaque.options[selectEmpaque.selectedIndex].text,
+            motivo: document.getElementById('exit-reason').value,
+            observacion: document.getElementById('observation').value,
+            usuario_id: idUsuario,
+            fecha_modificacion: new Date().toISOString()
+        };
+
+        try {
+            // A. Guardar Historial Local
+            const resHistorial = await window.nexusAPI.guardarSalidaLocal(datosSalida);
+            
+            // B. Actualizar Stock Local (Valor Negativo)
+            const resStock = await window.nexusAPI.guardarStockSucursal({
+                productoId: idProductoSeleccionado,
+                sucursalId: idSucursalSeleccionada,
+                companyId: idEmpresa,
+                cantidad: -totalARestar, 
+                operacion: 'SUMAR'
+            });
+
+            if (resHistorial.success && resStock.success) {
+                // C. Sincronización Xeon (Subida)
+                if (navigator.onLine) {
+                    fetch(URL_XEON_SALIDAS, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(datosSalida)
+                    }).catch(err => console.warn("Sync Xeon pendiente."));
+                }
+
+                mostrarToast("Salida procesada y sincronizada correctamente.", "success");
+                formulario.reset();
+                idProductoSeleccionado = null;
+                visorTotal.value = "0.00";
+                await cargarHistorialSalidas();
+            }
+        } catch (error) {
+            console.error("❌ Error al procesar salida:", error);
+            mostrarToast("Error crítico al guardar.", "error");
+        }
+    };
+
+    function mostrarToast(mensaje, tipo = "success") {
+        const contenedor = document.getElementById('toast-container');
+        if(!contenedor) return;
+        const toast = document.createElement('div');
+        const colorBase = tipo === "success" ? "bg-green-500" : "bg-red-500";
+        toast.className = `${colorBase} text-white px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-300 translate-x-full opacity-0 flex items-center gap-3 font-bold`;
+        toast.innerHTML = `<span>${tipo === "success" ? '✅' : '❌'}</span><span>${mensaje}</span>`;
+        contenedor.appendChild(toast);
+        setTimeout(() => toast.classList.remove('translate-x-full', 'opacity-0'), 10);
+        setTimeout(() => {
+            toast.classList.add('translate-x-full', 'opacity-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    }
+
+    // Arrancar el sistema
+    inicializar();
+</script>
 </body>
 </html>
