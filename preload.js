@@ -44,7 +44,7 @@ contextBridge.exposeInMainWorld('nexusAPI', {
     obtenerSalidasLocal: (filtro) => ipcRenderer.invoke('obtener-salidas-local', filtro),
     obtenerConfiguracionCajera: (key) => ipcRenderer.invoke('obtener-configuracion-cajera', key),
     guardarConfiguracionCajera: (key, data) => ipcRenderer.invoke('guardar-configuracion-cajera', key, data),
-
+    sincronizarConfiguracionXeon: (datos) => ipcRenderer.invoke('sincronizar-configuracion-xeon', datos),
 
 });
 

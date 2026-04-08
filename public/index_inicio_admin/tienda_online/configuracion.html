@@ -176,7 +176,6 @@
     const DEFAULT_MANUAL_RATE = 0.00;
 
     // --- 2. VARIABLES DE ESTADO ---
-    let userId = null;
     let companyId = null; 
 
     // --- 3. REFERENCIAS DOM ---
@@ -202,8 +201,8 @@
     
     function convertFileToBase64(file) {
         return new Promise((resolve, reject) => {
-            const LIMITE_5MB = 15 * 1024 * 1024; // 5,242,880 bytes
-            if (file.size > LIMITE_5MB) { 
+            const LIMITE_15MB = 15 * 1024 * 1024; // 15MB
+            if (file.size > LIMITE_15MB) { 
                 reject(new Error("El archivo es demasiado grande. El límite máximo es de 15MB."));
                 return;
             }
@@ -220,7 +219,6 @@
             logoUrlInput.value = base64String;
             logoPreview.src = base64String;
             logoPreview.classList.remove('hidden');
-            return base64String;
         } catch (error) {
             console.error("Error al procesar el logo:", error);
             logoPreview.classList.add('hidden');
@@ -250,26 +248,17 @@
     }
     
     function validateManualRateInput() {
-        const input = manualExchangeRateInput;
-        let cleanedValue = input.value.replace(',', '.').replace(/[^\d.]/g, '');
+        let cleanedValue = manualExchangeRateInput.value.replace(',', '.').replace(/[^\d.]/g, '');
         const parts = cleanedValue.split('.');
         if (parts.length > 2) cleanedValue = parts[0] + '.' + parts.slice(1).join('');
-        input.value = cleanedValue;
+        manualExchangeRateInput.value = cleanedValue;
     }
 
     // --- 5. LÓGICA DE PERSISTENCIA (SQLITE LOCAL) ---
-    
     async function inicializar() {
         try {
             const sesion = await window.nexusAPI.obtenerSesionLocal();
-            // Solo nos interesa el ID de la empresa
-            if (sesion && sesion.companyId) {
-                companyId = sesion.companyId;
-            } else {
-                // Si no hay sesión, asignamos un ID local por defecto para no bloquear
-                companyId = 'NEXUS-LOCAL'; 
-            }
-            
+            companyId = (sesion && sesion.companyId) ? sesion.companyId : 'NEXUS-LOCAL';
             await loadTiendaConfig();
         } catch (error) { 
             console.error("Error al arrancar:", error); 
@@ -279,110 +268,86 @@
     }
 
     async function loadTiendaConfig() {
-    try {
-        // 1. Pedimos la configuración guardada bajo la clave 'config_tienda_online'
-        const configDataRaw = await window.nexusAPI.obtenerConfiguracionCajera('config_tienda_online');
-        
-        if (configDataRaw) {
-            // Convertimos el texto de la base de datos a un objeto de JavaScript
-            const data = typeof configDataRaw === 'string' ? JSON.parse(configDataRaw) : configDataRaw;
+        try {
+            console.log("📂 Nexus POS: Intentando cargar configuración...");
+            const configDataRaw = await window.nexusAPI.obtenerConfiguracionCajera('config_tienda_online');
             
-            // 2. Rellenamos cada casilla con el valor guardado o el valor por defecto
-            if (storeNameInput) storeNameInput.value = data.storeName || '';
-            if (whatsappNumberInput) whatsappNumberInput.value = data.whatsappNumber || '';
-            if (deliveryEnabledToggle) deliveryEnabledToggle.checked = !!data.deliveryEnabled; 
-            
-            // 3. Restauramos el Logo (Vista previa)
-            if (data.logoUrl) {
-                if (logoUrlInput) logoUrlInput.value = data.logoUrl;
-                if (logoPreview) {
-                    logoPreview.src = data.logoUrl;
-                    logoPreview.classList.remove('hidden');
+            if (configDataRaw) {
+                const data = typeof configDataRaw === 'string' ? JSON.parse(configDataRaw) : configDataRaw;
+                console.log("✅ Datos recuperados con éxito.");
+
+                if (storeNameInput) storeNameInput.value = data.storeName || '';
+                if (whatsappNumberInput) whatsappNumberInput.value = data.whatsappNumber || '';
+                if (deliveryEnabledToggle) deliveryEnabledToggle.checked = data.deliveryEnabled === true;
+                if (currencySelect) currencySelect.value = data.currencyCode || 'BS';
+                if (exchangeRateMethodSelect) exchangeRateMethodSelect.value = data.exchangeRateMethod || 'RateDB';
+                if (manualExchangeRateInput) manualExchangeRateInput.value = data.manualExchangeRate || '0.00';
+
+                // Restauración del Logo
+                if (data.logoUrl && data.logoUrl.trim() !== "") {
+                    if (logoUrlInput) logoUrlInput.value = data.logoUrl;
+                    if (logoPreview) {
+                        logoPreview.src = data.logoUrl;
+                        logoPreview.classList.remove('hidden');
+                    }
                 }
+
+                handleRateMethodChange();
+                console.log("🎯 Formulario de configuración rellenado.");
+            } else {
+                console.log("ℹ️ No se encontró configuración previa.");
             }
-            
-            // 4. Ajustes de Moneda y Tasa
-            if (currencySelect) currencySelect.value = data.currencyCode || 'BS';
-            if (exchangeRateMethodSelect) exchangeRateMethodSelect.value = data.exchangeRateMethod || 'RateDB';
-            
-            if (manualExchangeRateInput) {
-                // Si el valor es 0, lo mostramos como 0.00
-                manualExchangeRateInput.value = data.manualExchangeRate !== undefined ? data.manualExchangeRate : '0.00';
-            }
-
-            // 5. 🔥 IMPORTANTE: Disparamos la lógica visual para mostrar/ocultar la tasa manual
-            handleRateMethodChange(); 
-
-            console.log("📂 Configuración cargada y aplicada a la interfaz.");
+        } catch (error) {
+            console.error("❌ Error crítico al rellenar el formulario:", error);
         }
-    } catch (error) {
-        console.error("❌ Error al cargar configuración desde SQLite:", error);
-    }
-}
-
-    async function saveTiendaConfiguration() {
-        if (!companyId) throw new Error("No se detectó el ID de la empresa.");
-        
-        const rateMethod = exchangeRateMethodSelect.value;
-        let manualRateValue = 0;
-        
-        if (rateMethod === 'RateManual') {
-            manualRateValue = parseFloat(manualExchangeRateInput.value);
-            if (isNaN(manualRateValue) || manualRateValue <= 0) throw new Error("Tasa manual inválida.");
-        }
-
-        const tiendaData = {
-            ultimoCambio: new Date().toISOString(),
-            modificadoPor: userId,
-            storeName: storeNameInput.value.trim() || DEFAULT_STORE_NAME,
-            whatsappNumber: whatsappNumberInput.value.trim() || DEFAULT_WHATSAPP,
-            logoUrl: logoUrlInput.value.trim() || '', 
-            deliveryEnabled: deliveryEnabledToggle.checked,
-            currencyCode: currencySelect.value || DEFAULT_CURRENCY_CODE,
-            exchangeRateMethod: rateMethod, 
-            manualExchangeRate: manualRateValue, 
-        };
-
-        // Guardar en SQLite mediante el puente de Electron
-        await window.nexusAPI.guardarConfiguracion('config_tienda_online', JSON.stringify(tiendaData));
     }
 
     async function saveConfiguration() {
-        try {
-            // Si por alguna falla de carga companyId está vacío, lo forzamos.
-            // Cero validaciones de "usuario" o "sesión" activa.
-            if (!companyId) companyId = 'NEXUS-LOCAL';
-            
-            saveConfigBtn.disabled = true;
-            saveConfigBtn.textContent = "Guardando localmente...";
+    try {
+        if (!companyId) companyId = 'NEXUS-LOCAL';
+        
+        saveConfigBtn.disabled = true;
+        saveConfigBtn.textContent = "Guardando y Sincronizando...";
 
-            const tiendaData = {
-                ultimoCambio: new Date().toISOString(),
-                company_id: companyId, // Adjuntamos la empresa
-                storeName: storeNameInput.value.trim() || DEFAULT_STORE_NAME,
-                whatsappNumber: whatsappNumberInput.value.trim() || DEFAULT_WHATSAPP,
-                logoUrl: logoUrlInput.value.trim(), 
-                deliveryEnabled: deliveryEnabledToggle.checked,
-                currencyCode: currencySelect.value,
-                exchangeRateMethod: exchangeRateMethodSelect.value, 
-                manualExchangeRate: parseFloat(manualExchangeRateInput.value) || 0, 
-            };
+        // 1. Recolección de todos los campos del formulario
+        const tiendaData = {
+            ultimoCambio: new Date().toISOString(),
+            companyId: companyId, 
+            storeName: storeNameInput?.value?.trim() || DEFAULT_STORE_NAME,
+            whatsappNumber: whatsappNumberInput?.value?.trim() || DEFAULT_WHATSAPP,
+            logoUrl: logoUrlInput?.value?.trim() || '',
+            deliveryEnabled: deliveryEnabledToggle?.checked || false,
+            currencyCode: currencySelect?.value || DEFAULT_CURRENCY_CODE,
+            exchangeRateMethod: exchangeRateMethodSelect?.value || DEFAULT_RATE_METHOD,
+            manualExchangeRate: parseFloat(manualExchangeRateInput?.value) || 0,
+        };
 
-            // Guarda en la tabla configuracion_cajera de SQLite
-            await window.nexusAPI.guardarConfiguracionCajera('config_tienda_online', tiendaData);
-            
-            showMessage("✅ Configuración guardada en esta PC.", 'green');
-        } catch (error) {
-            showMessage(`❌ Error al guardar: ${error.message}`, 'red');
-        } finally {
-            saveConfigBtn.disabled = false;
-            saveConfigBtn.textContent = "Guardar Configuración de Tienda";
+        // 2. Guardado en la Base de Datos Local (SQLite)
+        await window.nexusAPI.guardarConfiguracionCajera('config_tienda_online', tiendaData);
+
+        // 3. Sincronización con el Servidor Xeon (MongoDB - Puerto 3007)
+        // Usamos el nuevo canal que expusimos en el puente
+        const syncStatus = await window.nexusAPI.sincronizarConfiguracionXeon(tiendaData);
+        
+        if (syncStatus.success) {
+            showMessage("✅ Configuración guardada y sincronizada con el Xeon.", 'green');
+        } else {
+            // Si falla el Xeon, igual notificamos que lo local sí se guardó
+            console.warn("⚠️ Fallo de sincronización nube:", syncStatus.error);
+            showMessage("✅ Guardado localmente (Servidor Xeon fuera de línea).", 'blue');
         }
+
+    } catch (error) {
+        console.error("Fallo crítico en guardado:", error);
+        showMessage(`❌ Error al guardar: ${error.message}`, 'red');
+    } finally {
+        saveConfigBtn.disabled = false;
+        saveConfigBtn.textContent = "Guardar Configuración de Tienda";
     }
+}
 
 
-    
-    // --- 6. EVENT LISTENERS ---
+    // --- 6. EVENT LISTENERS Y ARRANQUE DIRECTO ---
     logoFileInput.addEventListener('change', (e) => {
         if (e.target.files.length > 0) handleLogoFileChange(e.target.files[0]);
     });
@@ -391,11 +356,10 @@
     manualExchangeRateInput.addEventListener('input', validateManualRateInput);
     saveConfigBtn.addEventListener('click', saveConfiguration);
 
-        document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Buscamos la sesión (para tener el ID de empresa)
-    await inicializar(); 
-    // 2. La función inicializar() ya llama internamente a loadTiendaConfig()
-});
+    // 🔥 EL SECRETO DEL DETECTIVE:
+    // Ya no usamos DOMContentLoaded porque al ser type="module", el DOM YA ESTÁ LISTO aquí.
+    console.log("🚀 Módulo de configuración listo, iniciando ejecución...");
+    inicializar(); 
 </script>
 </body>
 </html>

@@ -210,29 +210,7 @@
     }
 </script>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js";
-    import { getFirestore, collection, doc, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js";
-    
-    const firebaseConfig = {
-        apiKey: "AIzaSyDN9mZ1n-OkC-Qz52eTCOy4yJH7M0U9zYI",
-        authDomain: "nexus-pos-75593.firebaseapp.com",
-        projectId: "nexus-pos-75593",
-        storageBucket: "nexus-pos-75593.firebasestorage.app",
-        messagingSenderId: "626840984883",
-        appId: "1:626840984883:web:08d56544ee28bc8e637246",
-        measurementId: "G-K1EQVJWJHG"
-    };
-    
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    const storeData = {
-        categories: [],
-        products: [],
-        cart: []
-    };
-    
+<script type="module">    
     const tiendaConfig = {
         whatsappNumber: "584120000000",
         storeName: "Tu Tienda Online",
@@ -267,169 +245,146 @@
         return null; 
     }
     
-    async function fetchBcvRate(companyId) {
-        const bcvDocPath = `companies/${companyId}/exchange/bcv`;
+    async function fetchBcvRate() {
         try {
-            const docSnap = await getDoc(doc(db, bcvDocPath));
+            // Usamos la API pública de DolarApi para obtener la tasa oficial del BCV
+            const response = await fetch('https://ve.dolarapi.com/v1/dolares/bcv');
+            if (!response.ok) throw new Error("Error obteniendo tasa externa");
             
-            if (docSnap.exists() && docSnap.data().rate) {
-                const rateData = docSnap.data().rate;
-                const rateString = rateData.toString();
-                let rateValue = rateString.includes(':') ? rateString.split(':')[1].trim() : rateString.trim();
-                const parsedRate = parseFloat(rateValue);
-                const integerPart = (parsedRate && parsedRate > 0) ? Math.floor(parsedRate) : 1; 
-                return integerPart;
-            } else {
-                return 1;
-            }
+            const data = await response.json();
+            // Retornamos el valor promedio (ej: 36.50)
+            return data.promedio || 1;
         } catch (error) {
-            console.error("Error al cargar tasa BCV:", error);
+            console.error("❌ Error al cargar tasa BCV desde la nube:", error);
+            // Retorno de respaldo para evitar errores en cálculos de precios
             return 1;
         }
     }
 
 
     async function loadTiendaConfig(companyId) {
-        if (!companyId || !db) return;
+        if (!companyId) return;
 
-        const tiendaDocPath = `companies/${companyId}/configs/tienda`;
+        const URL_CONFIG = `https://configuracioncajera.nexusposgobal.com/api/xeon/configuracion/${companyId}`;
         
         try {
-            const docSnap = await getDoc(doc(db, tiendaDocPath));
-            
-            if (docSnap.exists()) {
-                const data = docSnap.data();
+            const response = await fetch(URL_CONFIG);
+            if (response.ok) {
+                const data = await response.json();
                 
-                tiendaConfig.storeName = data.storeName || tiendaConfig.storeName;
-                tiendaConfig.whatsappNumber = data.whatsappNumber || tiendaConfig.whatsappNumber;
-                tiendaConfig.logoUrl = data.logoUrl || tiendaConfig.logoUrl;
-                tiendaConfig.currencyCode = data.currencyCode || tiendaConfig.currencyCode;
-                tiendaConfig.deliveryEnabled = data.deliveryEnabled !== undefined ? data.deliveryEnabled : tiendaConfig.deliveryEnabled;
+                // Mapeo de identidad desde el Payload guardado en MongoDB
+                tiendaConfig.storeName = data.storeName || "Nexus Shop";
+                tiendaConfig.whatsappNumber = data.whatsappNumber || "584120000000";
+                tiendaConfig.logoUrl = data.logoUrl || null;
+                tiendaConfig.currencyCode = data.currencyCode || 'BS';
+                tiendaConfig.deliveryEnabled = data.deliveryEnabled !== undefined ? data.deliveryEnabled : true;
                 
-                tiendaConfig.dataVersion = data.dataVersion || null;
+                // Aplicar nombre a la pestaña del navegador
+                document.title = `${tiendaConfig.storeName} - Tienda Online`;
 
-                tiendaConfig.exchangeRateMethod = data.exchangeRateMethod || tiendaConfig.exchangeRateMethod;
-                tiendaConfig.manualExchangeRate = parseFloat(data.manualExchangeRate) || 0.00; 
+                // Gestión dinámica de Tasas
+                tiendaConfig.exchangeRateMethod = data.exchangeRateMethod || 'RateDB';
+                tiendaConfig.manualExchangeRate = parseFloat(data.manualExchangeRate) || 0;
 
-                if (tiendaConfig.currencyCode === 'USD') {
-                    if (tiendaConfig.exchangeRateMethod === 'RateDB') {
-                        tiendaConfig.bcvRate = await fetchBcvRate(companyId);
-                    } else if (tiendaConfig.exchangeRateMethod === 'RateManual' && tiendaConfig.manualExchangeRate > 0) {
-                        tiendaConfig.bcvRate = tiendaConfig.manualExchangeRate;
-                    } else {
-                        tiendaConfig.bcvRate = 1;
-                    }
+                if (tiendaConfig.exchangeRateMethod === 'RateDB') {
+                    tiendaConfig.bcvRate = await fetchBcvRate();
                 } else {
-                    tiendaConfig.bcvRate = 1;
+                    tiendaConfig.bcvRate = tiendaConfig.manualExchangeRate || 1;
                 }
 
-                currentDisplayCurrency = (tiendaConfig.currencyCode === 'USD' && tiendaConfig.bcvRate > 0) ? 'USD' : 'BS';
-
-            } else {
-                console.warn("Configuración de tienda no encontrada.");
+                currentDisplayCurrency = (tiendaConfig.currencyCode === 'USD') ? 'USD' : 'BS';
+                console.log("✅ Configuración e identidad aplicadas con éxito.");
             }
         } catch (error) {
-            console.error("Error al cargar configuración de Tienda:", error);
+            console.error("⚠️ Fallo al recuperar configuración desde Xeon:", error);
         }
     }
 
-    async function loadStoreData(companyId, remoteVersion) {
+    async function loadStoreData(companyId) {
         currentCompanyId = companyId;
 
         if (!companyId) {
-            document.getElementById('category-title').textContent = 'Error: ID de Cliente no encontrado.';
+            document.getElementById('category-title').textContent = 'Error: ID de Empresa no encontrado.';
             renderProducts([]); 
             return;
         }
-        
-        const localStorageKeyData = `nexus_store_data_${companyId}`;
-        const localStorageKeyVersion = `nexus_store_version_${companyId}`;
-        
-        const cachedData = localStorage.getItem(localStorageKeyData);
-        const cachedVersion = localStorage.getItem(localStorageKeyVersion);
-        
-        if (cachedData && remoteVersion && cachedVersion == remoteVersion) {
-            try {
-                const parsedData = JSON.parse(cachedData);
-                storeData.categories = parsedData.categories;
-                storeData.products = parsedData.products;
-                console.log("Cargando datos desde caché local (Versión coincidiente).");
-                switchCategory('all');
-                return;
-            } catch (e) {
-                console.error("Error al leer caché, descargando de nuevo.");
-            }
-        }
 
-        document.getElementById('category-title').textContent = 'Cargando Productos...';
+        document.getElementById('category-title').textContent = 'Sincronizando productos...';
         
-        storeData.categories = [{ 
-            id: 'all', 
-            name: 'Todos los Productos', 
-            title: 'Todos los Productos' 
-        }];
-        storeData.products = [];
-        
+        // --- URLS DE TUS SUBDOMINIOS XEON ---
+        const URL_CATEGORIAS = `https://categorias.nexusposgobal.com/api/categorias/${companyId}`;
+        const URL_PRODUCTOS = `https://productos.nexusposgobal.com/api/productos/${companyId}`;
+
         try {
-            const categoriesCol = collection(db, `companies/${companyId}/categories`);
-            const categorySnapshot = await getDocs(categoriesCol);
+            // 1. CARGAR CATEGORÍAS
+            const resCat = await fetch(URL_CATEGORIAS);
+            const categoriasServer = resCat.ok ? await resCat.json() : [];
             
-            categorySnapshot.forEach(doc => {
+            storeData.categories = [{ id: 'all', name: 'Todos los Productos', title: 'Todos los Productos' }];
+            
+            categoriasServer.forEach(cat => {
                 storeData.categories.push({ 
-                    id: doc.id, 
-                    name: doc.data().name || 'Sin Nombre', 
-                    title: doc.data().name || 'Productos de esta Categoría' 
+                    id: cat.id || cat.categoria_ID, 
+                    name: cat.nombre || 'Sin Nombre', 
+                    title: cat.nombre 
                 });
             });
+
+            // 2. CARGAR PRODUCTOS
+            const resProd = await fetch(URL_PRODUCTOS);
+            if (!resProd.ok) throw new Error("Servidor de productos fuera de línea.");
             
-            const productsCol = collection(db, `companies/${companyId}/products`);
-            const productSnapshot = await getDocs(productsCol);
-            
-            productSnapshot.forEach(doc => {
-                const data = doc.data();
-                
-                let productPrice = typeof data.price === 'number' ? data.price : 
-                                   (typeof data.price === 'string' ? parseFloat(data.price) : 0.00);
-                
-                const categoryName = storeData.categories.find(c => c.id === data.category)?.name || 'Sin Categoría';
+            const productosServer = await resProd.json();
+            storeData.products = [];
+
+            productosServer.forEach(p => {
+                if (p.status === 0) return; // Omitir inhabilitados en el POS
+
+                // MAPEO DE CAMPOS (Xeon -> Tienda UI)
+                const productPrice = parseFloat(p.precio_venta || p.precio || 0);
+                const categoryName = storeData.categories.find(c => c.id === p.categoria)?.name || 'Sin Categoría';
 
                 storeData.products.push({
-                    id: doc.id,
-                    name: data.name,
-                    categoryId: data.category, 
+                    id: p.id || p.producto_ID,
+                    name: p.nombre || 'Producto sin nombre',
+                    categoryId: p.categoria || 'Sin Cat.', 
                     price: productPrice, 
-                    imageUrl: data.image || 'https://placehold.co/400x300/f0f0f0/AAAAAA?text=Sin+Imagen',
+                    imageUrl: p.imagen || 'https://placehold.co/400x300/f0f0f0/AAAAAA?text=Sin+Imagen',
                     collection: categoryName
                 });
             });
             
-            if (remoteVersion) {
-                const dataToCache = {
-                    categories: storeData.categories,
-                    products: storeData.products
-                };
-                localStorage.setItem(localStorageKeyData, JSON.stringify(dataToCache));
-                localStorage.setItem(localStorageKeyVersion, remoteVersion);
-            }
-            
+            console.log(`✅ Datos cargados desde Xeon: ${storeData.products.length} productos.`);
             switchCategory('all'); 
 
         } catch (error) {
-            console.error("Error al cargar datos de Firebase:", error);
-            document.getElementById('category-title').textContent = 'Error al cargar los datos de la tienda.';
+            console.error("❌ Error al cargar datos desde Xeon:", error);
+            document.getElementById('category-title').textContent = 'Error de conexión con el servidor central.';
             renderProducts([]);
         }
     }
 
     function formatPrice(amount) {
-        const displayAsUSD = currentDisplayCurrency === 'USD'; 
-        
-        if (displayAsUSD && tiendaConfig.bcvRate > 0) {
-            const rate = tiendaConfig.bcvRate; 
-            const amountUSD = amount / rate;
-            return `$${amountUSD.toFixed(2)}`; 
+        const rate = tiendaConfig.bcvRate || 1;
+        const storeBaseCurrency = tiendaConfig.currencyCode; // 'BS' o 'USD'
+        const displayAsUSD = currentDisplayCurrency === 'USD';
+
+        let finalAmount = amount;
+
+        // 1. LÓGICA DE CONVERSIÓN
+        if (storeBaseCurrency === 'BS' && displayAsUSD) {
+            // Si el precio base es Bs y queremos ver $ -> Dividimos
+            finalAmount = amount / rate;
+        } else if (storeBaseCurrency === 'USD' && !displayAsUSD) {
+            // Si el precio base es $ y queremos ver Bs -> Multiplicamos
+            finalAmount = amount * rate;
+        }
+
+        // 2. FORMATO VISUAL
+        if (displayAsUSD) {
+            return `$${finalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         } else {
-            return `Bs${amount.toFixed(2)}`;
+            return `Bs ${finalAmount.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         }
     }
 
@@ -441,12 +396,13 @@
         }
 
         const normalizedQuery = query.toLowerCase().trim();
-        if (normalizedQuery) {
-            filtered = filtered.filter(p => 
-                p.name.toLowerCase().includes(normalizedQuery) ||
-                p.collection.toLowerCase().includes(normalizedQuery)
-            );
-        }
+            if (normalizedQuery) {
+                filtered = filtered.filter(p => 
+                    p.name.toLowerCase().includes(normalizedQuery) ||
+                    p.collection.toLowerCase().includes(normalizedQuery)
+                    (p.id && p.id.toLowerCase().includes(normalizedQuery))
+                );
+            }
         
         const sortByElement = document.getElementById('sort-by');
         const sortCriteria = sortByElement ? sortByElement.value : currentSort;
@@ -470,59 +426,81 @@
         const desktopMenu = document.getElementById('desktop-nav-menu');
         const mobileScrollMenu = document.getElementById('mobile-scroll-nav-menu');
         
-        desktopMenu.innerHTML = '';
-        mobileScrollMenu.innerHTML = '';
+        // 1. Limpiamos los menús para evitar duplicados al recargar
+        if (desktopMenu) desktopMenu.innerHTML = '';
+        if (mobileScrollMenu) mobileScrollMenu.innerHTML = '';
 
+        // 2. Recorremos las categorías que cargamos desde el Xeon
         storeData.categories.forEach(category => {
             const isActive = category.id === activeCategoryId;
             
-            const desktopLinkClass = isActive ? 'bg-white text-primary shadow-sm' : 'text-gray-600 hover:bg-blue-100 hover:text-primary';
+            // --- VERSIÓN DESKTOP (Botones con hover azul) ---
+            const desktopLinkClass = isActive 
+                ? 'bg-white text-primary shadow-sm' 
+                : 'text-gray-600 hover:bg-blue-100 hover:text-primary';
+            
             const desktopLink = document.createElement('a');
             desktopLink.href = "#";
             desktopLink.textContent = category.name;
             desktopLink.className = `py-2 px-3 rounded-lg text-sm font-medium transition duration-150 nav-link flex-shrink-0 ${desktopLinkClass}`;
+            
             desktopLink.onclick = (e) => {
                 e.preventDefault();
-                switchCategory(category.id);
+                switchCategory(category.id); // Llama al filtro de productos
             };
-            desktopMenu.appendChild(desktopLink);
+            if (desktopMenu) desktopMenu.appendChild(desktopLink);
 
-            const mobileLinkClass = isActive ? 'bg-primary text-white shadow-md' : 'text-gray-700 bg-gray-200 hover:bg-gray-300';
+            // --- VERSIÓN MÓVIL (Píldoras deslizables) ---
+            const mobileLinkClass = isActive 
+                ? 'bg-primary text-white shadow-md' 
+                : 'text-gray-700 bg-gray-200 hover:bg-gray-300';
+            
             const mobileLink = document.createElement('a');
             mobileLink.href = "#";
             mobileLink.textContent = category.name;
             mobileLink.className = `inline-block px-4 py-2 mx-1 rounded-full text-base font-medium transition duration-150 flex-shrink-0 ${mobileLinkClass}`;
+            
             mobileLink.onclick = (e) => {
                 e.preventDefault();
                 switchCategory(category.id);
-                document.getElementById('mobile-menu').classList.add('hidden');
+                // Cerramos el menú lateral si está abierto para que el cliente vea los productos
+                const mobileMenu = document.getElementById('mobile-menu');
+                if (mobileMenu) mobileMenu.classList.add('hidden');
             };
-            mobileScrollMenu.appendChild(mobileLink);
+            if (mobileScrollMenu) mobileScrollMenu.appendChild(mobileLink);
         });
+        
+        console.log("🎨 Menú de categorías renderizado con éxito.");
     }
 
     function renderProducts(productsToRender) {
         const grid = document.getElementById('products-grid');
         const noResults = document.getElementById('no-results');
+        
+        if (!grid) return;
         grid.innerHTML = '';
 
         if (productsToRender.length === 0) {
             grid.classList.add('hidden');
-            noResults.classList.remove('hidden');
+            if (noResults) noResults.classList.remove('hidden');
             return;
         }
 
         grid.classList.remove('hidden');
-        noResults.classList.add('hidden');
+        if (noResults) noResults.classList.add('hidden');
 
         productsToRender.forEach(product => {
             const productId = product.id; 
             
+            // Creamos el HTML de la tarjeta
             const cardHtml = `
                 <div id="product-card-${productId}" class="product-card bg-white p-4 rounded-xl shadow-md flex flex-col justify-between border border-gray-100 hover:shadow-xl transition h-full">
                     <div>
-                        <div class="aspect-square w-full mb-3 overflow-hidden rounded-lg bg-gray-50">
-                             <img src="${product.imageUrl}" class="w-full h-full object-cover" alt="${product.name}">
+                        <div class="aspect-square w-full mb-3 overflow-hidden rounded-lg bg-gray-50 relative">
+                             <img src="${product.imageUrl}" class="w-full h-full object-cover" alt="${product.name}" onerror="this.src='https://placehold.co/400x300?text=Sin+Imagen'">
+                             <span class="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-[10px] px-2 py-1 rounded-full font-bold">
+                                ${product.unit || 'UN'}
+                             </span>
                         </div>
                         <h3 class="text-lg font-bold text-gray-900 leading-tight mb-1 break-words">${product.name}</h3>
                         <p class="text-[10px] font-bold text-blue-600 bg-blue-50 py-1 px-2 rounded inline-block mb-3 uppercase tracking-wider">${product.collection}</p>
@@ -540,7 +518,7 @@
                         </div>
 
                         <div id="action-quantity-${productId}" class="hidden flex flex-col gap-2">
-                            <input id="quantity-input-${productId}" type="number" value="1" class="w-full text-center p-2 border border-gray-300 rounded-lg text-lg">
+                            <input id="quantity-input-${productId}" type="number" value="1" step="0.001" class="w-full text-center p-2 border border-gray-300 rounded-lg text-lg">
                             <div class="flex gap-2">
                                 <button onclick="window.confirmAddToCart('${productId}')" class="flex-grow p-2 bg-green-500 text-white font-bold rounded-lg text-sm">OK</button>
                                 <button onclick="window.toggleQuantityInput('${productId}', true)" class="p-2 bg-gray-100 text-gray-500 rounded-lg italic text-xs">X</button>
@@ -551,6 +529,8 @@
             `;
             grid.insertAdjacentHTML('beforeend', cardHtml);
         });
+        
+        console.log("🖼️ Cuadrícula de productos renderizada.");
     }
 
     function switchCategory(categoryId) {
@@ -568,16 +548,23 @@
     }
     
     function showTemporaryMessage(message, type = 'info') {
-        let colorClass = 'bg-blue-500';
-        if (type === 'success') colorClass = 'bg-green-500';
+        let colorClass = 'bg-blue-500'; // Por defecto Azul (Info)
+        
+        // --- MAPEADO DE COLORES SEGÚN EL TIPO ---
+        if (type === 'success') colorClass = 'bg-green-500'; // Verde para éxito
+        if (type === 'error') colorClass = 'bg-red-500';     // Rojo para fallos de red
+        if (type === 'warning') colorClass = 'bg-yellow-500'; // Naranja para avisos
         if (type === 'info') colorClass = 'bg-blue-500';
         
         const messageBox = document.createElement('div');
         messageBox.textContent = message;
+        
+        // Mantenemos tus estilos de Tailwind para integridad visual
         messageBox.className = `fixed bottom-4 right-4 p-4 rounded-lg text-white shadow-xl z-50 transition-opacity duration-300 ${colorClass}`;
         
         document.body.appendChild(messageBox);
         
+        // Animación de salida automática tras 3 segundos
         setTimeout(() => {
             messageBox.classList.add('opacity-0');
             messageBox.addEventListener('transitionend', () => messageBox.remove());
@@ -652,7 +639,8 @@
                     id: product.id,
                     name: product.name,
                     price: product.price,
-                    quantity: quantity
+                    quantity: quantity,
+                    unit: product.unit || 'UN' // Traemos la unidad desde el mapeo del Xeon
                 });
             }
             

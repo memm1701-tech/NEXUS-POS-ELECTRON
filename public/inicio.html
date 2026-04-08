@@ -835,16 +835,28 @@ if (logoutBtn) {
             menuToggleBtn.addEventListener('click', () => sidebar.classList.toggle('open'));
         }
 
+
+        // Busca esta sección dentro del script de tu inicio.html
         const tiendaOnlineLink = document.getElementById('tienda-online-link');
         if (tiendaOnlineLink) {
             tiendaOnlineLink.addEventListener('click', (e) => { 
                 e.preventDefault();
-                if (!userCompanyId || userCompanyId === 'nexus_pos_id') {
-                    showInfoMessage("No se pudo cargar la Tienda Online. El ID de la empresa no está disponible.", 'error', 'Error de Carga'); 
-                    return; 
+                
+                // Usamos la variable global donde guardas el ID tras validar la sesión
+                const idEmpresa = window.currentCompanyId; 
+
+                if (!idEmpresa) {
+                    // Usamos tu función nativa de mensajes
+                    showInfoMessage("Error: No se detectó el ID de la empresa en la sesión local.", 'error');
+                    return;
                 }
-                const finalUrl = `https://nexusposgobal.com/index_inicio_admin/tienda_online/tienda.html?company=${userCompanyId}`;
-                window.open(finalUrl, '_blank'); 
+
+                // REDIRECCIÓN AL SUBDOMINIO LIMPIO
+                // Al apuntar a la raíz del subdominio, Nginx entregará el index.html (el puente) del Xeon
+                const urlTiendaSubdominio = `https://tienda.nexusposgobal.com/?company=${idEmpresa}`;
+                
+                console.log("🚀 Abriendo puente de tienda en subdominio:", urlTiendaSubdominio);
+                window.open(urlTiendaSubdominio, '_blank'); 
             });
         }
 

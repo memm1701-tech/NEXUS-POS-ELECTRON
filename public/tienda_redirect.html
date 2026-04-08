@@ -1,39 +1,36 @@
 <!DOCTYPE html>
-
 <html>
 <head>
     <link rel="icon" type="image/png" href="logo_nexus.png">
-    <title>Redirigiendo a la Tienda...</title>
+    <title>Cargando Catálogo Nexus...</title>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams(window.location.search);
             const companyId = params.get('company');
-            
-            // 🛑 DEBUG 1: Revisa la consola del navegador para ver qué ID lee
-            console.log("ID de empresa leído por el puente:", companyId);
 
             if (companyId) {
-                // ⚠️ RUTA FINAL (Esta es la línea CORREGIDA)
-                // Se eliminó el '/' inicial para evitar el error 'Cannot GET'.
-                const destinationPath = 'index_inicio_admin/tienda_online/tienda.html';
+                // Definimos la URL absoluta de la tienda para evitar errores de ruta
+                const storeBaseUrl = 'https://nexusposgobal.com/index_inicio_admin/tienda_online/tienda.html';
                 
-                // 🚀 LÍNEA DE CÓDIGO CRÍTICA: Asegúrate de que el '?' y el 'company=' estén aquí
-                const finalDestinationUrl = destinationPath + '?company=' + companyId;
-
-                // 🛑 DEBUG 2: Revisa la consola para ver qué URL va a usar
-                console.log("URL de destino final:", finalDestinationUrl);
+                // Construimos la redirección final
+                const finalUrl = `${storeBaseUrl}?company=${companyId}`;
                 
-                window.location.replace(finalDestinationUrl);
-                
+                console.log("🚀 Redirigiendo a:", finalUrl);
+                window.location.replace(finalUrl);
             } else {
-                document.body.innerHTML = '<p style="text-align: center; padding-top: 50px;">Error: Faltan datos de la empresa para cargar la tienda.</p>';
+                document.body.innerHTML = `
+                    <div style="text-align: center; padding-top: 100px; font-family: sans-serif;">
+                        <h2>Nexus POS Global</h2>
+                        <p>ID de empresa no encontrado. Por favor, contacte al negocio.</p>
+                    </div>`;
             }
         });
     </script>
 </head>
-<body>
-    <div id="redirect-message" style="text-align: center; padding-top: 50px;">
-        Redirigiendo a la Tienda Online, por favor espere...
+<body style="background-color: #f7f7f7;">
+    <div style="text-align: center; padding-top: 100px; font-family: sans-serif; color: #2563EB;">
+        <h3>Conectando con la tienda...</h3>
+        <p>Espera un momento, por favor.</p>
     </div>
 </body>
 </html>

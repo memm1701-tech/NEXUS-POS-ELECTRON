@@ -650,92 +650,47 @@ ipcMain.handle('leer-impresoras', async (event) => {
 
 ipcMain.handle('obtener-configuracion', async (event, clave) => {
     try {
-        // 1. Si no se envía una clave, devolvemos el objeto config completo (isServer, serverIP, etc.)
-        // Esto es lo que usarán tus HTML para saber a qué IP apuntar.
-        if (!clave) {
-            return config; 
-        }
-
-        // 2. Si se envía una clave, buscamos en la tabla SQLite (como lo hacías antes)
+        if (!clave) return config; 
         const stmt = db.prepare('SELECT valor FROM configuracion WHERE clave = ?');
         const resultado = stmt.get(clave);
-        
-        // Retornamos el valor de la BD o null si no existe
         return resultado ? resultado.valor : null;
-        
     } catch (error) {
-        console.error(`❌ Error obteniendo la configuración [${clave || 'GLOBAL'}]:`, error.message);
+        console.error(`❌ Error obteniendo configuración:`, error.message);
         return null;
     }
 });
 
 ipcMain.handle('guardar-configuracion', async (event, clave, valor) => {
     try {
-        // 1. Guardar en SQLite (Para configuraciones de interfaz e impresoras)
         const valorTexto = String(valor);
+        // CORRECCIÓN: Usar tabla 'configuracion', no 'productos_locales'
         const stmt = db.prepare(`
-            INSERT INTO productos_locales (id, company_id, branch_id, codigo, nombre, precio, porcentaje_ganancia, categoria, status, imagen, datos_json, estado_sync, fecha_modificacion)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+            INSERT OR REPLACE INTO configuracion (clave, valor, fecha_actualizacion)
+            VALUES (?, ?, ?)
         `);
         stmt.run(clave, valorTexto, new Date().toISOString());
 
-        // 2. ACTUALIZACIÓN FÍSICA Y GESTIÓN DE PROCESOS (Solo para llaves de red/sistema)
         const llavesFisicas = ['isServer', 'serverIP', 'allowNoStock', 'geminiApiKey'];
-        
         if (llavesFisicas.includes(clave)) {
-            console.log(`📂 Nexus POS: Sincronizando ${clave} con el archivo físico...`);
-            
-            // Leemos el archivo actual para mantener la integridad de otros datos
-            let configActual = {};
-            if (fs.existsSync(configPath)) {
-                configActual = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-            }
-
-            // Mapeamos el valor con su tipo de dato correcto para el JSON
+            let configActual = JSON.parse(fs.readFileSync(configPath, 'utf8'));
             if (clave === 'isServer') configActual.isServer = (valor === true || valor === "true");
             else if (clave === 'serverIP') configActual.serverIP = valor;
             else if (clave === 'allowNoStock') configActual.allowNoStock = (valor === true || valor === "true");
             else if (clave === 'geminiApiKey') configActual.geminiApiKey = valor;
 
-            // Escritura real en disco (NEXUS-POS-ELECTRON\data\config.json)
             fs.writeFileSync(configPath, JSON.stringify(configActual, null, 2), 'utf8');
-            
-            // Actualizamos la variable global en memoria de main.js
             config = configActual;
-            console.log("✅ Archivo config.json actualizado físicamente.");
 
-            // --- LÓGICA DE AUTOMATIZACIÓN PM2 ---
-
-            // CASO ACTIVAR: La PC se convierte en Servidor Maestro
             if (clave === 'isServer' && configActual.isServer === true) {
-                console.log("🚀 Activando motor de base de datos maestro en segundo plano...");
-                
-                // Iniciamos el proceso server.js, le ponemos nombre y guardamos para el inicio de Windows
-                const comandoActivar = `pm2 start server.js --name "Nexus-Cerebro" --watch && pm2 save`;
-                
-                exec(comandoActivar, (err) => {
-                    if (err) console.error("❌ PM2 no pudo iniciar el servidor:", err.message);
-                    else console.log("✅ PM2: Servidor Nexus-Cerebro activo y vigilado.");
-                });
+                exec(`pm2 start server.js --name "Nexus-Cerebro" --watch && pm2 save`);
             }
-
-            // CASO REVERTIR: La PC vuelve a ser solo una Caja (Modo Cliente)
             if (clave === 'isServer' && configActual.isServer === false) {
-                console.log("🧹 Limpiando procesos de servidor para modo Caja...");
-                
-                // Eliminamos el proceso y forzamos el guardado para que no inicie con Windows
-                const comandoLimpiar = `pm2 delete Nexus-Cerebro && pm2 save --force`;
-                
-                exec(comandoLimpiar, (err) => {
-                    if (err) console.log("ℹ️ PM2: No había procesos activos para eliminar.");
-                    else console.log("✅ PM2: Proceso eliminado. Esta PC ya no intentará ser Servidor.");
-                });
+                exec(`pm2 delete Nexus-Cerebro && pm2 save --force`);
             }
         }
-
         return { success: true };
     } catch (error) {
-        console.error(`❌ Error al guardar configuración [${clave}]:`, error.message);
+        console.error(`❌ Error al guardar configuración:`, error.message);
         return { error: error.message };
     }
 });
@@ -1182,7 +1137,9 @@ ipcMain.handle('guardar-configuracion-cajera', async (event, clave, valor) => {
     }
 });
 
-
+ipcMain.handle('sincronizar-configuracion-xeon', async (event, datos) => {
+    return await enviarDatosAXeon(datos, 'CONFIGURACION_TIENDA');
+});
 
 async function createSplashScreen() {
     splash = new BrowserWindow({
@@ -1203,6 +1160,47 @@ async function createSplashScreen() {
 
     // Asegúrate de que el archivo esté en la raíz o en /public
     splash.loadFile('splash.html'); 
+}
+
+async function enviarDatosAXeon(datos, tipoOperacion) {
+    try {
+        console.log("📡 Intentando sincronizar con Xeon...");
+        
+        // 🔥 CAMBIO CLAVE: Usamos HTTPS para evitar la redirección que rompe el POST
+        // Mantenemos la URL fija sin puerto, ya que el túnel gestiona el tráfico
+        const urlFinal = `https://configuracioncajera.nexusposgobal.com/api/xeon/registrar-entrada`;
+
+        const respuesta = await axios.post(urlFinal, {
+            companyId: datos.companyId || 'NEXUS-LOCAL',
+            tipo_operacion: tipoOperacion, 
+            payload: datos
+        }, { 
+            timeout: 15000,
+            maxRedirects: 5 // Permitimos redirecciones controladas
+        });
+
+        console.log("📥 Respuesta del Xeon:", respuesta.data);
+
+        if (respuesta.data.exito) {
+            console.log(`☁️ Sincronización Exitosa: ${respuesta.data.id_referencia}`);
+            return { success: true, ref: respuesta.data.id_referencia };
+        } else {
+            console.error("❌ El Xeon rechazó los datos:", respuesta.data.error);
+            return { success: false, error: respuesta.data.error };
+        }
+    } catch (error) {
+        if (error.response) {
+            // Si el error sigue siendo 404, confirma que el túnel no esté alterando la ruta
+            console.error("🔥 Error de Respuesta Xeon:", error.response.status);
+            return { success: false, error: `Error ${error.response.status}: Asegúrate de usar HTTPS en el código.` };
+        } else if (error.request) {
+            console.error("📡 Error de Red (Sin respuesta):", error.message);
+            return { success: false, error: "Servidor no responde. Verifica el estado del túnel." };
+        } else {
+            console.error("⚠️ Error Configuración Axios:", error.message);
+            return { success: false, error: error.message };
+        }
+    }
 }
 
 async function createWindow() {
@@ -1327,6 +1325,7 @@ function sembrarDatosIniciales() {
         console.error("⚠️ Error al sembrar datos (Base de datos ocupada):", error.message);
     }
 }
+
 
 win.webContents.on('context-menu', (e) => e.preventDefault());
 win.loadFile('public/index.html');
