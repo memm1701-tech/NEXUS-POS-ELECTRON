@@ -739,32 +739,53 @@ ipcMain.handle('sincronizar-producto-servidor', async (event, p) => {
         const idProducto = p.id || p.producto_ID;
         const idEmpresa = p.company_id || p.empresa_ID;
         const idSucursal = p.branch_id || p.sucursal_ID || 'sucursal_1';
-        const precioVenta = p.precio_venta !== undefined ? p.precio_venta : (p.precio || 0);
-        
-        // Capturamos el porcentaje del objeto p
-        const porcentaje = p.porcentaje_ganancia || 0;
+        const precioRef = p.precios ? p.precios.p1.venta : (p.precio_venta || p.precio || 0);
+        const porcentajeRef = p.precios ? p.precios.p1.porcentaje : (p.porcentaje_ganancia || 0);
+        const jsonParaGuardar = JSON.stringify(p);
 
         const local = db.prepare('SELECT * FROM productos_locales WHERE id = ?').get(idProducto);
         let resultado;
 
         if (!local) {
-            // 🔥 INSERT: Agregamos porcentaje_ganancia en las columnas y en los VALUES
             const stmt = db.prepare(`
                 INSERT INTO productos_locales (id, company_id, branch_id, codigo, nombre, precio, porcentaje_ganancia, categoria, status, imagen, datos_json, estado_sync, fecha_modificacion)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
             `);
-            resultado = stmt.run(idProducto, idEmpresa, idSucursal, p.codigo, p.nombre, precioVenta, porcentaje, p.categoria, p.status, p.imagen, p.datos_json, p.fecha_modificacion);
+            resultado = stmt.run(
+                idProducto, 
+                idEmpresa, 
+                idSucursal, 
+                p.codigo, 
+                p.nombre, 
+                precioRef, 
+                porcentajeRef, 
+                p.categoria, 
+                p.status, 
+                p.imagen, 
+                jsonParaGuardar, 
+                p.fecha_modificacion
+            );
         } else {
-            // 🔥 UPDATE: Agregamos porcentaje_ganancia = ?
             const stmt = db.prepare(`
                 UPDATE productos_locales
                 SET codigo = ?, nombre = ?, precio = ?, porcentaje_ganancia = ?, categoria = ?, status = ?, imagen = ?, datos_json = ?, estado_sync = 1, fecha_modificacion = ?
                 WHERE id = ?
             `);
-            resultado = stmt.run(p.codigo, p.nombre, precioVenta, porcentaje, p.categoria, p.status, p.imagen, p.datos_json, p.fecha_modificacion, idProducto);
+            resultado = stmt.run(
+                p.codigo, 
+                p.nombre, 
+                precioRef, 
+                porcentajeRef, 
+                p.categoria, 
+                p.status, 
+                p.imagen, 
+                jsonParaGuardar, 
+                p.fecha_modificacion, 
+                idProducto
+            );
         }
 
-        // ... resto de la lógica de envío de señales a las ventanas ...
+        // Notificación a las ventanas para refrescar la UI
         if (resultado && resultado.changes > 0) {
             BrowserWindow.getAllWindows().forEach(ventana => {
                 if (!ventana.isDestroyed()) ventana.webContents.send('productos-actualizados');
@@ -773,7 +794,7 @@ ipcMain.handle('sincronizar-producto-servidor', async (event, p) => {
 
         return resultado;
     } catch (e) {
-        console.error("❌ Error en sincronizar-producto-servidor:", e);
+        console.error("❌ Error en sincronizar-producto-servidor (Multi-Precio):", e);
         return { error: e.message };
     }
 });

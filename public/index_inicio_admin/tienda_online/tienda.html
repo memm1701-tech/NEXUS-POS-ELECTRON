@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tienda Online NEXUS POS</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
     <style>
@@ -131,14 +132,14 @@
         <div id="products-grid" class="grid grid-cols-2 gap-3 sm:gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
             </div>
         
-        <div id="no-results" class="hidden text-center py-12 bg-white rounded-xl shadow-lg">
-            <p class="text-xl text-gray-600 font-medium">No se encontraron productos en esta categoría o con este término de búsqueda.</p>
-            <p class="text-sm text-gray-400 mt-2">Intenta buscar un producto diferente o explora otras categorías.</p>
-        </div>
+            <div id="no-results" class="hidden text-center py-12 bg-white rounded-xl shadow-lg">
+                <p class="text-xl text-gray-600 font-medium">No se encontraron productos en esta categoría o con este término de búsqueda.</p>
+                <p class="text-sm text-gray-400 mt-2">Intenta buscar un producto diferente o explora otras categorías.</p>
+            </div>
 
-        <div id="cart-drawer-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden" onclick="window.closeCartDrawer()"></div>
+            <div id="cart-drawer-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden" onclick="window.closeCartDrawer()"></div>
     
-        <div id="cart-drawer" class="fixed top-0 right-0 h-full w-full sm:w-96 bg-white shadow-2xl z-40 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+            <div id="cart-drawer" class="fixed top-0 right-0 h-full w-full sm:w-96 bg-white shadow-2xl z-40 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
             
             <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
                 <h3 class="text-xl font-bold text-gray-800 flex items-center">
@@ -185,7 +186,7 @@
                     </div>
 
                     <button onclick="window.sendWhatsAppOrder()" class="w-full py-3 bg-green-500 text-white font-bold rounded-lg shadow-lg hover:bg-green-600 transition duration-150 flex items-center justify-center space-x-2">
-                         <svg class="icon w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 1.966.568 3.805 1.55 5.394L2 22l5.606-1.55A9.957 9.957 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm3.62 13.59c-.065.11-.23.11-.325.04l-2.062-1.258c-.1-.06-.21-.06-.31.025l-1.53 1.834c-.09.11-.295.11-.38.04l-.84-.57c-.1-.06-.15-.17-.15-.28V10.82c0-.13.06-.24.16-.31l.52-.39c.09-.07.21-.07.31-.01l.88.58c.1.06.21.06.31-.025l1.53-1.834c.09-.11.29-.11.38-.04l.84.57c.1.06.15.17.15.28v3.42c0 .13-.06.24-.16.31l-.52.39c-.09.07-.21.07-.31.01l-.88-.58c-.1-.06-.21-.06-.31.025l-1.53 1.834z"></path></svg>
+                         <svg class="icon w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 1.966.568 3.805 1.55 5.394L2 22l5.606-1.55A9.957 9.957 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm3.62 13.59c-.065.11-.23.11-.325.04l-2.062-1.258c-.1-.06-.21-.06-.31.025l-1.53 1.834c-.09.11-.295.11-.38.04l-.84-.57c-.1-.06-.15-.17-.15-.28V10.82c0-.13.06-.24.16-.31l.52-.39c.09-.07.21-.07.31-.01l.88.58c.1.06.21.06.31-.025l-1.53 1.834z"></path></svg>
                         <span>Enviar Pedido por WhatsApp</span>
                     </button>
                     <button onclick="window.resetCheckout()" class="w-full py-2 text-gray-500 hover:text-gray-700 text-sm">
@@ -194,8 +195,122 @@
                 </div>
                 </div>
         </div>
-    
-    </main>
+
+        <div id="loading-overlay" class="flex flex-col justify-center items-center py-24 w-full">
+            <div class="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-blue-600 mb-4"></div>
+            <h3 class="text-xl font-bold text-gray-800 mb-1">Cargando catálogo...</h3>
+            <p class="text-gray-500 text-sm">Sincronizando inventario en tiempo real.</p>
+        </div>
+
+        </main><div id="location-modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-[60] hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all border border-gray-100">
+        <div class="p-6 text-center">
+            <div class="w-16 h-16 bg-blue-100 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 mb-2">Compartir Ubicación</h3>
+            <p class="text-gray-600 mb-6 text-sm">¿Deseas adjuntar tu ubicación GPS actual para facilitar la entrega de tu Delivery?</p>
+            
+            <div class="flex flex-col gap-2">
+                <button id="location-confirm-btn" class="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary-dark transition shadow-md uppercase text-xs tracking-widest">
+                    Sí, compartir ubicación
+                </button>
+                <button id="location-cancel-btn" class="w-full py-3 bg-gray-100 text-gray-500 font-bold rounded-xl hover:bg-gray-200 transition text-xs uppercase tracking-widest">
+                    No, continuar sin GPS
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="product-detail-view" class="fixed inset-0 bg-white z-[55] hidden overflow-y-auto">
+    <div class="sticky top-0 bg-white border-b border-gray-100 px-4 py-4 flex items-center z-10">
+        <button onclick="window.closeProductDetail()" class="p-2 hover:bg-gray-100 rounded-full transition">
+            <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+        </button>
+        <span class="ml-4 font-semibold text-gray-800">Detalles del producto</span>
+    </div>
+
+    <div class="max-w-[1500px] mx-auto p-4 md:p-8">
+        <div class="flex flex-col lg:grid lg:grid-cols-12 gap-6 items-start">
+            
+            <div class="lg:col-span-4 w-full">
+                <div class="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm sticky top-24">
+                    <img id="detail-image" src="" class="w-full h-auto object-contain max-h-[500px] p-6" alt="Imagen del producto">
+                </div>
+            </div>
+
+            <div class="lg:col-span-4 flex flex-col gap-6 w-full">
+                <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+                    <p id="detail-category" class="text-xs text-blue-600 font-bold mb-1 uppercase tracking-widest"></p>
+                    <h1 id="detail-name" class="text-2xl font-bold text-gray-900 mb-4 leading-tight"></h1>
+                    
+                    <div class="flex items-baseline gap-2 mb-4 border-b border-gray-100 pb-4">
+                        <span id="detail-price" class="text-3xl font-light text-gray-900"></span>
+                    </div>
+
+                    <div class="mb-6">
+                        <h3 class="font-bold text-gray-400 mb-3 text-xs uppercase tracking-tight">Especificaciones Técnicas</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between border-b border-gray-50 pb-2"><span class="text-gray-500">Código:</span> <span id="detail-code" class="font-bold text-gray-700"></span></div>
+                            <div class="flex justify-between border-b border-gray-50 pb-2"><span class="text-gray-500">Unidad:</span> <span id="detail-unit" class="font-bold text-gray-700"></span></div>
+                            <div class="flex justify-between pb-2"><span class="text-gray-500">Impuesto (IVA):</span> <span id="detail-tax" class="font-bold text-green-600"></span></div>
+                            <div id="detail-total-tax-container" class="flex justify-between pt-2 hidden">
+                                <span class="text-gray-900 font-bold">Precio final (+IVA):</span>
+                                <span id="detail-total-with-tax" class="font-black text-primary"></span>
+                            </div>
+                        </div>
+                    </div>
+
+
+
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-4 bg-gray-50 border border-gray-200 rounded-xl p-3">
+                            <span class="text-[10px] font-bold text-gray-400 uppercase ml-2">Cantidad:</span>
+                            <input id="detail-quantity" type="number" value="1" step="0.001" class="w-full text-center font-bold text-xl bg-transparent outline-none text-primary">
+                        </div>
+                        <button id="detail-add-btn" class="w-full py-4 bg-primary text-white font-bold rounded-xl hover:bg-primary-dark transition-all shadow-lg uppercase tracking-tight">
+                            Agregar al carrito
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 border border-gray-200 rounded-2xl p-6 space-y-4">
+                    <div class="flex items-start gap-3">
+                        <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"></path></svg>
+                        <div>
+                            <p class="text-sm font-bold text-gray-800 leading-none mb-1">Compra Protegida</p>
+                            <p class="text-[11px] text-gray-500 leading-tight">Recibe el producto que esperabas o te devolvemos tu dinero.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <svg class="w-5 h-5 text-primary mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"></path><path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"></path></svg>
+                        <div>
+                            <p class="text-sm font-bold text-gray-800 leading-none mb-1">Pagos Seguros</p>
+                            <p class="text-[11px] text-gray-500 leading-tight">Múltiples métodos de pago procesados de forma segura.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-4 w-full">
+                <div class="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm h-fit">
+                    <h2 class="text-xl font-bold text-gray-800 mb-6 font-inter">Información general</h2>
+                    <div class="text-gray-600 leading-relaxed space-y-4 text-sm">
+                        <p>Este producto forma parte del catálogo comercial gestionado por <strong>Nexus POS Global</strong>.</p>
+                        <p><strong>Nota de disponibilidad:</strong> Debido al alto flujo de ventas en las sucursales de nuestras <strong>EMPRESAS ALIADAS</strong>, el inventario visualizado es referencial. Le agradecemos <strong>confirmar la existencia física del producto</strong> con el contacto comercial de dicha <strong>EMPRESA ALIADA</strong> al momento de enviar su pedido por WhatsApp antes de realizar cualquier pago.</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
 
 <script>
     tailwind.config = {
@@ -211,6 +326,13 @@
 </script>
 
 <script type="module">    
+    // --- ESTA ES LA LÍNEA QUE FALTABA Y QUE CAUSABA EL ERROR EN PANTALLA ---
+    const storeData = {
+        categories: [],
+        products: [],
+        cart: []
+    };
+
     const tiendaConfig = {
         whatsappNumber: "584120000000",
         storeName: "Tu Tienda Online",
@@ -222,41 +344,65 @@
         bcvRate: 1.00,
         dataVersion: null 
     };
+
+    const taxLabels = {
+        "16": "G (General) - 16%",
+        "0": "E (Exento) - 0%",
+        "8": "R (Reducida) - 8%",
+        "31": "A (Adicional) - 31%"
+    };
     
     let currentCategory = 'all';
     let currentCompanyId = null;
     let currentSort = 'name-asc';
     let currentDisplayCurrency = 'BS';
 
+    // Busca esta función en el código que vas a pegar
     function extractCompanyId() {
-        const urlParams = new URLSearchParams(window.location.search);
-        if(urlParams.has('company')) {
-            return urlParams.get('company'); 
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            // 1. Prioridad: Buscar en la URL (?company=xxx)
+            if(urlParams.has('company')) {
+                const id = urlParams.get('company');
+                localStorage.setItem('companyId', id); // Lo guardamos para persistencia local
+                return id; 
+            }
+            
+            // 2. Respaldo: Buscar en el almacenamiento local
+            const savedId = localStorage.getItem('companyId');
+            if (savedId) return savedId;
+
+            console.error('No se pudo extraer el Company ID de ninguna fuente.');
+            return null; 
         }
-        
-        const pathSegments = window.location.pathname.split('/').filter(segment => segment.length > 0);
-        const tiendaIndex = pathSegments.findIndex(segment => segment.includes('tienda'));
-        
-        if (tiendaIndex !== -1 && pathSegments.length > tiendaIndex + 1) {
-            return pathSegments[tiendaIndex + 1]; 
-        }
-        
-        console.error('No se pudo extraer el Company ID de la URL.');
-        return null; 
-    }
     
     async function fetchBcvRate() {
         try {
-            // Usamos la API pública de DolarApi para obtener la tasa oficial del BCV
-            const response = await fetch('https://ve.dolarapi.com/v1/dolares/bcv');
-            if (!response.ok) throw new Error("Error obteniendo tasa externa");
+            // Cambiamos la URL externa fallida por tu propio servicio de Scraping de Nexus
+            const response = await fetch('https://scarping.nexusposgobal.com/api/tasas');
+            if (!response.ok) throw new Error("Error obteniendo tasa desde el Servidor Nexus");
             
             const data = await response.json();
-            // Retornamos el valor promedio (ej: 36.50)
-            return data.promedio || 1;
+            
+            // Verificamos que la respuesta sea exitosa y contenga la tasa USD
+            if (data.success && data.rates && data.rates.USD) {
+                // Procesamos el valor: Convertimos a string, cambiamos comas por puntos y pasamos a número
+                const rawValue = data.rates.USD.toString().trim().replace(',', '.');
+                const usdRate = parseFloat(rawValue);
+                
+                if (isNaN(usdRate)) {
+                    console.warn("⚠️ El valor de tasa recibido no es un número válido.");
+                    return 1;
+                }
+
+                console.log("✅ Tasa BCV obtenida con éxito desde Nexus:", usdRate);
+                return usdRate;
+            }
+            
+            return 1; // Respaldo si no hay datos
         } catch (error) {
-            console.error("❌ Error al cargar tasa BCV desde la nube:", error);
-            // Retorno de respaldo para evitar errores en cálculos de precios
+            console.error("❌ Error al cargar tasa desde tu infraestructura Nexus:", error);
+            // Retorno de respaldo para evitar que los precios queden en cero o den error
             return 1;
         }
     }
@@ -300,11 +446,16 @@
         }
     }
 
-    async function loadStoreData(companyId) {
+async function loadStoreData(companyId) {
         currentCompanyId = companyId;
+
+        // Capturamos el elemento de carga que ya tienes en el HTML
+        const loader = document.getElementById('loading-overlay');
 
         if (!companyId) {
             document.getElementById('category-title').textContent = 'Error: ID de Empresa no encontrado.';
+            // Ocultamos el loader si no hay ID para mostrar el mensaje de error
+            if (loader) loader.classList.add('hidden');
             renderProducts([]); 
             return;
         }
@@ -338,11 +489,15 @@
             storeData.products = [];
 
             productosServer.forEach(p => {
-                if (p.status === 0) return; // Omitir inhabilitados en el POS
+                if (p.status === 0) return;
 
-                // MAPEO DE CAMPOS (Xeon -> Tienda UI)
                 const productPrice = parseFloat(p.precio_venta || p.precio || 0);
                 const categoryName = storeData.categories.find(c => c.id === p.categoria)?.name || 'Sin Categoría';
+                
+                // --- CORRECCIÓN AQUÍ: Definir alicuotaNum ---
+                const alicuota = String(p.tipo_alicuota || p.iva || "0");
+                const alicuotaNum = parseInt(alicuota); // Convertimos el string a número entero
+                const taxDisplay = taxLabels[alicuota] || "E (Exento) - 0%";
 
                 storeData.products.push({
                     id: p.id || p.producto_ID,
@@ -350,16 +505,28 @@
                     categoryId: p.categoria || 'Sin Cat.', 
                     price: productPrice, 
                     imageUrl: p.imagen || 'https://placehold.co/400x300/f0f0f0/AAAAAA?text=Sin+Imagen',
-                    collection: categoryName
+                    collection: categoryName,
+                    unit: p.unidad || 'UN',      // Guardar unidad
+                    code: p.codigo || 'S/C',     // Guardar código
+                    tax: taxDisplay,
+                    taxRate: alicuotaNum         // Ahora la variable sí está definida
                 });
             });
             
             console.log(`✅ Datos cargados desde Xeon: ${storeData.products.length} productos.`);
+            
+            // 🚀 DESAPARECE EL MENSAJE: La data ya está lista para mostrarse
+            if (loader) loader.classList.add('hidden');
+            
             switchCategory('all'); 
 
         } catch (error) {
             console.error("❌ Error al cargar datos desde Xeon:", error);
             document.getElementById('category-title').textContent = 'Error de conexión con el servidor central.';
+            
+            // 🚀 DESAPARECE EL LOADER: Incluso en error, para que el usuario vea el mensaje de fallo
+            if (loader) loader.classList.add('hidden');
+            
             renderProducts([]);
         }
     }
@@ -396,13 +563,13 @@
         }
 
         const normalizedQuery = query.toLowerCase().trim();
-            if (normalizedQuery) {
-                filtered = filtered.filter(p => 
-                    p.name.toLowerCase().includes(normalizedQuery) ||
-                    p.collection.toLowerCase().includes(normalizedQuery)
-                    (p.id && p.id.toLowerCase().includes(normalizedQuery))
-                );
-            }
+        if (normalizedQuery) {
+            filtered = filtered.filter(p => 
+                p.name.toLowerCase().includes(normalizedQuery) ||
+                p.collection.toLowerCase().includes(normalizedQuery) || // Se agregó || que faltaba
+                (p.id && String(p.id).toLowerCase().includes(normalizedQuery)) // Se agregó String()
+            );
+        }
         
         const sortByElement = document.getElementById('sort-by');
         const sortCriteria = sortByElement ? sortByElement.value : currentSort;
@@ -411,10 +578,8 @@
         filtered.sort((a, b) => {
             if (sortCriteria === 'name-asc') return a.name.localeCompare(b.name);
             if (sortCriteria === 'name-desc') return b.name.localeCompare(a.name);
-            
             if (sortCriteria === 'price-asc') return a.price - b.price;
             if (sortCriteria === 'price-desc') return b.price - a.price;
-            
             return 0;
         });
 
@@ -474,64 +639,66 @@
     }
 
     function renderProducts(productsToRender) {
-        const grid = document.getElementById('products-grid');
-        const noResults = document.getElementById('no-results');
+    const grid = document.getElementById('products-grid');
+    const noResults = document.getElementById('no-results');
+    
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    if (productsToRender.length === 0) {
+        grid.classList.add('hidden');
+        if (noResults) noResults.classList.remove('hidden');
+        return;
+    }
+
+    grid.classList.remove('hidden');
+    if (noResults) noResults.classList.add('hidden');
+
+    productsToRender.forEach(product => {
+        const productId = product.id; 
         
-        if (!grid) return;
-        grid.innerHTML = '';
+        // Creamos el HTML de la tarjeta
+        const cardHtml = `
+            <div id="product-card-${productId}" class="product-card bg-white p-4 rounded-xl shadow-md flex flex-col justify-between border border-gray-100 hover:shadow-xl transition h-full">
+                <div>
+                    <div class="aspect-square w-full mb-3 overflow-hidden rounded-lg bg-gray-50 relative cursor-pointer" 
+                         onclick="window.openProductDetail('${productId}')">
+                         <img src="${product.imageUrl}" class="w-full h-full object-cover" alt="${product.name}" onerror="this.src='https://placehold.co/400x300?text=Sin+Imagen'">
+                         <span class="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-[10px] px-2 py-1 rounded-full font-bold">
+                            ${product.unit || 'UN'}
+                         </span>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-900 leading-tight mb-1 break-words">${product.name}</h3>
+                    <p class="text-[10px] font-bold text-blue-600 bg-blue-50 py-1 px-2 rounded inline-block mb-3 uppercase tracking-wider">${product.collection}</p>
+                </div>
 
-        if (productsToRender.length === 0) {
-            grid.classList.add('hidden');
-            if (noResults) noResults.classList.remove('hidden');
-            return;
-        }
-
-        grid.classList.remove('hidden');
-        if (noResults) noResults.classList.add('hidden');
-
-        productsToRender.forEach(product => {
-            const productId = product.id; 
-            
-            // Creamos el HTML de la tarjeta
-            const cardHtml = `
-                <div id="product-card-${productId}" class="product-card bg-white p-4 rounded-xl shadow-md flex flex-col justify-between border border-gray-100 hover:shadow-xl transition h-full">
-                    <div>
-                        <div class="aspect-square w-full mb-3 overflow-hidden rounded-lg bg-gray-50 relative">
-                             <img src="${product.imageUrl}" class="w-full h-full object-cover" alt="${product.name}" onerror="this.src='https://placehold.co/400x300?text=Sin+Imagen'">
-                             <span class="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-[10px] px-2 py-1 rounded-full font-bold">
-                                ${product.unit || 'UN'}
-                             </span>
+                <div class="mt-4 pt-4 border-t border-gray-100">
+                    <div id="action-default-${productId}" class="flex flex-col gap-3">
+                        <div class="text-2xl font-black text-primary leading-none break-all">
+                            ${formatPrice(product.price)}
+                            ${product.taxRate > 0 ? `<span class="ml-1 text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-md align-middle uppercase">IVA</span>` : ''}
                         </div>
-                        <h3 class="text-lg font-bold text-gray-900 leading-tight mb-1 break-words">${product.name}</h3>
-                        <p class="text-[10px] font-bold text-blue-600 bg-blue-50 py-1 px-2 rounded inline-block mb-3 uppercase tracking-wider">${product.collection}</p>
+                        <button onclick="window.toggleQuantityInput('${productId}')" class="w-full flex justify-center items-center px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition">
+                             <svg class="icon w-4 h-4 mr-2" viewBox="0 0 24 24" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                             AÑADIR
+                        </button>
                     </div>
 
-                    <div class="mt-4 pt-4 border-t border-gray-100">
-                        <div id="action-default-${productId}" class="flex flex-col gap-3">
-                            <div class="text-2xl font-black text-primary leading-none break-all">
-                                ${formatPrice(product.price)}
-                            </div>
-                            <button onclick="window.toggleQuantityInput('${productId}')" class="w-full flex justify-center items-center px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition">
-                                 <svg class="icon w-4 h-4 mr-2" viewBox="0 0 24 24" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                                 AÑADIR
-                            </button>
-                        </div>
-
-                        <div id="action-quantity-${productId}" class="hidden flex flex-col gap-2">
-                            <input id="quantity-input-${productId}" type="number" value="1" step="0.001" class="w-full text-center p-2 border border-gray-300 rounded-lg text-lg">
-                            <div class="flex gap-2">
-                                <button onclick="window.confirmAddToCart('${productId}')" class="flex-grow p-2 bg-green-500 text-white font-bold rounded-lg text-sm">OK</button>
-                                <button onclick="window.toggleQuantityInput('${productId}', true)" class="p-2 bg-gray-100 text-gray-500 rounded-lg italic text-xs">X</button>
-                            </div>
+                    <div id="action-quantity-${productId}" class="hidden flex flex-col gap-2">
+                        <input id="quantity-input-${productId}" type="number" value="1" step="0.001" class="w-full text-center p-2 border border-gray-300 rounded-lg text-lg">
+                        <div class="flex gap-2">
+                            <button onclick="window.confirmAddToCart('${productId}')" class="flex-grow p-2 bg-green-500 text-white font-bold rounded-lg text-sm">OK</button>
+                            <button onclick="window.toggleQuantityInput('${productId}', true)" class="p-2 bg-gray-100 text-gray-500 rounded-lg italic text-xs">X</button>
                         </div>
                     </div>
                 </div>
-            `;
-            grid.insertAdjacentHTML('beforeend', cardHtml);
-        });
-        
-        console.log("🖼️ Cuadrícula de productos renderizada.");
-    }
+            </div>
+        `;
+        grid.insertAdjacentHTML('beforeend', cardHtml);
+    });
+    
+    console.log("🖼️ Cuadrícula de productos renderizada con enlaces a detalles.");
+}
 
     function switchCategory(categoryId) {
         currentCategory = categoryId;
@@ -754,57 +921,88 @@
         document.getElementById('checkout-initial-button').classList.remove('hidden');
     }
 
-    function sendWhatsAppOrder() {
-        if (storeData.cart.length === 0) {
-            showTemporaryMessage("El carrito está vacío.", 'info');
-            return;
-        }
-
-        const selectedMethod = document.querySelector('input[name="orderMethod"]:checked').value;
-
-        let message = `*¡Hola! Mi pedido para ${tiendaConfig.storeName} es el siguiente:*\n\n`;
-        message += `*🛒 Productos:*\n`;
-
-        let subtotal = 0;
-
-        storeData.cart.forEach((item, index) => {
-            const itemTotal = item.price * item.quantity;
-            subtotal += itemTotal;
-
-            let quantityDisplay;
-            if (item.quantity < 1) {
-                const grams = (item.quantity * 1000);
-                quantityDisplay = `${grams.toLocaleString(undefined, { maximumFractionDigits: 0 })} g`;
-            } else {
-                quantityDisplay = `${item.quantity.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 3 })} unid.`;
-            }
-            
-            message += `${index + 1}. ${item.name}\n`;
-            message += `   *Cantidad:* ${quantityDisplay} x ${formatPrice(item.price)}\n`;
-            message += `   *Total:* ${formatPrice(itemTotal)}\n`;
-        });
-        
-        message += `\n*=============================*\n`;
-        message += `*💰 Subtotal: ${formatPrice(subtotal)}*\n`;
-        message += `*🚚 Método de Entrega: ${selectedMethod}*\n`;
-        message += `*=============================*\n\n`;
-        
-        if (selectedMethod === 'Delivery') {
-            message += `*NOTA:* Por favor, enviarme el costo de Delivery y solicitarme la dirección de envío.\n\n`;
-        }
-        
-        message += `¡Gracias!`;
-
-        const encodedMessage = encodeURIComponent(message);
-        const whatsappLink = `https://wa.me/${tiendaConfig.whatsappNumber}?text=${encodedMessage}`;
-        
-        window.open(whatsappLink, '_blank');
-        closeCartDrawer();
-        resetCheckout();
-        
-        showTemporaryMessage("Pedido enviado a WhatsApp. ¡Revisa tu chat!", 'success');
+    async function sendWhatsAppOrder() {
+    if (storeData.cart.length === 0) {
+        showTemporaryMessage("El carrito está vacío.", 'info');
+        return;
     }
 
+    const selectedMethod = document.querySelector('input[name="orderMethod"]:checked').value;
+    let locationURL = "";
+
+    // Lógica para solicitar ubicación si es Delivery (Usando Modal Nexus)
+    if (selectedMethod === 'Delivery') {
+        const shareLocation = await showLocationModal();
+        
+        if (shareLocation) {
+            if ("geolocation" in navigator) {
+                try {
+                    const position = await new Promise((resolve, reject) => {
+                        navigator.geolocation.getCurrentPosition(resolve, reject, {
+                            enableHighAccuracy: true,
+                            timeout: 8000
+                        });
+                    });
+
+                locationURL = `https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}`;
+                } catch (error) {
+                    console.warn("No se pudo obtener la ubicación:", error);
+                    showTemporaryMessage("No pudimos obtener tu ubicación exacta. Se enviará sin coordenadas.", 'warning');
+                }
+            } else {
+                showTemporaryMessage("Tu navegador no soporta geolocalización.", 'error');
+            }
+        }
+    }
+
+    let message = `*¡Hola! Mi pedido para ${tiendaConfig.storeName} es el siguiente:*\n\n`;
+    message += `*🛒 Productos:*\n`;
+
+    let subtotal = 0;
+
+    storeData.cart.forEach((item, index) => {
+        const itemTotal = item.price * item.quantity;
+        subtotal += itemTotal;
+
+        let quantityDisplay;
+        if (item.quantity < 1) {
+            const grams = (item.quantity * 1000);
+            quantityDisplay = `${grams.toLocaleString(undefined, { maximumFractionDigits: 0 })} g`;
+        } else {
+            quantityDisplay = `${item.quantity.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 3 })} unid.`;
+        }
+        
+        message += `${index + 1}. ${item.name}\n`;
+        message += `   *Cantidad:* ${quantityDisplay} x ${formatPrice(item.price)}\n`;
+        message += `   *Total:* ${formatPrice(itemTotal)}\n`;
+    });
+    
+    message += `\n*=============================*\n`;
+    message += `*💰 Subtotal: ${formatPrice(subtotal)}*\n`;
+    message += `*🚚 Método de Entrega: ${selectedMethod}*\n`;
+    
+    // Agregar la ubicación al mensaje si se obtuvo con éxito
+    if (locationURL) {
+        message += `*📍 Ubicación GPS:* ${locationURL}\n`;
+    }
+    
+    message += `*=============================*\n\n`;
+    
+    if (selectedMethod === 'Delivery') {
+        message += `*NOTA:* Por favor, enviarme el costo de Delivery y solicitarme la dirección de envío.\n\n`;
+    }
+    
+    message += `¡Gracias!`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappLink = `https://wa.me/${tiendaConfig.whatsappNumber}?text=${encodedMessage}`;
+    
+    window.open(whatsappLink, '_blank');
+    closeCartDrawer();
+    resetCheckout();
+    
+    showTemporaryMessage("Pedido enviado a WhatsApp. ¡Revisa tu chat!", 'success');
+}
 
     function updateStorefrontConfigUI() {
         const logoDisplay = document.getElementById('logo-display');
@@ -854,6 +1052,105 @@
         }
     }
 
+    function showLocationModal() {
+    return new Promise((resolve) => {
+        const overlay = document.getElementById('location-modal-overlay');
+        const confirmBtn = document.getElementById('location-confirm-btn');
+        const cancelBtn = document.getElementById('location-cancel-btn');
+
+        overlay.classList.remove('hidden');
+
+        const cleanup = (value) => {
+            overlay.classList.add('hidden');
+            confirmBtn.onclick = null;
+            cancelBtn.onclick = null;
+            resolve(value);
+        };
+
+        confirmBtn.onclick = () => cleanup(true);
+        cancelBtn.onclick = () => cleanup(false);
+    });
+}
+
+function openProductDetail(productId) {
+    //function openProductDetail(productId) {
+    // 1. Buscamos el producto convirtiendo todo a String para evitar fallos
+    const product = storeData.products.find(p => String(p.id) === String(productId));
+    
+    if (!product) {
+        console.error("Producto no encontrado:", productId);
+        return;
+    }
+
+    // 2. Poblamos los datos en la vista Mercado Libre
+    document.getElementById('detail-image').src = product.imageUrl;
+    document.getElementById('detail-name').textContent = product.name;
+    document.getElementById('detail-category').textContent = product.collection;
+    document.getElementById('detail-price').textContent = formatPrice(product.price);
+    document.getElementById('detail-code').textContent = product.code;
+    document.getElementById('detail-unit').textContent = product.unit;
+    document.getElementById('detail-tax').textContent = product.tax;
+    
+    const totalContainer = document.getElementById('detail-total-tax-container');
+    const totalDisplay = document.getElementById('detail-total-with-tax');
+
+    if (product.taxRate > 0) {
+        // Cálculo: Precio Base + (Precio Base * Porcentaje / 100)
+        const montoIva = product.price * (product.taxRate / 100);
+        const precioFinal = product.price + montoIva;
+
+        totalDisplay.textContent = formatPrice(precioFinal);
+        totalContainer.classList.remove('hidden');
+        document.getElementById('detail-tax').className = "font-bold text-blue-600";
+    } else {
+        totalContainer.classList.add('hidden');
+        document.getElementById('detail-tax').className = "font-bold text-green-600";
+    }
+
+
+    // Reseteamos la cantidad a 1 siempre que se abre un detalle
+    document.getElementById('detail-quantity').value = 1;
+
+    // 3. Lógica limpia para agregar al carrito sin duplicar inputs
+    document.getElementById('detail-add-btn').onclick = () => {
+        const qtyElegida = parseFloat(document.getElementById('detail-quantity').value);
+        
+        // En lugar de crear un elemento falso, actualizamos el input REAL que está en la tarjeta invisible
+        const inputOriginalDeLaTarjeta = document.getElementById(`quantity-input-${productId}`);
+        
+        if (inputOriginalDeLaTarjeta) {
+            inputOriginalDeLaTarjeta.value = qtyElegida; // Pasamos la cantidad
+            window.confirmAddToCart(productId);          // Disparamos la función original
+        }
+        
+        // Cerramos la vista de detalles para volver a la tienda
+        window.closeProductDetail();
+    };
+
+    const detailTaxElement = document.getElementById('detail-tax');
+    detailTaxElement.textContent = product.tax;
+
+    if (product.tax.includes("Exento")) {
+        detailTaxElement.className = "font-bold text-green-600"; 
+    } else {
+        detailTaxElement.className = "font-bold text-blue-600";  
+    }
+
+    // 4. Navegación: Ocultamos el main (que ahora SÍ está separado) y mostramos el detalle
+    document.querySelector('main').classList.add('hidden');
+    document.getElementById('product-detail-view').classList.remove('hidden');
+    window.scrollTo(0, 0); // Llevamos la vista arriba del todo
+}
+
+function closeProductDetail() {
+    document.getElementById('product-detail-view').classList.add('hidden');
+    document.querySelector('main').classList.remove('hidden');
+}
+
+// Hacerlas globales
+window.openProductDetail = openProductDetail;
+window.closeProductDetail = closeProductDetail;
+
     window.searchProducts = searchProducts; 
     window.sortProducts = sortProducts;
     window.toggleCurrencyDisplay = toggleCurrencyDisplay;
@@ -873,23 +1170,36 @@
     });
 
     document.addEventListener('DOMContentLoaded', async () => {
-        
-        document.querySelectorAll('.cart-button-trigger').forEach(button => {
-            button.addEventListener('click', (e) => {
-                e.preventDefault();
-                window.openCartDrawer();
-            });
+    
+    // Configuración de botones de carrito
+    document.querySelectorAll('.cart-button-trigger').forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.openCartDrawer();
         });
-        
-        const companyId = extractCompanyId();
-        
-        await loadTiendaConfig(companyId);
-
-        updateStorefrontConfigUI(); 
-        updateCurrencyToggleUI(); 
-        
-        loadStoreData(companyId, tiendaConfig.dataVersion);
     });
+    
+    // Extraemos el ID usando la nueva lógica
+    const companyId = extractCompanyId();
+    
+    // Si no hay ID, detenemos la carga y avisamos (Evita el error 404 o pagina0)
+    if (!companyId) {
+        document.body.innerHTML = `
+            <div style="text-align: center; padding-top: 50px; font-family: sans-serif;">
+                <h2>NEXUS POS GLOBAL</h2>
+                <p>Error: No se pudo identificar la tienda. Por favor, use el enlace oficial.</p>
+            </div>`;
+        return;
+    }
+    
+    // Carga de configuración e interfaz desde el Xeon
+    await loadTiendaConfig(companyId);
+    updateStorefrontConfigUI(); 
+    updateCurrencyToggleUI(); 
+    
+    // Carga de productos desde el servidor de productos (Puerto 3007)
+    loadStoreData(companyId, tiendaConfig.dataVersion);
+});
 </script>
 </body>
 </html>

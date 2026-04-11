@@ -511,18 +511,49 @@ body {
     </main>
 </body>
 
+<div id="delete-confirmation-modal" style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(2px);">
+    <div style="background-color: white; margin: 10% auto; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 90%; max-width: 400px; animation: modalIn 0.3s ease-out;">
+        <div id="modal-header-color" style="padding: 30px 20px; text-align: center; background-color: #fef3c7;">
+            <div style="font-size: 50px; margin-bottom: 10px;">⚠️</div>
+            <h3 id="modal-title" style="margin: 0; font-size: 1.4em; font-weight: 800; color: #92400e;">¿Confirmar Acción?</h3>
+        </div>
+        
+        <div style="padding: 25px; text-align: center;">
+            <p id="modal-product-message" style="margin: 0; font-size: 1.1em; color: #4b5563; line-height: 1.5;"></p>
+        </div>
+
+        <div style="display: flex; padding: 0 20px 25px 20px; gap: 12px;">
+            <button id="modal-cancel-delete-btn" style="flex: 1; padding: 12px; border: 1px solid #d1d5db; border-radius: 12px; background-color: #f9fafb; color: #374151; font-weight: bold; cursor: pointer; transition: background 0.2s;">
+                Cancelar
+            </button>
+            <button id="modal-confirm-delete-btn" style="flex: 1; padding: 12px; border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; transition: opacity 0.2s;">
+                Aceptar
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes modalIn {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+</style>
+
 
 <script type="module">
 
-    const SERVER_URL = "http://192.168.0.113:3000";
+    const SERVER_URL = "https://productos.nexusposgobal.com";
     const LOCAL_URL = "http://localhost:3000";
-    const SERVER_URL_CATEGORY = "http://192.168.0.113:3001";
+    const SERVER_URL_CATEGORY = "https://categorias.nexusposgobal.com";
 
     
     let companyId = window.currentCompanyId || localStorage.getItem('companyId');
     let editingProductId = null;
     let allProducts = [];
     let currentPackingFactor = 1; 
+    let actionPending = null;
+    let currentProductInEditing = null;
 
     if (!companyId) {
     console.warn("⚠️ Advertencia: No se encontró el companyId. Es posible que el módulo local falle.");
@@ -906,18 +937,22 @@ window.enableEditing = async function(docId, productData) {
         console.error("❌ Error: Se intentó editar un producto sin ID válido.");
         return;
     }
+
+    // 🧠 RESPALDO INTELIGENTE: Clonamos el original para la fusión posterior
+    currentProductInEditing = JSON.parse(JSON.stringify(productData));
+    
     editingProductId = docId;
     console.log("📝 Modo edición activado para ID:", editingProductId);
     
     productNameInput.value = productData.nombre || '';               
-    productPriceInput.value = productData.precio_venta || 0;         
+    productPriceInput.value = productData.precio_venta || productData.precio || 0;         
     productBuyPriceInput.value = productData.precio_compra || 0;     
     
     if (productProfitPercentageInput) {
+        // Manejo inteligente del typo en la base de datos
         productProfitPercentageInput.value = productData.porcentaje_ganancia || productData.porcentaje_ganacia || 0;
     }
 
-    // 🔥 AGREGADO: Carga del tipo de Alícuota (IVA)
     const taxSelect = document.getElementById('product-tax-type');
     if (taxSelect) {
         taxSelect.value = productData.tipo_alicuota || "16";
@@ -934,6 +969,7 @@ window.enableEditing = async function(docId, productData) {
         unitSelect.value = productData.unit || 'UN';
     }
 
+    // --- Tu lógica de Stock y Sucursales ---
     if (stockBranchSelect && stockBranchSelect.options.length > 0) {
         stockBranchSelect.value = String(productData.sucursal_ID || '0'); 
     }
@@ -947,7 +983,6 @@ window.enableEditing = async function(docId, productData) {
     await autoSelectPacking(productData.nombre); 
     
     if (stockContainer) {
-        // Mantenemos 'block' o 'grid' según tu diseño organizado a la izquierda
         stockContainer.style.display = 'block'; 
     }
     
@@ -1055,35 +1090,55 @@ function clearForm() {
 }
 
 
+window.deleteProduct = function(productId, productName, currentStatus) {
+    // REGLA: Si el status es 0, la acción es habilitar (1). Si es 1, es inhabilitar (0).
+    const isEnabling = currentStatus === 0;
+    const newStatus = isEnabling ? 1 : 0;
+    
+    // Referencias a los elementos del modal
+    const modalHeader = document.getElementById('modal-header-color');
+    const modalTitle = document.getElementById('modal-title');
+    const modalBtnConfirm = document.getElementById('modal-confirm-delete-btn');
+    const modalMsg = document.getElementById('modal-product-message');
 
-window.deleteProduct = async function(productId) {
-    if (!confirm("¿Desea inactivar este producto?")) return;
-    const updateData = { 
-        producto_ID: productId, 
-        status: 0, 
-        empresa_ID: currentCompanyId,
-        fecha_modificacion: new Date().toISOString()
-    };
-
-    if (navigator.onLine) {
-        try {
-            const response = await fetch(`${SERVER_URL}/api/productos/${productId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updateData)
-            });
-            if (!response.ok) throw new Error("Error en servidor Xeon");
-            await window.nexusAPI.sincronizarProductoServidor(updateData);
-            
-            showCustomAlert("Producto inactivado en el Xeon y local");
-            loadInventory(currentCompanyId); 
-        } catch (e) {
-            console.error("Error al inactivar en Xeon:", e);
-            guardarInactivacionLocal(updateData);
-        }
+    if (isEnabling) {
+        // --- CONFIGURACIÓN PARA HABILITAR (VERDE) ---
+        modalHeader.style.backgroundColor = "#dcfce7"; 
+        modalTitle.style.color = "#166534";
+        modalTitle.textContent = "¡Habilitar Producto!";
+        modalBtnConfirm.style.backgroundColor = "#22c55e";
+        modalBtnConfirm.textContent = "Sí, Habilitar"; // <--- Texto dinámico corregido
+        modalMsg.innerHTML = `¿Está seguro que desea <strong>HABILITAR</strong> el producto <br> "<strong>${productName}</strong>"?`;
     } else {
-        guardarInactivacionLocal(updateData);
+        // --- CONFIGURACIÓN PARA INHABILITAR (ROJO) ---
+        modalHeader.style.backgroundColor = "#fee2e2"; 
+        modalTitle.style.color = "#991b1b";
+        modalTitle.textContent = "¡Inhabilitar Producto!";
+        modalBtnConfirm.style.backgroundColor = "#ef4444";
+        modalBtnConfirm.textContent = "Sí, Inhabilitar"; // <--- Texto dinámico corregido
+        modalMsg.innerHTML = `¿Está seguro que desea <strong>INHABILITAR</strong> el producto <br> "<strong>${productName}</strong>"?`;
     }
+
+    // Guardamos la función con los datos correctos para cuando se presione "Aceptar"
+    actionPending = () => confirmDeleteAction(companyId || window.currentCompanyId, productId, productName, newStatus);
+
+    // Mostrar el modal estilizado
+    document.getElementById('delete-confirmation-modal').style.display = 'block';
+};
+
+// Evento para el botón Aceptar del Modal
+document.getElementById('modal-confirm-delete-btn').onclick = function() {
+    if (actionPending) {
+        actionPending();
+        document.getElementById('delete-confirmation-modal').style.display = 'none';
+        actionPending = null;
+    }
+};
+
+// Evento para el botón Cancelar del Modal
+document.getElementById('modal-cancel-delete-btn').onclick = function() {
+    document.getElementById('delete-confirmation-modal').style.display = 'none';
+    actionPending = null;
 };
 
 window.cancelEditing = function() {
@@ -1114,51 +1169,40 @@ async function guardarInactivacionLocal(datos) {
     }
 }
 
-
 window.updateProduct = async function(idEmpresa) {
     const data = getValidatedProductData();
     
-    if (!data || !editingProductId) {
-        console.error("❌ No se puede actualizar: ID es null o datos inválidos");
-        showCustomAlert("Error: ID de producto no encontrado", "error");
+    if (!data || !editingProductId || !currentProductInEditing) {
+        console.error("❌ No se puede actualizar: Datos inválidos o falta objeto de respaldo.");
+        showCustomAlert("Error de integridad. Intente seleccionar el producto de nuevo.", "error");
         return;
     }
 
-    const idParaSync = editingProductId; 
-
-    // 🛠️ ARREGLO DE LA AMNESIA: Empaquetamos todo correctamente en datos_json
+    // 🧠 FUSIÓN INTELIGENTE: Conservamos campos técnicos (createdAt, sucursal_ID)
     const productData = {
+        ...currentProductInEditing,
         ...data,
-        id: idParaSync,              // Traductor para main.js
-        producto_ID: idParaSync,     // Traductor para la Nube
-        company_id: idEmpresa,
+        id: editingProductId,
+        producto_ID: editingProductId,
         empresa_ID: idEmpresa,
-        fecha_modificacion: new Date().toISOString(),
-        status: 1, // Mantenemos el estatus activo
-        // 🔥 ESTO ERA LO QUE FALTABA: La mochila con los detalles
-        datos_json: JSON.stringify({
-            ...data,
-            id: idParaSync,
-            producto_ID: idParaSync,
-            status: 1
-        })
+        fecha_modificacion: new Date().toISOString()
     };
+
+    // Actualizamos el JSON que lee la tabla
+    productData.datos_json = JSON.stringify(productData);
 
     try {
         // 1. Guardar en Local (Cerebro SQLite)
         const resultadoLocal = await window.nexusAPI.sincronizarProductoServidor(productData);
 
-        // 2. Enviar a la Nube (Xeon) si hay internet
+        // 2. Sincronización con Xeon
         if (navigator.onLine) {
-            fetch(`${SERVER_URL}/api/productos/${idParaSync}`, {
+            fetch(`${SERVER_URL}/api/productos/${editingProductId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(productData)
-            }).then(response => {
-                if (!response.ok) console.warn("⚠️ Falló sincronización con Xeon (Nube)");
-            }).catch(err => console.warn("⚠️ Error de red con Xeon", err));
+            }).catch(err => console.warn("⚠️ Sincronización Xeon pendiente"));
         } else {
-            // 3. Encolar tarea si no hay red
             await window.nexusAPI.encolarSincronizacion({
                 operacion: 'UPDATE',
                 tabla: 'productos',
@@ -1167,14 +1211,13 @@ window.updateProduct = async function(idEmpresa) {
         }
 
         if (resultadoLocal) {
-            // Ya no hace falta llamar cargarProductosDesdeLocal() aquí 
-            // porque nuestro radar en tiempo real lo hará en milisegundos.
-            showCustomAlert("✅ Producto actualizado correctamente");
+            showCustomAlert("✅ Producto actualizado de forma íntegra");
             window.cancelEditing(); 
+            currentProductInEditing = null;
         }
 
     } catch (error) {
-        console.error("❌ Error en actualización:", error);
+        console.error("❌ Error:", error);
         showCustomAlert("Hubo un error al actualizar el producto.", "error");
     }
 };
@@ -1204,7 +1247,7 @@ async function guardarEnColaLocal(productData, companyId) {
 }
 
 async function handleStockUpdate(productId, name) {
-    const SERVER_URL = "http://192.168.0.113:3000";
+    const SERVER_URL = "https://productos.nexusposgobal.com";
     const branchId = stockBranchSelect.value;
     const totalToAdd = parseFloat(stockTotalAddInput.value) || 0;
 
@@ -1272,45 +1315,52 @@ function getValidatedProductData() {
     const productCodeInput = document.getElementById('product-code');
     const taxSelect = document.getElementById('product-tax-type'); 
     const unitSelect = document.getElementById('product-unit-select'); 
-
-    // 2. EXTRACCIÓN DE VALORES
-    const nombre = productNameInput ? productNameInput.value.trim() : "";
-    const precioVenta = productPriceInput ? parseFloat(productPriceInput.value) : 0;
-    const precioCompra = productBuyPriceInput ? parseFloat(productBuyPriceInput.value) : 0;
-    const categoria = productCategorySelect ? productCategorySelect.value : "";
-    const codigo = productCodeInput ? productCodeInput.value.trim() : "";
-    
-    const tipo_alicuota = taxSelect ? taxSelect.value : "16";
-    const unit = unitSelect ? unitSelect.value : "UN"; 
-
-    const profitInput = document.getElementById('product-profit');
     const profitPercentInput = document.getElementById('product-profit-percentage');
-    const ganancia = profitInput ? parseFloat(profitInput.value) : (precioVenta - precioCompra);
-    const porcentajeGanancia = profitPercentInput ? parseFloat(profitPercentInput.value) : 0;
+    const currencyEl = document.getElementById('product-currency');
 
-    const monedaEl = document.getElementById('product-currency');
-    const moneda = monedaEl ? monedaEl.value : "BS";
+    // 2. EXTRACCIÓN DE VALORES DE LA UI
+    let nombre = productNameInput ? productNameInput.value.trim() : "";
+    let precioVenta = productPriceInput ? parseFloat(productPriceInput.value) : NaN;
+    let precioCompra = productBuyPriceInput ? parseFloat(productBuyPriceInput.value) : 0;
+    let categoria = productCategorySelect ? productCategorySelect.value : "";
+    let codigo = productCodeInput ? productCodeInput.value.trim() : "";
+    let tipo_alicuota = taxSelect ? taxSelect.value : "16";
+    let unit = unitSelect ? unitSelect.value : "UN"; 
+    let porcentajeGanancia = profitPercentInput ? parseFloat(profitPercentInput.value) : 0;
+    let moneda = currencyEl ? currencyEl.value : "BS";
 
-    // 3. VALIDACIÓN
-    if (!nombre || isNaN(precioVenta) || !categoria) {
-        showCustomAlert("Faltan campos obligatorios: Nombre, Precio o Categoría", "error");
+    // 🧠 3. FALLBACK INTELIGENTE (El Salvavidas)
+    // Si un campo quedó vacío en la interfaz (ej. la categoría), rescatamos el valor original del respaldo.
+    if (!nombre && currentProductInEditing) nombre = currentProductInEditing.nombre;
+    if (isNaN(precioVenta) && currentProductInEditing) precioVenta = currentProductInEditing.precio_venta || currentProductInEditing.precio;
+    if (!categoria && currentProductInEditing) categoria = currentProductInEditing.categoria;
+    
+    // Si la categoría rescatada fue "Sin Cat." y el select estaba vacío, aseguramos que se guarde el string y no null
+    if (!categoria || categoria === "") {
+        categoria = "Sin Cat.";
+    }
+
+    // 4. VALIDACIÓN CRÍTICA (Ya no fallará injustamente)
+    if (!nombre || isNaN(precioVenta)) {
+        showCustomAlert("Faltan campos obligatorios: Nombre o Precio", "error");
         return null; 
     }
 
-    // 4. RETORNO DEL OBJETO (¡Ahora con la imagen!)
+    // 5. RETORNO DEL OBJETO LISTO PARA LA MOCHILA
     return {
         nombre,
         precio_venta: precioVenta,
         precio_compra: precioCompra,
-        ganancia: ganancia,
-        porcentaje_ganancia: porcentajeGanancia,
+        ganancia: precioVenta - precioCompra,
+        porcentaje_ganancia: porcentajeGanancia, // Nombre literal para SQLite
         tipo_alicuota: tipo_alicuota, 
         categoria,
         codigo,
         moneda,
         currency: moneda,
         unit: unit,
-        imagen: typeof productBase64 !== 'undefined' ? productBase64 : "", // 🔥 AQUÍ ESTÁ LA SOLUCIÓN
+        // 🔥 Conserva la imagen vieja si no se subió una nueva
+        imagen: (typeof productBase64 !== 'undefined' && productBase64) ? productBase64 : (currentProductInEditing ? currentProductInEditing.imagen : ""),
         stock_nuevo: document.getElementById('stock-total-add') ? (parseInt(document.getElementById('stock-total-add').value) || 0) : 0
     };
 }
@@ -1322,41 +1372,46 @@ function getValidatedProductData() {
         deleteModal.style.display = 'block';
     }
 
-async function confirmDeleteAction(companyId, docId, productName) {
-    const SERVER_URL = "http://192.168.0.113:3000";
+async function confirmDeleteAction(companyId, docId, productName, newStatus) {
+    const itemEnRam = allProducts.find(item => item.docId === docId);
+    if (!itemEnRam) {
+        console.error("❌ Error: Producto no encontrado en memoria.");
+        return;
+    }
 
-    if (navigator.onLine) {
-        try {
-            const response = await fetch(`${SERVER_URL}/api/productos/${docId}`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' }
+
+    const productoCompleto = {
+        ...itemEnRam.product, 
+        status: newStatus
+    };
+
+    const updateData = { 
+        ...productoCompleto,
+        producto_ID: docId, 
+        id: docId, 
+        empresa_ID: companyId,
+        fecha_modificacion: new Date().toISOString(),
+        datos_json: JSON.stringify(productoCompleto) 
+    };
+
+    try {
+        if (navigator.onLine) {
+            // Sincronización con Servidor Xeon
+            await fetch(`${SERVER_URL}/api/productos/${docId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updateData)
             });
-            if (!response.ok) throw new Error("No se pudo eliminar en el servidor Xeon");
-            await window.nexusAPI.eliminarProductoLocal(docId);
-            showCustomAlert(`"${productName}" eliminado permanentemente.`);           
-            cargarProductosDesdeLocal();
-
-        } catch (e) {
-            console.error("Error en eliminación:", e);
-            showCustomAlert("Error al eliminar en el servidor", "error");
         }
-    } else {
 
-        try {
+        await window.nexusAPI.sincronizarProductoServidor(updateData);
+        
+        showCustomAlert(`Producto ${newStatus === 1 ? 'habilitado' : 'inhabilitado'} con éxito.`);
 
-            await window.nexusAPI.eliminarProductoLocal(docId);
-            await window.nexusAPI.encolarSincronizacion({
-                operacion: 'DELETE',
-                tabla: 'productos',
-                datos: { producto_ID: docId, empresa_ID: companyId }
-            });
-
-            showCustomAlert(`"${productName}" eliminado localmente (Pendiente de sincronizar)`);
-            cargarProductosDesdeLocal();
-        } catch (err) {
-            console.error("Error en eliminación local:", err);
-            showCustomAlert("Error al eliminar localmente", "error");
-        }
+        
+    } catch (e) {
+        console.error("Error en el proceso de cambio de estado:", e);
+        guardarInactivacionLocal(updateData);
     }
 }
 
@@ -1450,7 +1505,7 @@ async function confirmDeleteAction(companyId, docId, productName) {
             <td>
                 <div class="table-actions-container">
                     <button class="btn-edit" onclick="window.enableEditing('${docId}', ${safeProductJson})">Editar</button>
-                    <button class="btn-delete" onclick="window.deleteProduct('${docId}', '${safeProductName}')">
+                    <button class="btn-delete" onclick="window.deleteProduct('${docId}', '${safeProductName}', ${product.status})">
                         ${product.status === 1 ? 'Deshabilitar' : 'Habilitar'}
                     </button>
                 </div>
@@ -1554,13 +1609,12 @@ async function cargarProductosDesdeLocal() {
 const apiGlobal = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
 
 if (apiGlobal && apiGlobal.onProductosCambiados) {
-    console.log("👁️ [INVENTARIO] Radar conectado exitosamente. Esperando señal...");
+    console.log("👁️ [INVENTARIO] Radar conectado. Escuchando cambios en base de datos...");
     apiGlobal.onProductosCambiados(() => {
-        console.log("🔄 [INVENTARIO] ¡Señal recibida del Cerebro! Actualizando tabla...");
-        cargarProductosDesdeLocal();
+        console.log("🔄 [INVENTARIO] ¡Cambio detectado! Recargando tabla...");
+        // Esta función vuelve a leer SQLite y redibuja la tabla renderProducts
+        cargarProductosDesdeLocal(); 
     });
-} else {
-    console.error("❌ [INVENTARIO] ERROR: No se pudo conectar el radar (NexusAPI no encontrada).");
 }
 
 
