@@ -381,21 +381,28 @@ body {
                     </div>
 
                     <div class="inputs-wrapper">
+
+                        <div class="flex mb-4 border-b border-gray-200">
+                            <button type="button" class="price-tab px-4 py-2 font-bold text-blue-600 border-b-2 border-blue-600" data-tier="1">Precio 1 (Detal)</button>
+                            <button type="button" class="price-tab px-4 py-2 font-bold text-gray-500 hover:text-blue-600" data-tier="2">Precio 2 (Mayor)</button>
+                            <button type="button" class="price-tab px-4 py-2 font-bold text-gray-500 hover:text-blue-600" data-tier="3">Precio 3 (Gran Mayor)</button>
+                        </div>
+
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-left">
                             <div>
                                 <label for="product-name">Nombre del Producto:</label>
                                 <input type="text" id="product-name" placeholder="Ej: Arroz, Tomate..." required>
                             </div>
                             <div>
-                                <label for="product-buy-price">Precio De Compra:</label>
+                                <label for="product-buy-price" id="label-buy-price">Precio De Compra:</label>
                                 <input type="number" id="product-buy-price" placeholder="Ej: 20.00" step="0.01" required>
                             </div>
                             <div>
-                                <label for="product-profit-percentage">Ganancia Deseada (%):</label>
+                                <label for="product-profit-percentage" id="label-profit-percentage">Ganancia Deseada (%):</label>
                                 <input type="number" id="product-profit-percentage" placeholder="Ej: 30" min="0" required>
                             </div>
                             <div>
-                                <label for="product-price">Base Imponible(P. venta):</label>
+                                <label for="product-price" id="label-price">Base Imponible(P. venta):</label>
                                 <input type="number" id="product-price" placeholder="Ej: 35.00" step="0.01" required>
                             </div>
                             <div>
@@ -554,6 +561,15 @@ body {
     let currentPackingFactor = 1; 
     let actionPending = null;
     let currentProductInEditing = null;
+    let currentTier = "1";
+    let preciosData = {
+        p1: { compra: 0, porcentaje: 0, venta: 0 },
+        p2: { compra: 0, porcentaje: 0, venta: 0 },
+        p3: { compra: 0, porcentaje: 0, venta: 0 }
+    };
+
+
+
 
     if (!companyId) {
     console.warn("⚠️ Advertencia: No se encontró el companyId. Es posible que el módulo local falle.");
@@ -618,6 +634,46 @@ body {
         deleteModal.style.display = 'none'; 
     });
 
+    const tabs = document.querySelectorAll('.price-tab');
+    
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            guardarTierActual();
+
+            tabs.forEach(t => {
+                t.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+                t.classList.add('text-gray-500');
+            });
+            tab.classList.remove('text-gray-500');
+            tab.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+
+            currentTier = tab.dataset.tier;
+            document.getElementById('label-buy-price').textContent = `Precio Compra (P${currentTier}):`;
+            document.getElementById('label-profit-percentage').textContent = `Ganancia % (P${currentTier}):`;
+            document.getElementById('label-price').textContent = `Base Imponible(P. venta) (P${currentTier}):`;
+            
+            cargarTier(currentTier);
+        });
+    });
+
+    function guardarTierActual() {
+        // Capturamos los 3 valores del nivel actual antes de cambiar de pestaña
+        preciosData[`p${currentTier}`] = {
+            compra: parseFloat(productBuyPriceInput.value) || 0,
+            porcentaje: parseFloat(productProfitPercentageInput.value) || 0,
+            venta: parseFloat(productPriceInput.value) || 0
+        };
+    }
+
+    function cargarTier(tier) {
+        // Buscamos los datos o inicializamos en 0 si no existen
+        const data = preciosData[`p${tier}`] || { compra: 0, porcentaje: 0, venta: 0 };
+        
+        // LIMPIEZA Y RELLENADO: Si el valor es 0, el input se limpia ("") para que el usuario escriba de cero
+        productBuyPriceInput.value = parseFloat(data.compra) > 0 ? data.compra : "";
+        productProfitPercentageInput.value = parseFloat(data.porcentaje) > 0 ? data.porcentaje : "";
+        productPriceInput.value = parseFloat(data.venta) > 0 ? data.venta : "";
+    }
 
 async function loadCategories() {
     const productCategorySelect = document.getElementById('product-category');
@@ -933,62 +989,77 @@ function calculateTotalStockAddition() {
 }
 
 window.enableEditing = async function(docId, productData) {
-    if (!docId) {
-        console.error("❌ Error: Se intentó editar un producto sin ID válido.");
-        return;
-    }
+    if (!docId) return;
 
-    // 🧠 RESPALDO INTELIGENTE: Clonamos el original para la fusión posterior
+    console.log("📝 Modo edición: Sincronizando los 3 niveles de precio...");
     currentProductInEditing = JSON.parse(JSON.stringify(productData));
-    
     editingProductId = docId;
-    console.log("📝 Modo edición activado para ID:", editingProductId);
     
-    productNameInput.value = productData.nombre || '';               
-    productPriceInput.value = productData.precio_venta || productData.precio || 0;         
-    productBuyPriceInput.value = productData.precio_compra || 0;     
-    
-    if (productProfitPercentageInput) {
-        // Manejo inteligente del typo en la base de datos
-        productProfitPercentageInput.value = productData.porcentaje_ganancia || productData.porcentaje_ganacia || 0;
-    }
-
-    const taxSelect = document.getElementById('product-tax-type');
-    if (taxSelect) {
-        taxSelect.value = productData.tipo_alicuota || "16";
-    }
-
+    // 1. Cargar Datos Básicos (Inputs fijos)
+    productNameInput.value = productData.nombre || '';
     productCategorySelect.value = productData.categoria || '';       
     productCodeInput.value = productData.codigo || '';              
     
-    const currencyEl = document.getElementById('product-currency');
-    if (currencyEl) currencyEl.value = productData.currency || productData.moneda || 'USD';
+    const taxSelect = document.getElementById('product-tax-type');
+    if (taxSelect) taxSelect.value = productData.tipo_alicuota || "16";
+    
+    if (productCurrencySelect) {
+        productCurrencySelect.value = productData.moneda || productData.currency || 'USD';
+    }
     
     const unitSelect = document.getElementById('product-unit-select');
-    if (unitSelect) {
-        unitSelect.value = productData.unit || 'UN';
+    if (unitSelect) unitSelect.value = productData.unit || 'UN';
+
+    // 2. 🧠 MIGRACIÓN COMPLETA DE PRECIOS
+    if (productData.precios && typeof productData.precios === 'object') {
+        // Si el objeto fue extraído correctamente de SQLite, lo clonamos
+        preciosData = JSON.parse(JSON.stringify(productData.precios));
+    } else {
+        // Si es un producto muy antiguo sin Multi-Precio, rescatamos sus datos viejos a P1
+        preciosData = {
+            p1: { 
+                compra: parseFloat(productData.precio_compra) || 0, 
+                porcentaje: parseFloat(productData.porcentaje_ganancia) || 0, 
+                venta: parseFloat(productData.precio_venta) || 0 
+            },
+            p2: { compra: 0, porcentaje: 0, venta: 0 },
+            p3: { compra: 0, porcentaje: 0, venta: 0 }
+        };
     }
 
-    // --- Tu lógica de Stock y Sucursales ---
+    // 4. Resetear UI de Pestañas (Visualmente a P1)
+    currentTier = "1";
+    tabs.forEach(t => {
+        t.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+        t.classList.add('text-gray-500');
+    });
+    
+    const tab1 = document.querySelector('.price-tab[data-tier="1"]');
+    if (tab1) {
+        tab1.classList.remove('text-gray-500');
+        tab1.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+    }
+
+    // 5. Actualizar Labels para indicar que estamos en P1
+    document.getElementById('label-buy-price').textContent = `Precio Compra (P1):`;
+    document.getElementById('label-profit-percentage').textContent = `Ganancia % (P1):`;
+    document.getElementById('label-price').textContent = `Base Imponible(P. venta) (P1):`;
+
+    // 6. 🔥 CARGA Y LIMPIEZA SIMULTÁNEA
+    // Esta función debe encargarse de poner "" si el valor es 0
+    cargarTier("1");
+
+    // 7. Lógica de Stock y UI adicional
     if (stockBranchSelect && stockBranchSelect.options.length > 0) {
-        stockBranchSelect.value = String(productData.sucursal_ID || '0'); 
+        stockBranchSelect.value = String(productData.sucursal_ID || 'sucursal_1'); 
     }
     
     if (navigator.onLine && stockBranchSelect.value && docId) {
         fetchStockValue(stockBranchSelect.value, docId);
-    } else {
-        if (stockTotalAddInput) stockTotalAddInput.value = productData.base_imponible || 0;
     }
     
     await autoSelectPacking(productData.nombre); 
-    
-    if (stockContainer) {
-        stockContainer.style.display = 'block'; 
-    }
-    
-    if (typeof stockArrow !== 'undefined' && stockArrow) {
-        stockArrow.style.transform = 'rotate(180deg)';
-    }
+    if (stockContainer) stockContainer.style.display = 'block'; 
     
     updateImageUI(productData.imagen || null);
     toggleFormButtons(true); 
@@ -1307,61 +1378,55 @@ async function encolarStockLocal(datos) {
 }
 
 function getValidatedProductData() {
-    // 1. CAPTURA DE LOS ELEMENTOS
-    const productNameInput = document.getElementById('product-name');
-    const productPriceInput = document.getElementById('product-price');
-    const productBuyPriceInput = document.getElementById('product-buy-price');
-    const productCategorySelect = document.getElementById('product-category');
-    const productCodeInput = document.getElementById('product-code');
-    const taxSelect = document.getElementById('product-tax-type'); 
-    const unitSelect = document.getElementById('product-unit-select'); 
-    const profitPercentInput = document.getElementById('product-profit-percentage');
-    const currencyEl = document.getElementById('product-currency');
+    // Sincronizar lo que el usuario está viendo en la pestaña actual antes de guardar
+    if (typeof guardarTierActual === 'function') guardarTierActual();
 
-    // 2. EXTRACCIÓN DE VALORES DE LA UI
-    let nombre = productNameInput ? productNameInput.value.trim() : "";
-    let precioVenta = productPriceInput ? parseFloat(productPriceInput.value) : NaN;
-    let precioCompra = productBuyPriceInput ? parseFloat(productBuyPriceInput.value) : 0;
-    let categoria = productCategorySelect ? productCategorySelect.value : "";
-    let codigo = productCodeInput ? productCodeInput.value.trim() : "";
-    let tipo_alicuota = taxSelect ? taxSelect.value : "16";
-    let unit = unitSelect ? unitSelect.value : "UN"; 
-    let porcentajeGanancia = profitPercentInput ? parseFloat(profitPercentInput.value) : 0;
-    let moneda = currencyEl ? currencyEl.value : "BS";
-
-    // 🧠 3. FALLBACK INTELIGENTE (El Salvavidas)
-    // Si un campo quedó vacío en la interfaz (ej. la categoría), rescatamos el valor original del respaldo.
-    if (!nombre && currentProductInEditing) nombre = currentProductInEditing.nombre;
-    if (isNaN(precioVenta) && currentProductInEditing) precioVenta = currentProductInEditing.precio_venta || currentProductInEditing.precio;
-    if (!categoria && currentProductInEditing) categoria = currentProductInEditing.categoria;
+    const nombre = productNameInput.value.trim();
+    const categoria = productCategorySelect.value;
+    const codigo = productCodeInput.value.trim();
+    const moneda = productCurrencySelect.value;
+    const alicuota = document.getElementById('product-tax-type').value;
+    const unidad = document.getElementById('product-unit-select').value;
     
-    // Si la categoría rescatada fue "Sin Cat." y el select estaba vacío, aseguramos que se guarde el string y no null
-    if (!categoria || categoria === "") {
-        categoria = "Sin Cat.";
+    // P1 es nuestro "ancla" para validación y compatibilidad en la tabla
+    const p1Venta = parseFloat(preciosData.p1.venta) || 0;
+    const p1Compra = parseFloat(preciosData.p1.compra) || 0;
+    const p1Porcentaje = parseFloat(preciosData.p1.porcentaje) || 0;
+
+    // Respaldo inteligente: si el nombre está vacío en edición, usamos el anterior
+    let nombreFinal = nombre;
+    if (!nombreFinal && currentProductInEditing) nombreFinal = currentProductInEditing.nombre;
+
+    let precioVentaFinal = p1Venta;
+    if (precioVentaFinal <= 0 && currentProductInEditing) {
+        precioVentaFinal = currentProductInEditing.precio_venta || currentProductInEditing.precio || 0;
     }
 
-    // 4. VALIDACIÓN CRÍTICA (Ya no fallará injustamente)
-    if (!nombre || isNaN(precioVenta)) {
-        showCustomAlert("Faltan campos obligatorios: Nombre o Precio", "error");
-        return null; 
+    if (!nombreFinal || precioVentaFinal <= 0) {
+        showCustomAlert("Faltan campos obligatorios: Nombre o Precio (P1)", "error");
+        return null;
     }
 
-    // 5. RETORNO DEL OBJETO LISTO PARA LA MOCHILA
     return {
-        nombre,
-        precio_venta: precioVenta,
-        precio_compra: precioCompra,
-        ganancia: precioVenta - precioCompra,
-        porcentaje_ganancia: porcentajeGanancia, // Nombre literal para SQLite
-        tipo_alicuota: tipo_alicuota, 
-        categoria,
-        codigo,
-        moneda,
+        nombre: nombreFinal,
+        precios: preciosData, // Objeto completo con p1, p2, p3
+        categoria: categoria || (currentProductInEditing ? currentProductInEditing.categoria : "Sin Cat."),
+        codigo: codigo,
+        moneda: moneda,
         currency: moneda,
-        unit: unit,
-        // 🔥 Conserva la imagen vieja si no se subió una nueva
-        imagen: (typeof productBase64 !== 'undefined' && productBase64) ? productBase64 : (currentProductInEditing ? currentProductInEditing.imagen : ""),
-        stock_nuevo: document.getElementById('stock-total-add') ? (parseInt(document.getElementById('stock-total-add').value) || 0) : 0
+        tipo_alicuota: alicuota,
+        unit: unidad,
+        imagen: productBase64 || (currentProductInEditing ? currentProductInEditing.imagen : ""),
+        
+        // Datos para la vista rápida de la tabla y SQLite
+        precio_venta: precioVentaFinal,
+        precio_compra: p1Compra > 0 ? p1Compra : (currentProductInEditing ? currentProductInEditing.precio_compra : 0),
+        porcentaje_ganancia: p1Porcentaje,
+        ganancia: precioVentaFinal - p1Compra,
+
+        stock_nuevo: document.getElementById('stock-total-add') 
+                    ? (parseFloat(document.getElementById('stock-total-add').value) || 0) 
+                    : 0
     };
 }
 
@@ -1577,6 +1642,10 @@ async function cargarProductosDesdeLocal() {
                         precio_venta: datosParseados.precio_venta || p.precio || 0,
                         ganancia: datosParseados.ganancia || 0,
                         porcentaje_ganancia: datosParseados.porcentaje_ganancia || p.porcentaje_ganancia || 0,
+                        
+                        // 🔥 ESTA LÍNEA ERA LA FALTANTE: Pasa el objeto multi-precio íntegro al editor
+                        precios: datosParseados.precios || null, 
+                        
                         categoria: datosParseados.categoria || p.categoria || '',
                         status: datosParseados.status !== undefined ? datosParseados.status : (p.status !== undefined ? p.status : 1),
                         imagen: datosParseados.imagen || p.imagen || '',
