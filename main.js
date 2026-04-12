@@ -1,42 +1,57 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-const { exec } = require('child_process');
+// 1. Módulos de Sistema y Electron
 const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { SerialPort } = require('serialport');
-const express = require('express');
-const cors = require('cors');
-const server = express();
-const PORT = 3000;
-const dbDir = path.join(__dirname, 'data');
-if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
-const axios = require('axios');
-const cheerio = require('cheerio');
+const { exec } = require('child_process');
 const https = require('https');
 
-if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir);
+// 2. Librerías Externas
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { SerialPort } = require('serialport');
+const { ReadlineParser } = require('@serialport/parser-readline');
+const Database = require('better-sqlite3');
+const express = require('express');
+const cors = require('cors');
+const axios = require('axios');
+const cheerio = require('cheerio');
 
-const configPath = path.join(dbDir, 'config.json');
-let config = { isServer: false, serverIP: 'localhost', allowNoStock: false, geminiApiKey: "AIzaSyAPKpaQrze48wBpt2CwXxGDvATb8lgYpFo" };
+// 3. Configuración del Servidor y Base de Datos
+const server = express();
+const PORT = 3000;
+
+const dbDir = path.join(__dirname, 'data');
+if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
+
+const dbPath = path.join(dbDir, 'nexus_pos.db');
+const db = new Database(dbPath, { timeout: 10000 });
+console.log("🚀 Cerebro Conectado en:", dbPath);
+
+// 4. Variables Globales y Estado
 let win;    
-let sistemaPrincipalAbierto = false;
 let splash;
+let sistemaPrincipalAbierto = false;
+
+// 5. Gestión de Configuración (config.json)
+const configPath = path.join(dbDir, 'config.json');
+let config = { 
+    isServer: false, 
+    serverIP: 'localhost', 
+    allowNoStock: false, 
+    geminiApiKey: "AIzaSyAPKpaQrze48wBpt2CwXxGDvATb8lgYpFo" 
+};
 
 if (fs.existsSync(configPath)) {
     try {
         const contenido = fs.readFileSync(configPath, 'utf8');
         config = JSON.parse(contenido);
-    } catch (e) { console.error("Error al leer config.json:", e); }
+    } catch (e) { 
+        console.error("Error al leer config.json:", e); 
+    }
 } else {
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 }
 
-
-const Database = require('better-sqlite3');
-const dbPath = path.join(dbDir, 'nexus_pos.db');
-const db = new Database(dbPath, { timeout: 10000 }); 
-console.log("🚀 Cerebro Conectado en:", dbPath);
-
+// 6. Optimización de Base de Datos
 try {
     db.pragma('journal_mode = WAL');
 } catch (e) {
@@ -65,6 +80,7 @@ function inicializarTablas() {
         codigo TEXT,
         nombre TEXT,
         precio REAL,
+        precio_compra REAL, -- COLUMNA AÑADIDA
         porcentaje_ganancia REAL,
         categoria TEXT, 
         status INTEGER,
@@ -225,7 +241,13 @@ db.exec(`
 }
 inicializarTablas();
 
-
+try {
+    db.prepare("ALTER TABLE productos_locales ADD COLUMN precio_compra REAL DEFAULT 0").run();
+    db.prepare("ALTER TABLE productos_locales ADD COLUMN porcentaje_ganancia REAL DEFAULT 0").run();
+    console.log("✅ Columnas de costo y ganancia verificadas/añadidas a SQLite.");
+} catch (e) {
+    // Es normal que de error si las columnas ya existen. Pasa silenciosamente.
+}
 
 
 // --- ESTO DEBE IR FUERA DE CUALQUIER IF ---
@@ -285,6 +307,37 @@ ipcMain.handle('obtener-historial-tasas', async () => {
     } catch (e) {
         console.error("Error al obtener historial:", e);
         return [];
+    }
+});
+
+// --- MANEJO DE BALANZA PROFESIONAL ---
+let puertoActivo = null; // Variable global para controlar la conexión única
+
+ipcMain.on('iniciar-puerto-balanza', (event, puertoCOM) => {
+    // 1. Si ya hay un puerto abierto, lo cerramos antes de abrir el nuevo
+    if (puertoActivo && puertoActivo.isOpen) {
+        console.log(`🔄 Cerrando puerto anterior para abrir ${puertoCOM}`);
+        puertoActivo.close();
+    }
+
+    try {
+        puertoActivo = new SerialPort({ path: puertoCOM, baudRate: 9600 });
+        const parser = puertoActivo.pipe(new ReadlineParser({ delimiter: '\n' }));
+
+        parser.on('data', (data) => {
+            // Enviamos el peso al HTML (evento 'peso-desde-balanza')
+            if (!event.sender.isDestroyed()) {
+                event.sender.send('peso-desde-balanza', data.trim());
+            }
+        });
+
+        puertoActivo.on('error', (err) => {
+            console.error('❌ Error físico en Puerto Serie:', err.message);
+        });
+
+        console.log(`✅ Conectado directamente a la Balanza en: ${puertoCOM}`);
+    } catch (e) {
+        console.error("❌ No se pudo abrir el puerto serie:", e.message);
     }
 });
 
@@ -739,8 +792,12 @@ ipcMain.handle('sincronizar-producto-servidor', async (event, p) => {
         const idProducto = p.id || p.producto_ID;
         const idEmpresa = p.company_id || p.empresa_ID;
         const idSucursal = p.branch_id || p.sucursal_ID || 'sucursal_1';
-        const precioRef = p.precios ? p.precios.p1.venta : (p.precio_venta || p.precio || 0);
-        const porcentajeRef = p.precios ? p.precios.p1.porcentaje : (p.porcentaje_ganancia || 0);
+        
+        // 🛡️ EXTRACCIÓN BLINDADA: Garantizamos que siempre sea un número (Float)
+        const precioRef = parseFloat(p.precios ? p.precios.p1.venta : (p.precio_venta || p.precio || 0)) || 0;
+        const compraRef = parseFloat(p.precios ? p.precios.p1.compra : (p.precio_compra || 0)) || 0;
+        const porcentajeRef = parseFloat(p.precios ? p.precios.p1.porcentaje : (p.porcentaje_ganancia || 0)) || 0;
+        
         const jsonParaGuardar = JSON.stringify(p);
 
         const local = db.prepare('SELECT * FROM productos_locales WHERE id = ?').get(idProducto);
@@ -748,8 +805,8 @@ ipcMain.handle('sincronizar-producto-servidor', async (event, p) => {
 
         if (!local) {
             const stmt = db.prepare(`
-                INSERT INTO productos_locales (id, company_id, branch_id, codigo, nombre, precio, porcentaje_ganancia, categoria, status, imagen, datos_json, estado_sync, fecha_modificacion)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+                INSERT INTO productos_locales (id, company_id, branch_id, codigo, nombre, precio, precio_compra, porcentaje_ganancia, categoria, status, imagen, datos_json, estado_sync, fecha_modificacion)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
             `);
             resultado = stmt.run(
                 idProducto, 
@@ -758,6 +815,7 @@ ipcMain.handle('sincronizar-producto-servidor', async (event, p) => {
                 p.codigo, 
                 p.nombre, 
                 precioRef, 
+                compraRef, 
                 porcentajeRef, 
                 p.categoria, 
                 p.status, 
@@ -768,13 +826,14 @@ ipcMain.handle('sincronizar-producto-servidor', async (event, p) => {
         } else {
             const stmt = db.prepare(`
                 UPDATE productos_locales
-                SET codigo = ?, nombre = ?, precio = ?, porcentaje_ganancia = ?, categoria = ?, status = ?, imagen = ?, datos_json = ?, estado_sync = 1, fecha_modificacion = ?
+                SET codigo = ?, nombre = ?, precio = ?, precio_compra = ?, porcentaje_ganancia = ?, categoria = ?, status = ?, imagen = ?, datos_json = ?, estado_sync = 1, fecha_modificacion = ?
                 WHERE id = ?
             `);
             resultado = stmt.run(
                 p.codigo, 
                 p.nombre, 
                 precioRef, 
+                compraRef, 
                 porcentajeRef, 
                 p.categoria, 
                 p.status, 
@@ -794,7 +853,7 @@ ipcMain.handle('sincronizar-producto-servidor', async (event, p) => {
 
         return resultado;
     } catch (e) {
-        console.error("❌ Error en sincronizar-producto-servidor (Multi-Precio):", e);
+        console.error("❌ Error en sincronizar-producto-servidor:", e);
         return { error: e.message };
     }
 });

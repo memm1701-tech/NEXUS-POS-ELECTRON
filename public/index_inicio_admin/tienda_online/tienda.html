@@ -51,8 +51,12 @@
     <header class="bg-white shadow-md sticky top-0 z-20">
         <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
             
-            <div id="logo-display" class="logo-placeholder cursor-default">
-                <span>L</span>
+            <div class="flex items-center space-x-3">
+                <div id="logo-display" class="logo-placeholder cursor-default">
+                    <span>L</span>
+                </div>
+                <span id="store-name-header" class="text-lg md:text-xl font-black text-gray-800 tracking-tighter uppercase leading-none">
+                    </span>
             </div>
 
             <div class="hidden sm:flex items-center space-x-4">
@@ -236,38 +240,6 @@
         <span class="ml-4 font-semibold text-gray-800">Detalles del producto</span>
     </div>
 
-<<<<<<< HEAD
-    <div class="max-w-5xl mx-auto p-4 md:p-8">
-        <div class="flex flex-col md:flex-row gap-8">
-            <div class="w-full md:w-3/5 bg-white rounded-xl overflow-hidden border border-gray-100 shadow-sm">
-                <img id="detail-image" src="" class="w-full h-auto object-contain max-h-[500px]" alt="Imagen del producto">
-            </div>
-
-            <div class="w-full md:w-2/5 flex flex-col">
-                <p id="detail-category" class="text-sm text-blue-600 font-medium mb-1 uppercase tracking-wider"></p>
-                <h1 id="detail-name" class="text-2xl md:text-3xl font-bold text-gray-900 mb-4 leading-tight"></h1>
-                
-                <div class="flex items-baseline gap-2 mb-6">
-                    <span id="detail-price" class="text-4xl font-light text-gray-900"></span>
-                </div>
-
-                <div class="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-200">
-                    <h3 class="font-bold text-gray-800 mb-3 text-sm border-b pb-2">Especificaciones Técnicas</h3>
-                    <div class="grid grid-cols-1 gap-y-2 text-sm">
-                        <div class="flex justify-between"><span class="text-gray-500">Código:</span> <span id="detail-code" class="font-semibold text-gray-800"></span></div>
-                        <div class="flex justify-between"><span class="text-gray-500">Unidad:</span> <span id="detail-unit" class="font-semibold text-gray-800"></span></div>
-                        <div class="flex justify-between"><span class="text-gray-500">Impuesto (IVA):</span> <span id="detail-tax" class="font-semibold text-gray-800"></span></div>
-                    </div>
-                </div>
-
-                <div class="border-t pt-6">
-                    <div class="flex flex-col gap-4">
-                        <div class="flex items-center gap-4 bg-white border border-gray-300 rounded-xl p-2">
-                            <span class="text-xs text-gray-500 ml-2">CANTIDAD:</span>
-                            <input id="detail-quantity" type="number" value="1" step="0.001" class="w-full text-center font-bold text-lg outline-none">
-                        </div>
-                        <button id="detail-add-btn" class="w-full py-4 bg-primary text-white font-bold rounded-xl hover:bg-primary-dark transition shadow-lg text-lg">
-=======
     <div class="max-w-[1500px] mx-auto p-4 md:p-8">
         <div class="flex flex-col lg:grid lg:grid-cols-12 gap-6 items-start">
             
@@ -307,19 +279,10 @@
                             <input id="detail-quantity" type="number" value="1" step="0.001" class="w-full text-center font-bold text-xl bg-transparent outline-none text-primary">
                         </div>
                         <button id="detail-add-btn" class="w-full py-4 bg-primary text-white font-bold rounded-xl hover:bg-primary-dark transition-all shadow-lg uppercase tracking-tight">
->>>>>>> a67580936d6267064685e6cbdc97a3c6df091656
                             Agregar al carrito
                         </button>
                     </div>
                 </div>
-<<<<<<< HEAD
-            </div>
-        </div>
-    </div>
-</div>
-    
-    </main>
-=======
 
                 <div class="bg-gray-50 border border-gray-200 rounded-2xl p-6 space-y-4">
                     <div class="flex items-start gap-3">
@@ -352,7 +315,6 @@
         </div>
     </div>
 </div>
->>>>>>> a67580936d6267064685e6cbdc97a3c6df091656
 
 <script>
     tailwind.config = {
@@ -488,20 +450,6 @@
         }
     }
 
-<<<<<<< HEAD
-    async function loadStoreData(companyId) {
-    currentCompanyId = companyId;
-
-    // Capturamos el elemento de carga que ya tienes en el HTML
-    const loader = document.getElementById('loading-overlay');
-
-    if (!companyId) {
-        document.getElementById('category-title').textContent = 'Error: ID de Empresa no encontrado.';
-        // Ocultamos el loader si no hay ID para mostrar el mensaje de error
-        if (loader) loader.classList.add('hidden');
-        renderProducts([]); 
-        return;
-=======
 async function loadStoreData(companyId) {
         currentCompanyId = companyId;
 
@@ -549,10 +497,9 @@ async function loadStoreData(companyId) {
 
                 const productPrice = parseFloat(p.precio_venta || p.precio || 0);
                 const categoryName = storeData.categories.find(c => c.id === p.categoria)?.name || 'Sin Categoría';
-                
-                // --- CORRECCIÓN AQUÍ: Definir alicuotaNum ---
+                const alicuotaStr = String(p.tipo_alicuota || p.iva || "0"); // Captura el texto
+                const alicuotaNum = parseInt(alicuotaStr); // Crea el número para cálculos
                 const alicuota = String(p.tipo_alicuota || p.iva || "0");
-                const alicuotaNum = parseInt(alicuota); // Convertimos el string a número entero
                 const taxDisplay = taxLabels[alicuota] || "E (Exento) - 0%";
 
                 storeData.products.push({
@@ -562,10 +509,11 @@ async function loadStoreData(companyId) {
                     price: productPrice, 
                     imageUrl: p.imagen || 'https://placehold.co/400x300/f0f0f0/AAAAAA?text=Sin+Imagen',
                     collection: categoryName,
-                    unit: p.unidad || 'UN',      // Guardar unidad
-                    code: p.codigo || 'S/C',     // Guardar código
+                    unit: p.unit || 'UN',
+                    code: p.codigo || 'S/C',
                     tax: taxDisplay,
-                    taxRate: alicuotaNum         // Ahora la variable sí está definida
+                    taxRate: alicuotaNum,
+                    currency: p.moneda || p.currency || 'USD' // <--- CAPTURAMOS LA MONEDA DE ORIGEN
                 });
             });
             
@@ -585,97 +533,41 @@ async function loadStoreData(companyId) {
             
             renderProducts([]);
         }
->>>>>>> a67580936d6267064685e6cbdc97a3c6df091656
     }
 
-    document.getElementById('category-title').textContent = 'Sincronizando productos...';
-    
-    // --- URLS DE TUS SUBDOMINIOS XEON ---
-    const URL_CATEGORIAS = `https://categorias.nexusposgobal.com/api/categorias/${companyId}`;
-    const URL_PRODUCTOS = `https://productos.nexusposgobal.com/api/productos/${companyId}`;
+    function formatPrice(amount, originalCurrency = 'USD') {
+    const rate = tiendaConfig.bcvRate || 1;
+    const displayAsUSD = currentDisplayCurrency === 'USD';
 
-    try {
-        // 1. CARGAR CATEGORÍAS
-        const resCat = await fetch(URL_CATEGORIAS);
-        const categoriasServer = resCat.ok ? await resCat.json() : [];
-        
-        storeData.categories = [{ id: 'all', name: 'Todos los Productos', title: 'Todos los Productos' }];
-        
-        categoriasServer.forEach(cat => {
-            storeData.categories.push({ 
-                id: cat.id || cat.categoria_ID, 
-                name: cat.nombre || 'Sin Nombre', 
-                title: cat.nombre 
-            });
-        });
+    let finalAmount = amount;
 
-        // 2. CARGAR PRODUCTOS
-        const resProd = await fetch(URL_PRODUCTOS);
-        if (!resProd.ok) throw new Error("Servidor de productos fuera de línea.");
-        
-        const productosServer = await resProd.json();
-        storeData.products = [];
-
-        productosServer.forEach(p => {
-    if (p.status === 0) return;
-
-    const productPrice = parseFloat(p.precio_venta || p.precio || 0);
-    const categoryName = storeData.categories.find(c => c.id === p.categoria)?.name || 'Sin Categoría';
-
-    storeData.products.push({
-        id: p.id || p.producto_ID,
-        name: p.nombre || 'Producto sin nombre',
-        categoryId: p.categoria || 'Sin Cat.', 
-        price: productPrice, 
-        imageUrl: p.imagen || 'https://placehold.co/400x300/f0f0f0/AAAAAA?text=Sin+Imagen',
-        collection: categoryName,
-        unit: p.unidad || 'UN',      // NUEVO: Guardar unidad
-        code: p.codigo || 'S/C',     // NUEVO: Guardar código
-        tax: p.iva || 'Exento'       // NUEVO: Guardar impuesto
-    });
-});
-        
-        console.log(`✅ Datos cargados desde Xeon: ${storeData.products.length} productos.`);
-        
-        // 🚀 DESAPARECE EL MENSAJE: La data ya está lista para mostrarse
-        if (loader) loader.classList.add('hidden');
-        
-        switchCategory('all'); 
-
-    } catch (error) {
-        console.error("❌ Error al cargar datos desde Xeon:", error);
-        document.getElementById('category-title').textContent = 'Error de conexión con el servidor central.';
-        
-        // 🚀 DESAPARECE EL LOADER: Incluso en error, para que el usuario vea el mensaje de fallo
-        if (loader) loader.classList.add('hidden');
-        
-        renderProducts([]);
-    }
-}
-
-    function formatPrice(amount) {
-        const rate = tiendaConfig.bcvRate || 1;
-        const storeBaseCurrency = tiendaConfig.currencyCode; // 'BS' o 'USD'
-        const displayAsUSD = currentDisplayCurrency === 'USD';
-
-        let finalAmount = amount;
-
-        // 1. LÓGICA DE CONVERSIÓN
-        if (storeBaseCurrency === 'BS' && displayAsUSD) {
-            // Si el precio base es Bs y queremos ver $ -> Dividimos
+    // LÓGICA DE CONVERSIÓN MULTIMONEDA
+    if (originalCurrency === 'BS') {
+        if (displayAsUSD) {
+            // El producto está en BS y el cliente quiere ver USD -> DIVIDIMOS
             finalAmount = amount / rate;
-        } else if (storeBaseCurrency === 'USD' && !displayAsUSD) {
-            // Si el precio base es $ y queremos ver Bs -> Multiplicamos
+        } else {
+            // El producto está en BS y el cliente quiere ver BS -> PRECIO ORIGINAL
+            finalAmount = amount;
+        }
+    } else { 
+        // El producto está en USD (Estándar)
+        if (displayAsUSD) {
+            // El producto está en USD y el cliente quiere ver USD -> PRECIO ORIGINAL
+            finalAmount = amount;
+        } else {
+            // El producto está en USD y el cliente quiere ver BS -> MULTIPLICAMOS
             finalAmount = amount * rate;
         }
-
-        // 2. FORMATO VISUAL
-        if (displayAsUSD) {
-            return `$${finalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        } else {
-            return `Bs ${finalAmount.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        }
     }
+
+    // FORMATO VISUAL
+    if (displayAsUSD) {
+        return `$${finalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    } else {
+        return `Bs ${finalAmount.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+}
 
     function getFilteredAndSortedProducts(products, categoryId, query = '') {
         let filtered = products;
@@ -761,69 +653,84 @@ async function loadStoreData(companyId) {
     }
 
     function renderProducts(productsToRender) {
-    const grid = document.getElementById('products-grid');
-    const noResults = document.getElementById('no-results');
-    
-    if (!grid) return;
-    grid.innerHTML = '';
-
-    if (productsToRender.length === 0) {
-        grid.classList.add('hidden');
-        if (noResults) noResults.classList.remove('hidden');
-        return;
-    }
-
-    grid.classList.remove('hidden');
-    if (noResults) noResults.classList.add('hidden');
-
-    productsToRender.forEach(product => {
-        const productId = product.id; 
+        const grid = document.getElementById('products-grid');
+        const noResults = document.getElementById('no-results');
         
-        // Creamos el HTML de la tarjeta
-        const cardHtml = `
-            <div id="product-card-${productId}" class="product-card bg-white p-4 rounded-xl shadow-md flex flex-col justify-between border border-gray-100 hover:shadow-xl transition h-full">
-                <div>
-                    <div class="aspect-square w-full mb-3 overflow-hidden rounded-lg bg-gray-50 relative cursor-pointer" 
-                         onclick="window.openProductDetail('${productId}')">
-                         <img src="${product.imageUrl}" class="w-full h-full object-cover" alt="${product.name}" onerror="this.src='https://placehold.co/400x300?text=Sin+Imagen'">
-                         <span class="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-[10px] px-2 py-1 rounded-full font-bold">
-                            ${product.unit || 'UN'}
-                         </span>
-                    </div>
-                    <h3 class="text-lg font-bold text-gray-900 leading-tight mb-1 break-words">${product.name}</h3>
-                    <p class="text-[10px] font-bold text-blue-600 bg-blue-50 py-1 px-2 rounded inline-block mb-3 uppercase tracking-wider">${product.collection}</p>
-                </div>
+        if (!grid) return;
+        grid.innerHTML = '';
 
-                <div class="mt-4 pt-4 border-t border-gray-100">
-                    <div id="action-default-${productId}" class="flex flex-col gap-3">
-                        <div class="text-2xl font-black text-primary leading-none break-all">
-                            ${formatPrice(product.price)}
-<<<<<<< HEAD
-=======
-                            ${product.taxRate > 0 ? `<span class="ml-1 text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-md align-middle uppercase">IVA</span>` : ''}
->>>>>>> a67580936d6267064685e6cbdc97a3c6df091656
+        if (productsToRender.length === 0) {
+            grid.classList.add('hidden');
+            if (noResults) noResults.classList.remove('hidden');
+            return;
+        }
+
+        grid.classList.remove('hidden');
+        if (noResults) noResults.classList.add('hidden');
+
+        productsToRender.forEach(product => {
+            const productId = product.id; 
+            
+            const cardHtml = `
+                <div id="product-card-${productId}" class="product-card bg-white p-4 rounded-xl shadow-md flex flex-col justify-between border border-gray-100 hover:shadow-xl transition h-full">
+                    <div>
+                        <div class="aspect-square w-full mb-3 overflow-hidden rounded-lg bg-gray-50 relative cursor-pointer" 
+                             onclick="window.openProductDetail('${productId}')">
+                             <img src="${product.imageUrl}" class="w-full h-full object-cover" alt="${product.name}" onerror="this.src='https://placehold.co/400x300?text=Sin+Imagen'">
+                             <span class="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-[10px] px-2 py-1 rounded-full font-bold">
+                                ${product.unit || 'UN'}
+                             </span>
                         </div>
-                        <button onclick="window.toggleQuantityInput('${productId}')" class="w-full flex justify-center items-center px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition">
-                             <svg class="icon w-4 h-4 mr-2" viewBox="0 0 24 24" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                             AÑADIR
-                        </button>
+                        <h3 class="text-lg font-bold text-gray-900 leading-tight mb-1 break-words">${product.name}</h3>
+                        <p class="text-[10px] font-bold text-blue-600 bg-blue-50 py-1 px-2 rounded inline-block mb-3 uppercase tracking-wider">${product.collection}</p>
                     </div>
 
-                    <div id="action-quantity-${productId}" class="hidden flex flex-col gap-2">
-                        <input id="quantity-input-${productId}" type="number" value="1" step="0.001" class="w-full text-center p-2 border border-gray-300 rounded-lg text-lg">
-                        <div class="flex gap-2">
-                            <button onclick="window.confirmAddToCart('${productId}')" class="flex-grow p-2 bg-green-500 text-white font-bold rounded-lg text-sm">OK</button>
-                            <button onclick="window.toggleQuantityInput('${productId}', true)" class="p-2 bg-gray-100 text-gray-500 rounded-lg italic text-xs">X</button>
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <div id="action-default-${productId}" class="flex flex-col gap-3">
+                            <div class="flex flex-col gap-1">
+                                ${product.taxRate > 0 ? `
+                                    <div class="text-2xl font-black text-primary leading-none break-all">
+                                        ${formatPrice(product.price, product.currency)} 
+                                    </div>
+                                    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-tighter leading-none">
+                                        Total (+IVA): ${formatPrice(product.price * (1 + (product.taxRate / 100)), product.currency)}
+                                        <span class="ml-1 text-[9px] bg-blue-100 text-blue-700 px-1 py-0.5 rounded-md align-middle uppercase font-black">IVA</span>
+                                    </span>
+                                ` : `
+                                    <div class="text-2xl font-black text-primary leading-none break-all">
+                                        ${formatPrice(product.price, product.currency)}
+                                    </div>
+                                `}
+                            </div>
+
+                            <button onclick="window.toggleQuantityInput('${productId}')" class="w-full flex justify-center items-center px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition">
+                                <svg class="icon w-4 h-4 mr-2" viewBox="0 0 24 24" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                AÑADIR
+                            </button>
+                        </div>
+
+                        <div id="action-quantity-${productId}" class="hidden flex flex-col gap-2">
+                            <div class="flex items-center bg-gray-100 rounded-lg p-1">
+                                <input id="quantity-input-${productId}" type="number" value="1" step="0.001" min="0.001" 
+                                    class="w-full bg-transparent text-center font-bold text-gray-800 outline-none p-1">
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="window.confirmAddToCart('${productId}')" class="flex-1 bg-green-500 text-white text-xs font-bold py-2 rounded-lg hover:bg-green-600 transition">
+                                    CONFIRMAR
+                                </button>
+                                <button onclick="window.toggleQuantityInput('${productId}', true)" class="bg-gray-200 text-gray-600 p-2 rounded-lg hover:bg-gray-300 transition">
+                                    <svg class="icon w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        `;
-        grid.insertAdjacentHTML('beforeend', cardHtml);
-    });
-    
-    console.log("🖼️ Cuadrícula de productos renderizada con enlaces a detalles.");
-}
+            `;
+            grid.insertAdjacentHTML('beforeend', cardHtml);
+        });
+        
+        console.log("🖼️ Cuadrícula de productos renderizada con controles de cantidad.");
+    }
 
     function switchCategory(categoryId) {
         currentCategory = categoryId;
@@ -909,41 +816,47 @@ async function loadStoreData(companyId) {
     }
 
     function confirmAddToCart(productId) {
-        const quantityInput = document.getElementById(`quantity-input-${productId}`);
-        let quantity = parseFloat(quantityInput.value); 
+    const quantityInput = document.getElementById(`quantity-input-${productId}`);
+    let quantity = parseFloat(quantityInput.value); 
 
-        if (isNaN(quantity) || quantity <= 0) {
-            quantity = 1; 
-            quantityInput.value = 1;
+    if (isNaN(quantity) || quantity <= 0) {
+        quantity = 1; 
+        quantityInput.value = 1;
+    }
+    
+    quantity = parseFloat(quantity.toFixed(3)); 
+
+    // Buscamos el producto asegurando que la comparación de IDs sea siempre entre cadenas
+    const product = storeData.products.find(p => String(p.id) === String(productId));
+    
+    if (product) {
+        const existingItemIndex = storeData.cart.findIndex(item => String(item.id) === String(productId));
+
+        if (existingItemIndex > -1) {
+            // Si ya existe, sumamos la cantidad y redondeamos a 3 decimales
+            storeData.cart[existingItemIndex].quantity += quantity;
+            storeData.cart[existingItemIndex].quantity = parseFloat(storeData.cart[existingItemIndex].quantity.toFixed(3));
+        } else {
+            // Si es nuevo, lo añadimos guardando su moneda de origen (BS o USD)
+            storeData.cart.push({
+                id: product.id,
+                name: product.name,
+                price: product.price,
+                quantity: quantity,
+                unit: product.unit || 'UN',
+                currency: product.currency || 'USD' 
+            });
         }
         
-        quantity = parseFloat(quantity.toFixed(3)); 
-
-        const product = storeData.products.find(p => p.id === productId);
-        if (product) {
-            const existingItemIndex = storeData.cart.findIndex(item => item.id === productId);
-
-            if (existingItemIndex > -1) {
-                storeData.cart[existingItemIndex].quantity += quantity;
-                storeData.cart[existingItemIndex].quantity = parseFloat(storeData.cart[existingItemIndex].quantity.toFixed(3));
-            } else {
-                storeData.cart.push({
-                    id: product.id,
-                    name: product.name,
-                    price: product.price,
-                    quantity: quantity,
-                    unit: product.unit || 'UN' // Traemos la unidad desde el mapeo del Xeon
-                });
-            }
-            
-            showTemporaryMessage(`¡${quantity}x "${product.name}" añadido al carrito!`, 'success');
-            renderCart(); 
-        } else {
-             console.error(`Producto con ID ${productId} no encontrado en storeData.`);
-        }
-
-        toggleQuantityInput(productId, true);
+        showTemporaryMessage(`¡${quantity}x "${product.name}" añadido al carrito!`, 'success');
+        renderCart(); 
+    } else {
+         console.error(`Producto con ID ${productId} no encontrado en storeData.`);
     }
+
+    // Cerramos el input de cantidad y reseteamos la vista de la tarjeta
+    toggleQuantityInput(productId, true);
+}
     
     function openCartDrawer() {
         document.getElementById('cart-drawer-overlay').classList.remove('hidden');
@@ -960,67 +873,93 @@ async function loadStoreData(companyId) {
     }
     
     function renderCart() {
-        const container = document.getElementById('cart-items-container');
-        const subtotalDisplay = document.getElementById('cart-subtotal-display');
-        const totalItemsDisplay = document.getElementById('cart-total-items-display');
-        const cartCountDesktop = document.getElementById('cart-count');
-        const cartCountMobile = document.getElementById('cart-count-mobile');
-        
-        const emptyMessage = container.querySelector('#cart-empty-message');
-        
-        let itemsHtml = ''; 
-        let subtotal = 0;
-        let totalItems = 0;
+    const container = document.getElementById('cart-items-container');
+    const subtotalDisplay = document.getElementById('cart-subtotal-display');
+    const totalItemsDisplay = document.getElementById('cart-total-items-display');
+    const cartCountDesktop = document.getElementById('cart-count');
+    const cartCountMobile = document.getElementById('cart-count-mobile');
+    
+    const emptyMessage = container.querySelector('#cart-empty-message');
+    
+    let itemsHtml = ''; 
+    let subtotal = 0;
+    let totalItems = 0;
 
-        Array.from(container.children).forEach(child => {
-            if (child.id !== 'cart-empty-message') {
-                child.remove();
+    // Limpiamos el contenedor manteniendo el mensaje de "carrito vacío"
+    Array.from(container.children).forEach(child => {
+        if (child.id !== 'cart-empty-message') {
+            child.remove();
+        }
+    });
+
+    if (storeData.cart.length === 0) {
+        emptyMessage.classList.remove('hidden');
+        resetCheckout(); 
+    } else {
+        emptyMessage.classList.add('hidden');
+        
+        storeData.cart.forEach(item => {
+            const rate = tiendaConfig.bcvRate || 1;
+            const displayAsUSD = currentDisplayCurrency === 'USD';
+            
+            // --- LÓGICA MULTIMONEDA PARA EL SUBTOTAL ---
+            let priceInCurrentView = item.price;
+            if (item.currency === 'BS' && displayAsUSD) {
+                priceInCurrentView = item.price / rate; // De BS a USD -> Dividimos
+            } else if (item.currency === 'USD' && !displayAsUSD) {
+                priceInCurrentView = item.price * rate; // De USD a BS -> Multiplicamos
             }
+
+            const itemTotal = priceInCurrentView * item.quantity;
+            subtotal += itemTotal;
+            totalItems += item.quantity; // Sumamos al contador total
+
+            // --- CORRECCIÓN: Definición de quantityDisplay ---
+            let quantityDisplay = "";
+            if (item.quantity < 1) {
+                const grams = (item.quantity * 1000);
+                quantityDisplay = `${grams.toLocaleString(undefined, { maximumFractionDigits: 0 })} g`;
+            } else {
+                quantityDisplay = `${item.quantity.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 3 })} unid.`;
+            }
+            
+            itemsHtml += `
+                <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                    <div class="flex flex-col flex-grow pr-4">
+                        <span class="font-semibold text-gray-900">${item.name}</span>
+                        <span class="text-sm text-gray-500">
+                            ${formatPrice(item.price, item.currency)} x <strong class="text-gray-700">${quantityDisplay}</strong>
+                        </span>
+                    </div>
+                    <div class="flex items-center space-x-3 flex-shrink-0">
+                        <span class="font-bold text-gray-800 text-lg">
+                            ${displayAsUSD ? '$' : 'Bs '}${itemTotal.toLocaleString(displayAsUSD ? 'en-US' : 'es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                        <button onclick="window.removeItemFromCart('${item.id}')" class="text-red-500 hover:text-red-700 p-1 rounded transition duration-150">
+                            <svg class="icon w-5 h-5" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `;
         });
 
-        if (storeData.cart.length === 0) {
-            emptyMessage.classList.remove('hidden');
-            resetCheckout(); 
-        } else {
-            emptyMessage.classList.add('hidden');
-            
-            storeData.cart.forEach(item => {
-                const itemTotal = item.price * item.quantity;
-                subtotal += itemTotal;
-                totalItems += item.quantity;
-
-                let quantityDisplay;
-                if (item.quantity < 1) {
-                    const grams = (item.quantity * 1000);
-                    quantityDisplay = `${grams.toLocaleString(undefined, { maximumFractionDigits: 0 })} g`;
-                } else {
-                    quantityDisplay = `${item.quantity.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 3 })} unid.`;
-                }
-                
-                itemsHtml += `
-                    <div class="flex justify-between items-center py-2 border-b border-gray-200">
-                        <div class="flex flex-col flex-grow pr-4">
-                            <span class="font-semibold text-gray-900">${item.name}</span>
-                            <span class="text-sm text-gray-500">${formatPrice(item.price)} x <strong class="text-gray-700">${quantityDisplay}</strong></span>
-                        </div>
-                        <div class="flex items-center space-x-3 flex-shrink-0">
-                            <span class="font-bold text-gray-800 text-lg">${formatPrice(itemTotal)}</span>
-                            <button onclick="window.removeItemFromCart('${item.id}')" class="text-red-500 hover:text-red-700 p-1 rounded transition duration-150">
-                                <svg class="icon w-5 h-5" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                            </button>
-                        </div>
-                    </div>
-                `;
-            });
-
-             emptyMessage.insertAdjacentHTML('afterend', itemsHtml);
-        }
-
-        subtotalDisplay.textContent = formatPrice(subtotal);
-        totalItemsDisplay.textContent = parseFloat(totalItems.toFixed(3)); 
-        cartCountDesktop.textContent = parseFloat(totalItems.toFixed(3));
-        cartCountMobile.textContent = parseFloat(totalItems.toFixed(3));
+        emptyMessage.insertAdjacentHTML('afterend', itemsHtml);
     }
+
+    // Formateo del Subtotal final según la vista seleccionada
+    subtotalDisplay.textContent = currentDisplayCurrency === 'USD' 
+        ? `$${subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+        : `Bs ${subtotal.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    // Actualización de contadores en la interfaz (redondeado a 3 decimales por si hay peso)
+    const finalTotalItems = parseFloat(totalItems.toFixed(3));
+    totalItemsDisplay.textContent = finalTotalItems; 
+    cartCountDesktop.textContent = finalTotalItems;
+    cartCountMobile.textContent = finalTotalItems;
+}
 
     function removeItemFromCart(productId) {
         const initialCount = storeData.cart.length;
@@ -1131,7 +1070,23 @@ async function loadStoreData(companyId) {
 
     function updateStorefrontConfigUI() {
         const logoDisplay = document.getElementById('logo-display');
+        const storeNameHeader = document.getElementById('store-name-header');
         const deliveryContainer = document.querySelector('input[value="Delivery"]').closest('label');
+
+        if (storeNameHeader) {
+        storeNameHeader.textContent = tiendaConfig.storeName;
+            }
+
+            // 2. Lógica del logo (Mantener lo que ya tienes)
+            if (tiendaConfig.logoUrl) {
+                logoDisplay.innerHTML = `<img src="${tiendaConfig.logoUrl}" alt="${tiendaConfig.storeName}" class="h-full w-full object-cover rounded-full">`;
+                logoDisplay.classList.remove('logo-placeholder', 'bg-e5e7eb', 'text-4b5563', 'border', 'border-dashed');
+                logoDisplay.classList.add('h-10', 'w-10', 'p-0'); 
+            } else {
+                const storeInitial = tiendaConfig.storeName.charAt(0).toUpperCase() || 'L';
+                logoDisplay.innerHTML = `<span>${storeInitial}</span>`;
+                logoDisplay.classList.remove('p-0'); 
+            }
 
         if (tiendaConfig.logoUrl) {
              logoDisplay.innerHTML = `<img src="${tiendaConfig.logoUrl}" alt="${tiendaConfig.storeName}" class="h-full w-full object-cover rounded-full">`;
@@ -1198,10 +1153,7 @@ async function loadStoreData(companyId) {
 }
 
 function openProductDetail(productId) {
-<<<<<<< HEAD
-=======
     //function openProductDetail(productId) {
->>>>>>> a67580936d6267064685e6cbdc97a3c6df091656
     // 1. Buscamos el producto convirtiendo todo a String para evitar fallos
     const product = storeData.products.find(p => String(p.id) === String(productId));
     
@@ -1214,13 +1166,15 @@ function openProductDetail(productId) {
     document.getElementById('detail-image').src = product.imageUrl;
     document.getElementById('detail-name').textContent = product.name;
     document.getElementById('detail-category').textContent = product.collection;
-    document.getElementById('detail-price').textContent = formatPrice(product.price);
+    document.getElementById('detail-price').textContent = formatPrice(product.price, product.currency);
+        if (product.taxRate > 0) {
+            const precioFinal = product.price * (1 + (product.taxRate / 100));
+            document.getElementById('detail-total-with-tax').textContent = formatPrice(precioFinal, product.currency);
+        }
     document.getElementById('detail-code').textContent = product.code;
     document.getElementById('detail-unit').textContent = product.unit;
     document.getElementById('detail-tax').textContent = product.tax;
     
-<<<<<<< HEAD
-=======
     const totalContainer = document.getElementById('detail-total-tax-container');
     const totalDisplay = document.getElementById('detail-total-with-tax');
 
@@ -1238,7 +1192,6 @@ function openProductDetail(productId) {
     }
 
 
->>>>>>> a67580936d6267064685e6cbdc97a3c6df091656
     // Reseteamos la cantidad a 1 siempre que se abre un detalle
     document.getElementById('detail-quantity').value = 1;
 
@@ -1258,8 +1211,6 @@ function openProductDetail(productId) {
         window.closeProductDetail();
     };
 
-<<<<<<< HEAD
-=======
     const detailTaxElement = document.getElementById('detail-tax');
     detailTaxElement.textContent = product.tax;
 
@@ -1269,7 +1220,6 @@ function openProductDetail(productId) {
         detailTaxElement.className = "font-bold text-blue-600";  
     }
 
->>>>>>> a67580936d6267064685e6cbdc97a3c6df091656
     // 4. Navegación: Ocultamos el main (que ahora SÍ está separado) y mostramos el detalle
     document.querySelector('main').classList.add('hidden');
     document.getElementById('product-detail-view').classList.remove('hidden');
