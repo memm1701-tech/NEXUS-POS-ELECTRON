@@ -51,8 +51,12 @@
     <header class="bg-white shadow-md sticky top-0 z-20">
         <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
             
-            <div id="logo-display" class="logo-placeholder cursor-default">
-                <span>L</span>
+            <div class="flex items-center space-x-3">
+                <div id="logo-display" class="logo-placeholder cursor-default">
+                    <span>L</span>
+                </div>
+                <span id="store-name-header" class="text-lg md:text-xl font-black text-gray-800 tracking-tighter uppercase leading-none">
+                    </span>
             </div>
 
             <div class="hidden sm:flex items-center space-x-4">
@@ -236,38 +240,6 @@
         <span class="ml-4 font-semibold text-gray-800">Detalles del producto</span>
     </div>
 
-<<<<<<< HEAD
-    <div class="max-w-5xl mx-auto p-4 md:p-8">
-        <div class="flex flex-col md:flex-row gap-8">
-            <div class="w-full md:w-3/5 bg-white rounded-xl overflow-hidden border border-gray-100 shadow-sm">
-                <img id="detail-image" src="" class="w-full h-auto object-contain max-h-[500px]" alt="Imagen del producto">
-            </div>
-
-            <div class="w-full md:w-2/5 flex flex-col">
-                <p id="detail-category" class="text-sm text-blue-600 font-medium mb-1 uppercase tracking-wider"></p>
-                <h1 id="detail-name" class="text-2xl md:text-3xl font-bold text-gray-900 mb-4 leading-tight"></h1>
-                
-                <div class="flex items-baseline gap-2 mb-6">
-                    <span id="detail-price" class="text-4xl font-light text-gray-900"></span>
-                </div>
-
-                <div class="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-200">
-                    <h3 class="font-bold text-gray-800 mb-3 text-sm border-b pb-2">Especificaciones Técnicas</h3>
-                    <div class="grid grid-cols-1 gap-y-2 text-sm">
-                        <div class="flex justify-between"><span class="text-gray-500">Código:</span> <span id="detail-code" class="font-semibold text-gray-800"></span></div>
-                        <div class="flex justify-between"><span class="text-gray-500">Unidad:</span> <span id="detail-unit" class="font-semibold text-gray-800"></span></div>
-                        <div class="flex justify-between"><span class="text-gray-500">Impuesto (IVA):</span> <span id="detail-tax" class="font-semibold text-gray-800"></span></div>
-                    </div>
-                </div>
-
-                <div class="border-t pt-6">
-                    <div class="flex flex-col gap-4">
-                        <div class="flex items-center gap-4 bg-white border border-gray-300 rounded-xl p-2">
-                            <span class="text-xs text-gray-500 ml-2">CANTIDAD:</span>
-                            <input id="detail-quantity" type="number" value="1" step="0.001" class="w-full text-center font-bold text-lg outline-none">
-                        </div>
-                        <button id="detail-add-btn" class="w-full py-4 bg-primary text-white font-bold rounded-xl hover:bg-primary-dark transition shadow-lg text-lg">
-=======
     <div class="max-w-[1500px] mx-auto p-4 md:p-8">
         <div class="flex flex-col lg:grid lg:grid-cols-12 gap-6 items-start">
             
@@ -307,19 +279,10 @@
                             <input id="detail-quantity" type="number" value="1" step="0.001" class="w-full text-center font-bold text-xl bg-transparent outline-none text-primary">
                         </div>
                         <button id="detail-add-btn" class="w-full py-4 bg-primary text-white font-bold rounded-xl hover:bg-primary-dark transition-all shadow-lg uppercase tracking-tight">
->>>>>>> a67580936d6267064685e6cbdc97a3c6df091656
                             Agregar al carrito
                         </button>
                     </div>
                 </div>
-<<<<<<< HEAD
-            </div>
-        </div>
-    </div>
-</div>
-    
-    </main>
-=======
 
                 <div class="bg-gray-50 border border-gray-200 rounded-2xl p-6 space-y-4">
                     <div class="flex items-start gap-3">
@@ -352,7 +315,6 @@
         </div>
     </div>
 </div>
->>>>>>> a67580936d6267064685e6cbdc97a3c6df091656
 
 <script>
     tailwind.config = {
@@ -488,20 +450,6 @@
         }
     }
 
-<<<<<<< HEAD
-    async function loadStoreData(companyId) {
-    currentCompanyId = companyId;
-
-    // Capturamos el elemento de carga que ya tienes en el HTML
-    const loader = document.getElementById('loading-overlay');
-
-    if (!companyId) {
-        document.getElementById('category-title').textContent = 'Error: ID de Empresa no encontrado.';
-        // Ocultamos el loader si no hay ID para mostrar el mensaje de error
-        if (loader) loader.classList.add('hidden');
-        renderProducts([]); 
-        return;
-=======
 async function loadStoreData(companyId) {
         currentCompanyId = companyId;
 
@@ -549,10 +497,9 @@ async function loadStoreData(companyId) {
 
                 const productPrice = parseFloat(p.precio_venta || p.precio || 0);
                 const categoryName = storeData.categories.find(c => c.id === p.categoria)?.name || 'Sin Categoría';
-                
-                // --- CORRECCIÓN AQUÍ: Definir alicuotaNum ---
+                const alicuotaStr = String(p.tipo_alicuota || p.iva || "0"); // Captura el texto
+                const alicuotaNum = parseInt(alicuotaStr); // Crea el número para cálculos
                 const alicuota = String(p.tipo_alicuota || p.iva || "0");
-                const alicuotaNum = parseInt(alicuota); // Convertimos el string a número entero
                 const taxDisplay = taxLabels[alicuota] || "E (Exento) - 0%";
 
                 storeData.products.push({
@@ -585,73 +532,7 @@ async function loadStoreData(companyId) {
             
             renderProducts([]);
         }
->>>>>>> a67580936d6267064685e6cbdc97a3c6df091656
     }
-
-    document.getElementById('category-title').textContent = 'Sincronizando productos...';
-    
-    // --- URLS DE TUS SUBDOMINIOS XEON ---
-    const URL_CATEGORIAS = `https://categorias.nexusposgobal.com/api/categorias/${companyId}`;
-    const URL_PRODUCTOS = `https://productos.nexusposgobal.com/api/productos/${companyId}`;
-
-    try {
-        // 1. CARGAR CATEGORÍAS
-        const resCat = await fetch(URL_CATEGORIAS);
-        const categoriasServer = resCat.ok ? await resCat.json() : [];
-        
-        storeData.categories = [{ id: 'all', name: 'Todos los Productos', title: 'Todos los Productos' }];
-        
-        categoriasServer.forEach(cat => {
-            storeData.categories.push({ 
-                id: cat.id || cat.categoria_ID, 
-                name: cat.nombre || 'Sin Nombre', 
-                title: cat.nombre 
-            });
-        });
-
-        // 2. CARGAR PRODUCTOS
-        const resProd = await fetch(URL_PRODUCTOS);
-        if (!resProd.ok) throw new Error("Servidor de productos fuera de línea.");
-        
-        const productosServer = await resProd.json();
-        storeData.products = [];
-
-        productosServer.forEach(p => {
-    if (p.status === 0) return;
-
-    const productPrice = parseFloat(p.precio_venta || p.precio || 0);
-    const categoryName = storeData.categories.find(c => c.id === p.categoria)?.name || 'Sin Categoría';
-
-    storeData.products.push({
-        id: p.id || p.producto_ID,
-        name: p.nombre || 'Producto sin nombre',
-        categoryId: p.categoria || 'Sin Cat.', 
-        price: productPrice, 
-        imageUrl: p.imagen || 'https://placehold.co/400x300/f0f0f0/AAAAAA?text=Sin+Imagen',
-        collection: categoryName,
-        unit: p.unidad || 'UN',      // NUEVO: Guardar unidad
-        code: p.codigo || 'S/C',     // NUEVO: Guardar código
-        tax: p.iva || 'Exento'       // NUEVO: Guardar impuesto
-    });
-});
-        
-        console.log(`✅ Datos cargados desde Xeon: ${storeData.products.length} productos.`);
-        
-        // 🚀 DESAPARECE EL MENSAJE: La data ya está lista para mostrarse
-        if (loader) loader.classList.add('hidden');
-        
-        switchCategory('all'); 
-
-    } catch (error) {
-        console.error("❌ Error al cargar datos desde Xeon:", error);
-        document.getElementById('category-title').textContent = 'Error de conexión con el servidor central.';
-        
-        // 🚀 DESAPARECE EL LOADER: Incluso en error, para que el usuario vea el mensaje de fallo
-        if (loader) loader.classList.add('hidden');
-        
-        renderProducts([]);
-    }
-}
 
     function formatPrice(amount) {
         const rate = tiendaConfig.bcvRate || 1;
@@ -796,28 +677,28 @@ async function loadStoreData(companyId) {
 
                 <div class="mt-4 pt-4 border-t border-gray-100">
                     <div id="action-default-${productId}" class="flex flex-col gap-3">
-                        <div class="text-2xl font-black text-primary leading-none break-all">
-                            ${formatPrice(product.price)}
-<<<<<<< HEAD
-=======
-                            ${product.taxRate > 0 ? `<span class="ml-1 text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-md align-middle uppercase">IVA</span>` : ''}
->>>>>>> a67580936d6267064685e6cbdc97a3c6df091656
+                        <div class="flex flex-col gap-1">
+                            ${product.taxRate > 0 ? `
+                                <div class="text-2xl font-black text-primary leading-none break-all">
+                                    ${formatPrice(product.price)}
+                                </div>
+                                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-tighter leading-none">
+                                    Total (+IVA): ${formatPrice(product.price * (1 + (product.taxRate / 100)))}
+                                    <span class="ml-1 text-[9px] bg-blue-100 text-blue-700 px-1 py-0.5 rounded-md align-middle uppercase font-black">IVA</span>
+                                </span>
+                            ` : `
+                                <div class="text-2xl font-black text-primary leading-none break-all">
+                                    ${formatPrice(product.price)}
+                                </div>
+                            `}
                         </div>
+
                         <button onclick="window.toggleQuantityInput('${productId}')" class="w-full flex justify-center items-center px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition">
-                             <svg class="icon w-4 h-4 mr-2" viewBox="0 0 24 24" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                             AÑADIR
+                            <svg class="icon w-4 h-4 mr-2" viewBox="0 0 24 24" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            AÑADIR
                         </button>
                     </div>
-
-                    <div id="action-quantity-${productId}" class="hidden flex flex-col gap-2">
-                        <input id="quantity-input-${productId}" type="number" value="1" step="0.001" class="w-full text-center p-2 border border-gray-300 rounded-lg text-lg">
-                        <div class="flex gap-2">
-                            <button onclick="window.confirmAddToCart('${productId}')" class="flex-grow p-2 bg-green-500 text-white font-bold rounded-lg text-sm">OK</button>
-                            <button onclick="window.toggleQuantityInput('${productId}', true)" class="p-2 bg-gray-100 text-gray-500 rounded-lg italic text-xs">X</button>
-                        </div>
                     </div>
-                </div>
-            </div>
         `;
         grid.insertAdjacentHTML('beforeend', cardHtml);
     });
@@ -1131,7 +1012,23 @@ async function loadStoreData(companyId) {
 
     function updateStorefrontConfigUI() {
         const logoDisplay = document.getElementById('logo-display');
+        const storeNameHeader = document.getElementById('store-name-header');
         const deliveryContainer = document.querySelector('input[value="Delivery"]').closest('label');
+
+        if (storeNameHeader) {
+        storeNameHeader.textContent = tiendaConfig.storeName;
+            }
+
+            // 2. Lógica del logo (Mantener lo que ya tienes)
+            if (tiendaConfig.logoUrl) {
+                logoDisplay.innerHTML = `<img src="${tiendaConfig.logoUrl}" alt="${tiendaConfig.storeName}" class="h-full w-full object-cover rounded-full">`;
+                logoDisplay.classList.remove('logo-placeholder', 'bg-e5e7eb', 'text-4b5563', 'border', 'border-dashed');
+                logoDisplay.classList.add('h-10', 'w-10', 'p-0'); 
+            } else {
+                const storeInitial = tiendaConfig.storeName.charAt(0).toUpperCase() || 'L';
+                logoDisplay.innerHTML = `<span>${storeInitial}</span>`;
+                logoDisplay.classList.remove('p-0'); 
+            }
 
         if (tiendaConfig.logoUrl) {
              logoDisplay.innerHTML = `<img src="${tiendaConfig.logoUrl}" alt="${tiendaConfig.storeName}" class="h-full w-full object-cover rounded-full">`;
@@ -1198,10 +1095,7 @@ async function loadStoreData(companyId) {
 }
 
 function openProductDetail(productId) {
-<<<<<<< HEAD
-=======
     //function openProductDetail(productId) {
->>>>>>> a67580936d6267064685e6cbdc97a3c6df091656
     // 1. Buscamos el producto convirtiendo todo a String para evitar fallos
     const product = storeData.products.find(p => String(p.id) === String(productId));
     
@@ -1219,8 +1113,6 @@ function openProductDetail(productId) {
     document.getElementById('detail-unit').textContent = product.unit;
     document.getElementById('detail-tax').textContent = product.tax;
     
-<<<<<<< HEAD
-=======
     const totalContainer = document.getElementById('detail-total-tax-container');
     const totalDisplay = document.getElementById('detail-total-with-tax');
 
@@ -1238,7 +1130,6 @@ function openProductDetail(productId) {
     }
 
 
->>>>>>> a67580936d6267064685e6cbdc97a3c6df091656
     // Reseteamos la cantidad a 1 siempre que se abre un detalle
     document.getElementById('detail-quantity').value = 1;
 
@@ -1258,8 +1149,6 @@ function openProductDetail(productId) {
         window.closeProductDetail();
     };
 
-<<<<<<< HEAD
-=======
     const detailTaxElement = document.getElementById('detail-tax');
     detailTaxElement.textContent = product.tax;
 
@@ -1269,7 +1158,6 @@ function openProductDetail(productId) {
         detailTaxElement.className = "font-bold text-blue-600";  
     }
 
->>>>>>> a67580936d6267064685e6cbdc97a3c6df091656
     // 4. Navegación: Ocultamos el main (que ahora SÍ está separado) y mostramos el detalle
     document.querySelector('main').classList.add('hidden');
     document.getElementById('product-detail-view').classList.remove('hidden');
