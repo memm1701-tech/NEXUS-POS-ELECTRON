@@ -509,10 +509,11 @@ async function loadStoreData(companyId) {
                     price: productPrice, 
                     imageUrl: p.imagen || 'https://placehold.co/400x300/f0f0f0/AAAAAA?text=Sin+Imagen',
                     collection: categoryName,
-                    unit: p.unidad || 'UN',      // Guardar unidad
-                    code: p.codigo || 'S/C',     // Guardar código
+                    unit: p.unit || 'UN',
+                    code: p.codigo || 'S/C',
                     tax: taxDisplay,
-                    taxRate: alicuotaNum         // Ahora la variable sí está definida
+                    taxRate: alicuotaNum,
+                    currency: p.moneda || p.currency || 'USD' // <--- CAPTURAMOS LA MONEDA DE ORIGEN
                 });
             });
             
@@ -534,6 +535,7 @@ async function loadStoreData(companyId) {
         }
     }
 
+<<<<<<< HEAD
     function formatPrice(amount) {
         const rate = tiendaConfig.bcvRate || 1;
         const storeBaseCurrency = tiendaConfig.currencyCode; // 'BS' o 'USD'
@@ -544,19 +546,41 @@ async function loadStoreData(companyId) {
         // 1. LÓGICA DE CONVERSIÓN
         if (storeBaseCurrency === 'BS' && displayAsUSD) {
             // Si el precio base es Bs y queremos ver $ -> Dividimos
+=======
+    function formatPrice(amount, originalCurrency = 'USD') {
+    const rate = tiendaConfig.bcvRate || 1;
+    const displayAsUSD = currentDisplayCurrency === 'USD';
+
+    let finalAmount = amount;
+
+    // LÓGICA DE CONVERSIÓN MULTIMONEDA
+    if (originalCurrency === 'BS') {
+        if (displayAsUSD) {
+            // El producto está en BS y el cliente quiere ver USD -> DIVIDIMOS
+>>>>>>> 20dce040c57e83c20e8fb916b45b86b0de81559f
             finalAmount = amount / rate;
-        } else if (storeBaseCurrency === 'USD' && !displayAsUSD) {
-            // Si el precio base es $ y queremos ver Bs -> Multiplicamos
+        } else {
+            // El producto está en BS y el cliente quiere ver BS -> PRECIO ORIGINAL
+            finalAmount = amount;
+        }
+    } else { 
+        // El producto está en USD (Estándar)
+        if (displayAsUSD) {
+            // El producto está en USD y el cliente quiere ver USD -> PRECIO ORIGINAL
+            finalAmount = amount;
+        } else {
+            // El producto está en USD y el cliente quiere ver BS -> MULTIPLICAMOS
             finalAmount = amount * rate;
         }
-
-        // 2. FORMATO VISUAL
-        if (displayAsUSD) {
-            return `$${finalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        } else {
-            return `Bs ${finalAmount.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        }
     }
+
+    // FORMATO VISUAL
+    if (displayAsUSD) {
+        return `$${finalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    } else {
+        return `Bs ${finalAmount.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+}
 
     function getFilteredAndSortedProducts(products, categoryId, query = '') {
         let filtered = products;
@@ -642,39 +666,13 @@ async function loadStoreData(companyId) {
     }
 
     function renderProducts(productsToRender) {
-    const grid = document.getElementById('products-grid');
-    const noResults = document.getElementById('no-results');
-    
-    if (!grid) return;
-    grid.innerHTML = '';
-
-    if (productsToRender.length === 0) {
-        grid.classList.add('hidden');
-        if (noResults) noResults.classList.remove('hidden');
-        return;
-    }
-
-    grid.classList.remove('hidden');
-    if (noResults) noResults.classList.add('hidden');
-
-    productsToRender.forEach(product => {
-        const productId = product.id; 
+        const grid = document.getElementById('products-grid');
+        const noResults = document.getElementById('no-results');
         
-        // Creamos el HTML de la tarjeta
-        const cardHtml = `
-            <div id="product-card-${productId}" class="product-card bg-white p-4 rounded-xl shadow-md flex flex-col justify-between border border-gray-100 hover:shadow-xl transition h-full">
-                <div>
-                    <div class="aspect-square w-full mb-3 overflow-hidden rounded-lg bg-gray-50 relative cursor-pointer" 
-                         onclick="window.openProductDetail('${productId}')">
-                         <img src="${product.imageUrl}" class="w-full h-full object-cover" alt="${product.name}" onerror="this.src='https://placehold.co/400x300?text=Sin+Imagen'">
-                         <span class="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-[10px] px-2 py-1 rounded-full font-bold">
-                            ${product.unit || 'UN'}
-                         </span>
-                    </div>
-                    <h3 class="text-lg font-bold text-gray-900 leading-tight mb-1 break-words">${product.name}</h3>
-                    <p class="text-[10px] font-bold text-blue-600 bg-blue-50 py-1 px-2 rounded inline-block mb-3 uppercase tracking-wider">${product.collection}</p>
-                </div>
+        if (!grid) return;
+        grid.innerHTML = '';
 
+<<<<<<< HEAD
                 <div class="mt-4 pt-4 border-t border-gray-100">
                     <div id="action-default-${productId}" class="flex flex-col gap-3">
                         <div class="flex flex-col gap-1">
@@ -705,6 +703,80 @@ async function loadStoreData(companyId) {
     
     console.log("🖼️ Cuadrícula de productos renderizada con enlaces a detalles.");
 }
+=======
+        if (productsToRender.length === 0) {
+            grid.classList.add('hidden');
+            if (noResults) noResults.classList.remove('hidden');
+            return;
+        }
+
+        grid.classList.remove('hidden');
+        if (noResults) noResults.classList.add('hidden');
+
+        productsToRender.forEach(product => {
+            const productId = product.id; 
+            
+            const cardHtml = `
+                <div id="product-card-${productId}" class="product-card bg-white p-4 rounded-xl shadow-md flex flex-col justify-between border border-gray-100 hover:shadow-xl transition h-full">
+                    <div>
+                        <div class="aspect-square w-full mb-3 overflow-hidden rounded-lg bg-gray-50 relative cursor-pointer" 
+                             onclick="window.openProductDetail('${productId}')">
+                             <img src="${product.imageUrl}" class="w-full h-full object-cover" alt="${product.name}" onerror="this.src='https://placehold.co/400x300?text=Sin+Imagen'">
+                             <span class="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-[10px] px-2 py-1 rounded-full font-bold">
+                                ${product.unit || 'UN'}
+                             </span>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-900 leading-tight mb-1 break-words">${product.name}</h3>
+                        <p class="text-[10px] font-bold text-blue-600 bg-blue-50 py-1 px-2 rounded inline-block mb-3 uppercase tracking-wider">${product.collection}</p>
+                    </div>
+
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <div id="action-default-${productId}" class="flex flex-col gap-3">
+                            <div class="flex flex-col gap-1">
+                                ${product.taxRate > 0 ? `
+                                    <div class="text-2xl font-black text-primary leading-none break-all">
+                                        ${formatPrice(product.price, product.currency)} 
+                                    </div>
+                                    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-tighter leading-none">
+                                        Total (+IVA): ${formatPrice(product.price * (1 + (product.taxRate / 100)), product.currency)}
+                                        <span class="ml-1 text-[9px] bg-blue-100 text-blue-700 px-1 py-0.5 rounded-md align-middle uppercase font-black">IVA</span>
+                                    </span>
+                                ` : `
+                                    <div class="text-2xl font-black text-primary leading-none break-all">
+                                        ${formatPrice(product.price, product.currency)}
+                                    </div>
+                                `}
+                            </div>
+
+                            <button onclick="window.toggleQuantityInput('${productId}')" class="w-full flex justify-center items-center px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition">
+                                <svg class="icon w-4 h-4 mr-2" viewBox="0 0 24 24" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                AÑADIR
+                            </button>
+                        </div>
+
+                        <div id="action-quantity-${productId}" class="hidden flex flex-col gap-2">
+                            <div class="flex items-center bg-gray-100 rounded-lg p-1">
+                                <input id="quantity-input-${productId}" type="number" value="1" step="0.001" min="0.001" 
+                                    class="w-full bg-transparent text-center font-bold text-gray-800 outline-none p-1">
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="window.confirmAddToCart('${productId}')" class="flex-1 bg-green-500 text-white text-xs font-bold py-2 rounded-lg hover:bg-green-600 transition">
+                                    CONFIRMAR
+                                </button>
+                                <button onclick="window.toggleQuantityInput('${productId}', true)" class="bg-gray-200 text-gray-600 p-2 rounded-lg hover:bg-gray-300 transition">
+                                    <svg class="icon w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            grid.insertAdjacentHTML('beforeend', cardHtml);
+        });
+        
+        console.log("🖼️ Cuadrícula de productos renderizada con controles de cantidad.");
+    }
+>>>>>>> 20dce040c57e83c20e8fb916b45b86b0de81559f
 
     function switchCategory(categoryId) {
         currentCategory = categoryId;
@@ -790,41 +862,47 @@ async function loadStoreData(companyId) {
     }
 
     function confirmAddToCart(productId) {
-        const quantityInput = document.getElementById(`quantity-input-${productId}`);
-        let quantity = parseFloat(quantityInput.value); 
+    const quantityInput = document.getElementById(`quantity-input-${productId}`);
+    let quantity = parseFloat(quantityInput.value); 
 
-        if (isNaN(quantity) || quantity <= 0) {
-            quantity = 1; 
-            quantityInput.value = 1;
+    if (isNaN(quantity) || quantity <= 0) {
+        quantity = 1; 
+        quantityInput.value = 1;
+    }
+    
+    quantity = parseFloat(quantity.toFixed(3)); 
+
+    // Buscamos el producto asegurando que la comparación de IDs sea siempre entre cadenas
+    const product = storeData.products.find(p => String(p.id) === String(productId));
+    
+    if (product) {
+        const existingItemIndex = storeData.cart.findIndex(item => String(item.id) === String(productId));
+
+        if (existingItemIndex > -1) {
+            // Si ya existe, sumamos la cantidad y redondeamos a 3 decimales
+            storeData.cart[existingItemIndex].quantity += quantity;
+            storeData.cart[existingItemIndex].quantity = parseFloat(storeData.cart[existingItemIndex].quantity.toFixed(3));
+        } else {
+            // Si es nuevo, lo añadimos guardando su moneda de origen (BS o USD)
+            storeData.cart.push({
+                id: product.id,
+                name: product.name,
+                price: product.price,
+                quantity: quantity,
+                unit: product.unit || 'UN',
+                currency: product.currency || 'USD' 
+            });
         }
         
-        quantity = parseFloat(quantity.toFixed(3)); 
-
-        const product = storeData.products.find(p => p.id === productId);
-        if (product) {
-            const existingItemIndex = storeData.cart.findIndex(item => item.id === productId);
-
-            if (existingItemIndex > -1) {
-                storeData.cart[existingItemIndex].quantity += quantity;
-                storeData.cart[existingItemIndex].quantity = parseFloat(storeData.cart[existingItemIndex].quantity.toFixed(3));
-            } else {
-                storeData.cart.push({
-                    id: product.id,
-                    name: product.name,
-                    price: product.price,
-                    quantity: quantity,
-                    unit: product.unit || 'UN' // Traemos la unidad desde el mapeo del Xeon
-                });
-            }
-            
-            showTemporaryMessage(`¡${quantity}x "${product.name}" añadido al carrito!`, 'success');
-            renderCart(); 
-        } else {
-             console.error(`Producto con ID ${productId} no encontrado en storeData.`);
-        }
-
-        toggleQuantityInput(productId, true);
+        showTemporaryMessage(`¡${quantity}x "${product.name}" añadido al carrito!`, 'success');
+        renderCart(); 
+    } else {
+         console.error(`Producto con ID ${productId} no encontrado en storeData.`);
     }
+
+    // Cerramos el input de cantidad y reseteamos la vista de la tarjeta
+    toggleQuantityInput(productId, true);
+}
     
     function openCartDrawer() {
         document.getElementById('cart-drawer-overlay').classList.remove('hidden');
@@ -841,67 +919,93 @@ async function loadStoreData(companyId) {
     }
     
     function renderCart() {
-        const container = document.getElementById('cart-items-container');
-        const subtotalDisplay = document.getElementById('cart-subtotal-display');
-        const totalItemsDisplay = document.getElementById('cart-total-items-display');
-        const cartCountDesktop = document.getElementById('cart-count');
-        const cartCountMobile = document.getElementById('cart-count-mobile');
-        
-        const emptyMessage = container.querySelector('#cart-empty-message');
-        
-        let itemsHtml = ''; 
-        let subtotal = 0;
-        let totalItems = 0;
+    const container = document.getElementById('cart-items-container');
+    const subtotalDisplay = document.getElementById('cart-subtotal-display');
+    const totalItemsDisplay = document.getElementById('cart-total-items-display');
+    const cartCountDesktop = document.getElementById('cart-count');
+    const cartCountMobile = document.getElementById('cart-count-mobile');
+    
+    const emptyMessage = container.querySelector('#cart-empty-message');
+    
+    let itemsHtml = ''; 
+    let subtotal = 0;
+    let totalItems = 0;
 
-        Array.from(container.children).forEach(child => {
-            if (child.id !== 'cart-empty-message') {
-                child.remove();
+    // Limpiamos el contenedor manteniendo el mensaje de "carrito vacío"
+    Array.from(container.children).forEach(child => {
+        if (child.id !== 'cart-empty-message') {
+            child.remove();
+        }
+    });
+
+    if (storeData.cart.length === 0) {
+        emptyMessage.classList.remove('hidden');
+        resetCheckout(); 
+    } else {
+        emptyMessage.classList.add('hidden');
+        
+        storeData.cart.forEach(item => {
+            const rate = tiendaConfig.bcvRate || 1;
+            const displayAsUSD = currentDisplayCurrency === 'USD';
+            
+            // --- LÓGICA MULTIMONEDA PARA EL SUBTOTAL ---
+            let priceInCurrentView = item.price;
+            if (item.currency === 'BS' && displayAsUSD) {
+                priceInCurrentView = item.price / rate; // De BS a USD -> Dividimos
+            } else if (item.currency === 'USD' && !displayAsUSD) {
+                priceInCurrentView = item.price * rate; // De USD a BS -> Multiplicamos
             }
+
+            const itemTotal = priceInCurrentView * item.quantity;
+            subtotal += itemTotal;
+            totalItems += item.quantity; // Sumamos al contador total
+
+            // --- CORRECCIÓN: Definición de quantityDisplay ---
+            let quantityDisplay = "";
+            if (item.quantity < 1) {
+                const grams = (item.quantity * 1000);
+                quantityDisplay = `${grams.toLocaleString(undefined, { maximumFractionDigits: 0 })} g`;
+            } else {
+                quantityDisplay = `${item.quantity.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 3 })} unid.`;
+            }
+            
+            itemsHtml += `
+                <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                    <div class="flex flex-col flex-grow pr-4">
+                        <span class="font-semibold text-gray-900">${item.name}</span>
+                        <span class="text-sm text-gray-500">
+                            ${formatPrice(item.price, item.currency)} x <strong class="text-gray-700">${quantityDisplay}</strong>
+                        </span>
+                    </div>
+                    <div class="flex items-center space-x-3 flex-shrink-0">
+                        <span class="font-bold text-gray-800 text-lg">
+                            ${displayAsUSD ? '$' : 'Bs '}${itemTotal.toLocaleString(displayAsUSD ? 'en-US' : 'es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                        <button onclick="window.removeItemFromCart('${item.id}')" class="text-red-500 hover:text-red-700 p-1 rounded transition duration-150">
+                            <svg class="icon w-5 h-5" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `;
         });
 
-        if (storeData.cart.length === 0) {
-            emptyMessage.classList.remove('hidden');
-            resetCheckout(); 
-        } else {
-            emptyMessage.classList.add('hidden');
-            
-            storeData.cart.forEach(item => {
-                const itemTotal = item.price * item.quantity;
-                subtotal += itemTotal;
-                totalItems += item.quantity;
-
-                let quantityDisplay;
-                if (item.quantity < 1) {
-                    const grams = (item.quantity * 1000);
-                    quantityDisplay = `${grams.toLocaleString(undefined, { maximumFractionDigits: 0 })} g`;
-                } else {
-                    quantityDisplay = `${item.quantity.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 3 })} unid.`;
-                }
-                
-                itemsHtml += `
-                    <div class="flex justify-between items-center py-2 border-b border-gray-200">
-                        <div class="flex flex-col flex-grow pr-4">
-                            <span class="font-semibold text-gray-900">${item.name}</span>
-                            <span class="text-sm text-gray-500">${formatPrice(item.price)} x <strong class="text-gray-700">${quantityDisplay}</strong></span>
-                        </div>
-                        <div class="flex items-center space-x-3 flex-shrink-0">
-                            <span class="font-bold text-gray-800 text-lg">${formatPrice(itemTotal)}</span>
-                            <button onclick="window.removeItemFromCart('${item.id}')" class="text-red-500 hover:text-red-700 p-1 rounded transition duration-150">
-                                <svg class="icon w-5 h-5" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                            </button>
-                        </div>
-                    </div>
-                `;
-            });
-
-             emptyMessage.insertAdjacentHTML('afterend', itemsHtml);
-        }
-
-        subtotalDisplay.textContent = formatPrice(subtotal);
-        totalItemsDisplay.textContent = parseFloat(totalItems.toFixed(3)); 
-        cartCountDesktop.textContent = parseFloat(totalItems.toFixed(3));
-        cartCountMobile.textContent = parseFloat(totalItems.toFixed(3));
+        emptyMessage.insertAdjacentHTML('afterend', itemsHtml);
     }
+
+    // Formateo del Subtotal final según la vista seleccionada
+    subtotalDisplay.textContent = currentDisplayCurrency === 'USD' 
+        ? `$${subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+        : `Bs ${subtotal.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    // Actualización de contadores en la interfaz (redondeado a 3 decimales por si hay peso)
+    const finalTotalItems = parseFloat(totalItems.toFixed(3));
+    totalItemsDisplay.textContent = finalTotalItems; 
+    cartCountDesktop.textContent = finalTotalItems;
+    cartCountMobile.textContent = finalTotalItems;
+}
 
     function removeItemFromCart(productId) {
         const initialCount = storeData.cart.length;
@@ -1108,7 +1212,11 @@ function openProductDetail(productId) {
     document.getElementById('detail-image').src = product.imageUrl;
     document.getElementById('detail-name').textContent = product.name;
     document.getElementById('detail-category').textContent = product.collection;
-    document.getElementById('detail-price').textContent = formatPrice(product.price);
+    document.getElementById('detail-price').textContent = formatPrice(product.price, product.currency);
+        if (product.taxRate > 0) {
+            const precioFinal = product.price * (1 + (product.taxRate / 100));
+            document.getElementById('detail-total-with-tax').textContent = formatPrice(precioFinal, product.currency);
+        }
     document.getElementById('detail-code').textContent = product.code;
     document.getElementById('detail-unit').textContent = product.unit;
     document.getElementById('detail-tax').textContent = product.tax;

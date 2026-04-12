@@ -572,127 +572,55 @@ function updateWeightUI(isEnabled) {
     }
 }
 
-let balanzaSocket = null;
 
-function initializeBalanzaSocket(url, cashierId) {
-    
-    // 1. Validaciones
-    if (typeof io === 'undefined') {
-        console.warn('Error: Socket.IO no está cargado. Reintentando la conexión en 500ms...');
-        setTimeout(() => {
-            // Reintentar la inicialización, asumiendo que las variables ya están definidas
-            if (window.BALANZA_SERVER_URL && window.CASHIER_ID_ACTUAL) {
-                initializeBalanzaSocket(window.BALANZA_SERVER_URL, window.CASHIER_ID_ACTUAL);
-            }
-        }, 500);
-        return;
-    }
-    
-    if (!url || !cashierId) {
-        console.error("Balanza: URL o CASHIER_ID no definidos. La báscula no se puede conectar.");
-        // Opcional: Establecer el campo de cantidad a 1 (como se discutió previamente)
-        const cantidadInput = document.getElementById('cantidad');
-        if (cantidadInput) cantidadInput.value = 1; 
-        return;
-    }
-
-    if (balanzaSocket) {
-        balanzaSocket.disconnect(); // Asegurar una sola conexión
-    }
-
-    // 2. Conexión con Identificación (CASHIER_ID)
-    balanzaSocket = io(url, {
-        reconnection: true,
-        reconnectionAttempts: 20,
-        timeout: 2000,
-        query: { 
-            role: 'browser-client',
-            cashierId: cashierId
-        }
-    });
-    
-    console.log(`Balanza: Intentando conectar a ${url} como cajero: ${cashierId}...`);
-
-    balanzaSocket.on('connect', () => {
-        console.log(`Balanza: Conectada a la sala [${cashierId}] ✅`);
-        // Nota: El servidor ya sabe su ID y solo le enviará el peso de su báscula.
-    });
-
-    // 🔑 BLOQUE MODIFICADO: Solución para el peso "pegado"
-    balanzaSocket.on('disconnect', () => {
-        console.log('Balanza: Desconectada ❌');
-        // AÑADIDO: Limpiar el campo de peso al perder la conexión para evitar datos obsoletos.
-        const cantidadInput = document.getElementById('cantidad');
-        if (cantidadInput) {
-            cantidadInput.value = '0.00'; 
-        }
-    });
-    // ------------------------------------
-    
-    // 3. Recepción del Peso
-    // EVENTO CLAVE: Recepción del peso filtrado.
-    balanzaSocket.on('peso_balanza', (peso) => {
-        const cantidadInput = document.getElementById('cantidad');
-        if (cantidadInput) {
-            // El peso recibido AHORA proviene SOLAMENTE de la báscula de este cajero
-            const pesoFormateado = parseFloat(peso).toFixed(3);
-            cantidadInput.value = pesoFormateado;
-            
-        }
-    });
-}
-
-// --------------------------------------------------------------------------------------
-// 🔚 FIN: INTEGRACIÓN BALANZA SOCKET.IO
-// --------------------------------------------------------------------------------------
-
-
+// --- LÓGICA DE BÁSCULA DIRECTA (REEMPLAZA ESTE BLOQUE EN TU HTML) ---
 async function loadBasculaConfigAndInitSocket() {
-    // Validar que la API local esté disponible
-    if (!window.nexusAPI || typeof window.nexusAPI.obtenerConfiguracion !== 'function') {
-        console.warn("Balanza: API local no disponible. Deshabilitando interfaz.");
+    if (!window.nexusAPI) {
+        console.warn("Balanza: API local no disponible.");
         updateWeightUI(false); 
         return;
     }
     
     try {
-        // 🟢 NUEVO: Leer configuración directamente desde SQLite local (Ya no usamos Firebase aquí)
+        // 1. Leer puerto y estado desde la configuración local
         const basculaDataRaw = await window.nexusAPI.obtenerConfiguracion('config_bascula');
         
-        let enableScale = false;
-        let puertoConexion = null;
-
         if (basculaDataRaw) {
             const data = JSON.parse(basculaDataRaw);
-            
-            // CLAVE: Leer el estado exacto que guardaste en configuracion.html
-            enableScale = data.enableScale === true;
-            // config_bascula guarda el puerto en 'puertoCOM', lo mapeamos para el socket
-            puertoConexion = data.puertoCOM || data.vpsUrl; 
+            const enableScale = data.enableScale === true;
+            const puerto = data.puertoCOM; 
 
-            // 1. Aplicar la configuración a la UI inmediatamente
             updateWeightUI(enableScale); 
-            console.log(`Balanza: Configuración cargada de SQLite. Habilitada: ${enableScale}`);
-        } else {
-            console.warn("Balanza: No hay configuración local guardada. Deshabilitando por defecto.");
-            updateWeightUI(false);
-        }
-        
-        // 2. Inicializar el socket SOLO si está habilitado Y tenemos un puerto/URL
-        if (enableScale && puertoConexion) {
-            initializeBalanzaSocket(puertoConexion, userId); 
-            console.log(`Balanza: Conexión de Socket iniciada en ${puertoConexion}.`);
-        } else {
-             console.log(`Balanza: Socket no iniciado.`);
-        }
 
+            if (enableScale && puerto) {
+                console.log(`🚀 Iniciando lectura directa en ${puerto}`);
+                
+                // 2. ORDEN AL MAIN: "Abre el puerto y envíame el peso"
+                // Esta es la función que te marca error actualmente porque falta en el Main
+                window.nexusAPI.iniciarLecturaPuerto(puerto);
+
+                // 3. RECEPTOR: Escuchar el evento que enviará Electron
+                window.nexusAPI.onPesoRecibido((pesoPuro) => {
+                    // Validar si estamos en modo manual
+                    const unitToggle = document.getElementById('unit-mode-toggle');
+                    if (unitToggle && unitToggle.checked) return;
+
+                    const cantidadInput = document.getElementById('cantidad');
+                    if (cantidadInput) {
+                        const pesoNumerico = parseFloat(pesoPuro);
+                        if (!isNaN(pesoNumerico)) {
+                            // Sincronizado con los 3 decimales de tu Arduino
+                            cantidadInput.value = pesoNumerico.toFixed(3);
+                        }
+                    }
+                });
+            }
+        }
     } catch (error) {
-        console.error("Balanza: Error al leer desde SQLite local:", error);
-        updateWeightUI(false); // Forzar modo manual (Unidades) si SQLite falla
+        console.error("Balanza: Error al conectar:", error);
     }
 }
 
-    // Inyecta dinámicamente el CSS para los estilos del componente.
 const style = document.createElement('style');
     style.textContent = `
         body {

@@ -45,6 +45,8 @@ contextBridge.exposeInMainWorld('nexusAPI', {
     obtenerConfiguracionCajera: (key) => ipcRenderer.invoke('obtener-configuracion-cajera', key),
     guardarConfiguracionCajera: (key, data) => ipcRenderer.invoke('guardar-configuracion-cajera', key, data),
     sincronizarConfiguracionXeon: (datos) => ipcRenderer.invoke('sincronizar-configuracion-xeon', datos),
+    iniciarLecturaPuerto: (puerto) => ipcRenderer.send('iniciar-puerto-balanza', puerto),
+    onPesoRecibido: (callback) => ipcRenderer.on('peso-desde-balanza', (event, data) => callback(data)),
 
 });
 
