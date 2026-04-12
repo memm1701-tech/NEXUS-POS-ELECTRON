@@ -535,6 +535,18 @@ async function loadStoreData(companyId) {
         }
     }
 
+<<<<<<< HEAD
+    function formatPrice(amount) {
+        const rate = tiendaConfig.bcvRate || 1;
+        const storeBaseCurrency = tiendaConfig.currencyCode; // 'BS' o 'USD'
+        const displayAsUSD = currentDisplayCurrency === 'USD';
+
+        let finalAmount = amount;
+
+        // 1. LÓGICA DE CONVERSIÓN
+        if (storeBaseCurrency === 'BS' && displayAsUSD) {
+            // Si el precio base es Bs y queremos ver $ -> Dividimos
+=======
     function formatPrice(amount, originalCurrency = 'USD') {
     const rate = tiendaConfig.bcvRate || 1;
     const displayAsUSD = currentDisplayCurrency === 'USD';
@@ -545,6 +557,7 @@ async function loadStoreData(companyId) {
     if (originalCurrency === 'BS') {
         if (displayAsUSD) {
             // El producto está en BS y el cliente quiere ver USD -> DIVIDIMOS
+>>>>>>> 20dce040c57e83c20e8fb916b45b86b0de81559f
             finalAmount = amount / rate;
         } else {
             // El producto está en BS y el cliente quiere ver BS -> PRECIO ORIGINAL
@@ -659,6 +672,38 @@ async function loadStoreData(companyId) {
         if (!grid) return;
         grid.innerHTML = '';
 
+<<<<<<< HEAD
+                <div class="mt-4 pt-4 border-t border-gray-100">
+                    <div id="action-default-${productId}" class="flex flex-col gap-3">
+                        <div class="flex flex-col gap-1">
+                            ${product.taxRate > 0 ? `
+                                <div class="text-2xl font-black text-primary leading-none break-all">
+                                    ${formatPrice(product.price)}
+                                </div>
+                                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-tighter leading-none">
+                                    Total (+IVA): ${formatPrice(product.price * (1 + (product.taxRate / 100)))}
+                                    <span class="ml-1 text-[9px] bg-blue-100 text-blue-700 px-1 py-0.5 rounded-md align-middle uppercase font-black">IVA</span>
+                                </span>
+                            ` : `
+                                <div class="text-2xl font-black text-primary leading-none break-all">
+                                    ${formatPrice(product.price)}
+                                </div>
+                            `}
+                        </div>
+
+                        <button onclick="window.toggleQuantityInput('${productId}')" class="w-full flex justify-center items-center px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition">
+                            <svg class="icon w-4 h-4 mr-2" viewBox="0 0 24 24" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            AÑADIR
+                        </button>
+                    </div>
+                    </div>
+        `;
+        grid.insertAdjacentHTML('beforeend', cardHtml);
+    });
+    
+    console.log("🖼️ Cuadrícula de productos renderizada con enlaces a detalles.");
+}
+=======
         if (productsToRender.length === 0) {
             grid.classList.add('hidden');
             if (noResults) noResults.classList.remove('hidden');
@@ -731,6 +776,7 @@ async function loadStoreData(companyId) {
         
         console.log("🖼️ Cuadrícula de productos renderizada con controles de cantidad.");
     }
+>>>>>>> 20dce040c57e83c20e8fb916b45b86b0de81559f
 
     function switchCategory(categoryId) {
         currentCategory = categoryId;
