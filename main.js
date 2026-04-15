@@ -1218,7 +1218,7 @@ ipcMain.handle('guardar-configuracion-cajera', async (event, clave, valor) => {
 });
 
 ipcMain.handle('sincronizar-configuracion-xeon', async (event, datos) => {
-    return await enviarDatosAXeon(datos, 'CONFIGURACION_TIENDA');
+    return await enviarDatosAXeon(datos);
 });
 
 async function createSplashScreen() {
@@ -1242,21 +1242,18 @@ async function createSplashScreen() {
     splash.loadFile('splash.html'); 
 }
 
-async function enviarDatosAXeon(datos, tipoOperacion) {
+async function enviarDatosAXeon(datos) { 
     try {
         console.log("📡 Intentando sincronizar con Xeon...");
         
-        // 🔥 CAMBIO CLAVE: Usamos HTTPS para evitar la redirección que rompe el POST
-        // Mantenemos la URL fija sin puerto, ya que el túnel gestiona el tráfico
+        // Se mantiene la URL con HTTPS para evitar bloqueos del túnel de Cloudflare
         const urlFinal = `https://configuracioncajera.nexusposgobal.com/api/xeon/registrar-entrada`;
 
-        const respuesta = await axios.post(urlFinal, {
-            companyId: datos.companyId || 'NEXUS-LOCAL',
-            tipo_operacion: tipoOperacion, 
-            payload: datos
-        }, { 
+        // 🔥 CORRECCIÓN CRUCIAL: Enviamos 'datos' directamente. 
+        // configuracion.html ya estructuró el objeto con companyId, tipo_configuracion y payload
+        const respuesta = await axios.post(urlFinal, datos, { 
             timeout: 15000,
-            maxRedirects: 5 // Permitimos redirecciones controladas
+            maxRedirects: 5 
         });
 
         console.log("📥 Respuesta del Xeon:", respuesta.data);
@@ -1270,7 +1267,6 @@ async function enviarDatosAXeon(datos, tipoOperacion) {
         }
     } catch (error) {
         if (error.response) {
-            // Si el error sigue siendo 404, confirma que el túnel no esté alterando la ruta
             console.error("🔥 Error de Respuesta Xeon:", error.response.status);
             return { success: false, error: `Error ${error.response.status}: Asegúrate de usar HTTPS en el código.` };
         } else if (error.request) {

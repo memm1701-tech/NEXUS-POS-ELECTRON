@@ -78,6 +78,95 @@
             -ms-transform: translateX(26px);
             transform: translateX(26px);
         }
+
+        .input-vitrina {
+        width: 80px;
+        padding: 4px 8px;
+        border: 1px solid #e5e7eb;
+        border-radius: 4px;
+        font-weight: bold;
+        color: #374151;
+        outline: none;
+    }
+    .input-vitrina:focus { border-color: #3b82f6; ring: 1px #3b82f6; }
+    .select-vitrina {
+        padding: 4px 8px;
+        border: 1px solid #e5e7eb;
+        border-radius: 4px;
+        background: white;
+        font-size: 12px;
+        outline: none;
+    }
+
+    /* Estilo para que la barra de scroll sea más discreta y moderna */
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 8px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+    .tooltip-container {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        margin-left: 6px;
+        cursor: help;
+        vertical-align: middle;
+    }
+
+    .tooltip-text {
+        visibility: hidden;
+        width: 220px;
+        background-color: #1e293b; 
+        color: #fff;
+        text-align: center;
+        border-radius: 8px;
+        padding: 10px;
+        position: absolute;
+        /* IMPORTANTE: z-index muy alto para superponerse a todo */
+        z-index: 9999; 
+        /* Cambiado a TOP para que baje y no se corte con el borde superior */
+        top: 150%; 
+        left: 50%;
+        transform: translateX(-50%);
+        opacity: 0;
+        transition: opacity 0.2s ease-in-out;
+        font-size: 12px;
+        font-weight: normal;
+        line-height: 1.4;
+        pointer-events: none;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+        text-transform: none; 
+    }
+
+    /* Flecha decorativa apuntando hacia ARRIBA ahora */
+    .tooltip-text::after {
+        content: "";
+        position: absolute;
+        bottom: 100%; 
+        left: 50%;
+        margin-left: -5px;
+        border-width: 5px;
+        border-style: solid;
+        border-color: transparent transparent #1e293b transparent;
+    }
+
+    .tooltip-container:hover .tooltip-text,
+    .tooltip-container:active .tooltip-text {
+        visibility: visible;
+        opacity: 1;
+    }
+
+
     </style>
 </head>
 <body>
@@ -157,6 +246,62 @@
             </div>
         </div>
 
+        <div class="space-y-4 text-left p-4 border border-blue-200 bg-white rounded-md shadow-sm">
+    <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+        <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+        Gestión de Vitrina Digital y Ofertas
+    </h2>
+    
+    <p class="text-xs text-gray-500 mb-4">Controla qué productos se muestran en la tienda y cuáles aparecen con precios de oferta o etiquetas especiales.</p>
+
+    <div class="relative mb-4">
+        <input type="text" id="vitrinaSearchInput" oninput="filterVitrinaProducts()" placeholder="Buscar producto para configurar..." class="w-full p-2 pl-10 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+        <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+    </div>
+
+    <div class="overflow-x-auto overflow-y-auto border border-gray-100 rounded-lg max-h-[480px] shadow-inner custom-scrollbar">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
+                    <tr>
+                        <th class="px-4 py-3 text-left font-bold text-gray-600 uppercase tracking-wider bg-gray-50">Producto</th>
+                        <th class="px-4 py-3 text-center font-bold text-gray-600 uppercase tracking-wider bg-gray-50">Visible Web</th>
+                        <th class="px-4 py-3 text-left font-bold text-gray-600 uppercase tracking-wider bg-gray-50">
+                            Etiqueta
+                            <div class="tooltip-container">
+                                <svg class="w-5 h-5 text-blue-600 hover:text-blue-800 transition cursor-pointer" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path>
+                                </svg>
+                                <span class="tooltip-text">Insignia visual (Oferta, Nuevo, etc.) para captar la atención del cliente en la tarjeta del producto.</span>
+                            </div>
+                        </th>
+                        <th class="px-4 py-3 text-left font-bold text-gray-600 uppercase tracking-wider bg-gray-50">
+                            Precio Oferta ($)
+                            <div class="tooltip-container">
+                                <svg class="w-5 h-5 text-blue-600 hover:text-blue-800 transition cursor-pointer" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path>
+                                </svg>
+                                <span class="tooltip-text">Es el precio real que se cobrará. Si tiene un valor, sustituye al precio original del inventario en la tienda.</span>
+                            </div>
+                        </th>
+                        <th class="px-4 py-3 text-left font-bold text-gray-600 uppercase tracking-wider bg-gray-50">
+                            Precio Ref. ($)
+                            <div class="tooltip-container">
+                                <svg class="w-5 h-5 text-blue-600 hover:text-blue-800 transition cursor-pointer" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path>
+                                </svg>
+                                <span class="tooltip-text">Precio informativo (Anclaje). Si es mayor al de oferta, activa el efecto de "Precio Tachado" visualmente.</span>
+                            </div>
+                        </th>
+                    </tr>
+                </thead>
+            <tbody id="vitrinaTableBody" class="bg-white divide-y divide-gray-100">
+                <tr>
+                    <td colspan="5" class="px-4 py-8 text-center text-gray-400 italic">Sincronizando productos locales...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
         <button id="saveConfigBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-md shadow-lg transition duration-300 ease-in-out text-xl">
             Guardar Configuración de Tienda
         </button>
@@ -177,7 +322,9 @@
 
     // --- 2. VARIABLES DE ESTADO ---
     let companyId = null; 
-
+    let allProductsForVitrina = [];
+    let vitrinaConfig = {};
+    // --- VARIABLES GLOBALES NUEVAS ---
     // --- 3. REFERENCIAS DOM ---
     const saveConfigBtn = document.getElementById('saveConfigBtn');
     const messageBox = document.getElementById('messageBox');
@@ -259,13 +406,117 @@
         try {
             const sesion = await window.nexusAPI.obtenerSesionLocal();
             companyId = (sesion && sesion.companyId) ? sesion.companyId : 'NEXUS-LOCAL';
-            await loadTiendaConfig();
+            
+            // 🔥 Limpieza: Llamar una sola vez a cada función
+            await loadTiendaConfig(); 
+            await loadVitrinaProducts();
+            
         } catch (error) { 
             console.error("Error al arrancar:", error); 
             companyId = 'NEXUS-LOCAL';
             await loadTiendaConfig();
+            await loadVitrinaProducts();
         }
     }
+
+    async function loadVitrinaProducts() {
+        try {
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
+            const currentCompanyId = sesion ? sesion.companyId : 'NEXUS-LOCAL';
+            
+            // Obtenemos los productos de SQLite
+            const products = await window.nexusAPI.obtenerProductosLocal(currentCompanyId);
+            
+            // Cargamos la configuración guardada de la vitrina
+            const savedVitrina = await window.nexusAPI.obtenerConfiguracionCajera('config_vitrina_digital');
+            vitrinaConfig = savedVitrina ? (typeof savedVitrina === 'string' ? JSON.parse(savedVitrina) : savedVitrina) : {};
+
+            // Mapeo con protección contra JSON corrupto
+            allProductsForVitrina = products.map(p => {
+                try {
+                    // Intentamos parsear el JSON, si falla usamos un objeto vacío por seguridad
+                    const data = typeof p.datos_json === 'string' ? JSON.parse(p.datos_json) : (p.datos_json || {});
+                    
+                    return {
+                        id: p.id || p.producto_ID,
+                        nombre: data.nombre || p.nombre || 'Producto sin nombre',
+                        precio_actual: data.precio_venta || p.precio || 0
+                    };
+                } catch (e) {
+                    // Si este producto específico tiene el JSON roto, registramos el error en consola
+                    // pero permitimos que la tabla siga cargando los demás.
+                    console.warn(`⚠️ Error de sintaxis en datos_json del producto ID: ${p.id}. Saltando...`);
+                    return null; 
+                }
+            }).filter(p => p !== null); // Eliminamos los productos que fallaron
+
+            renderVitrinaTable(allProductsForVitrina);
+            
+        } catch (error) {
+            console.error("❌ Error crítico cargando productos para vitrina:", error);
+            const tbody = document.getElementById('vitrinaTableBody');
+            if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500">Error al leer la base de datos local.</td></tr>';
+        }
+    }
+
+function renderVitrinaTable(products) {
+    const tbody = document.getElementById('vitrinaTableBody');
+    tbody.innerHTML = '';
+
+    if (products.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-400">No se encontraron productos.</td></tr>';
+        return;
+    }
+
+    products.forEach(p => {
+        const config = vitrinaConfig[p.id] || { visible: true, tag: '', offerPrice: '', referencePrice: '' };
+        
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="px-4 py-2 font-medium text-gray-800">${p.nombre}</td>
+            <td class="px-4 py-2 text-center">
+                <input type="checkbox" ${config.visible ? 'checked' : ''} 
+                    onchange="window.updateVitrinaData('${p.id}', 'visible', this.checked)" 
+                    class="w-4 h-4 text-blue-600 border-gray-300 rounded cursor-pointer">
+            </td>
+            <td class="px-4 py-2">
+                <select onchange="window.updateVitrinaData('${p.id}', 'tag', this.value)" class="select-vitrina cursor-pointer">
+                    <option value="" ${config.tag === '' ? 'selected' : ''}>Ninguna</option>
+                    <option value="Oferta" ${config.tag === 'Oferta' ? 'selected' : ''}>Oferta</option>
+                    <option value="Nuevo" ${config.tag === 'Nuevo' ? 'selected' : ''}>Nuevo</option>
+                    <option value="Excedente" ${config.tag === 'Excedente' ? 'selected' : ''}>Excedente</option>
+                    <option value="Remate" ${config.tag === 'Remate' ? 'selected' : ''}>Remate</option>
+                </select>
+            </td>
+            <td class="px-4 py-2">
+                <input type="number" step="0.01" value="${config.offerPrice || ''}" placeholder="${p.precio_actual}" 
+                    oninput="window.updateVitrinaData('${p.id}', 'offerPrice', this.value)" class="input-vitrina">
+            </td>
+            <td class="px-4 py-2">
+                <input type="number" step="0.01" value="${config.referencePrice || ''}" placeholder="Ej: 10.00" 
+                    oninput="window.updateVitrinaData('${p.id}', 'referencePrice', this.value)" class="input-vitrina">
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function updateVitrinaData(productId, field, value) {
+    if (!vitrinaConfig[productId]) {
+        vitrinaConfig[productId] = { visible: true, tag: '', offerPrice: '', referencePrice: '' };
+    }
+    vitrinaConfig[productId][field] = value;
+    console.log(`Actualizado ${productId}: ${field} = ${value}`);
+}
+
+function filterVitrinaProducts() {
+    const term = document.getElementById('vitrinaSearchInput').value.toLowerCase();
+    const filtered = allProductsForVitrina.filter(p => p.nombre.toLowerCase().includes(term));
+    renderVitrinaTable(filtered);
+}
+
+window.filterVitrinaProducts = filterVitrinaProducts;
+window.updateVitrinaData = updateVitrinaData;
 
     async function loadTiendaConfig() {
         try {
@@ -309,7 +560,7 @@
         saveConfigBtn.disabled = true;
         saveConfigBtn.textContent = "Guardando y Sincronizando...";
 
-        // 1. Recolección de todos los campos del formulario
+        // 1. Recolección de datos de identidad y moneda
         const tiendaData = {
             ultimoCambio: new Date().toISOString(),
             companyId: companyId, 
@@ -323,17 +574,34 @@
         };
 
         // 2. Guardado en la Base de Datos Local (SQLite)
+        // Guardamos la configuración de identidad y la de vitrina/ofertas por separado
         await window.nexusAPI.guardarConfiguracionCajera('config_tienda_online', tiendaData);
+        await window.nexusAPI.guardarConfiguracionCajera('config_vitrina_digital', vitrinaConfig);
 
-        // 3. Sincronización con el Servidor Xeon (MongoDB - Puerto 3007)
-        // Usamos el nuevo canal que expusimos en el puente
-        const syncStatus = await window.nexusAPI.sincronizarConfiguracionXeon(tiendaData);
+        // 3. Sincronización con el Servidor Xeon (MongoDB)
+        // PASO A: Sincronizamos la Identidad de la Tienda
+        const syncIdentidad = await window.nexusAPI.sincronizarConfiguracionXeon({
+            companyId: companyId,
+            tipo_configuracion: 'config_tienda_online',
+            payload: tiendaData
+        });
+
+        // PASO B: Sincronizamos la Vitrina y Ofertas
+        const syncVitrina = await window.nexusAPI.sincronizarConfiguracionXeon({
+            companyId: companyId,
+            tipo_configuracion: 'config_vitrina_digital',
+            payload: vitrinaConfig
+        });
         
-        if (syncStatus.success) {
-            showMessage("✅ Configuración guardada y sincronizada con el Xeon.", 'green');
+        // Verificamos que ambas sincronizaciones hayan tenido éxito en la nube
+        if (syncIdentidad.success && syncVitrina.success) {
+            showMessage("✅ Configuración e Identidad sincronizadas en la nube con éxito.", 'green');
         } else {
-            // Si falla el Xeon, igual notificamos que lo local sí se guardó
-            console.warn("⚠️ Fallo de sincronización nube:", syncStatus.error);
+            // Si el servidor Xeon no responde, notificamos que el respaldo local sí funcionó
+            console.warn("⚠️ Fallo parcial o total de sincronización nube:", { 
+                identidad: syncIdentidad.error, 
+                vitrina: syncVitrina.error 
+            });
             showMessage("✅ Guardado localmente (Servidor Xeon fuera de línea).", 'blue');
         }
 

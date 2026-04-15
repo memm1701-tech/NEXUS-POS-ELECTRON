@@ -158,7 +158,7 @@
             
             <div id="cart-items-container" class="flex-grow overflow-y-auto p-4 space-y-4">
                 <div id="cart-empty-message" class="text-center py-10 text-gray-500 hidden">
-                    <p>Tu carrito está vacío. ¡Añade algunos repuestos!</p>
+                    <p>Tu carrito está vacío. ¡Añade algunos prodcutos!</p>
                 </div>
             </div>
             
@@ -346,7 +346,7 @@
         exchangeRateMethod: 'RateDB',
         manualExchangeRate: 0.00,
         bcvRate: 1.00,
-        dataVersion: null 
+        vitrina: {} // Aquí se guardan las etiquetas y ofertas de configuracion.html
     };
 
     const taxLabels = {
@@ -413,42 +413,50 @@
 
 
     async function loadTiendaConfig(companyId) {
-        if (!companyId) return;
+    if (!companyId) return;
 
-        const URL_CONFIG = `https://configuracioncajera.nexusposgobal.com/api/xeon/configuracion/${companyId}`;
-        
-        try {
-            const response = await fetch(URL_CONFIG);
-            if (response.ok) {
-                const data = await response.json();
-                
-                // Mapeo de identidad desde el Payload guardado en MongoDB
-                tiendaConfig.storeName = data.storeName || "Nexus Shop";
-                tiendaConfig.whatsappNumber = data.whatsappNumber || "584120000000";
-                tiendaConfig.logoUrl = data.logoUrl || null;
-                tiendaConfig.currencyCode = data.currencyCode || 'BS';
-                tiendaConfig.deliveryEnabled = data.deliveryEnabled !== undefined ? data.deliveryEnabled : true;
-                
-                // Aplicar nombre a la pestaña del navegador
-                document.title = `${tiendaConfig.storeName} - Tienda Online`;
+    const URL_IDENTIDAD = `https://configuracioncajera.nexusposgobal.com/api/xeon/configuracion/${companyId}`;
+    const URL_VITRINA = `https://configuracioncajera.nexusposgobal.com/api/xeon/configuracion/${companyId}/config_vitrina_digital`;
 
-                // Gestión dinámica de Tasas
-                tiendaConfig.exchangeRateMethod = data.exchangeRateMethod || 'RateDB';
-                tiendaConfig.manualExchangeRate = parseFloat(data.manualExchangeRate) || 0;
+    try {
+        // Ejecutamos ambas peticiones en paralelo para mayor velocidad
+        const [resIdentidad, resVitrina] = await Promise.all([
+            fetch(URL_IDENTIDAD),
+            fetch(URL_VITRINA)
+        ]);
 
-                if (tiendaConfig.exchangeRateMethod === 'RateDB') {
-                    tiendaConfig.bcvRate = await fetchBcvRate();
-                } else {
-                    tiendaConfig.bcvRate = tiendaConfig.manualExchangeRate || 1;
-                }
+        if (resIdentidad.ok) {
+            const data = await resIdentidad.json();
+            tiendaConfig.storeName = data.storeName || "Nexus Shop";
+            tiendaConfig.whatsappNumber = data.whatsappNumber || "584120000000";
+            tiendaConfig.logoUrl = data.logoUrl || null;
+            tiendaConfig.currencyCode = data.currencyCode || 'BS';
+            tiendaConfig.deliveryEnabled = data.deliveryEnabled !== undefined ? data.deliveryEnabled : true;
+            tiendaConfig.exchangeRateMethod = data.exchangeRateMethod || 'RateDB';
+            tiendaConfig.manualExchangeRate = parseFloat(data.manualExchangeRate) || 0;
 
-                currentDisplayCurrency = (tiendaConfig.currencyCode === 'USD') ? 'USD' : 'BS';
-                console.log("✅ Configuración e identidad aplicadas con éxito.");
+            document.title = `${tiendaConfig.storeName} - Tienda Online`;
+
+            if (tiendaConfig.exchangeRateMethod === 'RateDB') {
+                tiendaConfig.bcvRate = await fetchBcvRate();
+            } else {
+                tiendaConfig.bcvRate = tiendaConfig.manualExchangeRate || 1;
             }
-        } catch (error) {
-            console.error("⚠️ Fallo al recuperar configuración desde Xeon:", error);
+
+            currentDisplayCurrency = (tiendaConfig.currencyCode === 'USD') ? 'USD' : 'BS';
         }
+
+        if (resVitrina.ok) {
+            const vitrinaData = await resVitrina.json();
+            // Guardamos las reglas de visibilidad y precios especiales
+            tiendaConfig.vitrina = vitrinaData || {};
+            console.log("🎯 Reglas de vitrina y ofertas cargadas con éxito.");
+        }
+
+    } catch (error) {
+        console.error("⚠️ Fallo al recuperar configuración desde Xeon:", error);
     }
+}
 
 async function loadStoreData(companyId) {
         currentCompanyId = companyId;
@@ -535,18 +543,6 @@ async function loadStoreData(companyId) {
         }
     }
 
-<<<<<<< HEAD
-    function formatPrice(amount) {
-        const rate = tiendaConfig.bcvRate || 1;
-        const storeBaseCurrency = tiendaConfig.currencyCode; // 'BS' o 'USD'
-        const displayAsUSD = currentDisplayCurrency === 'USD';
-
-        let finalAmount = amount;
-
-        // 1. LÓGICA DE CONVERSIÓN
-        if (storeBaseCurrency === 'BS' && displayAsUSD) {
-            // Si el precio base es Bs y queremos ver $ -> Dividimos
-=======
     function formatPrice(amount, originalCurrency = 'USD') {
     const rate = tiendaConfig.bcvRate || 1;
     const displayAsUSD = currentDisplayCurrency === 'USD';
@@ -557,7 +553,6 @@ async function loadStoreData(companyId) {
     if (originalCurrency === 'BS') {
         if (displayAsUSD) {
             // El producto está en BS y el cliente quiere ver USD -> DIVIDIMOS
->>>>>>> 20dce040c57e83c20e8fb916b45b86b0de81559f
             finalAmount = amount / rate;
         } else {
             // El producto está en BS y el cliente quiere ver BS -> PRECIO ORIGINAL
@@ -666,29 +661,83 @@ async function loadStoreData(companyId) {
     }
 
     function renderProducts(productsToRender) {
-        const grid = document.getElementById('products-grid');
-        const noResults = document.getElementById('no-results');
-        
-        if (!grid) return;
-        grid.innerHTML = '';
+    const grid = document.getElementById('products-grid');
+    const noResults = document.getElementById('no-results');
+    
+    if (!grid) return;
+    grid.innerHTML = '';
 
-<<<<<<< HEAD
+    // Filtramos localmente antes de renderizar por si la búsqueda incluye productos ocultos
+    const visibleProducts = productsToRender.filter(product => {
+        const config = tiendaConfig.vitrina[product.id] || { visible: true };
+        return config.visible !== false;
+    });
+
+    if (visibleProducts.length === 0) {
+        grid.classList.add('hidden');
+        if (noResults) noResults.classList.remove('hidden');
+        return;
+    }
+
+    grid.classList.remove('hidden');
+    if (noResults) noResults.classList.add('hidden');
+
+    visibleProducts.forEach(product => {
+        const productId = product.id; 
+        const config = tiendaConfig.vitrina[productId] || {};
+        
+        // Determinamos el precio de venta final
+        let finalPrice = product.price;
+        if (config.offerPrice && parseFloat(config.offerPrice) > 0) {
+            finalPrice = parseFloat(config.offerPrice);
+        }
+
+        // Lógica de precio tachado
+        let referencePrice = null;
+        if (config.referencePrice && parseFloat(config.referencePrice) > finalPrice) {
+            referencePrice = parseFloat(config.referencePrice);
+        }
+
+        const cardHtml = `
+            <div id="product-card-${productId}" class="product-card bg-white p-4 rounded-xl shadow-md flex flex-col justify-between border border-gray-100 hover:shadow-xl transition h-full relative">
+                
+                ${config.tag ? `
+                    <span class="absolute top-2 left-2 z-10 bg-red-600 text-white text-[10px] font-black px-2 py-1 rounded-md shadow-sm uppercase tracking-tighter">
+                        ${config.tag}
+                    </span>
+                ` : ''}
+
+                <div>
+                    <div class="aspect-square w-full mb-3 overflow-hidden rounded-lg bg-gray-50 relative cursor-pointer" 
+                         onclick="window.openProductDetail('${productId}')">
+                         <img src="${product.imageUrl}" class="w-full h-full object-cover" alt="${product.name}" onerror="this.src='https://placehold.co/400x300?text=Sin+Imagen'">
+                         <span class="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-[10px] px-2 py-1 rounded-full font-bold">
+                            ${product.unit || 'UN'}
+                         </span>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-900 leading-tight mb-1 break-words">${product.name}</h3>
+                    <p class="text-[10px] font-bold text-blue-600 bg-blue-50 py-1 px-2 rounded inline-block mb-3 uppercase tracking-wider">${product.collection}</p>
+                </div>
+
                 <div class="mt-4 pt-4 border-t border-gray-100">
                     <div id="action-default-${productId}" class="flex flex-col gap-3">
                         <div class="flex flex-col gap-1">
+                            ${referencePrice ? `
+                                <span class="text-xs text-gray-400 line-through font-medium">
+                                    ${formatPrice(referencePrice, product.currency)}
+                                </span>
+                            ` : ''}
+
+                            <div class="text-2xl font-black ${referencePrice ? 'text-red-600' : 'text-primary'} leading-none break-all">
+                                ${formatPrice(finalPrice, product.currency)} 
+                            </div>
+
                             ${product.taxRate > 0 ? `
-                                <div class="text-2xl font-black text-primary leading-none break-all">
-                                    ${formatPrice(product.price)}
-                                </div>
                                 <span class="text-[10px] text-gray-500 font-bold uppercase tracking-tighter leading-none">
-                                    Total (+IVA): ${formatPrice(product.price * (1 + (product.taxRate / 100)))}
+                                    Total (+IVA): ${formatPrice(finalPrice * (1 + (product.taxRate / 100)), product.currency)}
                                     <span class="ml-1 text-[9px] bg-blue-100 text-blue-700 px-1 py-0.5 rounded-md align-middle uppercase font-black">IVA</span>
                                 </span>
-                            ` : `
-                                <div class="text-2xl font-black text-primary leading-none break-all">
-                                    ${formatPrice(product.price)}
-                                </div>
-                            `}
+                            ` : ''}
                         </div>
 
                         <button onclick="window.toggleQuantityInput('${productId}')" class="w-full flex justify-center items-center px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition">
@@ -696,87 +745,27 @@ async function loadStoreData(companyId) {
                             AÑADIR
                         </button>
                     </div>
-                    </div>
-        `;
-        grid.insertAdjacentHTML('beforeend', cardHtml);
-    });
-    
-    console.log("🖼️ Cuadrícula de productos renderizada con enlaces a detalles.");
-}
-=======
-        if (productsToRender.length === 0) {
-            grid.classList.add('hidden');
-            if (noResults) noResults.classList.remove('hidden');
-            return;
-        }
 
-        grid.classList.remove('hidden');
-        if (noResults) noResults.classList.add('hidden');
-
-        productsToRender.forEach(product => {
-            const productId = product.id; 
-            
-            const cardHtml = `
-                <div id="product-card-${productId}" class="product-card bg-white p-4 rounded-xl shadow-md flex flex-col justify-between border border-gray-100 hover:shadow-xl transition h-full">
-                    <div>
-                        <div class="aspect-square w-full mb-3 overflow-hidden rounded-lg bg-gray-50 relative cursor-pointer" 
-                             onclick="window.openProductDetail('${productId}')">
-                             <img src="${product.imageUrl}" class="w-full h-full object-cover" alt="${product.name}" onerror="this.src='https://placehold.co/400x300?text=Sin+Imagen'">
-                             <span class="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-[10px] px-2 py-1 rounded-full font-bold">
-                                ${product.unit || 'UN'}
-                             </span>
+                    <div id="action-quantity-${productId}" class="hidden flex flex-col gap-2">
+                        <div class="flex items-center bg-gray-100 rounded-lg p-1">
+                            <input id="quantity-input-${productId}" type="number" value="1" step="0.001" min="0.001" 
+                                class="w-full bg-transparent text-center font-bold text-gray-800 outline-none p-1">
                         </div>
-                        <h3 class="text-lg font-bold text-gray-900 leading-tight mb-1 break-words">${product.name}</h3>
-                        <p class="text-[10px] font-bold text-blue-600 bg-blue-50 py-1 px-2 rounded inline-block mb-3 uppercase tracking-wider">${product.collection}</p>
-                    </div>
-
-                    <div class="mt-4 pt-4 border-t border-gray-100">
-                        <div id="action-default-${productId}" class="flex flex-col gap-3">
-                            <div class="flex flex-col gap-1">
-                                ${product.taxRate > 0 ? `
-                                    <div class="text-2xl font-black text-primary leading-none break-all">
-                                        ${formatPrice(product.price, product.currency)} 
-                                    </div>
-                                    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-tighter leading-none">
-                                        Total (+IVA): ${formatPrice(product.price * (1 + (product.taxRate / 100)), product.currency)}
-                                        <span class="ml-1 text-[9px] bg-blue-100 text-blue-700 px-1 py-0.5 rounded-md align-middle uppercase font-black">IVA</span>
-                                    </span>
-                                ` : `
-                                    <div class="text-2xl font-black text-primary leading-none break-all">
-                                        ${formatPrice(product.price, product.currency)}
-                                    </div>
-                                `}
-                            </div>
-
-                            <button onclick="window.toggleQuantityInput('${productId}')" class="w-full flex justify-center items-center px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition">
-                                <svg class="icon w-4 h-4 mr-2" viewBox="0 0 24 24" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                                AÑADIR
+                        <div class="flex gap-2">
+                            <button onclick="window.confirmAddToCart('${productId}')" class="flex-1 bg-green-500 text-white text-xs font-bold py-2 rounded-lg hover:bg-green-600 transition">
+                                CONFIRMAR
                             </button>
-                        </div>
-
-                        <div id="action-quantity-${productId}" class="hidden flex flex-col gap-2">
-                            <div class="flex items-center bg-gray-100 rounded-lg p-1">
-                                <input id="quantity-input-${productId}" type="number" value="1" step="0.001" min="0.001" 
-                                    class="w-full bg-transparent text-center font-bold text-gray-800 outline-none p-1">
-                            </div>
-                            <div class="flex gap-2">
-                                <button onclick="window.confirmAddToCart('${productId}')" class="flex-1 bg-green-500 text-white text-xs font-bold py-2 rounded-lg hover:bg-green-600 transition">
-                                    CONFIRMAR
-                                </button>
-                                <button onclick="window.toggleQuantityInput('${productId}', true)" class="bg-gray-200 text-gray-600 p-2 rounded-lg hover:bg-gray-300 transition">
-                                    <svg class="icon w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                                </button>
-                            </div>
+                            <button onclick="window.toggleQuantityInput('${productId}', true)" class="bg-gray-200 text-gray-600 p-2 rounded-lg hover:bg-gray-300 transition">
+                                <svg class="icon w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
                         </div>
                     </div>
                 </div>
-            `;
-            grid.insertAdjacentHTML('beforeend', cardHtml);
-        });
-        
-        console.log("🖼️ Cuadrícula de productos renderizada con controles de cantidad.");
-    }
->>>>>>> 20dce040c57e83c20e8fb916b45b86b0de81559f
+            </div>
+        `;
+        grid.insertAdjacentHTML('beforeend', cardHtml);
+    });
+}
 
     function switchCategory(categoryId) {
         currentCategory = categoryId;
@@ -872,22 +861,26 @@ async function loadStoreData(companyId) {
     
     quantity = parseFloat(quantity.toFixed(3)); 
 
-    // Buscamos el producto asegurando que la comparación de IDs sea siempre entre cadenas
     const product = storeData.products.find(p => String(p.id) === String(productId));
+    const config = tiendaConfig.vitrina[productId] || {};
     
     if (product) {
+        // Prioridad: Precio de Oferta > Precio Original
+        let finalPrice = product.price;
+        if (config.offerPrice && parseFloat(config.offerPrice) > 0) {
+            finalPrice = parseFloat(config.offerPrice);
+        }
+
         const existingItemIndex = storeData.cart.findIndex(item => String(item.id) === String(productId));
 
         if (existingItemIndex > -1) {
-            // Si ya existe, sumamos la cantidad y redondeamos a 3 decimales
             storeData.cart[existingItemIndex].quantity += quantity;
             storeData.cart[existingItemIndex].quantity = parseFloat(storeData.cart[existingItemIndex].quantity.toFixed(3));
         } else {
-            // Si es nuevo, lo añadimos guardando su moneda de origen (BS o USD)
             storeData.cart.push({
                 id: product.id,
                 name: product.name,
-                price: product.price,
+                price: finalPrice, 
                 quantity: quantity,
                 unit: product.unit || 'UN',
                 currency: product.currency || 'USD' 
@@ -900,7 +893,6 @@ async function loadStoreData(companyId) {
          console.error(`Producto con ID ${productId} no encontrado en storeData.`);
     }
 
-    // Cerramos el input de cantidad y reseteamos la vista de la tarjeta
     toggleQuantityInput(productId, true);
 }
     
@@ -1199,37 +1191,35 @@ async function loadStoreData(companyId) {
 }
 
 function openProductDetail(productId) {
-    //function openProductDetail(productId) {
-    // 1. Buscamos el producto convirtiendo todo a String para evitar fallos
     const product = storeData.products.find(p => String(p.id) === String(productId));
+    const config = tiendaConfig.vitrina[productId] || {};
     
     if (!product) {
         console.error("Producto no encontrado:", productId);
         return;
     }
 
-    // 2. Poblamos los datos en la vista Mercado Libre
+    // Determinamos el precio final para la vista detallada
+    let finalPrice = product.price;
+    if (config.offerPrice && parseFloat(config.offerPrice) > 0) {
+        finalPrice = parseFloat(config.offerPrice);
+    }
+
     document.getElementById('detail-image').src = product.imageUrl;
     document.getElementById('detail-name').textContent = product.name;
     document.getElementById('detail-category').textContent = product.collection;
-    document.getElementById('detail-price').textContent = formatPrice(product.price, product.currency);
-        if (product.taxRate > 0) {
-            const precioFinal = product.price * (1 + (product.taxRate / 100));
-            document.getElementById('detail-total-with-tax').textContent = formatPrice(precioFinal, product.currency);
-        }
-    document.getElementById('detail-code').textContent = product.code;
-    document.getElementById('detail-unit').textContent = product.unit;
-    document.getElementById('detail-tax').textContent = product.tax;
+    
+    // Mostramos el precio de venta actual (Oferta u Original)
+    document.getElementById('detail-price').textContent = formatPrice(finalPrice, product.currency);
     
     const totalContainer = document.getElementById('detail-total-tax-container');
     const totalDisplay = document.getElementById('detail-total-with-tax');
 
     if (product.taxRate > 0) {
-        // Cálculo: Precio Base + (Precio Base * Porcentaje / 100)
-        const montoIva = product.price * (product.taxRate / 100);
-        const precioFinal = product.price + montoIva;
+        const montoIva = finalPrice * (product.taxRate / 100);
+        const precioFinalConIva = finalPrice + montoIva;
 
-        totalDisplay.textContent = formatPrice(precioFinal);
+        totalDisplay.textContent = formatPrice(precioFinalConIva, product.currency);
         totalContainer.classList.remove('hidden');
         document.getElementById('detail-tax').className = "font-bold text-blue-600";
     } else {
@@ -1237,39 +1227,25 @@ function openProductDetail(productId) {
         document.getElementById('detail-tax').className = "font-bold text-green-600";
     }
 
-
-    // Reseteamos la cantidad a 1 siempre que se abre un detalle
+    document.getElementById('detail-code').textContent = product.code;
+    document.getElementById('detail-unit').textContent = product.unit;
+    document.getElementById('detail-tax').textContent = product.tax;
     document.getElementById('detail-quantity').value = 1;
 
-    // 3. Lógica limpia para agregar al carrito sin duplicar inputs
     document.getElementById('detail-add-btn').onclick = () => {
         const qtyElegida = parseFloat(document.getElementById('detail-quantity').value);
+        const inputOriginal = document.getElementById(`quantity-input-${productId}`);
         
-        // En lugar de crear un elemento falso, actualizamos el input REAL que está en la tarjeta invisible
-        const inputOriginalDeLaTarjeta = document.getElementById(`quantity-input-${productId}`);
-        
-        if (inputOriginalDeLaTarjeta) {
-            inputOriginalDeLaTarjeta.value = qtyElegida; // Pasamos la cantidad
-            window.confirmAddToCart(productId);          // Disparamos la función original
+        if (inputOriginal) {
+            inputOriginal.value = qtyElegida;
+            window.confirmAddToCart(productId);
         }
-        
-        // Cerramos la vista de detalles para volver a la tienda
         window.closeProductDetail();
     };
 
-    const detailTaxElement = document.getElementById('detail-tax');
-    detailTaxElement.textContent = product.tax;
-
-    if (product.tax.includes("Exento")) {
-        detailTaxElement.className = "font-bold text-green-600"; 
-    } else {
-        detailTaxElement.className = "font-bold text-blue-600";  
-    }
-
-    // 4. Navegación: Ocultamos el main (que ahora SÍ está separado) y mostramos el detalle
     document.querySelector('main').classList.add('hidden');
     document.getElementById('product-detail-view').classList.remove('hidden');
-    window.scrollTo(0, 0); // Llevamos la vista arriba del todo
+    window.scrollTo(0, 0);
 }
 
 function closeProductDetail() {
