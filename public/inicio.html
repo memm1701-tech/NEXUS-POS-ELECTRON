@@ -418,10 +418,18 @@
                     </li>
 
                     <li class="dropdown">
-                        <a href="#"><i class="material-icons">lock</i>Respaldo de datos</a>
+                        <a href="#"><i class="material-icons">backup</i> Respaldo de datos</a>
                         <ul>
-                            <li><a href="#" data-page="backup_data.html">Respaldar datos</a></li>
-                            <li><a href="#" data-page="restore_data.html">Restaurar datos</a></li>
+                            <li>
+                                <a href="#" data-page="index_inicio_admin/respaldo_de_datos/respaldo.html">
+                                    <i class="material-icons" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">cloud_download</i> Respaldar datos
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#" data-page="index_inicio_admin/respaldo_de_datos/restaurar.html">
+                                    <i class="material-icons" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">settings_backup_restore</i> Restaurar datos
+                                </a>
+                            </li>
                         </ul>
                     </li>
                     <li class="dropdown">
@@ -778,27 +786,42 @@ if (logoutBtn) {
         `;
         document.body.appendChild(modal);
 
-        document.getElementById('btn-cancelar-logout').addEventListener('click', () => modal.remove());
-
         document.getElementById('btn-confirmar-logout').addEventListener('click', async () => {
             modal.remove(); 
-            if (typeof mostrarLoading === 'function') mostrarLoading();
             
             try {
-                // Limpiamos la base de datos local (SQLite)
+                // 1. Limpiamos la base de datos local (SQLite)
                 if (window.nexusAPI && typeof window.nexusAPI.cerrarSesionLocal === 'function') {
                     await window.nexusAPI.cerrarSesionLocal();
                 }
                 
-                // Limpiamos variables
+                // 2. Limpiamos la memoria del navegador
                 localStorage.clear();
                 window.currentCompanyId = null;
                 
-                // Redireccionamos
-                window.nexusAPI.cerrarYVolverAlLogin();
+                // 3. Mostramos el mensaje de Cierre Seguro usando tu función nativa
+                showInfoMessage(
+                    "Tu sesión se ha cerrado correctamente y los datos temporales han sido borrados. El sistema se apagará en 3 segundos.", 
+                    "success", 
+                    "Cierre Seguro Exitoso"
+                );
+                
+                // 4. Apagamos el sistema limpiamente después de 3 segundos
+                setTimeout(() => {
+                    if (window.nexusAPI && window.nexusAPI.apagarSistema) {
+                        window.nexusAPI.apagarSistema();
+                    }
+                }, 3000);
+                
             } catch (error) {
                 console.error("Error al cerrar sesión:", error);
-                window.nexusAPI.cerrarYVolverAlLogin();
+                showInfoMessage("Ocurrió un error, pero el sistema se apagará por seguridad.", "error", "Atención");
+                
+                setTimeout(() => {
+                    if (window.nexusAPI && window.nexusAPI.apagarSistema) {
+                        window.nexusAPI.apagarSistema();
+                    }
+                }, 3000);
             }
         });
     }); 

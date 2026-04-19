@@ -5,13 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NEXUS POS - Gestión de Ingresos</title>
     <link rel="icon" type="image/png" href="https://placehold.co/16x16/000000/FFFFFF?text=NX">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-
+    <script src="tailwindcss.js"></script>
+    <link href="../node_modules/material-icons/iconfont/material-icons.css" rel="stylesheet">
+    <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
     <style>
         body {
             font-family: 'Roboto', sans-serif;
@@ -105,14 +101,20 @@
         }
     </style>
 </head>
-<body class="bg-white">
-    <main class="main-content flex justify-center w-full min-h-screen"> 
-        <div class="bg-white p-6 w-full h-full">
-            
-            <h2 class="text-3xl font-bold text-gray-800 text-center flex items-center justify-center mb-6">
-                <span class="material-icons text-blue-600 mr-3 text-4xl">account_balance_wallet</span>
-                Gestión de Ingresos
-            </h2>
+<body class="bg-white overflow-hidden"> 
+    <main class="flex flex-col w-full h-screen bg-white"> 
+        
+        <div class="p-6 pb-2 shrink-0">
+            <div class="flex justify-between items-end mb-6">
+                <h1 class="text-3xl font-bold text-gray-800 flex items-center">
+                    <span class="material-icons text-blue-600 mr-3 text-4xl">account_balance_wallet</span>
+                    Gestión de Ingresos
+                </h1>
+                <div class="text-right">
+                    <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Entradas Hoy</p>
+                    <p id="total-income-display" class="text-3xl font-black text-blue-600">Bs 0.00</p>
+                </div>
+            </div>
 
             <div class="mb-8 p-6 border border-gray-200 rounded-lg shadow-sm">
                 <h3 class="text-xl font-semibold mb-4 text-gray-700">Registrar Nuevo Ingreso</h3>
@@ -159,14 +161,17 @@
                 </button>
             </div>
 
-            <div class="mb-8 p-6 border border-gray-200 rounded-lg shadow-sm">
-                <h3 class="text-xl font-semibold mb-4 text-gray-700 flex items-center justify-between">
-                    Ingresos Registrados
-                    <span id="total-income-display" class="text-blue-700 text-2xl font-bold">Bs 0.00</span>
+            </div> <div class="flex-1 overflow-hidden px-6 pb-6 flex flex-col">
+            <div class="flex-1 border border-gray-200 rounded-lg shadow-sm flex flex-col overflow-hidden bg-white">
+                
+                <h3 class="text-xl font-semibold p-4 border-b border-gray-200 text-gray-700 flex items-center justify-between shrink-0">
+                    Historial de Ingresos
+                    <span class="text-xs text-gray-400 font-normal uppercase italic tracking-widest">Pendientes de Cierre Z</span>
                 </h3>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
+                
+                <div class="flex-1 overflow-y-auto">
+                    <table class="min-w-full divide-y divide-gray-200 relative">
+                        <thead class="bg-gray-50 sticky top-0 z-10">
                             <tr>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tl-lg">
                                     Descripción
@@ -214,261 +219,202 @@
     </div>
 
 <script type="module">
-import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, signInWithCustomToken, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    // --- 1. ESTADO GLOBAL Y REFERENCIAS ---
+    let userId = null; 
+    let companyId = null; 
+    let branchId = null; 
+    let isAuthReady = false;
 
-const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+    // Referencias al DOM
+    const incomeList = document.getElementById('income-list');
+    const totalIncomeDisplay = document.getElementById('total-income-display');
+    const incomeDescriptionInput = document.getElementById('income-description');
+    const incomeAmountBsInput = document.getElementById('income-amount-bs');
+    const incomeMethodBsGroup = document.getElementById('income-method-bs-group'); 
+    const incomeMethodBs = document.getElementById('income-method-bs'); 
+    const incomeAmountUsdInput = document.getElementById('income-amount-usd');
+    const addIncomeBtn = document.getElementById('add-income-btn');
 
-let app;
-if (getApps().length === 0) {
-    app = initializeApp(firebaseConfig);
-} else {
-    app = getApp();
-}
+    const modalOverlay = document.getElementById('info-message-modal-overlay');
+    const modalTitle = document.getElementById('info-message-title');
+    const modalText = document.getElementById('info-message-text');
 
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-let userId = null; 
-let companyId = null; 
-let branchId = null; 
-let role = null;
-let isAuthReady = false;
-
-const userIdDisplay = document.getElementById('userIdDisplay');
-const companyIdDisplay = document.getElementById('companyIdDisplay');
-const roleDisplay = document.getElementById('roleDisplay');
-const incomeList = document.getElementById('income-list');
-const totalIncomeDisplay = document.getElementById('total-income-display');
-
-const incomeDescriptionInput = document.getElementById('income-description');
-const incomeAmountBsInput = document.getElementById('income-amount-bs');
-const incomeMethodBsGroup = document.getElementById('income-method-bs-group'); 
-const incomeMethodBs = document.getElementById('income-method-bs'); 
-const incomeAmountUsdInput = document.getElementById('income-amount-usd');
-const addIncomeBtn = document.getElementById('add-income-btn');
-
-const modalOverlay = document.getElementById('info-message-modal-overlay');
-const modalTitle = document.getElementById('info-message-title');
-const modalText = document.getElementById('info-message-text');
-const modalCloseBtn = document.getElementById('close-info-message-modal');
-const modalOkBtn = document.getElementById('info-message-ok-btn');
-
-function showModal(title, message, isError = false) {
-    if (!modalOverlay) return;
-    modalTitle.textContent = title;
-    modalText.textContent = message;
-    modalTitle.classList.toggle('text-red-600', isError);
-    modalTitle.classList.toggle('text-blue-600', !isError);
-    modalOverlay.classList.add('open');
-}
-
-function hideModal() {
-    if (modalOverlay) {
-        modalOverlay.classList.remove('open');
-    }
-}
-
-if (modalCloseBtn) {
-    modalCloseBtn.onclick = hideModal;
-}
-if (modalOkBtn) {
-    modalOkBtn.onclick = hideModal;
-}
-
-async function addIncome() {
-    if (!isAuthReady || !userId) {
-        showModal("Error de Autenticación", "Por favor, espera a que la autenticación termine.");
-        return;
-    }
-
-    const description = incomeDescriptionInput.value.trim();
-    const amountBs = parseFloat(incomeAmountBsInput.value) || 0;
-    const amountUsd = parseFloat(incomeAmountUsdInput.value) || 0;
-    const methodBs = incomeMethodBs.value.trim(); 
-
-    if (description === '' || (amountBs <= 0 && amountUsd <= 0)) {
-        showModal("Datos Incompletos", "Debes ingresar una descripción y al menos un monto (Bs o Divisa) mayor a cero.", true);
-        return;
-    }
-    
-    if (amountBs > 0 && methodBs === '') {
-        showModal("Datos Incompletos", "Debes seleccionar un Método de Ingreso si registras un Monto en Bolívares.", true);
-        return;
-    }
-
-    addIncomeBtn.disabled = true;
-    addIncomeBtn.innerHTML = `<span class="spinner"></span> Registrando...`;
-
-    const collectionPath = `companies/${companyId}/branches/${branchId}/cashiers/${userId}/gestiondeingreso`;
-
-    try {
-        const newIncome = {
-            description: description,
-            amountBs: amountBs,
-            methodBs: amountBs > 0 ? methodBs : 'N/A', 
-            amountUsd: amountUsd,
-            methodUsd: amountUsd > 0 ? 'Divisa' : 'N/A', 
-            branchId: branchId,
-            cashierId: userId,
-            timestamp: serverTimestamp() 
-        };
-        
-        await addDoc(collection(db, collectionPath), newIncome);
-        
-        showModal("Éxito", "Ingreso registrado correctamente.");
-        
-        incomeDescriptionInput.value = '';
-        incomeAmountBsInput.value = '0';
-        incomeMethodBs.value = ''; 
-        incomeMethodBsGroup.classList.add('hidden'); 
-        incomeAmountUsdInput.value = '0';
-
-    } catch (error) {
-        console.error("Error al registrar ingreso:", error);
-        showModal("Error al Guardar", `No se pudo registrar el ingreso. Error: ${error.message}. Verifica tus permisos.`, true);
-    } finally {
-        addIncomeBtn.disabled = false;
-        addIncomeBtn.innerHTML = `<span class="material-icons mr-2">add_circle_outline</span> Agregar Ingreso`;
-    }
-}
-
-function loadIncomes() {
-    if (!userId || !companyId || !branchId) {
-        incomeList.innerHTML = `<tr><td colspan="6" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">Esperando autenticación...</td></tr>`;
-        return;
-    }
-    
-    const collectionPath = `companies/${companyId}/branches/${branchId}/cashiers/${userId}/gestiondeingreso`;
-    const incomesRef = collection(db, collectionPath);
-    
-    const q = query(incomesRef); 
-
-    onSnapshot(q, (snapshot) => {
-        let totalBs = 0;
-        let html = '';
-        
-        if (snapshot.empty) {
-            html = `<tr><td colspan="6" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center"> No hay ingresos registrados.</td></tr>`;
-        } else {
+    // --- 2. INICIALIZACIÓN DE SESIÓN LOCAL ---
+    async function inicializarModulo() {
+        try {
+            // Obtenemos la sesión guardada en SQLite por el login principal
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
             
-            const incomes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            incomes.sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
-
-            incomes.forEach(doc => {
-                totalBs += doc.amountBs || 0;
+            if (sesion) {
+                userId = sesion.uid;
+                companyId = sesion.companyId;
+                branchId = sesion.branchId;
+                isAuthReady = true;
                 
-                const timestamp = doc.timestamp ? doc.timestamp.toDate() : new Date();
-                const formattedDate = timestamp.toLocaleString('es-VE', { 
-                    year: 'numeric', 
-                    month: 'short', 
-                    day: '2-digit', 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                });
+                console.log("✅ Conexión establecida con el Cerebro Local.");
+                loadIncomes(); // Cargar historial de hoy
+            } else {
+                showModal("Sesión no válida", "Por favor, inicia sesión de nuevo.", true);
+            }
+        } catch (error) {
+            console.error("Error al inicializar sesión local:", error);
+        }
+    }
 
-                const methodBsDisplay = doc.methodBs || 'N/A';
-                const amountUsdDisplay = (doc.amountUsd || 0).toFixed(2);
-
-
-                html += `
-                    <tr class="hover:bg-gray-50 transition duration-100">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${doc.description}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">${(doc.amountBs || 0).toFixed(2)} Bs</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${methodBsDisplay}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-semibold">${amountUsdDisplay} USD</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formattedDate}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <span class="text-gray-400">Sin acciones (Registro final)</span>
-                        </td>
-                    </tr>
-                `;
-            });
+    // --- 3. LÓGICA DE REGISTRO (GUARDAR EN SQLITE) ---
+    // REEMPLAZA SOLO ESTA FUNCIÓN EN gestion_de_ingresos.html
+async function addIncome() {
+        // 1. ELIMINAMOS EL RETORNO SILENCIOSO: Obligamos al sistema a hablar
+        if (!isAuthReady) {
+            showModal("Sistema Ocupado", "El módulo aún está cargando la base de datos local. Espera un segundo.", true);
+            return;
+        }
+        if (!userId) {
+            showModal("Error de Sesión", "No se detectó la identidad del cajero. Vuelve al Login.", true);
+            return;
+        }
+        if (!window.nexusAPI || typeof window.nexusAPI.guardarMovimientoCaja !== 'function') {
+            showModal("Fallo de Puente", "El HTML no puede ver a preload.js", true);
+            return;
         }
 
-        incomeList.innerHTML = html;
-        totalIncomeDisplay.textContent = `Bs ${totalBs.toFixed(2)}`;
+        const description = incomeDescriptionInput.value.trim();
+        const amountBs = parseFloat(incomeAmountBsInput.value) || 0;
+        const amountUsd = parseFloat(incomeAmountUsdInput.value) || 0;
+        const methodBs = incomeMethodBs.value.trim(); 
 
-    }, (error) => {
-        console.error("Error al obtener ingresos:", error);
-        incomeList.innerHTML = `<tr><td colspan="6" class="px-6 py-4 whitespace-nowrap text-sm text-red-500 text-center">Error al cargar datos. Verifica la consola y los permisos.</td></tr>`;
-    });
-}
+        // 2. VALIDACIONES NORMALES
+        if (description === '' || (amountBs <= 0 && amountUsd <= 0)) {
+            showModal("Datos Incompletos", "Debes ingresar una descripción y un monto válido.", true);
+            return;
+        }
+        
+        if (amountBs > 0 && methodBs === '') {
+            showModal("Falta Método", "Selecciona cómo ingresó el dinero en Bolívares.", true);
+            return;
+        }
 
-function setupEventListeners() {
+        addIncomeBtn.disabled = true;
+        addIncomeBtn.innerHTML = `<span class="spinner"></span> Registrando...`;
+
+        try {
+            const nuevoMovimiento = {
+                id: `INC-${Date.now()}`,
+                tipo: 'INGRESO',
+                concepto: description,
+                monto: amountBs,
+                monto_usd: amountUsd,
+                metodo_pago: amountBs > 0 ? methodBs : 'DIVISA',
+                fecha: new Date().toISOString(),
+                cashier_id: userId,
+                company_id: companyId,
+                branch_id: branchId || 'SUC-01' // Evita nulos que rompan SQLite
+            };
+
+            // 3. ENVÍO DIRECTO A MAIN.JS
+            const resultado = await window.nexusAPI.guardarMovimientoCaja(nuevoMovimiento);
+            
+            if (resultado && !resultado.error) {
+                showModal("Éxito", "Ingreso guardado localmente para el Cierre Z.");
+                limpiarCampos();
+                loadIncomes(); 
+            } else {
+                throw new Error(resultado.error || "SQLite rechazó la inserción.");
+            }
+        } catch (error) {
+            showModal("Error SQL", `Fallo interno: ${error.message}`, true);
+        } finally {
+            addIncomeBtn.disabled = false;
+            addIncomeBtn.innerHTML = `<span class="material-icons mr-2">add_circle_outline</span> Agregar Ingreso`;
+        }
+    }
+
+    // --- 4. CARGA DE DATOS (LECTURA DESDE SQLITE) ---
+    async function loadIncomes() {
+        if (!companyId) return;
+        
+        try {
+            // Consultamos solo los ingresos pendientes de cierre de esta empresa
+            const ingresos = await window.nexusAPI.obtenerMovimientosCaja({ 
+                tipo: 'INGRESO', 
+                companyId: companyId 
+            });
+
+            let totalBs = 0;
+            let html = '';
+            
+            if (!ingresos || ingresos.length === 0) {
+                html = `<tr><td colspan="6" class="px-6 py-4 text-sm text-gray-500 text-center">No hay ingresos registrados para esta sesión.</td></tr>`;
+            } else {
+                // Ordenar por fecha descendente
+                ingresos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+                ingresos.forEach(mov => {
+                    totalBs += mov.monto || 0;
+                    const fechaLocal = new Date(mov.fecha).toLocaleString('es-VE');
+
+                    html += `
+                        <tr class="hover:bg-gray-50 transition duration-75">
+                            <td class="px-6 py-4 text-sm font-medium text-gray-900">${mov.concepto}</td>
+                            <td class="px-6 py-4 text-sm text-green-600 font-bold">${mov.monto.toFixed(2)} Bs</td>
+                            <td class="px-6 py-4 text-sm text-gray-700">${mov.metodo_pago}</td>
+                            <td class="px-6 py-4 text-sm text-blue-600 font-semibold">${mov.monto_usd.toFixed(2)} USD</td>
+                            <td class="px-6 py-4 text-sm text-gray-500">${fechaLocal}</td>
+                            <td class="px-6 py-4 text-right">
+                                <span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-black uppercase">Local</span>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            incomeList.innerHTML = html;
+            totalIncomeDisplay.textContent = `Bs ${totalBs.toFixed(2)}`;
+
+        } catch (error) {
+            console.error("Error al cargar movimientos locales:", error);
+        }
+    }
+
+    // --- 5. UTILIDADES DE INTERFAZ ---
+    function limpiarCampos() {
+        incomeDescriptionInput.value = '';
+        incomeAmountBsInput.value = '0';
+        incomeAmountUsdInput.value = '0';
+        incomeMethodBs.value = '';
+        incomeMethodBsGroup.classList.add('hidden');
+    }
+
+    function showModal(title, message, isError = false) {
+        if (!modalOverlay) return;
+        modalTitle.textContent = title;
+        modalText.textContent = message;
+        modalTitle.className = `text-xl font-bold mb-4 text-center ${isError ? 'text-red-600' : 'text-blue-600'}`;
+        modalOverlay.classList.add('open');
+    }
+
+    // --- 6. EVENTOS (Sin envoltorio DOMContentLoaded para evitar el bloqueo) ---
+    
+    // 1. Arrancamos el módulo directamente
+    inicializarModulo();
+
+    // 2. Asignamos el botón directamente
     if (addIncomeBtn) {
         addIncomeBtn.addEventListener('click', addIncome);
     }
     
-    if (incomeAmountBsInput && incomeMethodBsGroup) {
+    // 3. Asignamos la lógica del input
+    if (incomeAmountBsInput) {
         incomeAmountBsInput.addEventListener('input', () => {
-            const amountBs = parseFloat(incomeAmountBsInput.value) || 0;
-            if (amountBs > 0) {
-                incomeMethodBsGroup.classList.remove('hidden');
-            } else {
-                incomeMethodBsGroup.classList.add('hidden');
-                incomeMethodBs.value = ''; 
-            }
+            const val = parseFloat(incomeAmountBsInput.value) || 0;
+            incomeMethodBsGroup.classList.toggle('hidden', val <= 0);
+            if (val <= 0) incomeMethodBs.value = ''; 
         });
     }
-}
 
-
-onAuthStateChanged(auth, async (user) => {
-    if (user) {
-        try {
-            const idTokenResult = await user.getIdTokenResult();
-            
-            userId = user.uid;
-            companyId = idTokenResult.claims.companyId;
-            branchId = idTokenResult.claims.branchId; 
-            role = (idTokenResult.claims.role || 'N/A').toLowerCase(); 
-
-            if (userIdDisplay) userIdDisplay.textContent = userId;
-            if (companyIdDisplay) companyIdDisplay.textContent = companyId;
-            if (roleDisplay) roleDisplay.textContent = role;
-            
-            console.log(`Usuario autenticado: ${userId} en Compañía: ${companyId}`);
-
-            isAuthReady = true;
-            setupEventListeners();
-            loadIncomes(); 
-
-        } catch (error) {
-            console.error("Error al procesar el token:", error);
-            if (userIdDisplay) userIdDisplay.textContent = 'ERROR';
-            if (companyIdDisplay) companyIdDisplay.textContent = 'ERROR';
-            if (roleDisplay) roleDisplay.textContent = 'ERROR';
-        }
-    } else {
-        userId = null;
-        companyId = null;
-        branchId = null; 
-        role = null; 
-        isAuthReady = false;
-        
-        if (userIdDisplay) userIdDisplay.textContent = 'N/A';
-        if (companyIdDisplay) companyIdDisplay.textContent = 'N/A';
-        if (roleDisplay) roleDisplay.textContent = 'N/A';
-    }
-});
-
-async function startAuth() {
-    if (initialAuthToken) {
-        try {
-            await signInWithCustomToken(auth, initialAuthToken);
-        } catch (error) {
-            console.error("Token personalizado falló. Intentando con anónimo:", error);
-            await signInAnonymously(auth); 
-        }
-    } else {
-        await signInAnonymously(auth);
-    }
-}
-
-startAuth();
+    // 4. Asignamos los modales
+    document.getElementById('close-info-message-modal')?.addEventListener('click', () => modalOverlay.classList.remove('open'));
+    document.getElementById('info-message-ok-btn')?.addEventListener('click', () => modalOverlay.classList.remove('open'));
 
 </script>
 

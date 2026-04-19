@@ -722,38 +722,35 @@ async function inicializarLocal() {
 }
 
     // === 2. LEER TASA DE SQLITE ===
-async function obtenerTasaGuardada() {
-    try {
-        // Pedimos el historial real a la base de datos
-        const historial = await window.nexusAPI.obtenerHistorialTasas(); 
-        
-        // Si hay datos en el historial, tomamos el primero (que es el de hoy)
-        if (historial && historial.length > 0) {
-            const ultimaTasa = historial[0]; 
+// === 2. LEER TASA DE SQLITE ===
+    async function obtenerTasaGuardada() {
+        try {
+            // 🔥 CORRECCIÓN CLAVE: Leer la tasa directamente de la configuración del sistema (La que usa Facturación)
+            const tasaSistema = await window.nexusAPI.obtenerConfiguracion('TASA_BCV'); 
             
-            // Usamos TUS variables originales respetando los 8 decimales
-            currentCompanyRateSpan.textContent = parseFloat(ultimaTasa.valor).toFixed(8);
+            if (tasaSistema) {
+                // Mostrar la tasa real que está guardada en SQLite
+                currentCompanyRateSpan.textContent = parseFloat(tasaSistema).toFixed(8);
+                
+                // Actualizar el texto de la fecha a hoy
+                const fechaFormateada = new Date().toLocaleDateString('es-VE');
+                companyRateTimestampSpan.textContent = "Sincronizada (" + fechaFormateada + ")";
+                
+            } else {
+                currentCompanyRateSpan.textContent = '0.00000000';
+                companyRateTimestampSpan.textContent = 'No registrada';
+            }
+        } catch (error) {
+            console.error("Error al obtener tasa guardada:", error);
             
-            // Convertimos la fecha ISO a un formato más legible
-            const fechaFormateada = new Date(ultimaTasa.fecha + 'T00:00:00').toLocaleDateString('es-VE');
-            companyRateTimestampSpan.textContent = fechaFormateada;
-            
-        } else {
-            currentCompanyRateSpan.textContent = '0.00000000';
-            companyRateTimestampSpan.textContent = 'No registrada';
-        }
-    } catch (error) {
-        console.error("Error al obtener tasa guardada:", error);
-        
-        // Verificamos que las variables existan antes de poner "Error" para evitar el TypeError
-        if (typeof currentCompanyRateSpan !== 'undefined' && currentCompanyRateSpan) {
-            currentCompanyRateSpan.textContent = 'Error';
-        }
-        if (typeof companyRateTimestampSpan !== 'undefined' && companyRateTimestampSpan) {
-            companyRateTimestampSpan.textContent = 'Error';
+            if (typeof currentCompanyRateSpan !== 'undefined' && currentCompanyRateSpan) {
+                currentCompanyRateSpan.textContent = 'Error';
+            }
+            if (typeof companyRateTimestampSpan !== 'undefined' && companyRateTimestampSpan) {
+                companyRateTimestampSpan.textContent = 'Error';
+            }
         }
     }
-}
 
 function renderUSDVesChart(currentRate, historialReal = []) {
     const ctx = document.getElementById('usdVesChart');

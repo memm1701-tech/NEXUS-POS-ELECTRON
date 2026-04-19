@@ -679,24 +679,41 @@ async function loadCategories() {
         // 1. Instanciamos la API local de Electron
         const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
         if (!api) {
-            console.warn("⏳ NexusAPI no está disponible aún.");
+            console.warn("⏳ NexusAPI no está disponible aún. Reintentando...");
+            setTimeout(loadCategories, 100); // Reintento seguro
             return;
         }
 
         console.log("📂 Inventario: Cargando categorías desde la base de datos local (SQLite)...");
         
-        // 2. Llamada directa y única a SQLite (Sin pasar por el Xeon)
-        const categories = await api.obtenerCategoriasLocal();
+        // 2. Llamada a SQLite para obtener todas las categorías en bruto
+        const categoriasBrutas = await api.obtenerCategoriasLocal();
 
         // 3. Limpiar Select y el Mapa Global
         productCategorySelect.innerHTML = '<option value="">Selecciona una categoría...</option>';
         window.categoryMap = {};
 
-        // 4. Poblar la interfaz con los datos locales
-        if (categories && categories.length > 0) {
-            categories.forEach(cat => {
+        if (!categoriasBrutas || categoriasBrutas.length === 0) {
+            console.warn("⚠️ No se encontraron categorías en la base de datos local.");
+            return;
+        }
+
+        // 🔥 FILTRO DE SEGURIDAD: Aislar solo las categorías de ESTA empresa
+        // Aseguramos tener el companyId (lo buscamos de la sesión si la variable global aún no carga)
+        let idEmpresaActual = companyId;
+        if (!idEmpresaActual) {
+            const session = await api.obtenerSesionLocal();
+            if (session) idEmpresaActual = session.companyId;
+        }
+
+        const categoriasFiltradas = categoriasBrutas.filter(cat => 
+            cat.company_id === idEmpresaActual || cat.empresa_ID === idEmpresaActual
+        );
+
+        // 4. Poblar la interfaz con los datos ya filtrados
+        if (categoriasFiltradas.length > 0) {
+            categoriasFiltradas.forEach(cat => {
                 const option = document.createElement('option');
-                // En la tabla SQLite local, la llave primaria se llama 'id'
                 option.value = cat.id; 
                 option.textContent = cat.nombre || cat.name;
                 productCategorySelect.appendChild(option);
@@ -704,9 +721,9 @@ async function loadCategories() {
                 // Llenamos el mapa para que la tabla de productos sepa traducir el ID al Nombre
                 window.categoryMap[cat.id] = cat.nombre || cat.name;
             });
-            console.log(`✅ ${categories.length} categorías cargadas localmente.`);
+            console.log(`✅ ${categoriasFiltradas.length} categorías cargadas localmente para la empresa ${idEmpresaActual}.`);
         } else {
-            console.warn("⚠️ No se encontraron categorías en la base de datos local.");
+            console.warn(`⚠️ No tienes categorías creadas para la empresa ${idEmpresaActual}.`);
         }
 
         // 5. Refrescar la interfaz de usuario (Tabla y Buscador)
@@ -766,13 +783,12 @@ async function descargarYValidarProductos() {
     }
 
     try {
-        // Mensaje informativo (opcional, puedes quitarlo si prefieres silencio total)
         if (typeof showCustomAlert === 'function') {
             showCustomAlert("Intentando sincronizar con servidor...", "info");
         }
         
         const response = await fetch(`${SERVER_URL}/api/productos/${companyId}`, {
-            signal: AbortSignal.timeout(3000) // ⏱️ Si en 3 seg no responde, salta al catch
+            signal: AbortSignal.timeout(3000) 
         });
         
         if (!response.ok) throw new Error("Servidor no disponible");
@@ -781,17 +797,43 @@ async function descargarYValidarProductos() {
         let procesados = 0;
 
         for (const pServidor of productosServidor) {
+            
+            // 🔥 CLAVE 1: Rescatamos el JSON original del servidor
+            let jsonCorrecto = pServidor.datos_json;
+            if (!jsonCorrecto) {
+                jsonCorrecto = JSON.stringify(pServidor);
+            } else if (typeof jsonCorrecto !== 'string') {
+                jsonCorrecto = JSON.stringify(jsonCorrecto);
+            }
+
+            // 🔥 CLAVE 2: EL MAPEO COMPLETO
+            // Aquí añadimos todos los campos de precios y porcentajes que no estaban pasando a SQLite
             const productoParaValidar = {
                 id: pServidor.producto_ID || pServidor.id, 
                 company_id: companyId,
                 branch_id: pServidor.sucursal_ID || pServidor.branchId || 'sucursal_1',
                 codigo: String(pServidor.codigo),
                 nombre: pServidor.nombre,
+                
+                // --- CAMPOS RECUPERADOS ---
                 precio: pServidor.precio_venta || pServidor.precio || 0,
+                precio_venta: pServidor.precio_venta || pServidor.precio || 0,
+                precio_compra: pServidor.precio_compra || 0,
+                porcentaje_ganancia: pServidor.porcentaje_ganancia || 0,
+                ganancia: pServidor.ganancia || 0,
+                precios: pServidor.precios || null, // <- Vital para P2 y P3
+                
+                // Aseguramos configuración regional
+                moneda: pServidor.currency || pServidor.moneda || 'USD',
+                currency: pServidor.currency || pServidor.moneda || 'USD',
+                unit: pServidor.unit || 'UN',
+                tipo_alicuota: pServidor.tipo_alicuota || '16',
+                // --------------------------
+
                 categoria: pServidor.categoria || 'Sin Cat.',
                 status: pServidor.status !== undefined ? pServidor.status : 1,
                 imagen: pServidor.imagen || '',
-                datos_json: JSON.stringify(pServidor),
+                datos_json: jsonCorrecto, // <- El JSON protegido
                 fecha_modificacion: pServidor.fecha_modificacion || pServidor.updatedAt || new Date().toISOString()
             };
 
@@ -803,15 +845,10 @@ async function descargarYValidarProductos() {
         cargarProductosDesdeLocal();
 
     } catch (error) {
-        // 🛠️ AQUÍ ESTÁ LA MAGIA: Filtramos el error
         console.warn("⚠️ Nota: No se pudo sincronizar (Servidor Xeon desconectado).");
-        
-        // En lugar de un alert de "Error", damos un aviso de cortesía o hacemos silencio
         if (typeof showCustomAlert === 'function') {
             showCustomAlert("Trabajando en modo local (Servidor offline)", "info");
         }
-
-        // Cargamos lo que tenemos en SQLite de todos modos
         cargarProductosDesdeLocal();
     }
 }

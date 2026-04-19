@@ -45,6 +45,19 @@ contextBridge.exposeInMainWorld('nexusAPI', {
     obtenerConfiguracionCajera: (key) => ipcRenderer.invoke('obtener-configuracion-cajera', key),
     guardarConfiguracionCajera: (key, data) => ipcRenderer.invoke('guardar-configuracion-cajera', key, data),
     sincronizarConfiguracionXeon: (datos) => ipcRenderer.invoke('sincronizar-configuracion-xeon', datos),
+    iniciarLecturaPuerto: (puerto) => ipcRenderer.send('iniciar-puerto-balanza', puerto),
+    onPesoRecibido: (callback) => ipcRenderer.on('peso-desde-balanza', (event, data) => callback(data)),
+    guardarMovimientoCaja: (datos) => ipcRenderer.invoke('guardar-movimiento-caja', datos),
+    obtenerMovimientosCaja: (filtro) => ipcRenderer.invoke('obtener-movimientos-caja', filtro),
+    guardarClaveAdminLocal: (datos) => ipcRenderer.invoke('guardar-clave-admin-local', datos),
+    obtenerClavesAdminLocal: (companyId) => ipcRenderer.invoke('obtener-claves-admin-local', companyId),
+    eliminarClaveAdminLocal: (id) => ipcRenderer.invoke('eliminar-clave-admin-local', id),
+    eliminarClienteLocal: (rif) => ipcRenderer.invoke('eliminar-cliente-local', rif),
+    crearRespaldoLocal: () => ipcRenderer.invoke('crear-respaldo-local'),
+    obtenerRespaldosLocales: () => ipcRenderer.invoke('obtener-respaldos-locales'),
+    eliminarRespaldoLocal: (fileName) => ipcRenderer.invoke('eliminar-respaldo-local', fileName),
+    restaurarRespaldoLocal: (fileName) => ipcRenderer.invoke('restaurar-respaldo-local', fileName),
+    apagarSistema: () => ipcRenderer.send('apagar-sistema'),
 
 });
 

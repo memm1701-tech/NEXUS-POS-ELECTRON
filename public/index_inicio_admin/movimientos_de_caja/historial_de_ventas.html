@@ -3,48 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Historial de Ventas</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <title>Historial de Ventas - Nexus POS</title>
+    <script src="tailwindcss.js"></script>
+    <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <link rel="stylesheet" href="../node_modules/@fortawesome/fontawesome-free/css/all.min.css">
+    
     <style>
         body {
             font-family: 'Roboto', sans-serif;
             background-color: #f3f4f6;
+            margin: 0; 
+            padding: 0;
         }
-        /* Ajuste de ancho y padding para móvil */
-    .inventory-form-container { 
-        background-color: #ffffff;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        width: 95%;           
-        max-width: 1600px;    
-        margin: 20px auto;    
-        box-sizing: border-box;
-        text-align: center;
-            }
-        .user-info {
-            background-color: #f0f4f8;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            text-align: left;
-            border: 1px solid #e2e8f0;
-        }
-        .user-info p {
-            margin: 5px 0;
-            font-size: 1rem;
-            color: #4a5568;
+
+        .inventory-form-container { 
+            background-color: transparent; 
+            padding: 20px;
+            border-radius: 0; 
+            box-shadow: none; 
+            width: 100%;           
+            max-width: 100%;    
+            margin: 0;    
+            box-sizing: border-box;
+            text-align: center;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
         h1 {
             color: #1f2937; 
-            margin-bottom: 20px; /* Reducido */
-            font-size: 2em; /* Reducido para móvil */
+            margin-bottom: 20px; 
+            font-size: 2em; 
             font-weight: 700;
         }
-        /* La sección de selección ya es responsive con auto-fit */
+
         .selection-section {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -62,7 +55,8 @@
             margin-bottom: 5px;
             font-size: 0.875rem; 
         }
-        .selection-section select {
+        .selection-section select,
+        .date-filters input[type="date"] {
             width: 100%;
             padding: 12px;
             border: 1px solid #d1d5db; 
@@ -71,72 +65,88 @@
             font-size: 1em;
             transition: border-color 0.3s;
         }
-        .selection-section select:focus {
+        .selection-section select:focus,
+        .date-filters input[type="date"]:focus {
             border-color: #ef4444; 
             outline: none;
             box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
         }
 
         .sales-view-wrapper {
-            /* Por defecto, en móviles: una sola columna */
             display: flex;
             flex-direction: column;
-            gap: 20px; /* Reducido a 20px */
+            gap: 20px;
             margin-top: 15px;
-            align-items: start;
+            width: 100%; 
+            flex-grow: 1; 
         }
         
-        /* Regla de Media Query: Cambiar a grid de 2 columnas en pantallas medianas (md) y grandes */
-@media (min-width: 768px) {
-    .sales-view-wrapper {
-        display: grid;
-        /* Cambiamos la proporción: 3fr para la tabla, 1fr para el detalle */
-        grid-template-columns: 3fr 1fr; 
-        gap: 20px;
-        flex-direction: unset;
-    }
-}
+        @media (min-width: 768px) {
+            .sales-view-wrapper {
+                /* Misma proporción que el historial de cierres */
+                display: grid;
+                grid-template-columns: 70fr 30fr; 
+                gap: 20px;
+                flex-direction: unset;
+                align-items: stretch;
+            }
+        }
 
         .sales-panel {
             background-color: #ffffff;
             border: 1px solid #e5e7eb;
             border-radius: 8px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-            width: 100%; /* Asegurar que ocupan todo el ancho en móvil */
+            width: 100%; 
         }
         #sales-table-panel {
-            min-height: 400px;
             padding: 10px;
-            /* En móvil, la tabla debe estar primero */
             order: 1; 
-        }
-        #sale-detail-panel {
-            /* En móvil, el detalle puede estar segundo */
-            order: 2; 
-            background-color: #fffdfa; 
-            border-left: 5px solid #ef4444; 
-            padding: 20px;
-            min-height: 200px; /* Altura mínima reducida */
-            margin-top: 0; /* Eliminar margen extra */
-        }
-        #sale-detail-panel.hidden {
-            display: none;
+            display: flex;
+            flex-direction: column;
         }
 
-        /* Estilos de tabla - Se hizo scroll horizontal forzado para mejor visualización */
+        /* --- ESTILOS PANEL DE DETALLES --- */
+        #sale-detail-panel {
+            order: 2; 
+            background-color: #f8fafc; 
+            border-left: 5px solid #ef4444; 
+            padding: 20px;
+            margin-top: 0; 
+            text-align: left;
+        }
+
+        /* Estilos de contenido inyectado en el detalle */
+        #sale-detail-content h3 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-top: 15px;
+            margin-bottom: 8px;
+        }
+        #sale-detail-content p {
+            margin: 6px 0;
+            font-size: 0.875rem;
+            color: #4b5563;
+        }
+        #sale-detail-content strong {
+            color: #374151;
+            display: inline-block;
+            min-width: 100px;
+        }
+        /* ---------------------------------------------------- */
+
         .table-section {
             width: 100%;
             border-collapse: collapse;
-            /* Usar overflow-x en el contenedor del scroll para la tabla */
-            min-width: 700px; /* Fuerza el scroll en móvil si es necesario */
+            min-width: 700px; 
         }
         
-        /* 💡 AUMENTO DE FUENTE PRINCIPAL DE LA TABLA A 1.0em */
         .table-section th, .table-section td {
             border: 1px solid #e5e7eb; 
             padding: 10px;
             text-align: left;
-            font-size: 1.0em; /* Incrementado a 1.0em (tamaño estándar para mejor lectura) */
+            font-size: 1.0em; 
         }
         .table-section th {
             background-color: #f3f4f6; 
@@ -151,130 +161,146 @@
             background-color: #f5f6f7;
         }
         .sale-row.bg-red-50 {
-            background-color: #fee2e2; 
+            background-color: #fef2f2 !important; 
         }
         
-        /* Contenedor de scroll adaptado para forzar scroll horizontal en la tabla */
         .table-scroll-container {
-            max-height: 450px; /* Reducido para móvil */
+            flex-grow: 1;
+            min-height: 0; 
             overflow-y: auto;
-            /* Añadido overflow-x: auto para desplazamiento horizontal de la tabla */
             overflow-x: auto; 
             margin-top: 1rem;
         }
         
-        /* 💡 AUMENTO DE FUENTE DEL TEXTO SECUNDARIO DE LA TABLA A 0.9em */
-        .customer-id-text {
-            font-size: 0.9em; /* Incrementado a 0.9em */
-            color: #718096; 
-        }
         .payment-summary li {
-            font-size: 0.9em; /* Incrementado a 0.9em */
+            font-size: 0.9em; 
             margin-top: 1px;
+        }
+
+        /* Ajustes para los filtros en móvil */
+        @media (max-width: 1024px) {
+            .filters-container {
+                flex-direction: column;
+                align-items: stretch !important;
+                gap: 10px;
+            }
+            .date-filters {
+                flex-direction: row;
+                width: 100%;
+                justify-content: space-between;
+            }
+            .date-filters label {
+                display: none;
+            }
         }
     </style>
 </head>
 <body class="p-0"> 
     <div class="inventory-form-container">
-            <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-800 text-center mb-6">Historial de Ventas</h1> <div class="user-info">
-                <p class="text-sm"><strong>ID Usuario:</strong> <span id="userIdDisplay">Cargando...</span></p>
-                <p class="text-sm"><strong>ID Compañía:</strong> <span id="companyIdDisplay">Cargando...</span></p>
-                <p class="text-sm"><strong>Rol:</strong> <span id="userRoleDisplay">Cargando...</span></p>
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-800 text-center mb-6">Historial de Ventas</h1> 
+        
+        <div id="message-box" class="hidden mb-6 p-4 rounded-md text-sm text-center font-medium" role="alert"></div>
+        
+        <div class="selection-section">
+            <div>
+                <label for="branch-select">Sucursal:</label>
+                <select id="branch-select">
+                    <option value="">Cargando sucursales...</option>
+                </select>
             </div>
             
-            <div id="message-box" class="hidden mb-6 p-4 rounded-md text-sm text-center font-medium" role="alert"></div>
-            
-            <div class="selection-section">
-                <div>
-                    <label for="branch-select">Sucursal:</label>
-                    <select id="branch-select" onchange="loadCashiers()">
-                        <option value="">Cargando sucursales...</option>
-                    </select>
-                </div>
-                
-                <div>
-                    <label for="cashier-select">Cajera:</label>
-                    <select id="cashier-select">
-                        <option value="">Selecciona una cajera...</option>
-                    </select>
-                </div>
-            </div>
-
-            <button onclick="loadSalesHistory(true)" class="w-full bg-red-500 text-white font-bold py-3 px-6 rounded-md hover:bg-red-600 transition-colors mt-4 mb-6">
-                Buscar Todas las Ventas
-            </button>
-            
-            <hr class="my-6 border-gray-300">
-
-            <div class="sales-view-wrapper">
-                
-                <div id="sales-table-panel" class="sales-panel">
-                    
-                    <div class="mb-4 text-left p-2">
-                        <label for="customer-search" class="block text-sm font-medium text-gray-700 mb-1">Buscar Cliente:</label>
-                        <input type="text" id="customer-search" placeholder="Nombre o C.I./RIF..." 
-                               class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500 text-sm"
-                               onkeyup="filterSalesTable()">
-                    </div>
-                    <h2 class="text-xl font-bold text-gray-800 mb-3 text-center">Transacciones de Venta</h2>
-                    <div id="sales-log" class="table-scroll-container">
-                        <p class="text-gray-500 text-center" id="log-status">Seleccione sucursal y cajera, y luego presione "Buscar".</p>
-                    </div>
-                </div>
-
-                <div id="sale-detail-panel" class="sales-panel hidden">
-                    <h2 class="text-lg font-bold text-gray-800 mb-3 text-center border-b pb-2">Detalle de la Venta</h2>
-                    <div id="sale-detail-content">
-                        <p class="text-gray-500 text-center mt-6 text-sm">Haz clic en una venta de la tabla para ver sus detalles aquí.</p>
-                    </div>
-                </div>
-
+            <div>
+                <label for="cashier-select">Cajera:</label>
+                <select id="cashier-select">
+                    <option value="">Selecciona una cajera...</option>
+                </select>
             </div>
         </div>
-    </main>
+
+        <button id="btn-search-sales" class="w-full bg-red-500 text-white font-bold py-3 px-6 rounded-md hover:bg-red-600 transition-colors mt-4 mb-6">
+            Buscar Todas las Ventas
+        </button>
+        
+        <hr class="my-6 border-gray-300">
+
+        <div class="sales-view-wrapper">
+            
+            <div id="sales-table-panel" class="sales-panel">
+                
+                <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center p-2 mb-2 gap-4 border-b border-gray-100 pb-4">
+                    <h2 class="text-xl font-bold text-gray-800 shrink-0">Historial de Ventas</h2>
+                    
+                    <div class="filters-container flex flex-row items-center gap-4 w-full lg:w-auto">
+                        <div class="date-filters flex flex-row items-center gap-2 text-sm w-full lg:w-auto">
+                            <label for="date-from" class="font-bold text-gray-600">Desde:</label>
+                            <input type="date" id="date-from" class="p-2 border border-gray-300 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500 text-sm w-full lg:w-auto" onchange="window.loadSalesHistory()">
+                            
+                            <label for="date-to" class="font-bold text-gray-600 ml-2 lg:ml-0">Hasta:</label>
+                            <input type="date" id="date-to" class="p-2 border border-gray-300 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500 text-sm w-full lg:w-auto" onchange="window.loadSalesHistory()">
+                        </div>
+
+                        <div class="w-full lg:w-64 shrink-0">
+                            <input type="text" id="customer-search" placeholder="Buscar Cliente o C.I./RIF..." 
+                                   class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500 text-sm"
+                                   onkeyup="window.filterSalesTable()">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sales-log" class="table-scroll-container mt-0">
+                    <table class="table-section w-full text-sm text-left text-gray-500">
+                        <thead class="text-xs text-gray-700 uppercase sticky top-0 bg-gray-50 shadow-sm">
+                            <tr>
+                                <th>Cliente / ID</th>
+                                <th>Cajera</th>
+                                <th>Pagos</th>
+                                <th class="whitespace-nowrap">Total (BS)</th>
+                                <th class="whitespace-nowrap">Total (USD)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sales-history-body">
+                            <tr><td colspan="5" class="text-center p-4 text-gray-500" id="log-status">Seleccione sucursal y cajera, y luego presione "Buscar".</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="sale-detail-panel" class="sales-panel">
+                <h2 class="text-lg font-bold text-gray-800 mb-3 text-center border-b pb-2 border-gray-200">
+                    Detalles de la Venta: <br><span id="sale-id-display" class="text-base font-normal text-red-600 mt-1 inline-block">No Seleccionada</span>
+                </h2>
+                <div id="sale-detail-content">
+                    <p class="text-gray-500 text-center mt-6 text-sm">Haz clic en una venta de la tabla para ver sus detalles aquí.</p>
+                </div>
+                <button id="close-details-btn" class="w-full bg-gray-600 text-white font-bold py-2 px-4 rounded-md hover:bg-gray-700 transition-colors mt-6" onclick="window.hideSaleDetails()">Limpiar Selección</button>
+            </div>
+
+        </div>
+    </div>
 
     <script type="module">
-        // Importaciones de Firebase
-        import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, getDocs, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Configuración de Firebase (se asume inyección de variables)
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
-        let app;
-        if (getApps().length === 0) {
-            app = initializeApp(firebaseConfig);
-        } else {
-            app = getApp();
-        }
-
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-
-        // Variables globales
+        // ===================================================================
+        // --- ESTADO GLOBAL NEXUS (MODO LOCAL SQLITE) ---
+        // ===================================================================
         let userCompanyId = null;
         let userId = null;
         let userRole = null;
-        let allCashiers = []; 
+        let userBranchId = null;
         let salesCache = {}; 
+        let rawSalesData = []; // Guardar datos crudos para filtrar por fecha sin recargar
 
-        // Referencias al DOM
-        const userIdDisplay = document.getElementById('userIdDisplay');
-        const companyIdDisplay = document.getElementById('companyIdDisplay');
-        const userRoleDisplay = document.getElementById('userRoleDisplay');
+        // --- Referencias al DOM ---
         const messageBox = document.getElementById('message-box');
-        
         const branchSelect = document.getElementById('branch-select');
         const cashierSelect = document.getElementById('cashier-select');
         const salesLogDiv = document.getElementById('sales-log');
         const logStatus = document.getElementById('log-status');
-        
-        // Nuevas referencias al panel lateral
         const saleDetailPanel = document.getElementById('sale-detail-panel');
         const saleDetailContent = document.getElementById('sale-detail-content');
         const customerSearchInput = document.getElementById('customer-search');
+        const btnSearchSales = document.getElementById('btn-search-sales');
+        const dateFromInput = document.getElementById('date-from');
+        const dateToInput = document.getElementById('date-to');
         
         // *******************************************************************
         // ********************* FUNCIONES DE UTILIDAD ***********************
@@ -285,386 +311,325 @@
             messageBox.classList.remove('hidden', 'bg-red-200', 'text-red-700', 'bg-green-200', 'text-green-700', 'bg-blue-200', 'text-blue-700');
             
             switch(type) {
-                case 'error':
-                    messageBox.classList.add('bg-red-200', 'text-red-700');
-                    break;
-                case 'info':
-                    messageBox.classList.add('bg-blue-200', 'text-blue-700');
-                    break;
-                default:
-                    messageBox.classList.add('bg-green-200', 'text-green-700');
+                case 'error': messageBox.classList.add('bg-red-200', 'text-red-700'); break;
+                case 'info': messageBox.classList.add('bg-blue-200', 'text-blue-700'); break;
+                default: messageBox.classList.add('bg-green-200', 'text-green-700');
             }
-            
-            setTimeout(() => {
-                messageBox.classList.add('hidden');
-            }, 5000);
+            setTimeout(() => messageBox.classList.add('hidden'), 5000);
         }
 
-        /**
-         * Formatea la data cruda de la venta para mostrar el detalle completo.
-         */
+        window.hideSaleDetails = function() {
+            document.getElementById('sale-id-display').textContent = 'No Seleccionada';
+            saleDetailContent.innerHTML = '<p class="text-gray-500 text-center mt-6 text-sm">Haz clic en una venta de la tabla para ver sus detalles aquí.</p>';
+            
+            // Limpia selección de fila
+            document.querySelectorAll('.sale-row').forEach(row => row.classList.remove('bg-red-50'));
+        }
+
         function formatSaleDetails(saleData) {
             let itemsArray = [];
             let paymentsObject = {};
 
-            try {
-                itemsArray = JSON.parse(saleData.items || '[]');
-            } catch (e) {
-                console.error("Error parsing items:", e);
-            }
-
-            try {
-                paymentsObject = JSON.parse(saleData.payments || '{}');
-            } catch (e) {
-                console.error("Error parsing payments:", e);
-            }
+            try { itemsArray = JSON.parse(saleData.items || '[]'); } catch (e) {}
+            try { paymentsObject = JSON.parse(saleData.payments || saleData.metodo_pago || '{}'); } catch (e) {}
             
-            const createdAtDate = saleData.createdAt ? new Date(saleData.createdAt).toLocaleString('es-CL') : 'N/A';
-            const cashierName = allCashiers.find(c => c.id === saleData.userId)?.name || `ID: ${saleData.userId || 'N/A'}`;
+            const fechaCruda = saleData.fecha_emision || saleData.createdAt || new Date().toISOString();
+            const createdAtDate = new Date(fechaCruda).toLocaleString('es-VE');
+            const cashierName = saleData.cashier_id || saleData.userId || 'N/A';
+            const totalDolar = paymentsObject.dolar || paymentsObject.divisa || paymentsObject.zinli || 0;
 
+            let details = '<div>';
+            
+            // Info Principal
+            details += `<p><strong>Cajero:</strong> ${cashierName}</p>`;
+            details += `<p><strong>Fecha:</strong> ${createdAtDate}</p>`;
+            details += `<p><strong>C.I./RIF:</strong> ${saleData.customerIdNumber || saleData.cliente_rif || 'N/A'}</p>`;
+            details += `<p><strong>Cliente:</strong> ${saleData.customerName || saleData.cliente_nombre || 'N/A'}</p>`;
+            
+            // Totales
+            details += '<hr class="my-4 border-gray-200">';
+            details += '<h3>Totales</h3>';
+            details += `<p><strong>Subtotal:</strong> Bs ${(saleData.subtotal || 0).toFixed(2)}</p>`;
+            details += `<p><strong>IVA:</strong> Bs ${(saleData.iva || 0).toFixed(2)}</p>`;
+            details += `<p><strong>Total Bs:</strong> <span class="text-red-600 font-bold">Bs ${(saleData.total || 0).toFixed(2)}</span></p>`;
+            if (totalDolar > 0) {
+                details += `<p><strong>Total Divisa:</strong> <span class="text-green-600 font-bold">$ ${totalDolar.toFixed(2)}</span></p>`;
+            }
 
-            let details = `
-                <strong class="text-base text-red-600 block mb-2">Información Principal</strong>
-                <ul class="text-gray-700 compact-list text-sm">
-                    <li><strong>Fecha:</strong> ${createdAtDate}</li>
-                    <li><strong>Cajera:</strong> ${cashierName}</li>
-                    <li><strong>C.I./RIF:</strong> ${saleData.customerIdNumber || 'N/A'}</li>
-                    <li><strong>Cliente:</strong> ${saleData.customerName || 'N/A'}</li>
-                </ul>
-                
-                <strong class="text-base text-red-600 block mt-3 mb-2">Totales</strong>
-                <ul class="text-gray-700 compact-list text-sm">
-                    <li><strong>Subtotal:</strong> $${(saleData.subtotal || 0).toFixed(2)} BS</li>
-                    <li><strong>IVA:</strong> $${(saleData.iva || 0).toFixed(2)} BS</li>
-                    <li><strong>Total Bs:</strong> <strong class="text-red-500">$${(saleData.total || 0).toFixed(2)}</strong></li>
-                    <li><strong>Total Divisa ($):</strong> <strong class="text-green-600">$${(paymentsObject.dolar || 0).toFixed(2)}</strong></li>
-                </ul>
-            `;
-
-            // Detalles de Pago
-            details += `<h4 class="mt-3 font-bold text-gray-800 text-sm">Métodos de Pago:</h4><ul class="list-disc list-inside ml-4 text-gray-700 compact-list text-sm">`;
+            // Métodos de Pago
+            details += '<hr class="my-4 border-gray-200">';
+            details += '<h3>Métodos de Pago</h3>';
             for (const [method, amount] of Object.entries(paymentsObject)) {
                 if (amount > 0) {
-                    details += `<li>${method.charAt(0).toUpperCase() + method.slice(1)}: $${amount.toFixed(2)}</li>`;
+                    const isDollar = method === 'dolar' || method === 'zinli' || method === 'divisa';
+                    const symbol = isDollar ? '$' : 'Bs';
+                    const colorClass = isDollar ? 'text-green-600 font-bold' : 'text-gray-800';
+                    details += `<p><strong>${method.toUpperCase()}:</strong> <span class="${colorClass}">${symbol} ${amount.toFixed(2)}</span></p>`;
                 }
             }
-            details += `</ul>`;
 
-
-            // Detalles de Productos
+            // Productos
+            details += '<hr class="my-4 border-gray-200">';
+            details += `<h3>Productos Vendidos (${itemsArray.length})</h3>`;
             if (itemsArray.length > 0) {
-                details += `
-                    <h4 class="mt-3 font-bold text-gray-800 text-sm">Productos Vendidos (${itemsArray.length} items):</h4>
-                    <ul class="list-disc list-inside ml-4 text-gray-700 compact-list text-sm">
-                `;
                 itemsArray.forEach(item => {
-                    details += `
-                        <li>${item.name || 'Producto N/A'} - <strong>Cant:</strong> ${item.quantity || 0} x <strong>Precio:</strong> $${(item.price || 0).toFixed(2)}</li>
-                    `;
+                    const nombreItem = item.name || item.nombre || 'Producto N/A';
+                    const cantItem = item.quantity || item.cantidad || 0;
+                    const precioItem = item.price || item.precio || 0;
+                    details += `<p class="mb-2"><strong>${nombreItem}</strong><br><span class="text-sm text-gray-500">Cant: ${cantItem} | Precio: Bs ${precioItem.toFixed(2)}</span></p>`;
                 });
-                details += `</ul>`;
             } else {
-                details += `<p class="mt-3 text-xs text-gray-500">No hay detalles de productos disponibles.</p>`;
+                details += `<p class="text-sm text-gray-500">No hay detalles de productos disponibles.</p>`;
             }
 
+            details += '</div>';
             return details;
         }
 
-        /**
-         * Muestra los detalles de una venta en el panel lateral.
-         */
         window.displaySaleDetails = function(saleId) {
             const saleData = salesCache[saleId];
-            if (!saleData) {
-                saleDetailContent.innerHTML = '<p class="text-red-500 text-center mt-6 text-sm">Error: Datos de venta no encontrados.</p>';
-            } else {
-                saleDetailContent.innerHTML = formatSaleDetails(saleData);
-            }
-            saleDetailPanel.classList.remove('hidden');
+            if (!saleData) return;
 
-            // Resaltar la fila seleccionada
+            document.getElementById('sale-id-display').textContent = saleId;
+            saleDetailContent.innerHTML = formatSaleDetails(saleData);
+
+            // Limpiar estilos de otras filas y añadir clase de seleccionado
             document.querySelectorAll('.sale-row').forEach(row => row.classList.remove('bg-red-50'));
-            document.getElementById(`sale-row-${saleId}`).classList.add('bg-red-50');
+            const selectedRow = document.getElementById(`sale-row-${saleId}`);
+            if(selectedRow) selectedRow.classList.add('bg-red-50');
             
-            // **Añadir lógica para móvil: hacer scroll al panel de detalles al seleccionarlo**
-            if (window.innerWidth < 768) { // Si es móvil (ancho menor a 768px)
+            // Scroll en móvil
+            if (window.innerWidth < 768) {
                 saleDetailPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         }
 
-        /**
-         * Función para filtrar la tabla de ventas por nombre de cliente o C.I./RIF
-         */
         window.filterSalesTable = function() {
             const searchTerm = customerSearchInput.value.toLowerCase().trim();
             const tableBody = document.getElementById('sales-history-body');
-            // Si el cuerpo de la tabla no está cargado o está vacío, salimos.
             if (!tableBody) return;
             
             const rows = tableBody.getElementsByTagName('tr');
-
             for (let i = 0; i < rows.length; i++) {
                 const row = rows[i];
-                // La información del cliente (nombre y cédula) está en la primera celda (index 0)
                 const customerCell = row.cells[0]; 
                 
                 if (customerCell) {
-                    // Obtener todo el texto de la celda de cliente (Nombre + C.I./RIF)
                     const rowText = customerCell.textContent.toLowerCase();
-
-                    // Mostrar la fila si el texto incluye el término de búsqueda
                     if (rowText.includes(searchTerm)) {
                         row.style.display = ''; 
                     } else {
-                        row.style.display = 'none'; // Ocultar la fila
-                        
-                        // Si la fila ocultada era la seleccionada, deseleccionarla y ocultar el panel de detalles
+                        row.style.display = 'none'; 
                         if (row.classList.contains('bg-red-50')) {
-                            row.classList.remove('bg-red-50');
-                            saleDetailPanel.classList.add('hidden');
-                            saleDetailContent.innerHTML = '<p class="text-gray-500 text-center mt-6 text-sm">Haz clic en una venta de la tabla para ver sus detalles aquí.</p>';
+                            window.hideSaleDetails();
                         }
                     }
                 }
             }
         }
+
+        // Renderiza la tabla basado en los datos almacenados y los filtros actuales
+        window.renderSalesTable = function() {
+            const cashierId = cashierSelect.value;
+            const dateFromValue = dateFromInput.value;
+            const dateToValue = dateToInput.value;
+
+            window.hideSaleDetails();
+            customerSearchInput.value = ''; 
+            salesCache = {};
+
+            let ventasMostrar = rawSalesData;
+
+            // Filtro por Cajera
+            if (cashierId && cashierId !== 'TODAS' && cashierId !== "") {
+                ventasMostrar = ventasMostrar.filter(s => (s.cashier_id || s.userId) === cashierId);
+            }
+
+            // Filtros de Fecha
+            if (dateFromValue) {
+                const dateFrom = new Date(dateFromValue).getTime();
+                ventasMostrar = ventasMostrar.filter(s => {
+                    const sDate = new Date(s.fecha_emision || s.createdAt).getTime();
+                    return sDate >= dateFrom;
+                });
+            }
+
+            if (dateToValue) {
+                const dateTo = new Date(dateToValue);
+                dateTo.setHours(23, 59, 59, 999);
+                const dateToMs = dateTo.getTime();
+                ventasMostrar = ventasMostrar.filter(s => {
+                    const sDate = new Date(s.fecha_emision || s.createdAt).getTime();
+                    return sDate <= dateToMs;
+                });
+            }
+
+            // Ordenar Descendente
+            ventasMostrar.sort((a, b) => {
+                const dateA = new Date(a.fecha_emision || a.createdAt).getTime();
+                const dateB = new Date(b.fecha_emision || b.createdAt).getTime();
+                return dateB - dateA;
+            });
+
+            const historyBody = document.getElementById('sales-history-body');
+
+            if (ventasMostrar.length === 0) {
+                historyBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-500">No hay ventas registradas para los filtros seleccionados.</td></tr>`;
+                return;
+            }
+
+            let tableHTML = '';
+            ventasMostrar.forEach(sale => {
+                const saleId = sale.id || sale.venta_ID;
+                salesCache[saleId] = sale; 
+
+                let paymentsObject = {};
+                try { paymentsObject = JSON.parse(sale.payments || sale.metodo_pago || '{}'); } catch (e) {}
+
+                const totalDolar = paymentsObject.dolar || paymentsObject.divisa || paymentsObject.zinli || 0;
+                
+                tableHTML += `
+                    <tr id="sale-row-${saleId}" class="sale-row hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-200" onclick="window.displaySaleDetails('${saleId}')">
+                        <td class="p-3">
+                            <div class="font-bold text-gray-900">${sale.customerName || sale.cliente_nombre || 'Anónimo'}</div>
+                            <div class="text-xs text-gray-500">${sale.customerIdNumber || sale.cliente_rif || 'S/ID'}</div>
+                        </td>
+                        <td class="p-3 text-gray-700 font-medium">${sale.cashier_id || sale.userId || 'N/A'}</td>
+                        <td class="p-3">
+                            <ul class="payment-summary text-xs">
+                                <li>Efectivo: Bs ${(paymentsObject.efectivo || paymentsObject.cash || 0).toFixed(2)}</li>
+                                <li>Débito: Bs ${(paymentsObject.debito || 0).toFixed(2)}</li>
+                                ${totalDolar > 0 ? `<li class="text-green-600 font-bold">Dólar: $${totalDolar.toFixed(2)}</li>` : ''}
+                            </ul>
+                        </td>
+                        <td class="p-3 font-bold text-red-600">Bs ${(sale.total || 0).toFixed(2)}</td>
+                        <td class="p-3 font-bold text-green-600">$ ${totalDolar.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+
+            historyBody.innerHTML = tableHTML;
+        }
         
         // *******************************************************************
-        // ********************* CARGA DE DATOS ******************************
+        // ********************* CARGA DE DATOS (SQLITE) *********************
         // *******************************************************************
 
-        /**
-         * Carga todas las sucursales de la compañía
-         */
-        async function loadBranches(companyId, userBranchId) {
+        async function loadBranches(companyId, currentBranchId) {
             try {
-                const branchesRef = collection(db, 'companies', companyId, 'branches');
-                const branchesSnapshot = await getDocs(branchesRef);
-                branchSelect.innerHTML = '<option value="" disabled selected>Selecciona el lugar de retiro...</option>';
+                const sucursales = await window.nexusAPI.obtenerSucursalesLocales();
+                branchSelect.innerHTML = '<option value="" disabled selected>Selecciona la sucursal...</option>';
                 
-                branchesSnapshot.forEach(doc => {
-                    const branch = doc.data();
+                const sucursalesEmpresa = sucursales.filter(s => s.company_id === companyId || s.empresa_ID === companyId);
+
+                sucursalesEmpresa.forEach(branch => {
                     const option = document.createElement('option');
-                    option.value = doc.id;
-                    option.textContent = branch.name;
+                    option.value = branch.id || branch.sucursal_ID;
+                    option.textContent = branch.nombre || branch.name;
                     branchSelect.appendChild(option);
-                    
-                    if (userBranchId && doc.id === userBranchId) {
-                        branchSelect.value = userBranchId;
-                        branchSelect.disabled = true;
-                    }
                 });
-                if (branchSelect.value) {
-                    await loadCashiers(); 
+                
+                if (currentBranchId) {
+                    branchSelect.value = currentBranchId;
+                    await window.fetchSalesData();
                 }
             } catch (error) {
                 console.error("Error loading branches:", error);
-                showMessage("Error al cargar las sucursales.", "error");
+                showMessage("Error al cargar las sucursales locales.", "error");
             }
         }
 
-        /**
-         * Carga las cajeras asociadas a la sucursal seleccionada
-         */
-        window.loadCashiers = async function() {
+        // Obtiene la data de la DB local una sola vez por sucursal
+        window.fetchSalesData = async function() {
             const branchId = branchSelect.value;
-            cashierSelect.innerHTML = '<option value="" disabled selected>Cargando cajeras...</option>';
+            const historyBody = document.getElementById('sales-history-body');
             
             if (!branchId) {
-                cashierSelect.innerHTML = '<option value="" disabled selected>Selecciona una sucursal primero...</option>';
+                historyBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-500">Seleccione una sucursal.</td></tr>`;
                 return;
             }
 
-            try {
-                const cashiersRef = collection(db, 'companies', userCompanyId, 'branches', branchId, 'cashiers');
-                const cashiersSnapshot = await getDocs(cashiersRef);
+            historyBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-500">Cargando historial (Usando índices de SQLite)...</td></tr>`;
 
-                cashierSelect.innerHTML = '<option value="" selected>Todas las cajeras</option>';
-                allCashiers = []; 
-                
-                if (cashiersSnapshot.empty) {
-                    cashierSelect.innerHTML = '<option value="" selected>No hay cajeras disponibles</option>';
+            try {
+                rawSalesData = await window.nexusAPI.obtenerVentasPendientesCaja({ 
+                    companyId: userCompanyId, 
+                    branchId: branchId 
+                });
+
+                if (!rawSalesData || rawSalesData.length === 0) {
+                    historyBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-500">No hay ventas registradas en esta sucursal.</td></tr>`;
                     return;
                 }
-                
-                cashiersSnapshot.forEach(doc => {
-                    const cashier = doc.data();
-                    const option = document.createElement('option');
-                    option.value = doc.id; 
-                    option.textContent = cashier.name || cashier.email || doc.id; 
-                    cashierSelect.appendChild(option);
-                    allCashiers.push({ id: doc.id, name: cashier.name || cashier.email || doc.id });
-                });
-                
+
+                // Cargar cajeras dinámicamente basado en la data
+                if (cashierSelect.dataset.branch !== branchId) {
+                    const cajerasUnicas = [...new Set(rawSalesData.map(s => s.cashier_id || s.userId))].filter(Boolean);
+                    cashierSelect.innerHTML = '<option value="TODAS" selected>Todas las cajeras</option>';
+                    cajerasUnicas.forEach(c => {
+                        cashierSelect.innerHTML += `<option value="${c}">${c}</option>`;
+                    });
+                    cashierSelect.dataset.branch = branchId;
+                }
+
+                window.renderSalesTable();
+
             } catch (error) {
-                console.error("Error al cargar las cajeras:", error);
-                showMessage("Error al cargar las cajeras. Verifique la ruta y las reglas de seguridad.", "error");
+                console.error("Error al cargar el historial local:", error);
+                historyBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-red-500">Error de base de datos: ${error.message}</td></tr>`;
             }
         }
 
-        /**
-         * Carga el historial de ventas (Todas las ventas, sin filtro de fecha)
-         */
-        window.loadSalesHistory = async function(isManualSearch = false) {
-            const branchId = branchSelect.value;
-            const cashierId = cashierSelect.value;
-            
-            if (!branchId) {
-                logStatus.textContent = "Seleccione una sucursal y presione Buscar Todas las Ventas.";
-                salesLogDiv.innerHTML = `<p class="text-gray-500 text-center">${logStatus.textContent}</p>`;
-                return;
-            }
-            
-            if (cashierId === "") {
-                 logStatus.textContent = "Seleccione una cajera (o 'Todas las cajeras') y presione Buscar.";
-                 salesLogDiv.innerHTML = `<p class="text-red-500 text-center">${logStatus.textContent}</p>`;
-                 return;
-            }
-
-            logStatus.textContent = "Cargando historial de ventas...";
-            salesLogDiv.innerHTML = `<p class="text-gray-500 text-center">${logStatus.textContent}</p>`;
-            salesCache = {}; 
-            
-            // Ocultar panel de detalles al cargar nueva tabla y limpiar búsqueda
-            saleDetailPanel.classList.add('hidden'); 
-            saleDetailContent.innerHTML = '<p class="text-gray-500 text-center mt-6 text-sm">Haz clic en una venta de la tabla para ver sus detalles aquí.</p>';
-            customerSearchInput.value = ''; // Limpiar la barra de búsqueda
-
-            try {
-                
-                // Ruta: /companies/{cID}/branches/{bID}/cashiers/{chID}/salesProcessed
-                
-                let salesRef;
-                if (cashierId && cashierId !== 'Todas las cajeras') {
-                    // Consulta específica a una cajera
-                    salesRef = collection(db, 'companies', userCompanyId, 'branches', branchId, 'cashiers', cashierId, 'salesProcessed');
-                } else {
-                    // Si se seleccionó 'Todas las cajeras', la estructura de base de datos actual 
-                    // NO permite una consulta simple. Se mantendrá la funcionalidad solo para cajeras específicas
-                    // ya que la estructura es /cashiers/{chID}/salesProcessed.
-                    // Se actualizará el mensaje para reflejar la limitación.
-
-                    logStatus.textContent = "La opción 'Todas las cajeras' no está implementada con la estructura actual. Seleccione una cajera específica.";
-                    salesLogDiv.innerHTML = `<p class="text-red-500 text-center">${logStatus.textContent}</p>`;
-                    return;
-                }
-
-                // Consulta sin filtros de fecha, solo orden y límite
-                let q = query(salesRef, orderBy('createdAt', 'desc'), limit(100)); // Usando 'createdAt'
-
-                const salesSnapshot = await getDocs(q);
-
-                if (salesSnapshot.empty) {
-                    logStatus.textContent = "No se encontraron transacciones de venta con estos criterios.";
-                    salesLogDiv.innerHTML = `<p class="text-gray-500 text-center">${logStatus.textContent}</p>`;
-                    return;
-                }
-
-                let tableHTML = `
-                    <table class="table-section w-full text-sm text-left text-gray-500">
-                        <thead class="text-xs text-gray-700 uppercase sticky top-0 bg-white">
-                            <tr>
-                                <th>Cliente / ID</th>
-                                <th>Productos</th>
-                                <th>Pagos</th>
-                                <th class="whitespace-nowrap">Total (BS)</th>
-                                <th class="whitespace-nowrap">Total (USD)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="sales-history-body">
-                `;
-
-                salesSnapshot.forEach(doc => {
-                    const sale = doc.data();
-                    const saleId = doc.id;
-                    salesCache[saleId] = sale; 
-
-                    let itemsArray = [];
-                    let paymentsObject = {};
-
-                    // CRUCIAL: Parsear las cadenas JSON
-                    try { itemsArray = JSON.parse(sale.items || '[]'); } catch (e) { itemsArray = []; }
-                    try { paymentsObject = JSON.parse(sale.payments || '{}'); } catch (e) { paymentsObject = {}; }
-
-                    const totalItems = itemsArray.length;
-                    const totalDolar = paymentsObject.dolar || 0;
-                    
-                    // Fila de resumen: El evento click llama a displaySaleDetails(saleId)
-                    tableHTML += `
-                        <tr id="sale-row-${saleId}" class="sale-row" onclick="displaySaleDetails('${saleId}')">
-                            <td>
-                                <div class="font-medium text-gray-900">${sale.customerName || 'Anónimo'}</div>
-                                <div class="customer-id-text">${sale.customerIdNumber || 'S/ID'}</div>
-                            </td>
-                            <td>${totalItems} items</td>
-                            <td>
-                                <ul class="payment-summary">
-                                    <li>Efectivo: $${(paymentsObject.efectivo || 0).toFixed(2)}</li>
-                                    <li>Débito: $${(paymentsObject.debito || 0).toFixed(2)}</li>
-                                    ${totalDolar > 0 ? `<li>Dólar: $${totalDolar.toFixed(2)}</li>` : ''}
-                                </ul>
-                            </td>
-                            <td class="font-bold text-red-600">$${(sale.total || 0).toFixed(2)}</td>
-                            <td class="font-bold text-green-600">$${totalDolar.toFixed(2)}</td>
-                        </tr>
-                    `;
-                });
-
-                tableHTML += `
-                        </tbody>
-                    </table>
-                `;
-                
-                salesLogDiv.innerHTML = tableHTML;
-                logStatus.textContent = `Se cargaron ${salesSnapshot.size} ventas. Deslice la tabla lateralmente para ver más columnas.`;
-
-            } catch (error) {
-                console.error("Error al cargar el historial de ventas:", error);
-                salesLogDiv.innerHTML = `<p class="text-red-500 text-center">Error al cargar el historial: ${error.message}. Por favor, verifique sus reglas de seguridad, la ruta, y si el campo 'createdAt' existe.</p>`;
-            }
-        }
-
-
-        // *******************************************************************
-        // ********************* LÓGICA DE AUTENTICACIÓN *********************
-        // *******************************************************************
-
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                const tokenResult = await user.getIdTokenResult();
-                const claims = tokenResult.claims;
-
-                if (!claims.companyId) {
-                    showMessage("Actualizando información del usuario. Por favor espere...", "info");
-                    await user.getIdToken(true); 
-                    return;
-                }
-
-                userId = user.uid;
-                userCompanyId = claims.companyId;
-                const userBranchId = claims.branchId; 
-                userRole = claims.role;
-
-                userIdDisplay.textContent = userId;
-                companyIdDisplay.textContent = userCompanyId || 'No disponible';
-                userRoleDisplay.textContent = userRole || 'No disponible';
-                
-                if (userCompanyId) {
-                    await loadBranches(userCompanyId, userBranchId);
-                } 
+        window.loadSalesHistory = function() {
+            // Si la data está vacía (por ej. primer clic en buscar), hacemos fetch. Si no, solo renderizamos.
+            if (rawSalesData.length === 0) {
+                window.fetchSalesData();
             } else {
-                try {
-                    if (initialAuthToken) {
-                        await signInWithCustomToken(auth, initialAuthToken);
-                    } else {
-                        await signInAnonymously(auth); 
-                    }
-                } catch (error) {
-                    console.error('Sign-in error:', error);
-                    showMessage("Error de inicio de sesión. Intente recargar la página.", "error");
-                }
+                window.renderSalesTable();
             }
+        };
+
+        // *******************************************************************
+        // ********************* INICIALIZACIÓN (NEXUS) **********************
+        // *******************************************************************
+        
+        async function inicializarApp() {
+            try {
+                const sesion = await window.nexusAPI.obtenerSesionLocal();
+                if (sesion) {
+                    userId = sesion.uid;
+                    userCompanyId = sesion.companyId;
+                    userBranchId = sesion.branchId; 
+                    userRole = sesion.role;
+                    
+                    if (userCompanyId) {
+                        await loadBranches(userCompanyId, userBranchId);
+                    }
+                } else {
+                    showMessage("Error: No se encontró una sesión activa.", "error");
+                }
+            } catch (error) {
+                console.error("Fallo de arranque Nexus:", error);
+            }
+        }
+
+        // Inicialización y Event Listeners
+        document.addEventListener('DOMContentLoaded', inicializarApp);
+
+        // Disparar recarga total al cambiar Sucursal
+        branchSelect.addEventListener('change', () => {
+            cashierSelect.innerHTML = '<option value="">Selecciona una cajera...</option>';
+            cashierSelect.dataset.branch = "";
+            rawSalesData = []; // Limpiar cache crudo
+            window.fetchSalesData();
         });
+
+        // Solo filtrar la vista al cambiar Cajera
+        cashierSelect.addEventListener('change', window.loadSalesHistory);
+        
+        // Botón Buscar
+        btnSearchSales.addEventListener('click', window.loadSalesHistory);
+
     </script>
 </body>
 </html>

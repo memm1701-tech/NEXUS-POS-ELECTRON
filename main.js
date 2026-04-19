@@ -4,8 +4,9 @@ const path = require('path');
 const fs = require('fs');
 const { exec } = require('child_process');
 const https = require('https');
-
-// 2. Librerías Externas
+const crypto = require('crypto');
+const ENCRYPTION_KEY = crypto.scryptSync("NexusGlobalSecretoAdmin2026", "saltingNexus", 32); 
+const IV_LENGTH = 16; 
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { SerialPort } = require('serialport');
 const { ReadlineParser } = require('@serialport/parser-readline');
@@ -16,10 +17,12 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 
 // 3. Configuración del Servidor y Base de Datos
+// 3. Configuración del Servidor y Base de Datos
 const server = express();
 const PORT = 3000;
 
-const dbDir = path.join(__dirname, 'data');
+// ✅ CORRECCIÓN: Usar app.getPath('userData') para evitar el error ENOTDIR del .asar
+const dbDir = path.join(app.getPath('userData'), 'data');
 if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
 
 const dbPath = path.join(dbDir, 'nexus_pos.db');
@@ -60,6 +63,33 @@ try {
 
 function inicializarTablas() {
 
+    try {
+        db.exec(`
+            -- 📦 Índices para Inventario (Búsquedas en milisegundos)
+            CREATE INDEX IF NOT EXISTS idx_productos_codigo ON productos_locales(codigo);
+            CREATE INDEX IF NOT EXISTS idx_productos_categoria ON productos_locales(categoria);
+            CREATE INDEX IF NOT EXISTS idx_productos_empresa ON productos_locales(company_id);
+
+            -- 🧾 Índices para Ventas (Vital para que el Cierre Z sea instantáneo)
+            -- Este índice compuesto agrupa exactamente lo que busca tu función de cierre
+            CREATE INDEX IF NOT EXISTS idx_ventas_cierre_compuesto 
+            ON ventas_locales(company_id, branch_id, cashier_id, estado_cierre);
+            
+            -- Índice para buscar facturas por fecha rápidamente (Reportes)
+            CREATE INDEX IF NOT EXISTS idx_ventas_fecha ON ventas_locales(fecha_emision);
+
+            -- 💵 Índices para Movimientos de Caja (Ingresos/Gastos)
+            CREATE INDEX IF NOT EXISTS idx_movimientos_cierre 
+            ON movimientos_caja_locales(company_id, tipo, estado_cierre);
+
+            -- 🤝 Índices para Cuentas por Cobrar (Créditos)
+            CREATE INDEX IF NOT EXISTS idx_cxc_cliente ON cuentas_por_cobrar(cliente_rif, estado);
+        `);
+        console.log("⚡ Índices de base de datos SQLite verificados y optimizados.");
+    } catch (error) {
+        console.error("⚠️ Error creando los índices:", error.message);
+    }
+    
     db.exec(`
         CREATE TABLE IF NOT EXISTS usuarios_locales (
             uid TEXT PRIMARY KEY,
@@ -69,6 +99,33 @@ function inicializarTablas() {
             branchId TEXT,
             company_data TEXT,
             last_login DATETIME
+        );
+    `);
+
+db.exec(`
+    CREATE TABLE IF NOT EXISTS movimientos_caja_locales (
+        id TEXT PRIMARY KEY,
+        tipo TEXT,           -- 'INGRESO' o 'GASTO'
+        concepto TEXT,
+        monto REAL,          -- Monto en Bs para el cuadre
+        monto_usd REAL,      -- Monto referencial en Divisa
+        metodo_pago TEXT,
+        fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+        cashier_id TEXT,
+        company_id TEXT,
+        branch_id TEXT,
+        estado_cierre INTEGER DEFAULT 0 -- 0: Pendiente para el Z, 1: Cerrado
+    );
+`);
+
+db.exec(`
+        CREATE TABLE IF NOT EXISTS claves_admin_locales (
+            id TEXT PRIMARY KEY,
+            ownerName TEXT,
+            encryptedCode TEXT,
+            company_id TEXT,
+            created_by TEXT,
+            updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
         );
     `);
 
@@ -165,6 +222,21 @@ db.exec(`
     `);
 
     db.exec(`
+        CREATE TABLE IF NOT EXISTS cuentas_por_cobrar (
+            id TEXT PRIMARY KEY,
+            company_id TEXT,
+            branch_id TEXT,
+            cliente_rif TEXT,
+            cliente_nombre TEXT,
+            monto_deuda REAL,
+            monto_pagado REAL DEFAULT 0,
+            estado TEXT DEFAULT 'PENDIENTE', 
+            fecha_emision DATETIME DEFAULT CURRENT_TIMESTAMP,
+            venta_id TEXT
+        );
+    `);
+
+    db.exec(`
         CREATE TABLE IF NOT EXISTS sync_queue (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             operacion TEXT,
@@ -213,7 +285,7 @@ db.exec(`
             )
         `).run();
 
-        db.exec(`
+db.exec(`
     CREATE TABLE IF NOT EXISTS salidas_inventario (
         id TEXT PRIMARY KEY,
         company_id TEXT,
@@ -228,29 +300,31 @@ db.exec(`
         fecha_modificacion DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     
+    
     CREATE TABLE IF NOT EXISTS configuracion_cajera (
         clave TEXT PRIMARY KEY,
         valor TEXT,
         fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP
     );
-
-
-`);
-
+    `); 
 
 }
+
 inicializarTablas();
+
+
+try {
+    db.prepare("ALTER TABLE ventas_locales ADD COLUMN estado_cierre INTEGER DEFAULT 0").run();
+} catch (e) {}
 
 try {
     db.prepare("ALTER TABLE productos_locales ADD COLUMN precio_compra REAL DEFAULT 0").run();
     db.prepare("ALTER TABLE productos_locales ADD COLUMN porcentaje_ganancia REAL DEFAULT 0").run();
-    console.log("✅ Columnas de costo y ganancia verificadas/añadidas a SQLite.");
+    console.log("✅ Columnas de costo, ganancia y estado_cierre verificadas/añadidas a SQLite.");
 } catch (e) {
-    // Es normal que de error si las columnas ya existen. Pasa silenciosamente.
+   
 }
 
-
-// --- ESTO DEBE IR FUERA DE CUALQUIER IF ---
 server.use(cors());
 server.use(express.json({ limit: '100mb' }));
 
@@ -273,6 +347,40 @@ if (stmtCheck.get().count === 0) {
 const GEMINI_API_KEY = "AIzaSyAPKpaQrze48wBpt2CwXxGDvATb8lgYpFo"; 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
+
+// 1. Obtener ventas del turno actual (Pendientes de Z)
+ipcMain.handle('obtener-ventas-pendientes-caja', async (event, { companyId, branchId, cashierId }) => {
+    try {
+        const stmt = db.prepare(`
+            SELECT * FROM ventas_locales 
+            WHERE company_id = ? AND branch_id = ? AND cashier_id = ? AND estado_cierre = 0
+        `);
+        return stmt.all(companyId, branchId, cashierId);
+    } catch (e) {
+        return [];
+    }
+});
+
+// 2. Procesar el Cierre (Guarda el Z y marca todo como cerrado)
+ipcMain.handle('procesar-cierre-caja-local', async (event, reporte) => {
+    try {
+        const transaction = db.transaction(() => {
+            // A. Aquí deberías crear un INSERT para una tabla nueva llamada 'cierres_caja' (opcional para tu historial general)
+            
+            // B. Marcar ventas como cerradas
+            db.prepare(`UPDATE ventas_locales SET estado_cierre = 1 WHERE company_id = ? AND branch_id = ? AND cashier_id = ? AND estado_cierre = 0`).run(reporte.companyId, reporte.branchId, reporte.cashierId);
+            
+            // C. Marcar Ingresos y Gastos como cerrados
+            db.prepare(`UPDATE movimientos_caja_locales SET estado_cierre = 1 WHERE company_id = ? AND branch_id = ? AND cashier_id = ? AND estado_cierre = 0`).run(reporte.companyId, reporte.branchId, reporte.cashierId);
+        });
+        
+        transaction();
+        return { success: true };
+    } catch (e) {
+        return { error: e.message };
+    }
+});
+
 ipcMain.handle('consultar-ia-nexus', async (event, { mensaje, contexto }) => {
     try {
         console.log("🚀 Nexus AI: Conectando con Google Gemini...");
@@ -293,6 +401,41 @@ ipcMain.handle('consultar-ia-nexus', async (event, { mensaje, contexto }) => {
         }
         
         return "El núcleo de IA no está disponible actualmente.";
+    }
+});
+
+ipcMain.handle('guardar-movimiento-caja', async (event, m) => {
+    try {
+        const stmt = db.prepare(`
+            INSERT INTO movimientos_caja_locales (
+                id, tipo, concepto, monto, monto_usd, metodo_pago, 
+                fecha, cashier_id, company_id, branch_id, estado_cierre
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        `);
+        
+        return stmt.run(
+            m.id, m.tipo, m.concepto, m.monto, m.monto_usd, m.metodo_pago,
+            m.fecha, m.cashier_id, m.company_id, m.branch_id
+        );
+    } catch (e) {
+        console.error("❌ Error guardando movimiento local:", e.message);
+        return { error: e.message };
+    }
+});
+
+// 2. Obtener movimientos pendientes de cierre
+ipcMain.handle('obtener-movimientos-caja', async (event, { tipo, companyId }) => {
+    try {
+        // Solo traemos los que NO han entrado en un Cierre Z (estado_cierre = 0)
+        const stmt = db.prepare(`
+            SELECT * FROM movimientos_caja_locales 
+            WHERE tipo = ? AND company_id = ? AND estado_cierre = 0
+            ORDER BY fecha DESC
+        `);
+        return stmt.all(tipo, companyId);
+    } catch (e) {
+        console.error("❌ Error consultando movimientos:", e.message);
+        return [];
     }
 });
 
@@ -536,35 +679,9 @@ ipcMain.handle('obtener-productos-local', async (event, empresaId) => {
 // 1. Guardar la venta con todos los campos fiscales de tu tabla
 ipcMain.handle('guardar-venta-local', async (event, v) => {
     try {
-        // 1. PRE-VALIDACIÓN Y DESCUENTO: Hablar con el Servidor Maestro primero
-        const urlServidor = config.isServer ? `http://localhost:${PORT}` : `http://${config.serverIP}:${PORT}`;
-        
-        // Extraemos los productos
-        const ventaData = typeof v.datos_json === 'string' ? JSON.parse(v.datos_json) : v.datos_json;
-        const itemsParaDescontar = (ventaData.productos || []).map(p => ({
-            id: p.id || p.producto_id,
-            cantidad: p.cantidad
-        }));
+        // Se eliminó la validación/descuento de stock en el Servidor Maestro (Axios)
+        // para limitar la operación exclusivamente al guardado en la colección local.
 
-        if (itemsParaDescontar.length > 0) {
-            try {
-                // Petición al servidor maestro ANTES de guardar localmente
-                const respuestaStock = await axios.post(`${urlServidor}/api/maestro/descontar-stock`, { items: itemsParaDescontar });
-                
-                if (!respuestaStock.data.exito) {
-                    return { error: `Venta cancelada: ${respuestaStock.data.mensaje}` };
-                }
-                console.log("📦 Nexus POS: Stock validado y descontado en el Servidor Maestro.");
-                
-            } catch (errorAxios) {
-                console.error("❌ Error de red o stock al validar:", errorAxios.message);
-                // Extraemos el mensaje de error si viene del backend (ej. 400 Stock insuficiente), si no, es caída de red
-                const mensajeError = errorAxios.response?.data?.mensaje || "Pérdida de conexión con el Servidor Maestro.";
-                return { error: `Venta cancelada: ${mensajeError}` };
-            }
-        }
-
-        // 2. GUARDADO LOCAL: Solo se ejecuta si el bloque anterior fue exitoso
         const stmt = db.prepare(`
             INSERT INTO ventas_locales (
                 id, company_id, branch_id, cashier_id, numero_factura, 
@@ -581,10 +698,76 @@ ipcMain.handle('guardar-venta-local', async (event, v) => {
             v.tasa_bcv, v.metodo_pago, v.datos_json
         );
 
+        // --- GUARDADO AUTOMÁTICO DE CUENTA POR COBRAR (EN DIVISA) ---
+        try {
+            const metodoObj = JSON.parse(v.metodo_pago);
+            if (metodoObj.monto_credito_divisa > 0 && metodoObj.cliente_credito) {
+                const stmtCxC = db.prepare(`
+                    INSERT INTO cuentas_por_cobrar (
+                        id, company_id, branch_id, cliente_rif, cliente_nombre, 
+                        monto_deuda, venta_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                `);
+                
+                // IMPORTANTE: Ahora guardamos monto_credito_divisa en la columna monto_deuda
+                stmtCxC.run(
+                    `CXC-${Date.now()}`, v.company_id, v.branch_id, 
+                    metodoObj.cliente_credito.rif, metodoObj.cliente_credito.nombre, 
+                    metodoObj.monto_credito_divisa, v.id
+                );
+                console.log(`📘 Crédito guardado en DIVISA: $${metodoObj.monto_credito_divisa.toFixed(2)} (Tasa: ${metodoObj.tasa_credito})`);
+            }
+        } catch(errCxC) {
+            console.error("❌ Error guardando cuenta por cobrar:", errCxC.message);
+        }
+
+        // --- 🔥 NUEVO: LIMPIEZA DE DEUDA SALDADA ---
+        try {
+            const datosJSON = JSON.parse(v.datos_json);
+            const productosEnCarrito = datosJSON.productos || [];
+            
+            // Buscamos si en la factura venía nuestro "producto" especial de deuda
+            const pagoDeudaItem = productosEnCarrito.find(p => p.id === 'PAGO-DEUDA');
+
+            if (pagoDeudaItem) {
+                // En lugar de hacer un DELETE (que borra la historia contable),
+                // actualizamos el estado a 'PAGADO'. Así desaparece de la interfaz
+                // de deudas pendientes pero te queda el registro de que se pagó.
+                const stmtSaldar = db.prepare(`
+                    UPDATE cuentas_por_cobrar 
+                    SET estado = 'PAGADO', monto_pagado = monto_deuda 
+                    WHERE cliente_rif = ? AND estado = 'PENDIENTE'
+                `);
+                
+                const resSaldar = stmtSaldar.run(v.cliente_rif);
+                console.log(`✅ Deuda saldada exitosamente para ${v.cliente_nombre}. Registros limpiados: ${resSaldar.changes}`);
+            }
+        } catch (errSaldar) {
+            console.error("❌ Error al intentar saldar la deuda en BD:", errSaldar.message);
+        }
+        // -----------------------------------------------------------
+
+        console.log(`📂 Venta ${v.id} almacenada directamente en SQLite local.`);
         return resultadoLocal;
     } catch (e) {
-        console.error("❌ Error en ciclo de venta (Validación + Local):", e.message);
+        console.error("❌ Error en guardado local directo:", e.message);
         return { error: e.message };
+    }
+});
+
+ipcMain.handle('obtener-deuda-cliente', async (event, rif) => {
+    console.log(`🔍 [LOG DB] Buscando deuda para el RIF: ${rif}`);
+    try {
+        const deudas = db.prepare(`
+            SELECT * FROM cuentas_por_cobrar 
+            WHERE cliente_rif = ? AND (monto_deuda - monto_pagado) > 0
+        `).all(rif);
+        
+        console.log(`✅ [LOG DB] Deudas encontradas para ${rif}: ${deudas.length} registros.`);
+        return deudas;
+    } catch (error) {
+        console.error(`❌ [LOG DB] Error al consultar deuda:`, error.message);
+        return [];
     }
 });
 
@@ -670,7 +853,7 @@ ipcMain.handle('leer-puertos', async () => await SerialPort.list());
 // 🔥 SOLUCIÓN 3: Nombres de variables correctos y guardado en la tabla correcta
 ipcMain.handle('sincronizar-categorias-local', async (event, categories) => {
     try {
-        const stmt = db.prepare(`INSERT OR REPLACE INTO categorias_locales (id, company_id, nombre, estado_sync, fecha_modificacion) VALUES (?, '', ?, 1, ?)`);
+        const stmt = db.prepare(`INSERT OR REPLACE INTO categorias_locales (id, company_id, nombre, estado_sync, fecha_modificacion) VALUES (?, ?, ?, 1, ?)`);
         
         const transaction = db.transaction((cats) => {
             for (const cat of cats) {
@@ -750,29 +933,31 @@ ipcMain.handle('guardar-configuracion', async (event, clave, valor) => {
 
 ipcMain.handle('imprimir-texto-libre', async (event, textoTicket, nombreImpresora) => {
     try {
-        // 1. Creamos el archivo temporal en la carpeta de datos de la app
+        // 1. Creamos el archivo temporal
         const rutaArchivo = path.join(app.getPath('userData'), 'ticket_temporal.txt');
+        // Escribimos en latin1 para que los acentos y la "ñ" salgan bien en la tiquera
         fs.writeFileSync(rutaArchivo, textoTicket, 'latin1');
         
-        // 2. Preparamos el comando de Windows
-        let comandoPowerShell = `powershell -Command "Get-Content '${rutaArchivo}' -Raw | Out-Printer"`;
-        if (nombreImpresora) {
-            comandoPowerShell = `powershell -Command "Get-Content '${rutaArchivo}' -Raw | Out-Printer -Name '${nombreImpresora}'"`;
-        }
+        // 2. Preparamos el comando RAW (Copiar archivo crudo al puerto de red local)
+        // OJO: nombreImpresora ahora DEBE ser el nombre con el que compartiste la impresora (Ej: POS58)
+        const comandoCMD = `copy /B "${rutaArchivo}" "\\\\localhost\\${nombreImpresora}"`;
 
-        // 3. Ejecutamos la impresión directamente desde main.js
+        // 3. Ejecutamos la impresión directamente en CMD
         return new Promise((resolve) => {
-            exec(comandoPowerShell, (error) => {
+            console.log(`💻 Ejecutando impresión RAW: ${comandoCMD}`);
+
+            exec(comandoCMD, (error, stdout, stderr) => {
                 // Borramos el archivo temporal a los 2 segundos
                 setTimeout(() => {
                     if (fs.existsSync(rutaArchivo)) fs.unlinkSync(rutaArchivo);
                 }, 2000);
 
                 if (error) {
-                    console.error("❌ Error en PowerShell:", error.message);
+                    console.error("❌ Error al enviar RAW a impresora:", error.message);
+                    console.error("Detalles:", stderr);
                     resolve({ exito: false, mensaje: error.message });
                 } else {
-                    console.log(`🖨️ Ticket enviado nativamente a: ${nombreImpresora || 'Impresora Predeterminada'}`);
+                    console.log(`🖨️ Ticket enviado exitosamente a: \\\\localhost\\${nombreImpresora}`);
                     resolve({ exito: true });
                 }
             });
@@ -1030,9 +1215,179 @@ ipcMain.handle('guardar-stock-sucursal', async (event, { productoId, sucursalId,
     }
 });
 
-// --- MANEJADORES PARA GESTIÓN DE UNIDADES DE EMPAQUE (LOCAL) ---
+ipcMain.handle('guardar-clave-admin-local', async (event, c) => {
+    try {
+        // 1. Encriptamos la clave en milisegundos
+        const encrypted = encryptClave(c.plainCode);
+        
+        // 2. Guardamos en disco duro
+        const stmt = db.prepare(`
+            INSERT INTO claves_admin_locales (id, ownerName, encryptedCode, company_id, created_by, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `);
+        const resultado = stmt.run(c.id, c.ownerName, encrypted, c.company_id, c.created_by, c.updatedAt);
+        
+        return { success: true, changes: resultado.changes };
+    } catch (e) {
+        console.error("❌ Error guardando clave segura:", e.message);
+        return { error: e.message };
+    }
+});
 
-// 1. Obtener todos los empaques registrados en la empresa
+ipcMain.handle('obtener-claves-admin-local', async (event, companyId) => {
+    try {
+        // 1. Buscamos todas las filas encriptadas
+        const claves = db.prepare('SELECT * FROM claves_admin_locales WHERE company_id = ? ORDER BY updatedAt DESC').all(companyId);
+        
+        // 2. Desencriptamos en la memoria RAM (al vuelo) antes de mandarlas al HTML
+        return claves.map(c => ({
+            id: c.id,
+            ownerName: c.ownerName,
+            plainCode: decryptClave(c.encryptedCode), // 🔓 Aquí se revela para que el ojito 👁️ funcione
+            company_id: c.company_id,
+            updatedAt: c.updatedAt
+        }));
+    } catch (e) {
+        console.error("❌ Error obteniendo claves seguras:", e.message);
+        return [];
+    }
+});
+
+ipcMain.handle('eliminar-clave-admin-local', async (event, id) => {
+    try {
+        const resultado = db.prepare('DELETE FROM claves_admin_locales WHERE id = ?').run(id);
+        return { success: true, changes: resultado.changes };
+    } catch (e) {
+        return { error: e.message };
+    }
+});
+
+ipcMain.handle('crear-respaldo-local', async () => {
+    try {
+        const backupsDir = path.join(dbDir, 'backups');
+        // Crear la carpeta si no existe
+        if (!fs.existsSync(backupsDir)) {
+            fs.mkdirSync(backupsDir, { recursive: true });
+        }
+
+        // Generar nombre de archivo con fecha y hora (Ej: nexus_pos_2026-04-17_15-30-00.db)
+        const fecha = new Date();
+        const timestamp = fecha.toISOString().replace(/T/, '_').replace(/:/g, '-').split('.')[0];
+        const backupFileName = `nexus_pos_backup_${timestamp}.db`;
+        const backupPath = path.join(backupsDir, backupFileName);
+
+        // Copiar el archivo
+        fs.copyFileSync(dbPath, backupPath);
+
+        // Obtener el tamaño del nuevo archivo
+        const stats = fs.statSync(backupPath);
+        const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+
+        return { success: true, fileName: backupFileName, size: sizeMB, path: backupPath };
+    } catch (e) {
+        console.error("❌ Error creando respaldo:", e.message);
+        return { error: e.message };
+    }
+});
+
+ipcMain.handle('obtener-respaldos-locales', async () => {
+    try {
+        const backupsDir = path.join(dbDir, 'backups');
+        if (!fs.existsSync(backupsDir)) return [];
+
+        // Leer los archivos de la carpeta
+        const files = fs.readdirSync(backupsDir);
+        const respaldos = [];
+
+        for (const file of files) {
+            if (file.endsWith('.db')) {
+                const filePath = path.join(backupsDir, file);
+                const stats = fs.statSync(filePath);
+                respaldos.push({
+                    fileName: file,
+                    size: (stats.size / (1024 * 1024)).toFixed(2), // Tamaño en MB
+                    createdAt: stats.birthtime // Fecha de creación
+                });
+            }
+        }
+        
+        // Ordenar del más reciente al más antiguo
+        return respaldos.sort((a, b) => b.createdAt - a.createdAt);
+    } catch (e) {
+        console.error("❌ Error leyendo respaldos:", e.message);
+        return [];
+    }
+});
+
+ipcMain.handle('eliminar-respaldo-local', async (event, fileName) => {
+    try {
+        const backupPath = path.join(dbDir, 'backups', fileName);
+        if (fs.existsSync(backupPath)) {
+            fs.unlinkSync(backupPath);
+            return { success: true };
+        } else {
+            throw new Error("El archivo no existe.");
+        }
+    } catch (e) {
+        return { error: e.message };
+    }
+});
+
+ipcMain.handle('restaurar-respaldo-local', async (event, fileName) => {
+    return new Promise((resolve) => {
+        try {
+            const backupPath = path.join(dbDir, 'backups', fileName);
+            if (!fs.existsSync(backupPath)) {
+                resolve({ error: "El archivo de respaldo no existe." });
+                return;
+            }
+
+            console.log("🔒 Preparando restauración... Cerrando base de datos actual.");
+            // 1. CERRAR LA CONEXIÓN (La orden se envía a SQLite)
+            db.close(); 
+
+            // 2. PAUSA TÁCTICA: Le damos a Windows 1 segundo para liberar el archivo físicamente
+            setTimeout(() => {
+                try {
+                    console.log("⏳ Candado liberado. Copiando respaldo...");
+                    // 3. SOBRESCRIBIR EL ARCHIVO
+                    fs.copyFileSync(backupPath, dbPath);
+                    console.log("✅ Base de datos restaurada con éxito.");
+
+                    // 4. CIERRE SEGURO (3 segundos después de la copia)
+                    setTimeout(() => {
+                        app.quit();
+                    }, 3000);
+
+                    // Respondemos al HTML que todo salió bien
+                    resolve({ success: true });
+                    
+                } catch (fsError) {
+                    // Si falla aquí, capturamos el error exacto de Windows
+                    console.error("❌ Error del sistema de archivos:", fsError.message);
+                    resolve({ error: "Error al sobrescribir: " + fsError.message });
+                }
+            }, 1000); // <-- 1000 milisegundos de espera mágica
+
+        } catch (e) {
+            console.error("❌ Error general:", e.message);
+            resolve({ error: e.message });
+        }
+    });
+});
+
+ipcMain.on('apagar-sistema', () => {
+    console.log("🛑 Apagando el sistema por cierre de sesión seguro...");
+    app.quit();
+});
+
+ipcMain.handle('eliminar-cliente-local', async (event, rif) => {
+    try {
+        return db.prepare('DELETE FROM clientes_locales WHERE rif = ?').run(rif);
+    } catch (e) { return { error: e.message }; }
+});
+
+
 ipcMain.handle('obtener-unidades-empaque-local', async (event, companyId) => {
     try {
         // Hacemos un JOIN con productos_locales para mostrar el nombre real del producto en la tabla
@@ -1276,6 +1631,29 @@ async function enviarDatosAXeon(datos) {
             console.error("⚠️ Error Configuración Axios:", error.message);
             return { success: false, error: error.message };
         }
+    }
+}
+
+function encryptClave(text) {
+    let iv = crypto.randomBytes(IV_LENGTH);
+    let cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), iv);
+    let encrypted = cipher.update(text);
+    encrypted = Buffer.concat([encrypted, cipher.final()]);
+    // Guardamos el vector y el texto encriptado unidos por ":"
+    return iv.toString('hex') + ':' + encrypted.toString('hex');
+}
+
+function decryptClave(text) {
+    try {
+        let textParts = text.split(':');
+        let iv = Buffer.from(textParts.shift(), 'hex');
+        let encryptedText = Buffer.from(textParts.join(':'), 'hex');
+        let decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), iv);
+        let decrypted = decipher.update(encryptedText);
+        decrypted = Buffer.concat([decrypted, decipher.final()]);
+        return decrypted.toString();
+    } catch (error) {
+        return "ERROR_DESCIFRADO";
     }
 }
 

@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Acceso de Administrador</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script> 
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <script src="tailwindcss.js"></script> 
+    <link href="../node_modules/material-icons/iconfont/material-icons.css" rel="stylesheet">
 
     <style>
         body {
@@ -71,44 +71,64 @@
         </div>
     </main>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-        
-        // **CONFIGURACIÓN DE FIREBASE**
-        const firebaseConfig = {
-            apiKey: "AIzaSyDN9mZ1n-OkC-Qz52eTCOy4yJH7M0U9zYI",
-            authDomain: "nexus-pos-75593.firebaseapp.com",
-            projectId: "nexus-pos-75593",
-            storageBucket: "nexus-pos-75593.firebasestorage.app",
-            messagingSenderId: "626840984883",
-            appId: "1:626840984883:web:08d56544ee28bc8e637246",
-            measurementId: "G-K1EQVJWJHG"
-        };
-        
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        
+<script type="module">
+        // --- 1. ESTADO GLOBAL Y REFERENCIAS AL DOM ---
         let companyId = null;
         
         const adminCodeInput = document.getElementById('admin-code-input');
         const btnSubmit = document.getElementById('btn-submit');
         const authStatus = document.getElementById('auth-status');
-        const keyIcon = document.getElementById('key-icon'); // Referencia al ícono
+        const keyIcon = document.getElementById('key-icon'); 
 
-        
-        /**
-         * 🔒 Función CRÍTICA: Verifica la clave de administrador.
-         * Busca la clave en la colección `codigos_administrador`.
-         */
+        // --- 2. INICIALIZACIÓN LOCAL ---
+        async function initLoginModule() {
+            try {
+                // Obtenemos la sesión actual guardada en SQLite
+                const sesion = await window.nexusAPI.obtenerSesionLocal();
+                
+                if (sesion && sesion.companyId) {
+                    companyId = sesion.companyId;
+                    authStatus.textContent = "Sistema local conectado. Listo para login.";
+                    if (btnSubmit) btnSubmit.disabled = false;
+                } else {
+                    authStatus.textContent = "Error: Sesión de sistema no detectada. Reinicie la aplicación.";
+                    if (btnSubmit) btnSubmit.disabled = true;
+                }
+            } catch (error) {
+                authStatus.textContent = "Error al conectar con la base de datos local.";
+                console.error("Fallo de inicialización:", error);
+            }
+
+            // Asignación de eventos
+            if (btnSubmit) {
+                btnSubmit.addEventListener('click', checkAdminCode);
+            }
+
+            // Iniciar Sesión con la tecla Enter
+            adminCodeInput?.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault(); 
+                    if (!btnSubmit.disabled) checkAdminCode();
+                }
+            });
+
+            // Efecto interactivo en el ícono
+            adminCodeInput?.addEventListener('focus', () => {
+                if(keyIcon) keyIcon.style.transform = 'rotate(-10deg) scale(1.1)';
+            });
+            adminCodeInput?.addEventListener('blur', () => {
+                if(keyIcon) keyIcon.style.transform = 'rotate(0deg) scale(1)';
+            });
+        }
+
+        // --- 3. LÓGICA CRÍTICA DE AUTENTICACIÓN (SQLITE) ---
         async function checkAdminCode() {
-            if (!companyId) { showCustomAlert('Error: El ID de la empresa no está cargado.', 'warning'); return; }
+            if (!companyId) { 
+                showCustomAlert('Error: El ID de la empresa no está cargado.', 'warning'); 
+                return; 
+            }
             
-            const inputCode = adminCodeInput.value.trim(); // Clave introducida
+            const inputCode = adminCodeInput.value.trim(); 
             if (!inputCode || inputCode.length < 4) { 
                 showCustomAlert('Por favor, introduce la clave completa (mínimo 4 caracteres).', 'warning'); 
                 return; 
@@ -117,153 +137,89 @@
             try {
                 btnSubmit.disabled = true;
                 btnSubmit.textContent = 'Verificando...';
-                keyIcon.style.color = '#F59E0B'; // Color ámbar mientras verifica
+                if(keyIcon) keyIcon.style.color = '#F59E0B'; // Ámbar (Verificando)
 
-                // 1. Crear la referencia a la colección de códigos de administrador
-                const adminCodesColRef = collection(db, `companies/${companyId}/codigos_administrador`);
+                // 1. Obtenemos todas las claves desencriptadas desde SQLite (Reutilizando la función del Main)
+                const clavesGuardadas = await window.nexusAPI.obtenerClavesAdminLocal(companyId);
                 
-                // 2. Crear la consulta
-                const q = query(adminCodesColRef, where('plainCode', '==', inputCode));
-                
-                // 3. Ejecutar la consulta
-                const querySnapshot = await getDocs(q);
+                // 2. Buscamos si la clave ingresada coincide con alguna clave válida
+                const esClaveValida = clavesGuardadas.some(clave => clave.plainCode === inputCode);
         
-                // 4. Verificar si se encontró al menos un documento (autenticación exitosa)
-                if (!querySnapshot.empty) { 
+                if (esClaveValida) { 
                     // ÉXITO: Generar y almacenar el token de acceso
                     const accessKey = generateSecureToken(32); 
-                    sessionStorage.setItem('adminAccessKey', accessKey); // Guarda la clave en la sesión
+                    sessionStorage.setItem('adminAccessKey', accessKey); 
                     
                     showCustomAlert('Acceso concedido. Redirigiendo...', 'success');
-                    keyIcon.style.color = '#10B981'; // Color verde en éxito
+                    if(keyIcon) keyIcon.style.color = '#10B981'; // Verde (Éxito)
                     
-                    // 5. Redirección
+                    // Redirección
                     setTimeout(() => {
                         window.location.href = `index_cajera/punto-de-venta/cierre_de_caja.html`;
                     }, 1000); 
                     
                 } else {
-                    // FALLO: No se encontró la clave
+                    // FALLO: Clave incorrecta
                     showCustomAlert('Clave de seguridad incorrecta. Acceso denegado.', 'error');
                     adminCodeInput.value = '';
-                    keyIcon.style.color = '#EF4444'; // Color rojo en fallo
+                    if(keyIcon) keyIcon.style.color = '#EF4444'; // Rojo (Fallo)
                     
-                    // Restablecer después de un breve momento
+                    // Restablecer botón
                     setTimeout(() => {
-                        keyIcon.style.color = '#DC2626'; // Volver al rojo original (red-600)
+                        if(keyIcon) keyIcon.style.color = '#DC2626'; 
                         btnSubmit.disabled = false;
                         btnSubmit.textContent = 'Desbloquear Funcionalidad';
                     }, 500); 
                 }
                 
             } catch (e) {
-                console.error("Error al verificar la clave de administrador: ", e);
-                showCustomAlert("Error de comunicación con la base de datos.", 'error'); 
+                console.error("Error al verificar clave local: ", e);
+                showCustomAlert("Error de comunicación con la base de datos SQLite.", 'error'); 
                 btnSubmit.disabled = false;
                 btnSubmit.textContent = 'Desbloquear Funcionalidad';
-                keyIcon.style.color = '#DC2626'; // Volver al rojo original
+                if(keyIcon) keyIcon.style.color = '#DC2626'; 
             }
         }
         
-        /**
-         * Genera un token criptográficamente seguro.
-         */
+        // --- 4. UTILIDADES ---
         function generateSecureToken(length) {
             const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
             let result = '';
-            const charactersLength = characters.length;
             const randomValues = window.crypto.getRandomValues(new Uint8Array(length));
-            
             for (let i = 0; i < length; i++) {
-                result += characters.charAt(randomValues[i] % charactersLength);
+                result += characters.charAt(randomValues[i] % characters.length);
             }
             return result;
         }
-        
-        // Inicialización y manejo de eventos
-        function initLoginModule() {
-            if (btnSubmit) {
-                btnSubmit.addEventListener('click', checkAdminCode);
-            }
 
-            // AÑADIDO: Habilidad de Iniciar Sesión con la tecla Enter
-            adminCodeInput.addEventListener('keydown', (event) => {
-                // Verificar si la tecla presionada es 'Enter'
-                if (event.key === 'Enter') {
-                    // Prevenir la acción por defecto (como enviar un formulario)
-                    event.preventDefault(); 
-                    // Solo intentar verificar si el botón no está deshabilitado
-                    if (!btnSubmit.disabled) {
-                        checkAdminCode();
-                    }
-                }
-            });
-
-            // Efecto interactivo en el ícono de clave al enfocar el input
-            adminCodeInput.addEventListener('focus', () => {
-                keyIcon.style.transform = 'rotate(-10deg) scale(1.1)';
-            });
-            
-            adminCodeInput.addEventListener('blur', () => {
-                keyIcon.style.transform = 'rotate(0deg) scale(1)';
-            });
-
-            // Escucha cambios en el estado de autenticación (Necesario para obtener el companyId)
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    try {
-                        const idTokenResult = await user.getIdTokenResult();
-                        companyId = idTokenResult.claims.companyId;
-
-                        if (companyId) {
-                            authStatus.textContent = "Autenticación de usuario OK. Listo para login.";
-                            if (btnSubmit) btnSubmit.disabled = false;
-                        } else {
-                            authStatus.textContent = "Error: ID de la empresa no disponible. Contacte a soporte.";
-                        }
-                    } catch (error) {
-                        authStatus.textContent = "Error al obtener datos de usuario.";
-                        console.error("Error fetching claims:", error);
-                    }
-                } else {
-                    authStatus.textContent = "No se detectó sesión de usuario principal.";
-                    if (btnSubmit) btnSubmit.disabled = true;
-                }
-            });
-        }
-
-        // Aseguramos que la inicialización se ejecute
-        initLoginModule();
-
-        // Función para mostrar una alerta personalizada (modificada para usar la clase CSS)
         function showCustomAlert(message, type = 'success') {
             const alertDiv = document.createElement('div');
             alertDiv.textContent = message;
-            alertDiv.classList.add('custom-alert'); // Aplicamos la clase base
+            alertDiv.classList.add('custom-alert'); 
             
-            let backgroundColor = '#10B981'; // Tailwind green-500
-            if (type === 'error') {
-                backgroundColor = '#EF4444'; // Tailwind red-500
-            } else if (type === 'warning') {
-                backgroundColor = '#F59E0B'; // Tailwind amber-500
-            }
+            let backgroundColor = '#10B981'; // success
+            if (type === 'error') backgroundColor = '#EF4444';
+            else if (type === 'warning') backgroundColor = '#F59E0B';
             
-            // Estilos dinámicos
-            alertDiv.style.backgroundColor = backgroundColor;
+            alertDiv.style.cssText = `
+                position: fixed; top: 20px; right: 20px;
+                background-color: ${backgroundColor};
+                color: white; padding: 15px; border-radius: 5px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 1000;
+                opacity: 0; transition: opacity 0.3s ease;
+            `;
             
             document.body.appendChild(alertDiv);
             
-            // Iniciar la transición (haciendo que sea visible)
-            setTimeout(() => {
-                alertDiv.style.opacity = '1';
-            }, 50); 
-            
-            // Ocultar
+            setTimeout(() => { alertDiv.style.opacity = '1'; }, 50); 
             setTimeout(() => {
                 alertDiv.style.opacity = '0';
-                setTimeout(() => alertDiv.remove(), 500);
+                setTimeout(() => alertDiv.remove(), 300);
             }, 3000);
         }
+
+        // Arrancar el módulo
+        initLoginModule();
     </script>
 </body>
 </html>

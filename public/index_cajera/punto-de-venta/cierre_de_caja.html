@@ -83,6 +83,11 @@
                         <span>Total Gastos ($):</span>
                         <span id="total-expenses-dollars">$. 0.00</span>
                     </div>
+                    <div class="mt-3 text-right border-t border-gray-200 pt-2">
+                        <button onclick="window.abrirModalMovimientos('GASTO')" class="text-sm font-bold text-red-600 hover:text-red-800 hover:underline transition-all tracking-wide">
+                            MOSTRAR GASTOS 
+                        </button>
+                    </div>
                 </div>
                 <div class="bg-gray-100 p-4 rounded-lg border border-gray-300">
                     <h3 class="text-lg font-semibold text-gray-700 mb-2 flex items-center">
@@ -96,6 +101,11 @@
                     <div class="flex justify-between items-center text-xl font-bold text-gray-800">
                         <span>Total Ingresos ($):</span>
                         <span id="total-incomes-dollars">$. 0.00</span>
+                    </div>
+                    <div class="mt-3 text-right border-t border-gray-200 pt-2">
+                        <button onclick="window.abrirModalMovimientos('INGRESO')" class="text-sm font-bold text-green-600 hover:text-green-800 hover:underline transition-all tracking-wide">
+                            MOSTRAR INGRESOS 
+                        </button>
                     </div>
                 </div>
             </div>
@@ -271,743 +281,550 @@
 
 
     <script type="module">
-import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, onSnapshot, collection, query, where, collectionGroup, addDoc, serverTimestamp, writeBatch, getDocs, limit, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    // --- ESTADO GLOBAL ---
+    let userId = null; 
+    let companyId = null;
+    let role = null;
+    let branchId = null;
+    let printerName = null;
+    let printerSize = "58";
+    let encabezadoFactura = { line1: "", line2: "", line3: "" };
+    let salesPaymentTotals = {}; 
+    let incomePaymentTotals = {};
+    let expensePaymentTotals = {}; 
 
-        let appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'; 
-        let firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}'); 
-        let initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
-        firebaseConfig = {
-            apiKey: "AIzaSyDN9mZ1n-OkC-Qz52eTCOy4yJH7M0U9zYI",
-            authDomain: "nexus-pos-75593.firebaseapp.com",
-            projectId: "nexus-pos-75593",
-            storageBucket: "nexus-pos-75593.firebasestorage.app",
-            messagingSenderId: "626840984883",
-            appId: "1:626840984883:web:08d56544ee28bc8e637246",
-            measurementId: "G-K1EQVJWJHG"
-        };
-        initialAuthToken = null; 
-        
-        let app;
-        if (!getApps().length) {
-            app = initializeApp(firebaseConfig);
-        } else {
-            app = getApp();
-        }
+    let currentReportData = {
+        totalSalesBs: 0,
+        totalSalesDollars: 0,
+        totalExpensesBs: 0, 
+        totalExpensesDollars: 0,
+        totalIncomes: 0,
+        totalIncomesDollars: 0,
+        totalDifferenceBs: 0,
+        totalDifferenceDollars: 0,
+        paymentDetails: {} 
+    };
 
-        const db = getFirestore(app);
-        const auth = getAuth(app);
+    // --- REFERENCIAS AL DOM ---
+    const userIdDisplay = document.getElementById('user-id');
+    const companyIdDisplay = document.getElementById('company-id');
+    const roleDisplay = document.getElementById('role-display');
+    const totalExpensesBsDisplay = document.getElementById('total-expenses-bs'); 
+    const totalExpensesDollarsDisplay = document.getElementById('total-expenses-dollars'); 
+    const totalIncomesBsDisplay = document.getElementById('total-incomes-bs'); 
+    const totalIncomesDollarsDisplay = document.getElementById('total-incomes-dollars'); 
+    const totalSalesBsDisplay = document.getElementById('total-sales-bs');
+    const totalSalesDollarsDisplay = document.getElementById('total-sales-dollars');
+    const totalDifferenceBsDisplay = document.getElementById('total-difference-bs');
+    const totalDifferenceDollarsDisplay = document.getElementById('total-difference-dollars');
+    
+    const countedInputs = document.querySelectorAll('.counted-input');
+    const closeCashButton = document.getElementById('close-cash-button');
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const infoModal = document.getElementById('info-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalMessage = document.getElementById('modal-message');
+    const closeModalButton = document.getElementById('close-modal-button');
 
-        let userId = null; 
-        let companyId = null;
-        let role = null;
-        let branchId = null;
-        let hasListeners = false;
-        let salesPaymentTotals = {}; 
-        let incomePaymentTotals = {};
-        let expensePaymentTotals = {}; 
-        
-        let printerName = "TICKET"; 
+    // MAPEO DE MÉTODOS DE PAGO (Local a UI)
+    const DB_TO_CODE_MAP = {
+        'efectivo': 'cash-bs', 
+        'debito': 'debit-card-bs', 
+        'pagomovil': 'mobile-payment-bs',
+        'dolar': 'dollars', 'divisa': 'dollars', 
+        'transferencia': 'transfer-bs',
+        'deposito': 'deposit-bs', 
+        'credito': 'credit-bs', 
+        'tarjetacredito': 'credit-card-bs', 
+        'biopago': 'biopago-bs', 
+        'zinli': 'zinli-dollars'
+    };
 
-        let currentReportData = {
-            totalSalesBs: 0,
-            totalSalesDollars: 0,
-            totalExpensesBs: 0, 
-            totalExpensesDollars: 0,
-            totalIncomes: 0,
-            totalDifferenceBs: 0,
-            totalDifferenceDollars: 0,
-            paymentDetails: {} 
-        };
+    // --- INICIALIZACIÓN ---
+    async function inicializarCierre() {
+        if (loadingOverlay) loadingOverlay.classList.remove('hidden');
 
-        let userIdDisplay = null;
-        let companyIdDisplay = null;
-        let roleDisplay = null;
-        let totalExpensesBsDisplay = null; 
-        let totalExpensesDollarsDisplay = null; 
-        let totalIncomesBsDisplay = null; 
-        let totalIncomesDollarsDisplay = null; 
-        let totalSalesBsDisplay = null; 
-        let totalSalesDollarsDisplay = null;
-        let totalDifferenceBsDisplay = null;
-        let totalDifferenceDollarsDisplay = null;
-        
-        let countedInputs = [];
-        let closeCashButton = null;
-        let loadingOverlay = null;
-        let infoModal = null;
-        let modalTitle = null;
-        let modalMessage = null;
-        let closeModalButton = null;
-
-        function formatLine(leftText, rightText, totalWidth = 32) {
-            rightText = String(rightText);
+        try {
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
             
-            let padding = totalWidth - leftText.length - rightText.length;
-            
-            if (padding < 1) {
-                const minSpace = 2; 
-                const availableSpace = totalWidth - rightText.length - minSpace;
+            if (sesion) {
+                userId = sesion.uid;
+                companyId = sesion.companyId;
+                branchId = sesion.branchId;
+                role = sesion.role;
                 
-                if (availableSpace > 0) {
-                    leftText = leftText.substring(0, availableSpace);
-                    padding = minSpace;
-                } else {
-                    return leftText + rightText + '\\n';
-                }
+                updateUserInfoDisplay();
+
+                await fetchPrinterConfig();
+                await loadCajaData();
+            } else {
+                showInfoMessage("No hay sesión activa. Por favor, vuelva a iniciar sesión.", "error");
             }
-            
-            return leftText + ' '.repeat(padding) + rightText + '\\n';
+        } catch (error) {
+            console.error("Error inicializando cierre:", error);
+            showInfoMessage("Fallo al conectar con la base de datos local.", "error");
+        } finally {
+            if (loadingOverlay) loadingOverlay.classList.add('hidden');
         }
+    }
+
+    // --- CARGA DE DATOS LOCALES ---
+    // --- CARGA DE DATOS LOCALES ---
+    async function loadCajaData() {
+        resetTotals();
+
+        try {
+            // 1. CARGAR INGRESOS PENDIENTES
+            const ingresos = await window.nexusAPI.obtenerMovimientosCaja({ tipo: 'INGRESO', companyId });
+            (ingresos || []).forEach(mov => {
+                currentReportData.totalIncomes += mov.monto;
+                currentReportData.totalIncomesDollars += mov.monto_usd; // <-- AÑADIDO: Suma los dólares
+                
+                const metodoNormalizado = mov.metodo_pago ? mov.metodo_pago.toLowerCase().replace(/\s/g, '') : 'efectivo';
+                const code = DB_TO_CODE_MAP[metodoNormalizado] || 'cash-bs';
+                
+                incomePaymentTotals[code] = (incomePaymentTotals[code] || 0) + mov.monto;
+                if (mov.monto_usd > 0) incomePaymentTotals['dollars'] = (incomePaymentTotals['dollars'] || 0) + mov.monto_usd;
+            });
+
+            // 2. CARGAR GASTOS PENDIENTES
+            const gastos = await window.nexusAPI.obtenerMovimientosCaja({ tipo: 'GASTO', companyId });
+            (gastos || []).forEach(mov => {
+                currentReportData.totalExpensesBs += mov.monto;
+                currentReportData.totalExpensesDollars += mov.monto_usd;
+                
+                const metodoNormalizado = mov.metodo_pago ? mov.metodo_pago.toLowerCase().replace(/\s/g, '') : 'efectivo';
+                const code = DB_TO_CODE_MAP[metodoNormalizado] || 'cash-bs';
+                
+                expensePaymentTotals[code] = (expensePaymentTotals[code] || 0) + mov.monto;
+                if (mov.monto_usd > 0) expensePaymentTotals['dollars'] = (expensePaymentTotals['dollars'] || 0) + mov.monto_usd;
+            });
+
+            // 3. CARGAR VENTAS PENDIENTES
+            const ventas = await window.nexusAPI.obtenerVentasPendientesCaja({ companyId, branchId, cashierId: userId });
+            
+            (ventas || []).forEach(sale => {
+                let payments = {};
+                try {
+                    payments = JSON.parse(sale.metodo_pago || '{}');
+                } catch (e) { return; }
+
+                for (let method in payments) {
+                    let amount = parseFloat(payments[method]) || 0;
+                    if (amount > 0) {
+                        let code = DB_TO_CODE_MAP[method.toLowerCase()];
+                        if (code) {
+                            salesPaymentTotals[code] = (salesPaymentTotals[code] || 0) + amount;
+                            if (code === 'dollars') currentReportData.totalSalesDollars += amount;
+                            else currentReportData.totalSalesBs += amount;
+                        }
+                    }
+                }
+            });
+
+            // ACTUALIZAR PANTALLA
+            if (totalIncomesBsDisplay) totalIncomesBsDisplay.textContent = formatCurrency(currentReportData.totalIncomes, 'Bs.');
+            if (totalIncomesDollarsDisplay) totalIncomesDollarsDisplay.textContent = formatCurrency(currentReportData.totalIncomesDollars, '$.'); // <-- AÑADIDO: Muestra los dólares en pantalla
+            if (totalExpensesBsDisplay) totalExpensesBsDisplay.textContent = formatCurrency(currentReportData.totalExpensesBs, 'Bs.');
+            if (totalExpensesDollarsDisplay) totalExpensesDollarsDisplay.textContent = formatCurrency(currentReportData.totalExpensesDollars, '$.');
+            if (totalSalesBsDisplay) totalSalesBsDisplay.textContent = formatCurrency(currentReportData.totalSalesBs, 'Bs.');
+            if (totalSalesDollarsDisplay) totalSalesDollarsDisplay.textContent = formatCurrency(currentReportData.totalSalesDollars, '$.');
+
+            updateConciliationDisplay();
+
+        } catch (e) {
+            console.error("Error procesando los datos de la caja:", e);
+        }
+    }
+
+    // --- PROCESAMIENTO DEL CIERRE ---
+    async function handleCloseCash() {
+        if (!companyId || !branchId || !userId) {
+            showInfoMessage("ERROR: Faltan datos de sesión. No se puede completar el cierre.", 'error');
+            return;
+        }
+
+        if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+        updateDifferencesAndTotals();
+
+        try {
+            const reportData = {
+                id: `Z-${Date.now()}`,
+                companyId: companyId,
+                branchId: branchId,
+                cashierId: userId,
+                role: role,
+                fecha: new Date().toISOString(),
+                totalSalesBs: currentReportData.totalSalesBs,
+                totalSalesDollars: currentReportData.totalSalesDollars,
+                totalExpensesBs: currentReportData.totalExpensesBs, 
+                totalExpensesDollars: currentReportData.totalExpensesDollars,
+                totalIncomes: currentReportData.totalIncomes,
+                totalDifferenceBs: currentReportData.totalDifferenceBs,
+                totalDifferenceDollars: currentReportData.totalDifferenceDollars,
+                paymentsConciliation: JSON.stringify(currentReportData.paymentDetails) 
+            };
+
+            // Ejecuta el guardado del Cierre Z y marca las ventas/movimientos como procesados
+            const cierreResult = await window.nexusAPI.procesarCierreCajaLocal(reportData);
+            
+            if (cierreResult && !cierreResult.error) {
+                const printSuccess = await printCashClosingReport(currentReportData, {userId, companyId, role, branchId}); 
+                
+                if (printSuccess) {
+                    showInfoMessage(`¡Cierre de caja completado con éxito! Se han reiniciado los totales para el próximo turno.`, 'success');
+                } else {
+                    showInfoMessage(`¡Cierre de caja completado en sistema! Pero falló la impresión.`, 'success');
+                }
+                
+                countedInputs.forEach(input => input.value = '');
+                await loadCajaData(); // Refresca en blanco
+            } else {
+                throw new Error(cierreResult.error);
+            }
+
+        } catch (error) {
+            console.error("Error CRÍTICO al cerrar la caja:", error);
+            showInfoMessage("ERROR: Falló el cierre local: " + error.message, 'error');
+        } finally {
+            if (loadingOverlay) loadingOverlay.classList.add('hidden');
+        }
+    }
+
+    // --- LÓGICA DE IMPRESIÓN DIRECTA (NATIVA) ---
+    async function printCashClosingReport(data, session) {
+        // Ajuste dinámico de 58mm (32 caracteres) o 80mm (48 caracteres)
+        const LINE_WIDTH = (printerSize === "80") ? 48 : 32;
+        const CRLF = "\r\n";
+        const SEPARATOR = "-".repeat(LINE_WIDTH) + CRLF;
+
+        const paymentMethodMap = {
+            'cash-bs': 'Efectivo (Bs)', 'debit-card-bs': 'T. Débito (Bs)', 'mobile-payment-bs': 'Pago Móvil (Bs)',
+            'zinli-dollars': 'Zinli ($)', 'biopago-bs': 'Bio Pago (Bs)', 'dollars': 'Dólar ($)',
+            'transfer-bs': 'Transfer. (Bs)', 'deposit-bs': 'Depósito (Bs)', 'credit-bs': 'Crédito (Bs)',
+            'credit-card-bs': 'T. Crédito (Bs)'
+        };
+
+        // 🔥 NUEVO: Obtener el nombre de la caja de forma inteligente
+        let nombreCaja = session.userId; 
+        try {
+            const sesionLocal = await window.nexusAPI.obtenerSesionLocal();
+            if (sesionLocal && sesionLocal.email) {
+                // Toma el correo y le quita el "@..." para dejar solo el nombre (Ej: caja1@gmail.com -> CAJA1)
+                nombreCaja = sesionLocal.email.split('@')[0]; 
+            }
+        } catch (e) {
+            console.warn("No se pudo obtener el nombre de la caja, usando ID.");
+        }
+
+        let t = "\x1B\x40"; // Inicializar impresora
+        
+        // Encabezado fiscal de la empresa
+        if (encabezadoFactura.line1) t += centerText(encabezadoFactura.line1.toUpperCase(), LINE_WIDTH) + CRLF;
+        if (encabezadoFactura.line3) t += centerText(`RIF: ${encabezadoFactura.line3.toUpperCase()}`, LINE_WIDTH) + CRLF;
+        if (encabezadoFactura.line2) t += centerText(encabezadoFactura.line2, LINE_WIDTH) + CRLF;
+        t += SEPARATOR;
+        
+        t += centerText("REPORTE DE CIERRE DE CAJA", LINE_WIDTH) + CRLF;
+        t += SEPARATOR;
+        t += `CAJA/CAJERO: ${nombreCaja.toUpperCase()}` + CRLF; // 🔥 Se imprime el nombre de la caja
+        t += `FECHA: ${new Date().toLocaleString('es-VE')}` + CRLF;
+        t += SEPARATOR;
+        
+        t += centerText("--- RESUMEN GENERAL ---", LINE_WIDTH) + CRLF;
+        t += formatLR("INGRESOS (Bs)", data.totalIncomes.toFixed(2), LINE_WIDTH) + CRLF;
+        t += formatLR("INGRESOS ($)", data.totalIncomesDollars.toFixed(2), LINE_WIDTH) + CRLF;
+        t += formatLR("GASTOS (Bs)", data.totalExpensesBs.toFixed(2), LINE_WIDTH) + CRLF;
+        t += formatLR("GASTOS ($)", data.totalExpensesDollars.toFixed(2), LINE_WIDTH) + CRLF;
+        t += formatLR("VENTAS (Bs)", data.totalSalesBs.toFixed(2), LINE_WIDTH) + CRLF;
+        t += formatLR("VENTAS ($)", data.totalSalesDollars.toFixed(2), LINE_WIDTH) + CRLF;
+        t += SEPARATOR;
+
+        t += centerText("CONCILIACION", LINE_WIDTH) + CRLF;
+        for (const type in data.paymentDetails) {
+            const det = data.paymentDetails[type];
+            
+            // 🔥 ELIMINADO EL FILTRO: Ahora pasará directo e imprimirá todos los métodos, así estén en 0.00
+            
+            const name = paymentMethodMap[type] || type;
+            t += `${name.toUpperCase()}` + CRLF;
+            t += formatLR("  Registrado:", det.registered.toFixed(2), LINE_WIDTH) + CRLF;
+            t += formatLR("  Contado:", det.counted.toFixed(2), LINE_WIDTH) + CRLF;
+            t += formatLR("  Diferencia:", det.difference.toFixed(2), LINE_WIDTH) + CRLF;
+        }
+
+        t += SEPARATOR;
+        t += formatLR("DIFERENCIA (Bs):", data.totalDifferenceBs.toFixed(2), LINE_WIDTH) + CRLF;
+        t += formatLR("DIFERENCIA ($):", data.totalDifferenceDollars.toFixed(2), LINE_WIDTH) + CRLF;
+        
+        // Ahorro de papel
+        t += CRLF.repeat(2) + "\x1D\x56\x42\x00"; 
+
+        try {
+            if (!printerName || printerName === "TICKET") return false;
+            const result = await window.nexusAPI.imprimirTextoLibre(t, printerName);
+            return result.exito;
+        } catch (error) {
+            return false;
+        }
+    }
+    
+    // --- FUNCIONES AUXILIARES DE INTERFAZ Y TEXTO ---
+    function centerText(text, width) {
+        text = text.trim();
+        if (text.length >= width) return text.substring(0, width);
+        const spaces = Math.floor((width - text.length) / 2);
+        return " ".repeat(spaces) + text;
+    }
+
+    function formatLR(left, right, width) {
+        const safeLeft = String(left || '');
+        const safeRight = String(right || '');
+        const spaceNeeded = width - safeLeft.length - safeRight.length;
+        if (spaceNeeded > 0) return safeLeft + " ".repeat(spaceNeeded) + safeRight;
+        return safeLeft.substring(0, width - safeRight.length - 1) + " " + safeRight;
+    }
+
+    function formatCurrency(amount, currency = 'Bs.') {
+        const parsedAmount = parseFloat(amount);
+        return isNaN(parsedAmount) ? `${currency} 0.00` : `${currency} ${parsedAmount.toFixed(2)}`;
+    }
+
+    function resetTotals() {
+        const keys = ['cash-bs', 'debit-card-bs', 'mobile-payment-bs', 'zinli-dollars', 'biopago-bs', 'dollars', 'transfer-bs', 'deposit-bs', 'credit-bs', 'credit-card-bs'];
+        keys.forEach(k => {
+            salesPaymentTotals[k] = 0; incomePaymentTotals[k] = 0; expensePaymentTotals[k] = 0;
+        });
+        currentReportData.totalSalesBs = 0; currentReportData.totalSalesDollars = 0;
+        currentReportData.totalExpensesBs = 0; currentReportData.totalExpensesDollars = 0;
+        currentReportData.totalIncomes = 0; currentReportData.totalIncomesDollars = 0; // <-- AÑADIDO
+        currentReportData.totalDifferenceBs = 0; currentReportData.totalDifferenceDollars = 0;
+    }
+
+    async function fetchPrinterConfig() {
+        try {
+            const configRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
+            if (configRaw) {
+                const conf = JSON.parse(configRaw);
+                if (conf.impresoraSeleccionada) printerName = conf.impresoraSeleccionada;
+                // 🔥 AÑADIDO: Capturamos el tamaño y el encabezado
+                if (conf.tamañoImpresora) printerSize = conf.tamañoImpresora;
+                if (conf.encabezadoFactura) encabezadoFactura = conf.encabezadoFactura;
+            }
+        } catch (error) {
+            printerName = "TICKET";
+        }
+    }
+
+    function updateUserInfoDisplay() {
+        if (userIdDisplay) userIdDisplay.textContent = userId || 'N/A';
+        if (companyIdDisplay) companyIdDisplay.textContent = companyId || 'N/A';
+        if (roleDisplay) roleDisplay.textContent = role || 'N/A';
+    }
+
+    function showInfoMessage(message, type = 'info') {
+        if (modalTitle) {
+            modalTitle.textContent = type === 'error' ? 'Error' : 'Información';
+            modalTitle.className = `text-lg font-bold mb-4 ${type === 'error' ? 'text-red-600' : 'text-blue-600'}`;
+        }
+        if (modalMessage) modalMessage.textContent = message;
+        if (infoModal) infoModal.classList.remove('hidden');
+    }
+
+    function getDifferenceColor(difference, context = 'detail') {
+        if (difference > 0.01) return 'text-green-600'; 
+        if (difference < -0.01) return 'text-red-600'; 
+        return context === 'final' ? 'text-white' : 'text-gray-800'; 
+    }
+
+    function updateConciliationDisplay() {
+        const combinedTotals = { ...salesPaymentTotals };
+        
+        for (const method in incomePaymentTotals) {
+            combinedTotals[method] = (combinedTotals[method] || 0) + incomePaymentTotals[method];
+        }
+        for (const method in expensePaymentTotals) {
+            combinedTotals[method] = (combinedTotals[method] || 0) - expensePaymentTotals[method]; 
+        }
+
+        const paymentTypes = ['cash-bs', 'debit-card-bs', 'mobile-payment-bs', 'zinli-dollars', 'biopago-bs', 'dollars', 'transfer-bs', 'deposit-bs', 'credit-bs', 'credit-card-bs'];
+        
+        paymentTypes.forEach(type => {
+            const element = document.getElementById(`registered-${type.replace('-bs', '').replace('-dollars', '')}`);
+            const amount = combinedTotals[type] || 0;
+            if (element) element.textContent = formatCurrency(amount, type.includes('dollars') ? '$.' : 'Bs.');
+        });
+
+        updateDifferencesAndTotals();
+    }
+
+    function updateDifferencesAndTotals() {
+        let totalDifferenceBs = 0; let totalDifferenceDollars = 0;
+        const paymentDetails = {};
+        const paymentTypes = ['cash-bs', 'debit-card-bs', 'mobile-payment-bs', 'zinli-dollars', 'biopago-bs', 'dollars', 'transfer-bs', 'deposit-bs', 'credit-bs', 'credit-card-bs'];
+        const registeredAmounts = {};
+
+        paymentTypes.forEach(type => {
+            const element = document.getElementById(`registered-${type.replace('-bs', '').replace('-dollars', '')}`);
+            if (element) {
+                const currencySymbol = type.includes('dollars') ? '$. ' : 'Bs. ';
+                registeredAmounts[type] = parseFloat(element.textContent.replace(currencySymbol, '')) || 0;
+            }
+        });
+
+        countedInputs.forEach(input => {
+            const paymentType = input.dataset.paymentType;
+            const countedAmount = parseFloat(input.value) || 0; 
+            const registeredAmount = registeredAmounts[paymentType] || 0;
+            const difference = countedAmount - registeredAmount;
+
+            const diffElement = document.getElementById(`diff-${paymentType.replace('-bs', '').replace('-card', '-card').replace('zinli-dollars', 'zinli')}`);
+            if (diffElement) {
+                const currency = paymentType.includes('dollars') ? '$.' : 'Bs.';
+                diffElement.textContent = formatCurrency(difference, currency);
+                diffElement.className = `text-right font-bold text-lg ${getDifferenceColor(difference, 'detail')}`;
+                
+                if (paymentType.includes('dollars')) totalDifferenceDollars += difference;
+                else totalDifferenceBs += difference;
+
+                paymentDetails[paymentType] = { registered: registeredAmount, counted: countedAmount, difference: difference };
+            }
+        });
+
+        currentReportData.totalDifferenceBs = totalDifferenceBs;
+        currentReportData.totalDifferenceDollars = totalDifferenceDollars;
+        currentReportData.paymentDetails = paymentDetails;
+
+        if (totalDifferenceBsDisplay) {
+            totalDifferenceBsDisplay.textContent = formatCurrency(totalDifferenceBs, 'Bs.');
+            totalDifferenceBsDisplay.className = `text-3xl font-bold ${getDifferenceColor(totalDifferenceBs, 'final')}`;
+        }
+        if (totalDifferenceDollarsDisplay) {
+            totalDifferenceDollarsDisplay.textContent = formatCurrency(totalDifferenceDollars, '$.');
+            totalDifferenceDollarsDisplay.className = `text-3xl font-bold ${getDifferenceColor(totalDifferenceDollars, 'final')}`;
+        }
+    }
+
+    // --- INICIALIZACIÓN DE EVENTOS ---
+    if (closeModalButton) closeModalButton.addEventListener('click', () => { if (infoModal) infoModal.classList.add('hidden'); });
+    countedInputs.forEach(input => { input.addEventListener('input', updateDifferencesAndTotals); });
+    if (closeCashButton) closeCashButton.addEventListener('click', handleCloseCash);
+
+    // Arrancar
+    inicializarCierre();
+
+// ============================================================================
+    // --- MÓDULO DE VISUALIZACIÓN RÁPIDA DE MOVIMIENTOS (TABLAS FLOTANTES) ---
+    // ============================================================================
+
+    const modalHTML = `
+    <div id="modal-visor-movimientos" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 hidden transition-opacity duration-300 opacity-0">
+        <div class="bg-white rounded-2xl shadow-2xl w-[90%] max-w-5xl max-h-[85vh] flex flex-col transform scale-95 transition-transform duration-300">
+            <div class="p-5 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-2xl">
+                <h2 id="visor-titulo" class="text-2xl font-bold flex items-center">
+                    <span id="visor-icono" class="material-icons mr-3 text-3xl"></span>
+                    <span id="visor-texto">Movimientos</span>
+                </h2>
+                <button onclick="window.cerrarModalMovimientos()" class="text-gray-400 hover:text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-full p-1 transition-colors">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-0">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-100 sticky top-0 z-10 shadow-sm">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Descripción</th>
+                            <th class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Monto (Bs)</th>
+                            <th class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Método</th>
+                            <th class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Monto (USD)</th>
+                            <th class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody id="visor-body" class="bg-white divide-y divide-gray-100">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>`;
+
+    // Inyectamos el modal oculto en el body al cargar
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    // Funciones globales para que los botones las encuentren
+    window.abrirModalMovimientos = async function(tipo) {
+        const modal = document.getElementById('modal-visor-movimientos');
+        const tituloTexto = document.getElementById('visor-texto');
+        const icono = document.getElementById('visor-icono');
+        const tbody = document.getElementById('visor-body');
+
+        // Configuración visual según el tipo
+        if (tipo === 'GASTO') {
+            tituloTexto.textContent = 'Detalle de Gastos Pendientes';
+            tituloTexto.className = 'text-red-700';
+            icono.textContent = 'receipt_long';
+            icono.className = 'material-icons mr-3 text-3xl text-red-600';
+        } else {
+            tituloTexto.textContent = 'Detalle de Ingresos Pendientes';
+            tituloTexto.className = 'text-green-700';
+            icono.textContent = 'account_balance_wallet';
+            icono.className = 'material-icons mr-3 text-3xl text-green-600';
+        }
+
+        tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-gray-500"><div class="spinner mx-auto mb-2 border-t-blue-600"></div>Cargando...</td></tr>';
+
+        // Mostrar modal con animación
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.querySelector('div').classList.remove('scale-95');
+        }, 10);
+
+        try {
+            // Consultar datos a SQLite (Solo los de la empresa actual)
+            const movs = await window.nexusAPI.obtenerMovimientosCaja({ tipo: tipo, companyId: companyId });
+            tbody.innerHTML = '';
+
+            if (!movs || movs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-gray-500 font-medium">No hay ${tipo.toLowerCase()}s registrados en este turno.</td></tr>`;
+                return;
+            }
+
+            // Ordenar por fecha (más reciente primero)
+            movs.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+            // Construir filas idénticas al módulo original
+            movs.forEach(mov => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-blue-50 transition-colors";
+                
+                const colorBs = tipo === 'GASTO' ? 'text-red-600' : 'text-green-600';
+                const colorUsd = tipo === 'GASTO' ? 'text-red-800' : 'text-blue-600';
+
+                tr.innerHTML = `
+                    <td class="px-6 py-4 text-sm font-medium text-gray-900">${mov.concepto}</td>
+                    <td class="px-6 py-4 text-sm font-black ${colorBs}">${mov.monto.toFixed(2)} Bs</td>
+                    <td class="px-6 py-4 text-sm text-gray-700 font-medium">${mov.metodo_pago}</td>
+                    <td class="px-6 py-4 text-sm font-bold ${colorUsd}">${mov.monto_usd.toFixed(2)} USD</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${new Date(mov.fecha).toLocaleString('es-VE')}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (error) {
+            console.error("Error cargando visor:", error);
+            tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-red-500 font-bold">Error al consultar la base de datos local.</td></tr>`;
+        }
+    };
+
+    window.cerrarModalMovimientos = function() {
+        const modal = document.getElementById('modal-visor-movimientos');
+        modal.classList.add('opacity-0');
+        modal.querySelector('div').classList.add('scale-95');
+        setTimeout(() => modal.classList.add('hidden'), 300); // Espera a que termine la transición
+    };
 
     
-        async function printCashClosingReport(reportData, sessionInfo) {
-            const { userId, companyId, role, branchId } = sessionInfo;
-            
-            const now = new Date();
-            const dateTime = now.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + now.toLocaleTimeString('es-VE');
 
-            const paymentMethodMap = {
-                'cash-bs': 'Efectivo (Bs)',
-                'debit-card-bs': 'T. Débito (Bs)',
-                'mobile-payment-bs': 'Pago Móvil (Bs)',
-                'zinli-dollars': 'Zinli ($)',
-                'biopago-bs': 'Bio Pago (Bs)',
-                'dollars': 'Dólar ($)',
-                'transfer-bs': 'Transferencia (Bs)',
-                'deposit-bs': 'Depósito (Bs)',
-                'credit-bs': 'Crédito (Bs)',
-                'credit-card-bs': 'T. Crédito (Bs)'
-            };
-
-            const payload = {
-                impresora: printerName, 
-                operaciones: [
-                    { nombre: "AbrirCajon" },
-                    { nombre: "EstablecerTamanoFuente", argumentos: [2] }, 
-                    { nombre: "EscribirTexto", argumentos: [`NEXUS POS\\n`] },
-                    { nombre: "EstablecerTamanoFuente", argumentos: [1] }, 
-                    { nombre: "EscribirTexto", argumentos: [`REPORTE DE CIERRE DE CAJA\\n`] },
-                    { nombre: "EscribirTexto", argumentos: [`--------------------------------\\n`] },
-                    { nombre: "EscribirTexto", argumentos: [`Cajero: ${userId}\\n`] },
-                    { nombre: "EscribirTexto", argumentos: [`Compañía: ${companyId}\\n`] },
-                    { nombre: "EscribirTexto", argumentos: [`Sucursal: ${branchId}\\n`] },
-                    { nombre: "EscribirTexto", argumentos: [`Rol: ${role}\\n`] },
-                    { nombre: "EscribirTexto", argumentos: [`Fecha/Hora: ${dateTime}\\n`] },
-                    { nombre: "EscribirTexto", argumentos: [`--------------------------------\\n`] },
-                ],
-            };
-
-            payload.operaciones.push(
-                { nombre: "EscribirTexto", argumentos: [`--- RESUMEN DE MOVIMIENTOS ---\\n`] },
-                { nombre: "EscribirTexto", argumentos: [formatLine("TOTAL INGRESOS (Bs)", reportData.totalIncomes.toFixed(2))] },
-                { nombre: "EscribirTexto", argumentos: [formatLine("TOTAL GASTOS (Bs)", reportData.totalExpensesBs.toFixed(2))] },
-                { nombre: "EscribirTexto", argumentos: [formatLine("TOTAL GASTOS ($)", reportData.totalExpensesDollars.toFixed(2))] },
-                { nombre: "EscribirTexto", argumentos: [`--------------------------------\\n`] }
-            );
-            
-            payload.operaciones.push(
-                { nombre: "EscribirTexto", argumentos: [`--- TOTALES DE VENTA ---\\n`] },
-                { nombre: "EscribirTexto", argumentos: [formatLine("VENTAS REG. (Bs)", reportData.totalSalesBs.toFixed(2))] },
-                { nombre: "EscribirTexto", argumentos: [formatLine("VENTAS REG. ($)", reportData.totalSalesDollars.toFixed(2))] },
-                { nombre: "EscribirTexto", argumentos: [`--------------------------------\\n`] }
-            );
-
-
-            payload.operaciones.push(
-                { nombre: "EstablecerTamanoFuente", argumentos: [2] }, 
-                { nombre: "EscribirTexto", argumentos: [`CONCILIACIÓN DE PAGOS\\n`] },
-                { nombre: "EstablecerTamanoFuente", argumentos: [1] },
-                { nombre: "EscribirTexto", argumentos: [`--------------------------------\\n`] }
-            );
-            
-            for (const type in reportData.paymentDetails) {
-                const detail = reportData.paymentDetails[type];
-                const methodName = paymentMethodMap[type] || type; 
-                
-                if (Math.abs(detail.registered) < 0.01 && Math.abs(detail.counted) < 0.01) continue; 
-
-                payload.operaciones.push(
-                    { nombre: "EscribirTexto", argumentos: [`MÉTODO: ${methodName}\\n`] },
-                    { nombre: "EscribirTexto", argumentos: [formatLine("   - Registrado", detail.registered.toFixed(2))] },
-                    { nombre: "EscribirTexto", argumentos: [formatLine("   - Contado", detail.counted.toFixed(2))] },
-                    { 
-                        nombre: "EscribirTexto", 
-                        argumentos: [formatLine("   - Diferencia", detail.difference.toFixed(2))] 
-                    },
-                    { nombre: "EscribirTexto", argumentos: [`---\\n`] }
-                );
-            }
-            
-            payload.operaciones.push(
-                { nombre: "EscribirTexto", argumentos: [`--------------------------------\\n`] },
-                { nombre: "EstablecerTamanoFuente", argumentos: [2] }, 
-                { nombre: "EscribirTexto", argumentos: [formatLine("DIFERENCIA TOTAL (Bs)", reportData.totalDifferenceBs.toFixed(2))] },
-                { nombre: "EscribirTexto", argumentos: [formatLine("DIFERENCIA TOTAL ($)", reportData.totalDifferenceDollars.toFixed(2))] },
-                { nombre: "EstablecerTamanoFuente", argumentos: [1] }, 
-                { nombre: "EscribirTexto", argumentos: [`\\n\\n`] }, 
-                { nombre: "CorteParcial" } 
-            );
-
-            try {
-                console.log("=================================================");
-                console.log("%cPAYLOAD JSON ENVIADO A IMPRIMIR (cierre_de_caja):", 'color: #3b82f6; font-weight: bold;');
-                console.log(`Usando impresora: ${printerName}`);
-                console.log(JSON.stringify(payload, null, 2));
-                console.log("=================================================");
-                
-                showInfoMessage(`Imprimiendo cierre de caja...`, 'info'); 
-                
-                const response = await fetch("http://localhost:8000/imprimir", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
-                });
-
-                const rawText = await response.text(); 
-                
-                console.log("=================================================");
-                console.log("%cRESPUESTA RAW DEL SERVIDOR:", 'color: #10b981; font-weight: bold;');
-                console.log(rawText);
-                console.log("=================================================");
-
-                let result;
-                try {
-                    result = JSON.parse(rawText);
-                } catch (e) {
-                    throw new Error(`El plugin no devolvió una respuesta JSON válida. Respuesta recibida: "${rawText.substring(0, 100)}..."`);
-                }
-
-
-                if (result.ok || result.exito) {
-                    console.log(`✅ Reporte de cierre impreso correctamente.`);
-                    return true;
-                } else {
-                    const errorMessage = result.message || result.mensaje || "Error desconocido al imprimir. (El mensaje del plugin estaba vacío o result.exito=false)";
-                    throw new Error(errorMessage);
-                }
-            } catch (error) {
-                console.error("❌ Error al enviar el cierre a imprimir:", error);
-                showInfoMessage(`❌ Error al enviar el cierre a imprimir. Asegúrate de que el plugin esté activo y configurado. Mensaje: ${error.message}`, 'error');
-                return false;
-            }
-        }
-        
-        function updateConciliationDisplay() {
-            const combinedTotals = { ...salesPaymentTotals };
-            
-            for (const method in incomePaymentTotals) {
-                if (combinedTotals.hasOwnProperty(method)) {
-                    combinedTotals[method] += incomePaymentTotals[method];
-                } else {
-                    combinedTotals[method] = incomePaymentTotals[method];
-                }
-            }
-        
-            for (const method in expensePaymentTotals) {
-                if (combinedTotals.hasOwnProperty(method)) {
-                    combinedTotals[method] -= expensePaymentTotals[method]; 
-                } else {
-                     combinedTotals[method] = -expensePaymentTotals[method];
-                }
-            }
-
-            const paymentTypes = [
-                'cash-bs', 'debit-card-bs', 'mobile-payment-bs', 'zinli-dollars', 
-                'biopago-bs', 'dollars', 'transfer-bs', 'deposit-bs',
-                'credit-bs', 'credit-card-bs'
-            ];
-            
-            paymentTypes.forEach(type => {
-                const element = document.getElementById(`registered-${type.replace('-bs', '').replace('-dollars', '')}`);
-                const amount = combinedTotals[type] || 0;
-                
-                if (element) {
-                    const currency = type.includes('dollars') ? '$.' : 'Bs.';
-                    element.textContent = formatCurrency(amount, currency);
-                }
-            });
-
-            updateDifferencesAndTotals();
-        }
-
-        function updateUserInfoDisplay() {
-            if (userIdDisplay) userIdDisplay.textContent = userId || 'N/A';
-            if (companyIdDisplay) companyIdDisplay.textContent = companyId || 'N/A';
-            if (roleDisplay) roleDisplay.textContent = role || 'N/A';
-        }
-
-        function showInfoMessage(message, type = 'info') {
-            if (modalTitle) modalTitle.textContent = type === 'error' ? 'Error' : 'Información';
-            if (modalTitle) modalTitle.className = `text-lg font-bold mb-4 ${type === 'error' ? 'text-red-600' : 'text-blue-600'}`;
-            if (modalMessage) modalMessage.textContent = message;
-            if (infoModal) infoModal.classList.remove('hidden');
-        }
-
-        function formatCurrency(amount, currency = 'Bs.') {
-            const parsedAmount = parseFloat(amount);
-            if (isNaN(parsedAmount)) {
-                return `${currency} 0.00`;
-            }
-            return `${currency} ${parsedAmount.toFixed(2)}`;
-        }
-
-        function getDifferenceColor(difference, context = 'detail') {
-            if (difference > 0.01) {
-                return 'text-green-600'; 
-            } else if (difference < -0.01) {
-                return 'text-red-600'; 
-            }
-            
-            if (context === 'final') {
-                return 'text-white';
-            } else { 
-                return 'text-gray-800'; 
-            }
-        }
-
-        function updateDifferencesAndTotals() {
-            let totalDifferenceBs = 0;
-            let totalDifferenceDollars = 0;
-            const paymentDetails = {};
-            
-            const paymentTypes = [
-                'cash-bs', 'debit-card-bs', 'mobile-payment-bs', 'zinli-dollars', 
-                'biopago-bs', 'dollars', 'transfer-bs', 'deposit-bs',
-                'credit-bs', 'credit-card-bs'
-            ];
-
-            const registeredAmounts = {};
-            paymentTypes.forEach(type => {
-                const element = document.getElementById(`registered-${type.replace('-bs', '').replace('-dollars', '')}`);
-                if (element) {
-                    const currencySymbol = type.includes('dollars') ? '$. ' : 'Bs. ';
-                    registeredAmounts[type] = parseFloat(element.textContent.replace(currencySymbol, '')) || 0;
-                }
-            });
-
-            countedInputs.forEach(input => {
-                const paymentType = input.dataset.paymentType;
-                const countedAmount = parseFloat(input.value) || 0; 
-                const registeredAmount = registeredAmounts[paymentType] || 0;
-                const difference = countedAmount - registeredAmount;
-
-                const diffElement = document.getElementById(`diff-${paymentType.replace('-bs', '').replace('-card', '-card').replace('zinli-dollars', 'zinli')}`);
-                
-                if (diffElement) {
-                    const currency = paymentType.includes('dollars') ? '$.' : 'Bs.';
-                    
-                    diffElement.textContent = formatCurrency(difference, currency);
-                    diffElement.className = `text-right font-bold text-lg ${getDifferenceColor(difference, 'detail')}`;
-                    
-                    if (paymentType.includes('dollars')) {
-                        totalDifferenceDollars += difference;
-                    } else {
-                        totalDifferenceBs += difference;
-                    }
-
-                    paymentDetails[paymentType] = {
-                        registered: registeredAmount,
-                        counted: countedAmount,
-                        difference: difference
-                    };
-                }
-            });
-
-            currentReportData.totalDifferenceBs = totalDifferenceBs;
-            currentReportData.totalDifferenceDollars = totalDifferenceDollars;
-            currentReportData.paymentDetails = paymentDetails;
-
-            if (totalDifferenceBsDisplay) {
-                totalDifferenceBsDisplay.textContent = formatCurrency(totalDifferenceBs, 'Bs.');
-                totalDifferenceBsDisplay.className = `text-3xl font-bold ${getDifferenceColor(totalDifferenceBs, 'final')}`;
-            }
-            if (totalDifferenceDollarsDisplay) {
-                totalDifferenceDollarsDisplay.textContent = formatCurrency(totalDifferenceDollars, '$.');
-                totalDifferenceDollarsDisplay.className = `text-3xl font-bold ${getDifferenceColor(totalDifferenceDollars, 'final')}`;
-            }
-        }
-
-        async function fetchPrinterConfig(companyId) {
-            if (!companyId) return;
-            try {
-                const docRef = doc(db, `companies/${companyId}/config/factura`); 
-                const docSnap = await getDoc(docRef); 
-
-                if (docSnap.exists() && docSnap.data().impresoraSeleccionada) {
-                    printerName = docSnap.data().impresoraSeleccionada;
-                    console.log(`✅ Nombre de impresora cargado de Firebase: ${printerName}`);
-                } else {
-                    console.warn("⚠️ No se encontró la configuración de impresora en Firebase o el campo 'impresoraSeleccionada' está vacío. Usando el nombre por defecto: TICKET");
-                    printerName = "TICKET";
-                }
-            } catch (error) {
-                console.error("Error al cargar la configuración de la impresora:", error);
-                showInfoMessage("Error al cargar la configuración de la impresora de Firebase.", 'error');
-                printerName = "TICKET"; // Fallback
-            }
-        }
-
-
-
-        async function deleteDocumentsProcessed(collectionQuery) {
-    const snapshot = await getDocs(collectionQuery);
-
-    if (snapshot.empty) {
-        console.log(`No hay documentos para eliminar en la colección consultada.`);
-        return 0;
-    }
-
-    const batch = writeBatch(db);
-    let deletedCount = 0;
-
-    snapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-        deletedCount++;
-    });
-
-    await batch.commit();
-    return deletedCount;
-}
-
-async function handleCloseCash() {
-    if (!companyId || !branchId || !userId) {
-        showInfoMessage("ERROR: Faltan datos de sesión (Empresa, Sucursal o Cajero). No se puede completar el cierre.", 'error');
-        return;
-    }
-
-    if (loadingOverlay) loadingOverlay.classList.remove('hidden');
-
-    try {
-        updateDifferencesAndTotals();
-
-        const reportData = {
-            companyId: companyId,
-            branchId: branchId,
-            cashierId: userId,
-            role: role,
-            timestamp: serverTimestamp(),
-            
-            totalSalesBs: currentReportData.totalSalesBs,
-            totalSalesDollars: currentReportData.totalSalesDollars,
-            totalExpensesBs: currentReportData.totalExpensesBs, 
-            totalExpensesDollars: currentReportData.totalExpensesDollars,
-            totalIncomes: currentReportData.totalIncomes,
-            
-            totalDifferenceBs: currentReportData.totalDifferenceBs,
-            totalDifferenceDollars: currentReportData.totalDifferenceDollars,
-
-            paymentsConciliation: currentReportData.paymentDetails 
-        };
-
-        const cashClosingRef = collection(db, `companies/${companyId}/branches/${branchId}/cashiers/${userId}/cashclosing`);
-        await addDoc(cashClosingRef, reportData);
-        
-        const sessionInfo = {
-            userId: userId, 
-            companyId: companyId, 
-            role: role, 
-            branchId: branchId
-        };
-        const printSuccess = await printCashClosingReport(reportData, sessionInfo); 
-        
-        
-        const salesRef = collection(db, `companies/${companyId}/branches/${branchId}/cashiers/${userId}/salesProcessed`);
-        const salesQuery = query(salesRef); 
-        const deletedSalesCount = await deleteDocumentsProcessed(salesQuery); // Usa la función genérica
-
-        const incomesRef = collection(db, `companies/${companyId}/branches/${branchId}/cashiers/${userId}/gestiondeingreso`);
-        const incomesQuery = query(incomesRef); 
-        const deletedIncomesCount = await deleteDocumentsProcessed(incomesQuery); // AÑADIDO
-        
-        const expensesRef = collection(db, `companies/${companyId}/branches/${branchId}/cashiers/${userId}/gestiondegastos`);
-        const expensesQuery = query(expensesRef); 
-        const deletedExpensesCount = await deleteDocumentsProcessed(expensesQuery); // AÑADIDO
-        
-        let messageDetail = `Se eliminaron ${deletedSalesCount} ventas, ${deletedIncomesCount} ingresos y ${deletedExpensesCount} gastos de la sesión.`;
-        
-        if (printSuccess) {
-            showInfoMessage(`¡Cierre de caja completado con éxito! (Impresión exitosa). ${messageDetail}`, 'success');
-        } else {
-            showInfoMessage(`¡Cierre de caja completado! (Fallo en la impresión). ${messageDetail}`, 'success');
-        }
-        
-        countedInputs.forEach(input => input.value = '');
-        updateDifferencesAndTotals();
-
-    } catch (error) {
-        console.error("Error CRÍTICO al cerrar la caja:", error);
-        showInfoMessage("ERROR: Falló la operación de cierre. Revise la consola. Asegúrese de que las reglas de seguridad estén bien configuradas.", 'error');
-    } finally {
-        if (loadingOverlay) loadingOverlay.classList.add('hidden');
-    }
-}
-
-
-
-        function setupSalesDataListener(companyId, userId, branchId) {
-            
-            const DB_TO_CODE_MAP = {
-                'efectivo': 'cash-bs', 'debito': 'debit-card-bs', 'tarjeta_debito': 'debit-card-bs',
-                'pagomovil': 'mobile-payment-bs', 'pago_movil': 'mobile-payment-bs', 'pago_móvil': 'mobile-payment-bs', 
-                'dolar': 'dollars', 'dólar': 'dollars', 'usd': 'dollars', 'divisa': 'dollars', // <-- AÑADIDO 'divisa'
-                'transferencia': 'transfer-bs',
-                'deposito': 'deposit-bs', 'credito': 'credit-bs', 'crédito': 'credit-bs', 
-                'tarjetacredito': 'credit-card-bs', 'tarjeta_credito': 'credit-card-bs', 'tarjeta_crédito': 'credit-card-bs', 
-                'biopago': 'biopago-bs', 'zinli': 'zinli-dollars'
-            };
-
-            const salesQuery = query(
-                collectionGroup(db, 'salesProcessed'), 
-                where("companyId", "==", companyId), 
-                where("cashierId", "==", userId) 
-            );
-            
-            const expensesPath = `companies/${companyId}/branches/${branchId}/cashiers/${userId}/gestiondegastos`; 
-            const expensesQuery = query(collection(db, expensesPath), where("branchId", "==", branchId));
-
-            const incomesPath = `companies/${companyId}/branches/${branchId}/cashiers/${userId}/gestiondeingreso`;
-            const incomesQuery = query(collection(db, incomesPath), where("branchId", "==", branchId));
-
-            
-            onSnapshot(salesQuery, (snapshot) => {
-                let totalSalesBs = 0; 
-                let totalSalesDollars = 0; 
-                
-                salesPaymentTotals = { 
-                    'cash-bs': 0, 'debit-card-bs': 0, 'mobile-payment-bs': 0, 'zinli-dollars': 0, 
-                    'biopago-bs': 0, 'dollars': 0, 'transfer-bs': 0, 'deposit-bs': 0,
-                    'credit-bs': 0, 'credit-card-bs': 0
-                };
-
-                snapshot.forEach((doc) => {
-                    const sale = doc.data();
-                    let paymentsObject = sale.payments;
-
-                    if (typeof paymentsObject === 'string') {
-                        try {
-                            paymentsObject = JSON.parse(paymentsObject);
-                        } catch (e) {
-                            console.error(`%c[Pagos] ERROR CRÍTICO: Falló JSON.parse para la venta ${doc.id}. Documento omitido.`, 'color: #dc2626; font-weight: bold;', e);
-                            return; 
-                        }
-                    }
-                    
-                    if (paymentsObject && typeof paymentsObject === 'object') {
-                        for (let dbPaymentMethod in paymentsObject) {
-                            const amount = parseFloat(paymentsObject[dbPaymentMethod]) || 0;
-                            
-                            let normalizedMethod = dbPaymentMethod.toLowerCase();
-                            const codePaymentMethod = DB_TO_CODE_MAP[normalizedMethod]; 
-
-                            if (codePaymentMethod && salesPaymentTotals.hasOwnProperty(codePaymentMethod)) {
-                                salesPaymentTotals[codePaymentMethod] += amount;
-                                
-                                if (codePaymentMethod.includes('dollars')) {
-                                    totalSalesDollars += amount;
-                                } else {
-                                    totalSalesBs += amount;
-                                }
-                            }
-                        }
-                    }
-                });
-
-                currentReportData.totalSalesBs = totalSalesBs;
-                currentReportData.totalSalesDollars = totalSalesDollars;
-
-                updateConciliationDisplay();
-                
-                if (totalSalesBsDisplay) totalSalesBsDisplay.textContent = formatCurrency(totalSalesBs, 'Bs.');
-                if (totalSalesDollarsDisplay) totalSalesDollarsDisplay.textContent = formatCurrency(totalSalesDollars, '$.');
-
-                updateDifferencesAndTotals();
-            }, (error) => {
-                console.error("Error listening to sales data:", error);
-                showInfoMessage("Error al escuchar los datos de ventas. Revise la consola por posibles errores de índice.", 'error');
-            });
-
-            onSnapshot(incomesQuery, (snapshot) => {
-                let totalIncomesBs = 0; 
-                let totalIncomesDollars = 0; 
-                
-                const newIncomeTotals = {
-                    'cash-bs': 0, 'debit-card-bs': 0, 'mobile-payment-bs': 0, 'zinli-dollars': 0, 
-                    'biopago-bs': 0, 'dollars': 0, 'transfer-bs': 0, 'deposit-bs': 0,
-                    'credit-bs': 0, 'credit-card-bs': 0
-                };
-                
-                snapshot.forEach((doc) => {
-                    const incomeData = doc.data();
-                    
-                    const amountBs = parseFloat(incomeData.amountBs) || 0;
-                    totalIncomesBs += amountBs;
-                    
-                    const methodBs = (incomeData.methodBs || '').toLowerCase();
-                    const codeMethodBs = DB_TO_CODE_MAP[methodBs] || 'cash-bs'; 
-
-                    if (newIncomeTotals.hasOwnProperty(codeMethodBs)) {
-                        newIncomeTotals[codeMethodBs] += amountBs;
-                    }
-                    
-                    const amountUsd = parseFloat(incomeData.amountUsd) || 0;
-                    totalIncomesDollars += amountUsd;
-                    
-                    const methodUsd = (incomeData.methodUsd || '').toLowerCase();
-                    const codeMethodUsd = DB_TO_CODE_MAP[methodUsd] || 'dollars'; 
-                    
-                    if (newIncomeTotals.hasOwnProperty(codeMethodUsd)) {
-                         newIncomeTotals[codeMethodUsd] += amountUsd;
-                    }
-                });
-                
-                incomePaymentTotals = newIncomeTotals; 
-
-                if (totalIncomesBsDisplay) totalIncomesBsDisplay.textContent = formatCurrency(totalIncomesBs, 'Bs.');
-                if (totalIncomesDollarsDisplay) totalIncomesDollarsDisplay.textContent = formatCurrency(totalIncomesDollars, '$.');
-                
-                currentReportData.totalIncomes = totalIncomesBs; 
-                
-                updateConciliationDisplay(); 
-
-            }, (error) => {
-                console.error("Error listening to incomes data:", error);
-                showInfoMessage("Error al escuchar los datos de ingresos.", 'error');
-            });
-
-            onSnapshot(expensesQuery, (snapshot) => {
-                let totalExpensesBs = 0; 
-                let totalExpensesDollars = 0; 
-                
-                expensePaymentTotals = { 
-                    'cash-bs': 0, 'debit-card-bs': 0, 'mobile-payment-bs': 0, 'zinli-dollars': 0, 
-                    'biopago-bs': 0, 'dollars': 0, 'transfer-bs': 0, 'deposit-bs': 0,
-                    'credit-bs': 0, 'credit-card-bs': 0
-                };
-
-                snapshot.forEach((doc) => {
-                    const expenseData = doc.data();
-                    const method = (expenseData.method || '').toLowerCase();
-                    const amountBs = parseFloat(expenseData.amountBs || 0) || 0;
-                    const amountUsd = parseFloat(expenseData.amountUsd || 0) || 0;
-                    
-                    if (amountBs > 0) {
-                        totalExpensesBs += amountBs;
-                        const codeMethodBs = DB_TO_CODE_MAP[method] || 'cash-bs'; // Por defecto a efectivo
-                        if (expensePaymentTotals.hasOwnProperty(codeMethodBs)) {
-                            expensePaymentTotals[codeMethodBs] += amountBs;
-                        }
-                    }
-                    
-                    if (amountUsd > 0) {
-                        totalExpensesDollars += amountUsd;
-                        const codeMethodUsd = DB_TO_CODE_MAP[method] || 'dollars'; // Por defecto a dólar
-                        if (expensePaymentTotals.hasOwnProperty(codeMethodUsd)) {
-                            expensePaymentTotals[codeMethodUsd] += amountUsd;
-                        }
-                    }
-                });
-                
-                if (totalExpensesBsDisplay) totalExpensesBsDisplay.textContent = formatCurrency(totalExpensesBs, 'Bs.');
-                if (totalExpensesDollarsDisplay) totalExpensesDollarsDisplay.textContent = formatCurrency(totalExpensesDollars, '$.');
-                
-                currentReportData.totalExpensesBs = totalExpensesBs;
-                currentReportData.totalExpensesDollars = totalExpensesDollars;
-                
-                updateConciliationDisplay();
-
-            }, (error) => {
-                console.error("Error listening to expenses data:", error);
-                showInfoMessage("Error al escuchar los datos de gastos.", 'error');
-            });
-        }
-        
-        (async () => {
-            
-            userIdDisplay = document.getElementById('user-id');
-            companyIdDisplay = document.getElementById('company-id');
-            roleDisplay = document.getElementById('role-display');
-            totalExpensesBsDisplay = document.getElementById('total-expenses-bs'); 
-            totalExpensesDollarsDisplay = document.getElementById('total-expenses-dollars'); 
-            totalIncomesBsDisplay = document.getElementById('total-incomes-bs'); 
-            totalIncomesDollarsDisplay = document.getElementById('total-incomes-dollars'); 
-            totalSalesBsDisplay = document.getElementById('total-sales-bs');
-            totalSalesDollarsDisplay = document.getElementById('total-sales-dollars');
-            totalDifferenceBsDisplay = document.getElementById('total-difference-bs');
-            totalDifferenceDollarsDisplay = document.getElementById('total-difference-dollars');
-            
-            countedInputs = document.querySelectorAll('.counted-input');
-            closeCashButton = document.getElementById('close-cash-button');
-            loadingOverlay = document.getElementById('loading-overlay');
-            infoModal = document.getElementById('info-modal');
-            modalTitle = document.getElementById('modal-title');
-            modalMessage = document.getElementById('modal-message');
-            closeModalButton = document.getElementById('close-modal-button');
-
-            if (closeModalButton) closeModalButton.addEventListener('click', () => { if (infoModal) infoModal.classList.add('hidden'); });
-            countedInputs.forEach(input => { input.addEventListener('input', updateDifferencesAndTotals); });
-            
-            if (closeCashButton) closeCashButton.addEventListener('click', handleCloseCash);
-
-            if (loadingOverlay) loadingOverlay.classList.remove('hidden');
-
-            onAuthStateChanged(auth, async (user) => {
-                
-                if (user) {
-                    userId = user.uid; 
-                    updateUserInfoDisplay(); 
-
-                    try {
-                        const idTokenResult = await user.getIdTokenResult();
-                        const claims = idTokenResult.claims;
-                        
-                        if (claims && claims.companyId) {
-                            companyId = claims.companyId || 'N/A';
-                            role = claims.role || 'N/A';
-                            branchId = claims.branchId || 'N/A';
-                            
-                            await fetchPrinterConfig(companyId); 
-
-                            if (companyId !== 'N/A' && userId !== 'N/A' && branchId !== 'N/A' && !hasListeners) {
-                                setupSalesDataListener(companyId, userId, branchId);
-                                hasListeners = true;
-                            } else if (!hasListeners) { 
-                                 console.warn('Authentication successful but missing critical claims to start data listeners.');
-                                 showInfoMessage("Autenticación exitosa, pero faltan datos de sesión (Empresa/Sucursal/Rol). No se pueden cargar los datos de caja.", 'error');
-                            }
-                        } else {
-                            console.warn("Claims are missing or do not contain companyId. Please check token configuration.");
-                        }
-
-                    } catch (error) {
-                        console.error("Error fetching user claims:", error);
-                        showInfoMessage("Error al obtener los datos de la empresa. (Verifique token)", 'error');
-                    } finally {
-                        updateUserInfoDisplay(); 
-                        if (loadingOverlay) loadingOverlay.classList.add('hidden');
-                    }
-                    
-} else {
-                    userId = null;
-                    companyId = null;
-                    role = null;
-                    updateUserInfoDisplay(); 
-
-                    try {
-                        await signInAnonymously(auth);
-                        
-                    } catch (error) {
-                         console.error('Sign-in error:', error);
-                         showInfoMessage("Error de inicio de sesión de Firebase. Intente recargar la página.", "error");
-                    } finally {
-                        if (loadingOverlay) loadingOverlay.classList.add('hidden');
-                    }
-                }
-
-            });
-        })(); 
-    </script>
+</script>
 </body>
 </html>

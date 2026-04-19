@@ -1,42 +1,60 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-const { exec } = require('child_process');
+// 1. Módulos de Sistema y Electron
 const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { exec } = require('child_process');
+const https = require('https');
+const crypto = require('crypto');
+const ENCRYPTION_KEY = crypto.scryptSync("NexusGlobalSecretoAdmin2026", "saltingNexus", 32); 
+const IV_LENGTH = 16; 
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { SerialPort } = require('serialport');
+const { ReadlineParser } = require('@serialport/parser-readline');
+const Database = require('better-sqlite3');
 const express = require('express');
 const cors = require('cors');
-const server = express();
-const PORT = 3000;
-const dbDir = path.join(__dirname, 'data');
-if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
 const axios = require('axios');
 const cheerio = require('cheerio');
-const https = require('https');
 
-if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir);
+// 3. Configuración del Servidor y Base de Datos
+// 3. Configuración del Servidor y Base de Datos
+const server = express();
+const PORT = 3000;
 
-const configPath = path.join(dbDir, 'config.json');
-let config = { isServer: false, serverIP: 'localhost', allowNoStock: false, geminiApiKey: "AIzaSyAPKpaQrze48wBpt2CwXxGDvATb8lgYpFo" };
+// ✅ CORRECCIÓN: Usar app.getPath('userData') para evitar el error ENOTDIR del .asar
+const dbDir = path.join(app.getPath('userData'), 'data');
+if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
+
+const dbPath = path.join(dbDir, 'nexus_pos.db');
+const db = new Database(dbPath, { timeout: 10000 });
+console.log("🚀 Cerebro Conectado en:", dbPath);
+
+// 4. Variables Globales y Estado
 let win;    
-let sistemaPrincipalAbierto = false;
 let splash;
+let sistemaPrincipalAbierto = false;
+
+// 5. Gestión de Configuración (config.json)
+const configPath = path.join(dbDir, 'config.json');
+let config = { 
+    isServer: false, 
+    serverIP: 'localhost', 
+    allowNoStock: false, 
+    geminiApiKey: "AIzaSyAPKpaQrze48wBpt2CwXxGDvATb8lgYpFo" 
+};
 
 if (fs.existsSync(configPath)) {
     try {
         const contenido = fs.readFileSync(configPath, 'utf8');
         config = JSON.parse(contenido);
-    } catch (e) { console.error("Error al leer config.json:", e); }
+    } catch (e) { 
+        console.error("Error al leer config.json:", e); 
+    }
 } else {
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 }
 
-
-const Database = require('better-sqlite3');
-const dbPath = path.join(dbDir, 'nexus_pos.db');
-const db = new Database(dbPath, { timeout: 10000 }); 
-console.log("🚀 Cerebro Conectado en:", dbPath);
-
+// 6. Optimización de Base de Datos
 try {
     db.pragma('journal_mode = WAL');
 } catch (e) {
@@ -57,6 +75,33 @@ function inicializarTablas() {
         );
     `);
 
+db.exec(`
+    CREATE TABLE IF NOT EXISTS movimientos_caja_locales (
+        id TEXT PRIMARY KEY,
+        tipo TEXT,           -- 'INGRESO' o 'GASTO'
+        concepto TEXT,
+        monto REAL,          -- Monto en Bs para el cuadre
+        monto_usd REAL,      -- Monto referencial en Divisa
+        metodo_pago TEXT,
+        fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+        cashier_id TEXT,
+        company_id TEXT,
+        branch_id TEXT,
+        estado_cierre INTEGER DEFAULT 0 -- 0: Pendiente para el Z, 1: Cerrado
+    );
+`);
+
+db.exec(`
+        CREATE TABLE IF NOT EXISTS claves_admin_locales (
+            id TEXT PRIMARY KEY,
+            ownerName TEXT,
+            encryptedCode TEXT,
+            company_id TEXT,
+            created_by TEXT,
+            updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+    `);
+
     db.exec(`
     CREATE TABLE IF NOT EXISTS productos_locales (
         id TEXT PRIMARY KEY,
@@ -65,6 +110,7 @@ function inicializarTablas() {
         codigo TEXT,
         nombre TEXT,
         precio REAL,
+        precio_compra REAL, -- COLUMNA AÑADIDA
         porcentaje_ganancia REAL,
         categoria TEXT, 
         status INTEGER,
@@ -218,6 +264,8 @@ db.exec(`
         fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    
+
 
 `);
 
@@ -225,7 +273,13 @@ db.exec(`
 }
 inicializarTablas();
 
-
+try {
+    db.prepare("ALTER TABLE productos_locales ADD COLUMN precio_compra REAL DEFAULT 0").run();
+    db.prepare("ALTER TABLE productos_locales ADD COLUMN porcentaje_ganancia REAL DEFAULT 0").run();
+    console.log("✅ Columnas de costo y ganancia verificadas/añadidas a SQLite.");
+} catch (e) {
+    // Es normal que de error si las columnas ya existen. Pasa silenciosamente.
+}
 
 
 // --- ESTO DEBE IR FUERA DE CUALQUIER IF ---
@@ -274,6 +328,41 @@ ipcMain.handle('consultar-ia-nexus', async (event, { mensaje, contexto }) => {
     }
 });
 
+ipcMain.handle('guardar-movimiento-caja', async (event, m) => {
+    try {
+        const stmt = db.prepare(`
+            INSERT INTO movimientos_caja_locales (
+                id, tipo, concepto, monto, monto_usd, metodo_pago, 
+                fecha, cashier_id, company_id, branch_id, estado_cierre
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        `);
+        
+        return stmt.run(
+            m.id, m.tipo, m.concepto, m.monto, m.monto_usd, m.metodo_pago,
+            m.fecha, m.cashier_id, m.company_id, m.branch_id
+        );
+    } catch (e) {
+        console.error("❌ Error guardando movimiento local:", e.message);
+        return { error: e.message };
+    }
+});
+
+// 2. Obtener movimientos pendientes de cierre
+ipcMain.handle('obtener-movimientos-caja', async (event, { tipo, companyId }) => {
+    try {
+        // Solo traemos los que NO han entrado en un Cierre Z (estado_cierre = 0)
+        const stmt = db.prepare(`
+            SELECT * FROM movimientos_caja_locales 
+            WHERE tipo = ? AND company_id = ? AND estado_cierre = 0
+            ORDER BY fecha DESC
+        `);
+        return stmt.all(tipo, companyId);
+    } catch (e) {
+        console.error("❌ Error consultando movimientos:", e.message);
+        return [];
+    }
+});
+
 ipcMain.handle('obtener-historial-tasas', async () => {
     try {
         return db.prepare(`
@@ -285,6 +374,37 @@ ipcMain.handle('obtener-historial-tasas', async () => {
     } catch (e) {
         console.error("Error al obtener historial:", e);
         return [];
+    }
+});
+
+// --- MANEJO DE BALANZA PROFESIONAL ---
+let puertoActivo = null; // Variable global para controlar la conexión única
+
+ipcMain.on('iniciar-puerto-balanza', (event, puertoCOM) => {
+    // 1. Si ya hay un puerto abierto, lo cerramos antes de abrir el nuevo
+    if (puertoActivo && puertoActivo.isOpen) {
+        console.log(`🔄 Cerrando puerto anterior para abrir ${puertoCOM}`);
+        puertoActivo.close();
+    }
+
+    try {
+        puertoActivo = new SerialPort({ path: puertoCOM, baudRate: 9600 });
+        const parser = puertoActivo.pipe(new ReadlineParser({ delimiter: '\n' }));
+
+        parser.on('data', (data) => {
+            // Enviamos el peso al HTML (evento 'peso-desde-balanza')
+            if (!event.sender.isDestroyed()) {
+                event.sender.send('peso-desde-balanza', data.trim());
+            }
+        });
+
+        puertoActivo.on('error', (err) => {
+            console.error('❌ Error físico en Puerto Serie:', err.message);
+        });
+
+        console.log(`✅ Conectado directamente a la Balanza en: ${puertoCOM}`);
+    } catch (e) {
+        console.error("❌ No se pudo abrir el puerto serie:", e.message);
     }
 });
 
@@ -739,32 +859,59 @@ ipcMain.handle('sincronizar-producto-servidor', async (event, p) => {
         const idProducto = p.id || p.producto_ID;
         const idEmpresa = p.company_id || p.empresa_ID;
         const idSucursal = p.branch_id || p.sucursal_ID || 'sucursal_1';
-        const precioVenta = p.precio_venta !== undefined ? p.precio_venta : (p.precio || 0);
         
-        // Capturamos el porcentaje del objeto p
-        const porcentaje = p.porcentaje_ganancia || 0;
+        // 🛡️ EXTRACCIÓN BLINDADA: Garantizamos que siempre sea un número (Float)
+        const precioRef = parseFloat(p.precios ? p.precios.p1.venta : (p.precio_venta || p.precio || 0)) || 0;
+        const compraRef = parseFloat(p.precios ? p.precios.p1.compra : (p.precio_compra || 0)) || 0;
+        const porcentajeRef = parseFloat(p.precios ? p.precios.p1.porcentaje : (p.porcentaje_ganancia || 0)) || 0;
+        
+        const jsonParaGuardar = JSON.stringify(p);
 
         const local = db.prepare('SELECT * FROM productos_locales WHERE id = ?').get(idProducto);
         let resultado;
 
         if (!local) {
-            // 🔥 INSERT: Agregamos porcentaje_ganancia en las columnas y en los VALUES
             const stmt = db.prepare(`
-                INSERT INTO productos_locales (id, company_id, branch_id, codigo, nombre, precio, porcentaje_ganancia, categoria, status, imagen, datos_json, estado_sync, fecha_modificacion)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+                INSERT INTO productos_locales (id, company_id, branch_id, codigo, nombre, precio, precio_compra, porcentaje_ganancia, categoria, status, imagen, datos_json, estado_sync, fecha_modificacion)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
             `);
-            resultado = stmt.run(idProducto, idEmpresa, idSucursal, p.codigo, p.nombre, precioVenta, porcentaje, p.categoria, p.status, p.imagen, p.datos_json, p.fecha_modificacion);
+            resultado = stmt.run(
+                idProducto, 
+                idEmpresa, 
+                idSucursal, 
+                p.codigo, 
+                p.nombre, 
+                precioRef, 
+                compraRef, 
+                porcentajeRef, 
+                p.categoria, 
+                p.status, 
+                p.imagen, 
+                jsonParaGuardar, 
+                p.fecha_modificacion
+            );
         } else {
-            // 🔥 UPDATE: Agregamos porcentaje_ganancia = ?
             const stmt = db.prepare(`
                 UPDATE productos_locales
-                SET codigo = ?, nombre = ?, precio = ?, porcentaje_ganancia = ?, categoria = ?, status = ?, imagen = ?, datos_json = ?, estado_sync = 1, fecha_modificacion = ?
+                SET codigo = ?, nombre = ?, precio = ?, precio_compra = ?, porcentaje_ganancia = ?, categoria = ?, status = ?, imagen = ?, datos_json = ?, estado_sync = 1, fecha_modificacion = ?
                 WHERE id = ?
             `);
-            resultado = stmt.run(p.codigo, p.nombre, precioVenta, porcentaje, p.categoria, p.status, p.imagen, p.datos_json, p.fecha_modificacion, idProducto);
+            resultado = stmt.run(
+                p.codigo, 
+                p.nombre, 
+                precioRef, 
+                compraRef, 
+                porcentajeRef, 
+                p.categoria, 
+                p.status, 
+                p.imagen, 
+                jsonParaGuardar, 
+                p.fecha_modificacion, 
+                idProducto
+            );
         }
 
-        // ... resto de la lógica de envío de señales a las ventanas ...
+        // Notificación a las ventanas para refrescar la UI
         if (resultado && resultado.changes > 0) {
             BrowserWindow.getAllWindows().forEach(ventana => {
                 if (!ventana.isDestroyed()) ventana.webContents.send('productos-actualizados');
@@ -950,9 +1097,179 @@ ipcMain.handle('guardar-stock-sucursal', async (event, { productoId, sucursalId,
     }
 });
 
-// --- MANEJADORES PARA GESTIÓN DE UNIDADES DE EMPAQUE (LOCAL) ---
+ipcMain.handle('guardar-clave-admin-local', async (event, c) => {
+    try {
+        // 1. Encriptamos la clave en milisegundos
+        const encrypted = encryptClave(c.plainCode);
+        
+        // 2. Guardamos en disco duro
+        const stmt = db.prepare(`
+            INSERT INTO claves_admin_locales (id, ownerName, encryptedCode, company_id, created_by, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `);
+        const resultado = stmt.run(c.id, c.ownerName, encrypted, c.company_id, c.created_by, c.updatedAt);
+        
+        return { success: true, changes: resultado.changes };
+    } catch (e) {
+        console.error("❌ Error guardando clave segura:", e.message);
+        return { error: e.message };
+    }
+});
 
-// 1. Obtener todos los empaques registrados en la empresa
+ipcMain.handle('obtener-claves-admin-local', async (event, companyId) => {
+    try {
+        // 1. Buscamos todas las filas encriptadas
+        const claves = db.prepare('SELECT * FROM claves_admin_locales WHERE company_id = ? ORDER BY updatedAt DESC').all(companyId);
+        
+        // 2. Desencriptamos en la memoria RAM (al vuelo) antes de mandarlas al HTML
+        return claves.map(c => ({
+            id: c.id,
+            ownerName: c.ownerName,
+            plainCode: decryptClave(c.encryptedCode), // 🔓 Aquí se revela para que el ojito 👁️ funcione
+            company_id: c.company_id,
+            updatedAt: c.updatedAt
+        }));
+    } catch (e) {
+        console.error("❌ Error obteniendo claves seguras:", e.message);
+        return [];
+    }
+});
+
+ipcMain.handle('eliminar-clave-admin-local', async (event, id) => {
+    try {
+        const resultado = db.prepare('DELETE FROM claves_admin_locales WHERE id = ?').run(id);
+        return { success: true, changes: resultado.changes };
+    } catch (e) {
+        return { error: e.message };
+    }
+});
+
+ipcMain.handle('crear-respaldo-local', async () => {
+    try {
+        const backupsDir = path.join(dbDir, 'backups');
+        // Crear la carpeta si no existe
+        if (!fs.existsSync(backupsDir)) {
+            fs.mkdirSync(backupsDir, { recursive: true });
+        }
+
+        // Generar nombre de archivo con fecha y hora (Ej: nexus_pos_2026-04-17_15-30-00.db)
+        const fecha = new Date();
+        const timestamp = fecha.toISOString().replace(/T/, '_').replace(/:/g, '-').split('.')[0];
+        const backupFileName = `nexus_pos_backup_${timestamp}.db`;
+        const backupPath = path.join(backupsDir, backupFileName);
+
+        // Copiar el archivo
+        fs.copyFileSync(dbPath, backupPath);
+
+        // Obtener el tamaño del nuevo archivo
+        const stats = fs.statSync(backupPath);
+        const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+
+        return { success: true, fileName: backupFileName, size: sizeMB, path: backupPath };
+    } catch (e) {
+        console.error("❌ Error creando respaldo:", e.message);
+        return { error: e.message };
+    }
+});
+
+ipcMain.handle('obtener-respaldos-locales', async () => {
+    try {
+        const backupsDir = path.join(dbDir, 'backups');
+        if (!fs.existsSync(backupsDir)) return [];
+
+        // Leer los archivos de la carpeta
+        const files = fs.readdirSync(backupsDir);
+        const respaldos = [];
+
+        for (const file of files) {
+            if (file.endsWith('.db')) {
+                const filePath = path.join(backupsDir, file);
+                const stats = fs.statSync(filePath);
+                respaldos.push({
+                    fileName: file,
+                    size: (stats.size / (1024 * 1024)).toFixed(2), // Tamaño en MB
+                    createdAt: stats.birthtime // Fecha de creación
+                });
+            }
+        }
+        
+        // Ordenar del más reciente al más antiguo
+        return respaldos.sort((a, b) => b.createdAt - a.createdAt);
+    } catch (e) {
+        console.error("❌ Error leyendo respaldos:", e.message);
+        return [];
+    }
+});
+
+ipcMain.handle('eliminar-respaldo-local', async (event, fileName) => {
+    try {
+        const backupPath = path.join(dbDir, 'backups', fileName);
+        if (fs.existsSync(backupPath)) {
+            fs.unlinkSync(backupPath);
+            return { success: true };
+        } else {
+            throw new Error("El archivo no existe.");
+        }
+    } catch (e) {
+        return { error: e.message };
+    }
+});
+
+ipcMain.handle('restaurar-respaldo-local', async (event, fileName) => {
+    return new Promise((resolve) => {
+        try {
+            const backupPath = path.join(dbDir, 'backups', fileName);
+            if (!fs.existsSync(backupPath)) {
+                resolve({ error: "El archivo de respaldo no existe." });
+                return;
+            }
+
+            console.log("🔒 Preparando restauración... Cerrando base de datos actual.");
+            // 1. CERRAR LA CONEXIÓN (La orden se envía a SQLite)
+            db.close(); 
+
+            // 2. PAUSA TÁCTICA: Le damos a Windows 1 segundo para liberar el archivo físicamente
+            setTimeout(() => {
+                try {
+                    console.log("⏳ Candado liberado. Copiando respaldo...");
+                    // 3. SOBRESCRIBIR EL ARCHIVO
+                    fs.copyFileSync(backupPath, dbPath);
+                    console.log("✅ Base de datos restaurada con éxito.");
+
+                    // 4. CIERRE SEGURO (3 segundos después de la copia)
+                    setTimeout(() => {
+                        app.quit();
+                    }, 3000);
+
+                    // Respondemos al HTML que todo salió bien
+                    resolve({ success: true });
+                    
+                } catch (fsError) {
+                    // Si falla aquí, capturamos el error exacto de Windows
+                    console.error("❌ Error del sistema de archivos:", fsError.message);
+                    resolve({ error: "Error al sobrescribir: " + fsError.message });
+                }
+            }, 1000); // <-- 1000 milisegundos de espera mágica
+
+        } catch (e) {
+            console.error("❌ Error general:", e.message);
+            resolve({ error: e.message });
+        }
+    });
+});
+
+ipcMain.on('apagar-sistema', () => {
+    console.log("🛑 Apagando el sistema por cierre de sesión seguro...");
+    app.quit();
+});
+
+ipcMain.handle('eliminar-cliente-local', async (event, rif) => {
+    try {
+        return db.prepare('DELETE FROM clientes_locales WHERE rif = ?').run(rif);
+    } catch (e) { return { error: e.message }; }
+});
+
+
 ipcMain.handle('obtener-unidades-empaque-local', async (event, companyId) => {
     try {
         // Hacemos un JOIN con productos_locales para mostrar el nombre real del producto en la tabla
@@ -1138,7 +1455,7 @@ ipcMain.handle('guardar-configuracion-cajera', async (event, clave, valor) => {
 });
 
 ipcMain.handle('sincronizar-configuracion-xeon', async (event, datos) => {
-    return await enviarDatosAXeon(datos, 'CONFIGURACION_TIENDA');
+    return await enviarDatosAXeon(datos);
 });
 
 async function createSplashScreen() {
@@ -1162,21 +1479,18 @@ async function createSplashScreen() {
     splash.loadFile('splash.html'); 
 }
 
-async function enviarDatosAXeon(datos, tipoOperacion) {
+async function enviarDatosAXeon(datos) { 
     try {
         console.log("📡 Intentando sincronizar con Xeon...");
         
-        // 🔥 CAMBIO CLAVE: Usamos HTTPS para evitar la redirección que rompe el POST
-        // Mantenemos la URL fija sin puerto, ya que el túnel gestiona el tráfico
+        // Se mantiene la URL con HTTPS para evitar bloqueos del túnel de Cloudflare
         const urlFinal = `https://configuracioncajera.nexusposgobal.com/api/xeon/registrar-entrada`;
 
-        const respuesta = await axios.post(urlFinal, {
-            companyId: datos.companyId || 'NEXUS-LOCAL',
-            tipo_operacion: tipoOperacion, 
-            payload: datos
-        }, { 
+        // 🔥 CORRECCIÓN CRUCIAL: Enviamos 'datos' directamente. 
+        // configuracion.html ya estructuró el objeto con companyId, tipo_configuracion y payload
+        const respuesta = await axios.post(urlFinal, datos, { 
             timeout: 15000,
-            maxRedirects: 5 // Permitimos redirecciones controladas
+            maxRedirects: 5 
         });
 
         console.log("📥 Respuesta del Xeon:", respuesta.data);
@@ -1190,7 +1504,6 @@ async function enviarDatosAXeon(datos, tipoOperacion) {
         }
     } catch (error) {
         if (error.response) {
-            // Si el error sigue siendo 404, confirma que el túnel no esté alterando la ruta
             console.error("🔥 Error de Respuesta Xeon:", error.response.status);
             return { success: false, error: `Error ${error.response.status}: Asegúrate de usar HTTPS en el código.` };
         } else if (error.request) {
@@ -1200,6 +1513,29 @@ async function enviarDatosAXeon(datos, tipoOperacion) {
             console.error("⚠️ Error Configuración Axios:", error.message);
             return { success: false, error: error.message };
         }
+    }
+}
+
+function encryptClave(text) {
+    let iv = crypto.randomBytes(IV_LENGTH);
+    let cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), iv);
+    let encrypted = cipher.update(text);
+    encrypted = Buffer.concat([encrypted, cipher.final()]);
+    // Guardamos el vector y el texto encriptado unidos por ":"
+    return iv.toString('hex') + ':' + encrypted.toString('hex');
+}
+
+function decryptClave(text) {
+    try {
+        let textParts = text.split(':');
+        let iv = Buffer.from(textParts.shift(), 'hex');
+        let encryptedText = Buffer.from(textParts.join(':'), 'hex');
+        let decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), iv);
+        let decrypted = decipher.update(encryptedText);
+        decrypted = Buffer.concat([decrypted, decipher.final()]);
+        return decrypted.toString();
+    } catch (error) {
+        return "ERROR_DESCIFRADO";
     }
 }
 
