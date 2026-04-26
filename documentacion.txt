@@ -1,0 +1,3693 @@
+COMANDOS PARA GENERAR TIKET FISCALES 
+
+@TIQUEABRE
+int @TIQUEABRE(BYTE byVar1) 
+
+Abrir Comprobante Tique Fiscal.
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+byVar1
+
+Formato para almacenar los datos (CG)
+
+C = Luego del ticket no se va a realizar un DNFH
+
+G = Luego del ticket se va a realizar un DNFH
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@TIQUEABRE|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@TIQUEABRE|...")
+
+ 
+
+IXBatch
+
+@TIQUEABRE|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+@TIQUETEXTO
+int @TIQUETEXTO(STRING strVar1) 
+
+Imprimir Texto Fiscal en Tique Fiscal
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+strVar1
+
+Texto fiscal a imprimir (max 26 chars)
+
+Comentarios
+
+Puede enviar hasta un máximo de 4 líneas de texto fiscal consecutivas  ANTES de enviar el comando @TIQUEITEM
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@TIQUETEXTO|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@TIQUETEXTO|...")
+
+ 
+
+IXBatch
+
+@TIQUETEXTO|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+@TIQUEITEM 
+int @TIQUEITEM(STRING strVar1, DOUBLE dblVar2, DOUBLE dblVar3, DOUBLE dblVar4, BYTE byVar5, INT nVar6, DOUBLE dblVar7, DOUBLE dblVar8) 
+
+Imprimir Ítem de Línea en Tique Fiscal. (Ver también @TIQUEITEM2)
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+strVar1
+
+Descripción del item (max 20 chars)
+
+dblVar2
+
+Cantidad (nnnnn.nnn)
+
+dblVar3
+
+Monto del ítem (nnnnnnn.nn)
+
+Deberá enviarse el monto total, CON IVA, impuestos internos,etc. Para mas información vea Aritmética del Impresor en el Apéndice)
+
+dblVar4
+
+Tasa del IVA  (.nnnn) ( Ej: 0.105, 0.21)
+
+byVar5
+
+Calificador de la operación (MmRr)
+
+M = Monto agregado mercadería, SUMA
+
+m = Anula el ítem vendido,RESTA
+
+R = Bonificación, RESTA
+
+r = Anula una bonificación, SUMA
+
+NOTA: En los casos que se use el calificador "m","R" o "r",  solamente se aplicara a un ítem del documento en curso: la descripción y la tasa de IVA del ítem, etc, deberá coincidir con las del ítem preexistente en el documento fiscal.
+
+nVar6
+
+Nro de bultos (nnnnn)
+
+dblVar7
+
+Tasa de ajuste variable (.nnnnnnnn)
+
+dblVar8
+
+Impuestos internos fijos (nnnnnnnnn.nnnnnnnn)
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@TIQUEITEM|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@TIQUEITEM|...")
+
+ 
+
+IXBatch
+
+@TIQUEITEM|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+@TIQUEITEM2
+int @TIQUEITEM2(STRING strVar1, DOUBLE dblVar2, DOUBLE dblVar3, DOUBLE dblVar4, BYTE byVar5, INT nVar6, DOUBLE dblVar7, DOUBLE dblVar8) 
+
+Imprimir Ítem de Línea en Tique Fiscal.
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+strVar1
+
+Descripción del Ítem (max 20 chars)
+
+dblVar2
+
+Cantidad (nnnnn.nnn)
+
+dblVar3
+
+Monto del item (nnnnnnn.nnnn)  Hasta 4 decimales y modelos TM2002, TMU220 y NCR3140 en modo Epson.
+
+Deberá enviarse el monto total, CON IVA, impuestos internos,etc. Para mas información vea Aritmética del Impresor en el Apéndice)
+
+dblVar4
+
+Tasa del IVA  (.nnnn) ( Ej: 0.105, 0.21)
+
+byVar5
+
+Calificador de la operación (MmRr)
+
+M = Monto agregado mercadería, SUMA
+
+m = Anula el item vendido,RESTA
+
+R = Bonificación, RESTA
+
+r = Anula una bonificación, SUMA
+
+NOTA: En los casos que se use el calificador "m","R" o "r",  solamente se aplicara a un ítem del documento en curso: la descripción y la tasa de IVA del ítem, etc, deberá coincidir con las del ítem preexistente en el documento fiscal.
+
+nVar6
+
+Nro de bultos (nnnnn)
+
+dblVar7
+
+Tasa de ajuste variable (.nnnnnnnn)
+
+dblVar8
+
+Impuestos internos fijos (nnnnnnnnn.nnnnnnnn)
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@TIQUEITEM|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@TIQUEITEM|...")
+
+ 
+
+IXBatch
+
+@TIQUEITEM|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+@TIQUEITEM2
+int @TIQUEITEM2(STRING strVar1, DOUBLE dblVar2, DOUBLE dblVar3, DOUBLE dblVar4, BYTE byVar5, INT nVar6, DOUBLE dblVar7, DOUBLE dblVar8) 
+
+Imprimir Ítem de Línea en Tique Fiscal.
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+strVar1
+
+Descripción del Ítem (max 20 chars)
+
+dblVar2
+
+Cantidad (nnnnn.nnn)
+
+dblVar3
+
+Monto del item (nnnnnnn.nnnn)  Hasta 4 decimales y modelos TM2002, TMU220 y NCR3140 en modo Epson.
+
+Deberá enviarse el monto total, CON IVA, impuestos internos,etc. Para mas información vea Aritmética del Impresor en el Apéndice)
+
+dblVar4
+
+Tasa del IVA  (.nnnn) ( Ej: 0.105, 0.21)
+
+byVar5
+
+Calificador de la operación (MmRr)
+
+M = Monto agregado mercadería, SUMA
+
+m = Anula el item vendido,RESTA
+
+R = Bonificación, RESTA
+
+r = Anula una bonificación, SUMA
+
+NOTA: En los casos que se use el calificador "m","R" o "r",  solamente se aplicara a un ítem del documento en curso: la descripción y la tasa de IVA del ítem, etc, deberá coincidir con las del ítem preexistente en el documento fiscal.
+
+nVar6
+
+Nro de bultos (nnnnn)
+
+dblVar7
+
+Tasa de ajuste variable (.nnnnnnnn)
+
+dblVar8
+
+Impuestos internos fijos (nnnnnnnnn.nnnnnnnn)
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@TIQUEITEM|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@TIQUEITEM|...")
+
+ 
+
+IXBatch
+
+@TIQUEITEM|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+@TIQUEPAGO
+int @TIQUEPAGO(STRING strVar1, DOUBLE dblVar2, BYTE byVar3) 
+
+Devolución de Envases, Bonificaciones, Pagos, Cancelar, Descuentos, Recargos Fijos Globales en Tique
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+strVar1
+
+Texto con descripción del pago (max 25 chars)
+
+dblVar2
+
+monto (nnnnnnn.nn)
+
+byVar3
+
+Calificador del ítem de línea (CTtDR)
+
+C = Cancelar el comprobante
+
+T = Suma al importe pagado
+
+t = Anula un pago hecho con T
+
+D = Realiza un DESCUENTO GLOBAL de monto fijo
+
+R = Realiza un RECARGO GLOBAL de monto fijo
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@TIQUEPAGO|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@TIQUEPAGO|...")
+
+ 
+
+IXBatch
+
+@TIQUEPAGO|...
+
+ 
+
+Campos salida
+
+5
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+03  Resto que falta pagar (nnnnnn.nn)
+04  Reservado
+05  Reservado
+
+
+@TIQUESUBTOTAL
+int @TIQUESUBTOTAL(BYTE byVar1, STRING strVar2) 
+
+Subtotal en Ticket Fiscal
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+byVar1
+
+Imprimir
+
+P = Se imprime el subtotal
+
+O = Otro carácter se envía la info a la PC
+
+strVar2
+
+Texto a imprimir en el subtotal (max 25 chars)
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@TIQUESUBTOTAL|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@TIQUESUBTOTAL|...")
+
+ 
+
+IXBatch
+
+@TIQUESUBTOTAL|...
+
+ 
+
+Campos salida
+
+10
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+03  Sin uso
+04  cantidad de items de línea
+05  Total de mercadería o total a pagar (nnnnn.nn)
+06  Total de impuesto IVA (nnnnnnnnnn.nn)
+07  Total pago (nnnnnnnnnn.nn)
+08  Total de Impuestos Internos Porcentuales (nnnnnnnnnn.nn)
+09  Total de Impuestos Internos Fijos (nnnnnnnnnn.nn)
+10  Monto Neto o Total facturado sin Impuestos (nnnnnnnnnn.nn)
+
+
+@TIQUECIERRA
+int @TIQUECIERRA(BYTE byVar1) 
+
+Cerrar Comprobante Fiscal Tique
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+byVar1
+
+Tipo de corte (TP)
+
+T = Corte total
+
+P = Corte parcial
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@TIQUECIERRA|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@TIQUECIERRA|...")
+
+ 
+
+IXBatch
+
+@TIQUECIERRA|...
+
+ 
+
+Campos salida
+
+3
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+03  Nro de documento fiscal que se acaba de emitir
+
+
+@TIQUECANCEL
+int @TIQUECANCEL(void) 
+
+Cancela un Ticket Fiscal.
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@TIQUECANCEL|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@TIQUECANCEL|...")
+
+ 
+
+IXBatch
+
+@TIQUECANCEL|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+EMISION DE TIKETS FACTURAS Y NOTAS DE CRECITO
+
+@FACTABRE
+int @FACTABRE(BYTE byVar1, BYTE byVar2, BYTE byVar3, BYTE byVar4, BYTE byVar5, STRING strVar6, BYTE byVar7, BYTE byVar8, STRING strVar9, STRING strVar10, STRING strVar11, STRING strVar12, BYTE byVar13, STRING strVar14, STRING strVar15, STRING strVar16, STRING strVar17, STRING strVar18, BYTE byVar19) 
+
+Abrir comprobante fiscal Ticket - Factura / Ticket - Nota de Crédito tipo A, B, C.
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+byVar1
+
+Tipo de documento fiscal que se va a realizar (FMT)
+
+F = Ticket-factura (solamente para Impresoras de tickets TMU950)
+
+M = Nota de crédito 
+
+La emisión de notas de crédito no esta disponible en impresoras Epson TM2000 ni en Samsung SRP-250DF: estos modelos no emiten notas de crédito.
+
+T = Ticket-factura (solo en Impresoras de tickets)
+
+byVar2
+
+Tipo de salida impresa para factura fiscal o recibo - factura (CS)
+
+C = Formulario continuo
+
+S = Hoja suelta o slip
+
+byVar3
+
+Letra del documento fiscal (A,B,C o X) (ABCX)
+
+byVar4
+
+Cantidad de copias que se deben IMPRIMIR (1 a 5)
+
+byVar5
+
+Tipo de formulario que se utiliza para la factura emitidas en hoja suelta o formulario continuo (AFP)
+
+A = Autoimpreso
+
+F = Formulario pre-impreso
+
+P = La impresora fiscal debe dibujar las líneas
+
+strVar6
+
+Tamaño de los caracteres que se van a utilizar en toda la factura emitida en hoja suelta o formulario continuo) (max 2 chars)
+
+En Ticket - Factura y Notas de Crédito este valor es ignorado y se imprime siempre a 16.8 CPI.
+
+10 = 10 CPI 
+
+12 = 12 CPI 
+
+17 = 17 CPI ( equivale a 16.8 CPI)
+
+byVar7
+
+Responsabilidad frente al IVA del EMISOR en el modo entrenamiento (IRNEM)
+
+I = IVA RESPONSABLE INSCRIPTO
+
+R = IVA RESPONSABLE NO INSCRIPTO
+
+N = NO RESPONSABLE
+
+E = EXENTO
+
+M = RESPONSABLE MONOTRIBUTO
+
+byVar8
+
+Responsabilidad frente al IVA del COMPRADOR (IRNEMFS)
+
+I = IVA RESPONSABLE INSCRIPTO
+
+R = IVA RESPONSABLE NO INSCRIPTO
+
+N = NO RESPONSABLE
+
+E = EXENTO
+
+M = RESPONSABLE MONOTRIBUTO
+
+F = CONSUMIDOR FINAL
+
+S = NO CATEGORIZADO
+
+strVar9
+
+Nombre comercial del comprador línea 1 (max 40 chars). 
+
+Deberá ingresar al menos la línea 1 del nombre del comprador
+
+strVar10
+
+Nombre comercial del comprador línea 2 (max 40 chars)
+
+strVar11
+
+Tipo de documento del comprador (CUIT, CUIL,DNI,NDOC) (max 6 chars). 
+
+El Nro de CUIT o CUIL deberá enviarse sin guiones.
+
+strVar12
+
+CUIT o documento del comprador (max 11 chars)
+
+byVar13
+
+Linea OPCIONAL bien de USO 
+
+B= Se imprime la leyenda "VTA BIENES DEUSO"
+
+N= No se imprime la leyenda anterior
+
+strVar14
+
+Domicilio del comprador, línea 1 (max 40 chars). 
+
+Deberá ingresar al menos la línea 1 del domicilio del comprador.
+
+strVar15
+
+Domicilio del comprador, línea 2 (max 40 chars)
+
+strVar16
+
+Domicilio del comprador, línea 3 (max 40 chars)
+
+strVar17
+
+Línea 1 de texto variable con datos sobre el remito o factura (en notas de crédito) relacionado (max 40 chars) 
+
+En Ticket - facturas debe ir al menos un caracter imprimible o el Nº del remito relacionado al Ticket factura.
+
+En las notas de crédito este campo es obligatorio y deberá completarse con el Nº de factura que origina la Nota de Crédito. 
+
+strVar18
+
+Línea 2 de texto variable (max 40 chars)
+
+byVar19
+
+Formato para almacenar los datos (C o G) (CG)
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@FACTABRE|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@FACTABRE|...")
+
+ 
+
+IXBatch
+
+@FACTABRE|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+@FACTITEM
+int @FACTITEM(STRING strVar1, DOUBLE dblVar2, DOUBLE dblVar3, DOUBLE dblVar4, BYTE byVar5, INT nVar6, DOUBLE dblVar7, STRING strVar8, STRING strVar9, STRING strVar10, DOUBLE dblVar11, DOUBLE dblVar12) 
+
+Imprimir ítem de Línea en Ticket - Factura / Ticket - Nota de Crédito. (Ver también @FACTITEM2)
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+strVar1
+
+Descripción del producto (max 20 chars)
+
+dblVar2
+
+Cantidad de unidades (nnnnn.nnn)
+
+dblVar3
+
+Monto del ítem (nnnnnnn.nn)
+
+En Facturas "A" deberá enviarse el monto neto SIN IVA.
+
+En Facturas "B" y "C" deberá enviarse el monto total, CON IVA, impuestos internos,etc. Para mas información vea Aritmética del Impresor en el Apéndice)
+
+dblVar4
+
+Tasa del IVA (.nnnn) ( Ej: 0.105, 0.21)
+
+byVar5
+
+Calificador de la operación (MmRr)
+
+M = Monto agregado mercadería, SUMA
+
+m = Anula el ítem vendido,RESTA
+
+R = Bonificación, RESTA
+
+r = anula una bonificación, SUMA
+
+NOTA: En los casos que se use el calificador "m","R" o "r",  solamente se aplicara a un ítem del documento en curso: la descripción y la tasa de IVA del ítem, etc, deberá coincidir con las del ítem preexistente en el documento fiscal.
+
+En los documentos fiscales tipo Notas de Crédito, deberá usarse siempre el calificador "M".
+
+nVar6
+
+Nro de bultos (nnnnn)
+
+dblVar7
+
+Tasa de ajuste variable (.nnnnnnnn)
+
+strVar8
+
+Linea 1 descripción complementaria del ítem (max 30 chars)
+
+strVar9
+
+Linea 2 descripción complementaria del ítem (max 30 chars)
+
+strVar10
+
+Linea 3 descripción complementaria del ítem (max 30 chars)
+
+dblVar11
+
+Acrecentamiento (.nnnn)
+
+dblVar12
+
+Impuestos internos fijos (nnnnnnnnn.nnnnnnnn)
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@FACTITEM|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@FACTITEM|...")
+
+ 
+
+IXBatch
+
+@FACTITEM|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+@FACTITEM2
+int @FACTITEM2(STRING strVar1, DOUBLE dblVar2, DOUBLE dblVar3, DOUBLE dblVar4, BYTE byVar5, INT nVar6, DOUBLE dblVar7, STRING strVar8, STRING strVar9, STRING strVar10, DOUBLE dblVar11, DOUBLE dblVar12) 
+
+Imprimir ítem de Línea en Ticket - Factura / Ticket - Nota de Crédito.
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+strVar1
+
+Descripción del producto (max 20 chars)
+
+dblVar2
+
+Cantidad de unidades (nnnnn.nnn)
+
+dblVar3
+
+Monto del ítem (nnnnnnn.nnnn)  Hasta 4 decimales y modelos TM2002, TMU220 y NCR3140 en modo compatibilidad Epson
+
+En Facturas "A" deberá enviarse el monto neto SIN IVA.
+
+En Facturas "B" y "C" deberá enviarse el monto total, CON IVA, impuestos internos,etc. Para mas información vea Aritmética del Impresor en el Apéndice)
+
+dblVar4
+
+Tasa del IVA (.nnnn) ( Ej: 0.105, 0.21)
+
+byVar5
+
+Calificador de la operación (MmRr)
+
+M = Monto agregado mercadería, SUMA
+
+m = Anula el ítem vendido,RESTA
+
+R = Bonificación, RESTA
+
+r = anula una bonificación, SUMA
+
+NOTA: En los casos que se use el calificador "m","R" o "r",  solamente se aplicara a un ítem del documento en curso: la descripción y la tasa de IVA del ítem, etc, deberá coincidir con las del ítem preexistente en el documento fiscal.
+
+En los documentos fiscales tipo Notas de Crédito, deberá usarse siempre el calificador "M".
+
+nVar6
+
+Nro de bultos (nnnnn)
+
+dblVar7
+
+Tasa de ajuste variable (.nnnnnnnn)
+
+strVar8
+
+Linea 1 descripción complementaria del ítem (max 30 chars)
+
+strVar9
+
+Linea 2 descripción complementaria del ítem (max 30 chars)
+
+strVar10
+
+Linea 3 descripción complementaria del ítem (max 30 chars)
+
+dblVar11
+
+Acrecentamiento (.nnnn)
+
+dblVar12
+
+Impuestos internos fijos (nnnnnnnnn.nnnnnnnn)
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@FACTITEM|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@FACTITEM|...")
+
+ 
+
+IXBatch
+
+@FACTITEM|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+@FACTPAGO
+int @FACTPAGO(STRING strVar1, DOUBLE dblVar2, BYTE byVar3) 
+
+Pagos, descuentos, recargos, bonificaciones, cancelar en Ticket - Factura / Ticket - Nota de Crédito.
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+strVar1
+
+Texto con descripción del pago (max 25 chars)
+
+dblVar2
+
+monto (nnnnnnnnnn.nn)
+
+byVar3
+
+Calificador del ítem de línea (CTtDR)
+
+C = Cancelar el comprobante
+
+T = Suma al importe pagado
+
+t = Anula un pago hecho con T
+
+D = Realiza un DESCUENTO GLOBAL de monto fijo
+
+R = Realiza un RECARGO GLOBAL de monto fijo
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@FACTPAGO|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@FACTPAGO|...")
+
+ 
+
+IXBatch
+
+@FACTPAGO|...
+
+ 
+
+Campos salida
+
+5
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+03  Resto que falta pagar (nnnnnn.nn)
+04  Reservado
+05  Reservado
+
+
+
+@FACTPERCEP
+int @FACTPERCEP(STRING strVar1, BYTE byVar2, DOUBLE dblVar3) 
+
+Percepciones en Ticket - Factura / Ticket - Nota de Crédito.
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+strVar1
+
+Descripción de la percepción (max 25 chars)
+
+byVar2
+
+Indica si es una percepción sobre el IVA u otra percepción (OT)
+
+O = Otro tipo de percepción
+
+T = Percepción a una tasa de IVA determinada
+
+dblVar3
+
+Monto de la percepción (nnnnnnnn.nn)
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@FACTPERCEP|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@FACTPERCEP|...")
+
+ 
+
+IXBatch
+
+@FACTPERCEP|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+@FACTSUBTOTAL
+int @FACTSUBTOTAL(BYTE byVar1, STRING strVar2) 
+
+Subtotal en Ticket - Factura / Ticket - Nota de Crédito
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+byVar1
+
+Imprimir
+
+strVar2
+
+Texto a imprimir en el subtotal (max 29 chars)
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@FACTSUBTOTAL|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@FACTSUBTOTAL|...")
+
+ 
+
+IXBatch
+
+@FACTSUBTOTAL|...
+
+ 
+
+Campos salida
+
+10
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+03  Sin uso
+04  cantidad de items de línea
+05  Total de mercadería o total a pagar (nnnnn.nn)
+06  Total de impuesto IVA (nnnnnnnnnn.nn)
+07  Total pago (nnnnnnnnnn.nn)
+08  Total de Impuestos Internos Porcentuales (nnnnnnnnnn.nn)
+09  Total de Impuestos Internos Fijos (nnnnnnnnnn.nn)
+10  Monto Neto o Total facturado sin Impuestos (nnnnnnnnnn.nn)
+
+
+@FACTCIERRA
+int @FACTCIERRA(BYTE byVar1, BYTE byVar2, STRING strVar3) 
+
+Cerrar un Ticket - Factura / Ticket Nota de Crédito
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+byVar1
+
+Tipo de documento (FTM)
+
+F = Ticket - Factura fiscal
+
+T = Ticket factura fiscal
+
+M = Nota de crédito(solo en Impresoras de tickets)
+
+byVar2
+
+Letra del documento fiscal (A,B, C o X)
+
+A = A
+
+B = B
+
+C = C
+
+X = X
+
+strVar3
+
+Descripción que se imprime en la línea TOTAL (max 20 chars)
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@FACTCIERRA|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@FACTCIERRA|...")
+
+ 
+
+IXBatch
+
+@FACTCIERRA|...
+
+ 
+
+Campos salida
+
+3
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+03  Nro de documento fiscal que se acaba de emitir
+
+
+@FACTCANCEL
+int @FACTCANCEL(void) 
+
+Cancela un Ticket - Factura / Ticket - Nota de Crédito.
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@FACTCANCEL|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@FACTCANCEL|...")
+
+ 
+
+IXBatch
+
+@FACTCANCEL|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+COMANDOS PARA GENERAR DOC. NO FISCALES HOMOLOGADOS
+
+@DNFHOBRASOCIAL
+int @DNFHOBRASOCIAL(STRING strVar1, STRING strVar2, STRING strVar3, STRING strVar4, STRING strVar5, STRING strVar6, STRING strVar7, STRING strVar8, STRING strVar9, STRING strVar10, STRING strVar11, STRING strVar12, STRING strVar13, BYTE byVar14, BYTE byVar15, BYTE byVar16, BYTE byVar17, BYTE byVar18) 
+
+Documento no fiscal homologado farmacias
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+strVar1
+
+Nombre de la Obra Social y/o el nro de Obra Social. (max 20 chars)
+
+strVar2
+
+Línea para identificar el coseguro (max 20 chars)
+
+strVar3
+
+Línea para identificar el coseguro (max 20 chars)
+
+strVar4
+
+Línea para identificar el coseguro (max 20 chars)
+
+strVar5
+
+Nro de afiliado (max 20 chars)
+
+strVar6
+
+Nombre del afiliado (max 20 chars)
+
+strVar7
+
+Fecha de vencimiento del carnet de la obra social. El formato es AAMMDD (max 6 chars)
+
+strVar8
+
+Domicilio Fiscal del Vendedor línea 1 (max 20 chars)
+
+strVar9
+
+Domicilio Fiscal del Vendedor línea 2 (max 20 chars)
+
+strVar10
+
+número o nombre del establecimiento (max 20 chars)
+
+strVar11
+
+número interno del comprobante que se esta emitiendo. (max 20 chars)
+
+strVar12
+
+línea 1 para especificar algún dato a la obra social (max 20 chars)
+
+strVar13
+
+línea 2 para especificar algún dato a la obra social (max 20 chars)
+
+byVar14
+
+Si se envía 'P' se deja un espacio para que el cliente ponga su domicilio
+
+byVar15
+
+Si se envía 'P' se deja un espacio para que el cliente ponga su nro de documento
+
+byVar16
+
+Si se envía 'P' se deja un espacio para que el cliente ponga su firma
+
+byVar17
+
+Si se envía 'P' se deja un espacio para que el cliente aclare su firma
+
+byVar18
+
+Si se envía 'P' se deja un espacio para que el cliente ponga su teléfono
+
+Comentarios
+
+En caso que no se use un campo se envia el caracter DEL (0x7F)
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@DNFHOBRASOCIAL|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@DNFHOBRASOCIAL|...")
+
+ 
+
+IXBatch
+
+@DNFHOBRASOCIAL|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+@DNFHTARJETADECREDITO
+int @DNFHTARJETADECREDITO(STRING strVar1, STRING strVar2, STRING strVar3, STRING strVar4, STRING strVar5, STRING strVar6, STRING strVar7, STRING strVar8, STRING strVar9, DOUBLE dblVar10, STRING strVar11, STRING strVar12, STRING strVar13, STRING strVar14, STRING strVar15, STRING strVar16, STRING strVar17, STRING strVar18, BYTE byVar19, BYTE byVar20, BYTE byVar21) 
+
+Datos del voucher de tarjeta de crédito
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+strVar1
+
+Nombre de tarjeta de crédito (max 20 chars)
+
+strVar2
+
+nro de la tarjeta de crédito (max 20 chars)
+
+strVar3
+
+Nombre del usuario de la tarjeta de crédito (max 23 chars)
+
+strVar4
+
+Fecha de vencimiento de la tarjeta de crédito (AAMMDD) (max 6 chars)
+
+strVar5
+
+número de establecimiento (max 20 chars)
+
+strVar6
+
+número de cupón (max 20 chars)
+
+strVar7
+
+número interno del comprobante que se esta emitiendo (max 20 chars)
+
+strVar8
+
+código de autorización de la transacción (max 20 chars)
+
+strVar9
+
+tipo de operación (max 20 chars)
+
+dblVar10
+
+Importe que a pagar. (nnnnnnnnn.nn)
+
+strVar11
+
+cantidad de cuotas (max 20 chars)
+
+strVar12
+
+en que moneda se ha realizado la transacción (max 20 chars)
+
+strVar13
+
+número de terminal (max 20 chars)
+
+strVar14
+
+número de lote (max 20 chars)
+
+strVar15
+
+número de terminal electrónica (max 20 chars)
+
+strVar16
+
+número de sucursal (max 20 chars)
+
+strVar17
+
+número o nombre del operador. (max 20 chars)
+
+strVar18
+
+número de documento fiscal al que se hace referencia (max 20 chars)
+
+byVar19
+
+Si se envía P se deja una línea para la firma del cliente
+
+byVar20
+
+Si se envía P se deja una línea para la aclaracion de la firma
+
+byVar21
+
+Si se envía P se deja una línea para el nro de telefono
+
+Comentarios
+
+En caso que no se use un campo se envía el carácter DEL (0x7F)
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@DNFHTARJETADECREDITO|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@DNFHTARJETADECREDITO|...")
+
+ 
+
+IXBatch
+
+@DNFHTARJETADECREDITO|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+@ESTACIONPPAL
+int @ESTACIONPPAL(BYTE byVar1, BYTE byVar2, BYTE byVar3, BYTE byVar4, BYTE byVar5) 
+
+Preparar estación principal
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+byVar1
+
+Se envía 'D' para indicar que se enviara un comando de manejo de documentos
+
+byVar2
+
+Se envía 'P para indicar que se enviará un comando de impresión
+
+byVar3
+
+Se envía 'P' para indicar que deberá preparar la impresión la estación definida en el campo 04
+
+byVar4
+
+Se debe enviar 'U' (U)
+
+byVar5
+
+Se debe enviar 'O' (O)
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@ESTACIONPPAL|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@ESTACIONPPAL|...")
+
+ 
+
+IXBatch
+
+@ESTACIONPPAL|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+LEEPREFERENCIA
+int @LEEPREFERENCIA(BYTE byVar1, BYTE byVar2, BYTE byVar3) 
+
+Leer las preferencias del usuario
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+byVar1
+
+Se debe enviar P (P)
+
+byVar2
+
+Modo (DP)
+
+D = Indica que se leerán las preferencias del dispositivo
+
+P = Indica que se leerán las preferencias del papel a utilizar
+
+byVar3
+
+Solo si en el campo 02 se envió 'P' se debe enviar 'S' para leer las dimensiones del papel
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@LEEPREFERENCIA|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@LEEPREFERENCIA|...")
+
+ 
+
+IXBatch
+
+@LEEPREFERENCIA|...
+
+ 
+
+Campos salida
+
+2 + n
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+nn  campo dependiendo del los argumentos de la función
+
+
+@PONEPREFERENCIA
+int @PONEPREFERENCIA(BYTE byVar1, BYTE byVar2, BYTE byVar3, BYTE byVar4, STRING strVar5, STRING strVar6) 
+
+Seleccionar las preferencias del usuario
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+byVar1
+
+Se debe enviar 'P' (P)
+
+byVar2
+
+Modo1 (DP)
+
+D = Indica que se establecerán las preferencias del dispositivo
+
+P = Indica que se establecerán las preferencias del papel a usar
+
+byVar3
+
+Modo2 (S)
+
+S = Si en el campo 2 se envió 'D' indica que se utilizara la estación de slip
+
+S = Si en el campo 2 se envió 'P' indica que se establecerá las dimensiones del papel
+
+byVar4
+
+Modo3 (OU)
+
+O = Si en el campo 2 se envió 'D' los DNF se imprimen por la estación seleccionada en el campo 03
+
+U = Si en el campo 2 se envió 'P' indica que el usuario establecerá las dimensiones del papel
+
+strVar5
+
+Solo si en el campo 04 se envió 'U' establece la cantidad de líneas que mide el papel (max 2 chars)
+
+strVar6
+
+Solo si en el campo 04 se envió 'U' establece la cantidad de columnas (max 2 chars)
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@PONEPREFERENCIA|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@PONEPREFERENCIA|...")
+
+ 
+
+IXBatch
+
+@PONEPREFERENCIA|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+@NOFISDOC
+int @NOFISDOC(BYTE byVar1, BYTE byVar2) 
+
+Documento NO fiscal por hoja suelta
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+byVar1
+
+Campo 1
+
+byVar2
+
+Campo 2
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@NOFISDOC|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@NOFISDOC|...")
+
+ 
+
+IXBatch
+
+@NOFISDOC|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+COMANDO PARA GENERAR DOC NO FISCALES 
+
+@NOFISABRE
+int @NOFISABRE(void) 
+
+Abrir comprobante no-fiscal
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@NOFISABRE|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@NOFISABRE|...")
+
+ 
+
+IXBatch
+
+@NOFISABRE|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+@NOFISITEM
+int @NOFISITEM(STRING strVar1) 
+
+Imprimir texto no-fiscal
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+strVar1
+
+Texto no fiscal (max 40 chars)
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@NOFISITEM|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@NOFISITEM|...")
+
+ 
+
+IXBatch
+
+@NOFISITEM|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+@NOFISCIERRA
+int @NOFISCIERRA(BYTE byVar1) 
+
+Cerrar comprobante no-fiscal
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+byVar1
+
+Tipo de corte (TP)
+
+T = Corte total
+
+P = Corte parcial
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@NOFISCIERRA|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@NOFISCIERRA|...")
+
+ 
+
+IXBatch
+
+@NOFISCIERRA|...
+
+ 
+
+Campos salida
+
+3
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+03  Nro de documento no fiscal que se acaba de emitir
+
+COMANDOS DE CONTROL FISCAL 
+
+@AUDITORIAF
+int @AUDITORIAF(STRING strVar1, STRING strVar2, BYTE byVar3) 
+
+Reporte de auditoria por fechas
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+strVar1
+
+Fecha inicial (AAMMDD) (max 6 chars)
+
+strVar2
+
+Fecha final (AAMMDD) (max 6 chars)
+
+byVar3
+
+tipo (TDtd)
+
+T = Reporte total general
+
+D = Reporte detallado
+
+t = Reporte total general, con redondeo
+
+d = Reporte detallado, con redondeo
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@AUDITORIAF|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@AUDITORIAF|...")
+
+ 
+
+IXBatch
+
+@AUDITORIAF|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+@AUDITORIAZ
+int @AUDITORIAZ(INT nVar1, INT nVar2, BYTE byVar3) 
+
+Reporte de auditoria por fechas
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+nVar1
+
+Nro Z inicial (nn)
+
+nVar2
+
+Nro Z final (nn)
+
+byVar3
+
+tipo
+
+T = Reporte total general
+
+D = Reporte detallado
+
+t = Reporte total general, con redondeo
+
+d = Reporte detallado, con redondeo
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@AUDITORIAZ|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@AUDITORIAZ|...")
+
+ 
+
+IXBatch
+
+@AUDITORIAZ|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+@CIERRE
+int @CIERRE(BYTE byVar1, BYTE byVar2) 
+
+Cierre de jornada fiscal
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+byVar1
+
+Tipo de reporte (XY)
+
+X = Reporte X
+
+Y = Reporte Z
+
+byVar2
+
+Imprimir
+
+P = Imprimir reporte
+
+O = Otro carácter no imprime
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@CIERRE|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@CIERRE|...")
+
+ 
+
+IXBatch
+
+@CIERRE|...
+
+ 
+
+Campos salida
+
+18
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+03  Nro de cierre X / Z según corresponda
+04  Cuenta de Documentos Fiscales Cancelados
+05  Cuenta de documentos No Fiscales Homologados (D.N.F.H)
+06  Cuenta de Documentos No Fiscales no homologados (D.N.F.)
+07  Cuenta de Comprobantes Factura B o C emitidos
+08  Cuenta de Comprobantes de Facturas A emitidos
+09  Nro de último comprobante de Factura B o C emitido
+10  Monto total Facturado
+11  Monto total de IVA Cobrado
+12  Importe Total de las percepciones
+13  Nro de último comprobante Factura A emitido
+14  Nro de la última Nota de crédito tipo A emitida
+15  Nro de la última Nota de crédito tipo B-C emitida
+16  Nro del último remito emitido
+17  Total de Nota de crédito
+18  Total de IVA de Nota de crédito
+
+
+@CIERREZ
+int @CIERREZ(void) 
+
+Efectúa un CierreZ
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@CIERREZ|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@CIERREZ|...")
+
+ 
+
+IXBatch
+
+@CIERREZ|...
+
+ 
+
+Campos salida
+
+18
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+03  Nro de cierre X / Z según corresponda
+04  Cuenta de Documentos Fiscales Cancelados
+05  Cuenta de documentos No Fiscales Homologados (D.N.F.H)
+06  Cuenta de Documentos No Fiscales no homologados (D.N.F.)
+07  Cuenta de Comprobantes Factura B o C emitidos
+08  Cuenta de Comprobantes de Facturas A emitidos
+09  Nro de último comprobante de Factura B o C emitido
+10  Monto total Facturado
+11  Monto total de IVA Cobrado
+12  Importe Total de las percepciones
+13  Nro de último comprobante Factura A emitido
+14  Nro de la última Nota de crédito tipo A emitida
+15  Nro de la última Nota de crédito tipo B-C emitida
+16  Nro del último remito emitido
+17  Total de Nota de crédito
+18  Total de IVA de Nota de crédito
+
+
+@CIERREX
+int @CIERREX(void) 
+
+Efectúa un CierreX
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@CIERREX|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@CIERREX|...")
+
+ 
+
+IXBatch
+
+@CIERREX|...
+
+ 
+
+Campos salida
+
+18
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+03  Nro de cierre X / Z según corresponda
+04  Cuenta de Documentos Fiscales Cancelados
+05  Cuenta de documentos No Fiscales Homologados (D.N.F.H)
+06  Cuenta de Documentos No Fiscales no homologados (D.N.F.)
+07  Cuenta de Comprobantes Factura B o C emitidos
+08  Cuenta de Comprobantes de Facturas A emitidos
+09  Nro de último comprobante de Factura B o C emitido
+10  Monto total Facturado
+11  Monto total de IVA Cobrado
+12  Importe Total de las percepciones
+13  Nro de último comprobante Factura A emitido
+14  Nro de la última Nota de crédito tipo A emitida
+15  Nro de la última Nota de crédito tipo B-C emitida
+16  Nro del último remito emitido
+17  Total de Nota de crédito
+18  Total de IVA de Nota de crédito
+
+
+COMADNOS DE DIGANOSTICO 
+
+@ESTADO
+int @ESTADO(BYTE byVar1) 
+
+Consulta de estado
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+byVar1
+
+Código de operación (NPCAD)
+
+A = Información sobre los contadores de doc fiscales y no fiscales
+
+C = Información sobre el contribuyente
+
+D = Información sobre el documento que se esta emitiendo
+
+N = Información normal
+
+P = Información sobre las características del controlador fiscal
+
+Comentarios
+
+Los campos de la respuesta del controlador dependen del tipo de Información solicitada
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@ESTADO|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@ESTADO|...")
+
+ 
+
+IXBatch
+
+@ESTADO|...
+
+ 
+
+Campos salida
+
+A. Si el código de la operación es 'N': 10  
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+03  número del último comprobante fiscal Factura B o C emitido no cancelado
+04  Fecha del primer comprobante fiscal y/o desde el inicio del primer Doc Fiscal
+05  Hora del primer comprobante fiscal y/o desde el inicio del primer Doc Fiscal
+06  número del último Cierre de la Jornada Fiscal
+07  Dato de auditoria parcial. Se recomienda ARCHIVAR diariamente este número
+08  Dato de auditoria Total. Se recomienda ARCHIVAR diariamente este número
+09  Texto de auditoria que Identifica el Impresor.
+10  Texto de auditoria. Se recomienda ARCHIVAR diariamente este número antes de emitir el Comprobante Z
+
+B. Si el código de la operación es 'P': 13
+
+Campo Descripción
+
+01 estado del impresor fiscal
+02 estado del controlador fiscal
+03 Ancho de la Impresora en columnas a 10 CPI para Facturas. Si es Cero,no se puede imprimir a dicha resolución. (nnn)
+04 Ancho de la Impresora en columnas a 12 CPI para Facturas. Si es Cero,no se puede imprimir a dicha resolución.
+05 Ancho de la Impresora en columnas a 17 CPI para Facturas. Si es Cero,no se puede imprimir a dicha resolución.
+06 Ancho en columnas para Tickets ó Tickets-Factura
+07 Cantidad de líneas de Validación
+08 S si la Impresora Fiscal puede hacer Tickets y N si no esta habilitada a hacerlos.
+09 S si la Impresora Fiscal puede hacer Tickets-Factura y N si no esta habilitada a hacerlos.
+10 S Si la Impresora Fiscal puede hacer Facturas y N si no esta habilitada hacerlos.
+11 Cantidad de dígitos asignados para los centavos en el cierre Z o en el subtotal. Valor normal 2
+12 Estación principal actualmente seleccionada, donde se van a imprimir los datos (RS).
+13 Modelo de la Impresora
+
+C. Si el código de la operación es 'C': 9  
+
+Campo Descripción
+
+01 estado del impresor fiscal
+02 estado del controlador fiscal
+03 Número de Clave Única de Identificación Tributaria
+04 Número de Punto de Venta
+05 Tipo de responsabilidad del contribuyente (IRNEM)
+06 Tasa Estándar de Impuesto al Valor Agregado (IVA)
+07 Sin Uso
+08 Sin Uso
+09 Razón Social del comprador
+
+D. Si el código de la operación es 'A': 13
+
+Campo Descripción
+
+01 estado del impresor fiscal
+02 estado del controlador fiscal
+03 Número del último Cierre de la Jornada Fiscal o cierre Z
+04 Número de la última Factura B o C completamente emitido sin problemas
+05 Número del último Tickets impreso o Factura B, C o Tickets-Factura B, C
+06 Número del último Tickets-Factura A o Factura A completamente emitido sin problemas
+07 Número del último Tickets-Factura A o Factura A impreso
+08 Número del último Documento No Fiscal emitido
+09 Número del último Documento No Fiscal Homologado emitido
+10 Número del último número de referencia para Documentos No Fiscales o No Fiscales homologados emitido
+11 Número del la última Nota de Crédito tipo A emitida.
+12 Número de la última Nota de Crédito Tipo B/C emitida.
+13 Número del último Remito emitido.
+
+E. Si el código de la operación es 'D': 4
+
+Campo Descripción
+
+01 estado del impresor fiscal
+02 estado del controlador fiscal
+03 Letra que indica el Tipo de Documento que se está emitiendo (FOHRNLEC)
+04 Letra que caracteriza al documento (NABCX)
+
+
+COMANDOS DE CONTROL DE LA IMPRESORA 
+
+@AVANZAHOJA
+int @AVANZAHOJA(INT nVar1) 
+
+Avanzar hoja suelta o factura
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+nVar1
+
+Nro de líneas a avanzar (nn)
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@AVANZAHOJA|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@AVANZAHOJA|...")
+
+ 
+
+IXBatch
+
+@AVANZAHOJA|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+@AVANZATIQUE
+int @AVANZATIQUE(INT nVar1) 
+
+Avanzar papel de tickets
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+nVar1
+
+Nro de líneas a avanzar (nn)
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@AVANZATIQUE|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@AVANZATIQUE|...")
+
+ 
+
+IXBatch
+
+@AVANZATIQUE|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+@AVANZAAUDIT
+int @AVANZAAUDIT(INT nVar1) 
+
+Avanzar papel cinta de auditoria
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+nVar1
+
+Nro de líneas a avanzar (nn)
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@AVANZAAUDIT|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@AVANZAAUDIT|...")
+
+ 
+
+IXBatch
+
+@AVANZAAUDIT|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+@AVANZAAMBOS
+int @AVANZAAMBOS(INT nVar1) 
+
+Avanzar papeles de tickets y cinta de auditoria
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+nVar1
+
+Nro de líneas a avanzar (nn)
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@AVANZAAMBOS|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@AVANZAAMBOS|...")
+
+ 
+
+IXBatch
+
+@AVANZAAMBOS|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+@CORTAPAPEL
+int @CORTAPAPEL(void) 
+
+Cortar papel
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@CORTAPAPEL|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@CORTAPAPEL|...")
+
+ 
+
+IXBatch
+
+@CORTAPAPEL|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+COMANDOS GENERALES 
+
+@BARCODE
+int @BARCODE(INT nVar1, STRING strVar2, INT nVar3) 
+
+Imprimir Código de Barras al final del Ticket.
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+nVar1
+
+Tipo de código de Barra a imprimir
+
+1 = CODE 39 – Impresión estilo 1
+
+2 = CODE 39 – Impresión estilo 2
+
+3 = INTERLEAVED 2 of 5 - Impresión estilo 1
+
+4 = INTERLEAVED 2 of 5 – No se imprime la información para ser leída por humanos; o sin HRI.
+
+5 = UPC A - Impresión estilo 1
+
+6 = UPC A - Impresión estilo 2
+
+7 = EAN 13 - Impresión estilo 1
+
+8 = EAN 13 - Impresión estilo 2
+
+9 = EAN 13 - Impresión estilo 3
+
+10 = EAN 8 - Impresión estilo 1
+
+11 = CODABAR - Impresión estilo 1
+
+12 = CODABAR - Impresión estilo 2
+
+strVar2
+
+Datos a Imprimir. Máximo 10 Caracteres  (max 10 chars)
+
+nVar3
+
+Nro de línea de datos fijos (nnnnn)
+
+ 
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@BARCODE|1|123456789|11")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@BARCODE|1|123456789|11")
+
+ 
+
+IXBatch
+
+@BARCODE|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+Comentarios
+
+Esta sección explica como deben programarse los Códigos de Barras usando el comando @BARCODE. 
+
+Los códigos de barras se imprimirán a una altura fija de 4 líneas independientemente del estilo de impresión empleado.
+
+La impresión del código de barras es de la siguiente manera:
+
+|| | || | || | || Código de Barra
+|| | || | || | || Código de Barra
+|| | || | || | || Código de Barra
+|| | || | || | || Código de Barra
+1 2 3 4 5 8 9 0 9  <----Información del código de barras para que el usuario pueda leer la información.
+
+La impresión de códigos de barra se puede efectuar únicamente en los Datos Fijos de cola en un documento fiscal. 
+
+Si se intenta imprimir un código de barras en cualquier otra instancia, la impresora fiscal rechazará el comando. 
+
+Además no pueden ser impresos dos códigos de barra en la misma línea así como cualquier caracter junto con un código de barras en la misma línea.
+
+1. Documento Fiscal Ticket
+
+1.1 Formato de la cabecera del comprobante tipo Ticket
+
+Campo de Datos Fijo
+ Dato que debe contener
+ 
+1 - 2 - 3 - 4 - 5
+ Nombre de fantasía de corresponder
+ 
+6 - 7
+ Domicilio Comercial
+ 
+8
+ Domicilio Comercial
+ 
+9
+ Otras leyendas de interés comercial
+ 
+10
+ Otras leyendas de interés comercial
+ 
+
+ 
+
+1.2 Formato de la cola del comprobante tipo Ticket
+
+El campo de Texto fiscal de los datos fijos de cola (líneas 11 a 20) no pueden contener la palabra TOTAL o sus variantes como TOTAL, ToTal, TotnAl, etc.
+
+ 
+
+Campo de Datos Fijo
+ Dato que debe contener
+ 
+11 al 20
+ Texto Fiscal Variable / Código de barras
+ 
+
+ 
+
+2. Documento Fiscal Ticket - Factura
+
+2.1 Formato de la cabecera del comprobante tipo Ticket - Factura
+
+Campo de Datos Fijo 
+ Dato que debe contener
+ 
+1 - 2 - 3 - 4  - 5
+ Nombre de fantasía de corresponder
+ 
+50 - 51 - 52
+ Domicilio Comercial
+ 
+53 - 54 - 55 
+ Domicilio Fiscal
+ 
+56 
+ No se usa
+ 
+57 - 58 - 59 - 60 - 61
+ Numero Inscripción en Ingresos Brutos u otros tributos
+ 
+62
+ Fecha de Inicio de Actividad
+ 
+63 - 64 - 65
+ Otras leyendas de interés comercial
+ 
+
+ 
+
+2.2 Formato de la cola del comprobante tipo Ticket - Factura
+
+Tener en cuenta que no se imprime la misma cantidad de líneas en la Cola que en el caso del Ticket.
+
+Campo de Datos Fijo
+ Dato que debe contener
+ 
+11 - 14
+ Texto Fiscal Variable / Código de barras
+ 
+
+ 
+
+ 
+@PONEENCABEZADO
+int @PONEENCABEZADO(INT nVar1, STRING strVar2) 
+
+Programar texto de encabezamiento y cola
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+nVar1
+
+Nro de línea de datos fijos (nnnnn)
+
+strVar2
+
+Texto fiscal de datos fijos (max 40 chars)
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@PONEENCABEZADO|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@PONEENCABEZADO|...")
+
+ 
+
+IXBatch
+
+@PONEENCABEZADO|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+Comentarios
+
+Esta sección explica como deben programarse los campos fijos usando el comando @PONEENCABEZADO. 
+
+Cada cabecera o cola del documento fiscal tendrá los campos necesarios para identificar al documento como fiscal legal.
+
+1. Documento fiscal Ticket
+
+1.1 Formato de la cabecera del comprobante tipo Ticket
+
+Campo de Datos Fijo
+ Dato que debe contener
+ 
+1 - 2 - 3 - 4 - 5
+ Nombre de fantasía de corresponder
+ 
+6 - 7
+ Domicilio Comercial
+ 
+8
+ Domicilio Comercial
+ 
+9
+ Otras leyendas de interés comercial
+ 
+10
+ Otras leyendas de interés comercial
+ 
+
+ 
+
+1.2 Formato de la cola del comprobante tipo Ticket
+
+El campo de Texto fiscal de los datos fijos de cola (líneas 11 a 20) no pueden contener la palabra TOTAL o sus variantes como TOTAL, ToTal, TotnAl, etc
+
+ 
+
+Campo de Datos Fijo
+ Dato que debe contener
+ 
+11 al 20
+ Texto Fiscal Variable / Código de barras
+ 
+
+ 
+
+2. Documento fiscal Ticket - Factura
+
+2.1 Formato de la cabecera del comprobante tipo Ticket - Factura
+
+Campo de Datos Fijo 
+ Dato que debe contener
+ 
+1 - 2 - 3 - 4  - 5
+ Nombre de fantasía de corresponder
+ 
+50 - 51 - 52
+ Domicilio Comercial
+ 
+53 - 54 - 55 
+ Domicilio Fiscal
+ 
+56 
+ No se usa
+ 
+57 - 58 - 59 - 60 - 61
+ Numero Inscripción en Ingresos Brutos u otros tributos
+ 
+62
+ Fecha de Inicio de Actividad
+ 
+63 - 64 - 65
+ Otras leyendas de interés comercial
+ 
+
+ 
+
+2.2 Formato de la cola del comprobante tipo Ticket - Factura
+
+Tener en cuenta que no se imprime la misma cantidad de líneas en la Cola que en el caso del Ticket.
+
+Campo de Datos Fijo
+ Dato que debe contener
+ 
+11 - 14
+ Texto Fiscal Variable / Código de barras
+ 
+
+ 
+
+ 
+@PIDEENCABEZADO
+int @PIDEENCABEZADO(INT nVar1) 
+
+Consultar texto de encabezamiento y cola
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+nVar1
+
+Nro de línea de datos fijos (nnnnn)
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@PIDEENCABEZADO|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@PIDEENCABEZADO|...")
+
+ 
+
+IXBatch
+
+@PIDEENCABEZADO|...
+
+ 
+
+Campos salida
+
+3
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+03  Nro de dato fijo solicitado
+04  Texto fiscal de datos fijos
+
+
+@PONEFECHORA
+int @PONEFECHORA(STRING strVar1, STRING strVar2) 
+
+Ingresar fecha y hora
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+strVar1
+
+Fecha (AAMMDD) (max 2 chars)
+
+strVar2
+
+Hora (HHMMSS) (max 2 chars)
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@PONEFECHORA|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@PONEFECHORA|...")
+
+ 
+
+IXBatch
+
+@PONEFECHORA|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+@PIDEFECHORA
+int @PIDEFECHORA(void) 
+
+Consultar fecha y hora
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@PIDEFECHORA|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@PIDEFECHORA|...")
+
+ 
+
+IXBatch
+
+@PIDEFECHORA|...
+
+ 
+
+Campos salida
+
+4
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+03  Formato de fecha (AAMMDD)
+04  Formato de hora (HHMMSS)
+
+
+@ABRECAJON1
+int @ABRECAJON1(void) 
+
+Abrir gaveta de dinero 1
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@ABRECAJON1|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@ABRECAJON1|...")
+
+ 
+
+IXBatch
+
+@ABRECAJON1|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+@ABRECAJON2
+int @ABRECAJON2(void) 
+
+Abrir gaveta de dinero 2
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@ABRECAJON2|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@ABRECAJON2|...")
+
+ 
+
+IXBatch
+
+@ABRECAJON2|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+@PAUSE
+int @PAUSE(INT nVar1) 
+
+Efectúa una pausa
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Parámetros
+
+nVar1
+
+timeout (en milisegundos) (nnnn)
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@PAUSE|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@PAUSE|...")
+
+ 
+
+IXBatch
+
+COMANDOS AUXILIARES
+
+@PAUSE|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+@SINCRO
+int @SINCRO(void) 
+
+Cancela cualquier comprobante fiscal abierto
+
+Devuelve
+
+Devuelve 0 si no ocurrió un error o -1 si hubo un error
+
+Ejemplo
+
+FoxPro,Clipper,DLL
+
+err = IF_WRITE("@SINCRO|...")
+
+ 
+
+OCX,VBasic,Delphi
+
+err = obj.IF_WRITE("@SINCRO|...")
+
+ 
+
+IXBatch
+
+@SINCRO|...
+
+ 
+
+Campos salida
+
+2
+
+Campo Descripción
+
+01  estado del impresor fiscal
+02  estado del controlador fiscal
+
+
+EJEMPLO PARA IMPRESORAS DE TICKETS 
+
+Ejemplo para Visual Basic 6.0
+Ejemplo Impresión de Ticket con la impresora fiscal en el COM1 y a 9600 bps 
+
+Dim IFiscal As Object
+
+Dim nError As Long
+
+Set IFiscal = CreateObject("ACTIVEX.FISCAL.1")
+
+nError = IFiscal IF_OPEN("COM1",9600)
+
+nError = IFiscal.IF_WRITE("@PONEENCABEZADO|1|Vendedor: Servicompras Nro 1")
+
+nError = IFiscal.IF_WRITE("@TIQUEABRE|C|")
+
+nError = IFiscal.IF_WRITE("@TIQUEITEM|ABRAZADERAS ACER.IN|1.000|2.42|0.21|M|1|0|0|")
+
+nError = IFiscal.IF_WRITE("@TIQUEITEM|BARDAHL ADIT. INYECT|1.000|4.84|0.21|M|1|0|0|")
+
+nError = IFiscal.IF_WRITE("@TIQUEITEM|CABALLA AL NATURAL C|1.000|3.03|0.21|M|1|0|0|")
+
+nError = IFiscal.IF_WRITE("@TIQUEITEM|GALL.FLIARES C/SALVA|1.000|2.66|0.21|M|1|0|0|")
+
+nError = IFiscal.IF_WRITE("@TIQUEITEM|REFRIG. FLUIDO LAVAC|1.000|9.68|0.21|M|1|0|0|")
+
+nError = IFiscal.IF_WRITE("@TIQUEITEM|NAIPES CASINO x 40 |1.000|3.39|0.21|M|1|0|0|")
+
+nError = IFiscal.IF_WRITE("@TIQUEITEM|PALITO BOMBON |1.000|1.82|0.21|M|1|0|0|")
+
+nError = IFiscal.IF_WRITE("@TIQUEITEM|ELAION DIESEL 15W40 |1.000|10.29|0.21|M|1|0|0|")
+
+nError = IFiscal.IF_WRITE("@TIQUEITEM|TABLETAS FUYI |1.000|1.21|0.21|M|1|0|0|")
+
+nError = IFiscal.IF_WRITE("@TIQUEITEM|D1 15W40 x 5 LT |1.000|27.83|0.21|M|1|0|0|")
+
+nError = IFiscal.IF_WRITE("@TIQUEPAGO|Su Pago......|000070.00|T|")
+
+nError = IFiscal.IF_WRITE("@TIQUECIERRA|T|")
+
+'imprime el código de estado del impresor fiscal
+
+MsgBox CStr(IFiscal.IF_ERROR1(0)) 
+
+'imprime el código de estado de la controladora fiscal
+
+MsgBox CStr(IFiscal.IF_ERROR2(0))
+
+'recuperar el campo nro 3 (nro de factura) de la respuesta fiscal
+
+MsgBox IFiscal.IF_READ(3) 
+
+nError = IFiscal.IF_CLOSE()
+
+ 
+
+Ejemplo Impresión de Ticket Factura 'A'
+
+Dim IFiscal As Object
+
+Dim nError As Long
+
+Set IFiscal = CreateObject("ACTIVEX.FISCAL.1")
+
+nError = IFiscal IF_OPEN("COM1",9600)
+
+nError = IFiscal.IF_WRITE("@PONEENCABEZADO|5|EJEMPLO FACTURA A")
+
+nError = IFiscal.IF_WRITE("@FACTABRE|T|C|A|1|P|10|I|I|Mi Empresa SRL||CUIT|30692137449|N|MEXICO 564|Capital Federal||Remito 01-2345||C")
+
+nError = IFiscal.IF_WRITE("@FACTITEM|Mouse Genius XScrol|1.0|4.08|0.105|M|1|0||||0|0")
+
+nError = IFiscal.IF_WRITE("@FACTITEM|Patchcord Cat.5E Gr|5.0|4.10|0.210|M|1|0||||0|0")
+
+nError = IFiscal.IF_WRITE("@FACTITEM|Microfono NG-H300 N|1.0|4.12|0.210|M|1|0||||0|0")
+
+nError = IFiscal.IF_WRITE("@FACTITEM|Mouse Genius Netscr|1.0|4.12|0.105|M|1|0||||0|0")
+
+nError = IFiscal.IF_WRITE("@FACTITEM|Ventilador Cyber Co|2.0|4.12|0.210|M|1|0||||0|0")
+
+nError = IFiscal.IF_WRITE("@FACTITEM|Lector 3.5 MultiCar|2.0|4.22|0.210|M|1|0||||0|0")
+
+nError = IFiscal.IF_WRITE("@FACTITEM|Teclado Noganet Esp|2.0|4.30|0.105|M|1|0||||0|0")
+
+nError = IFiscal.IF_WRITE("@FACTITEM|Antena SMA Kozumi W|2.0|4.33|0.210|M|1|0||||0|0")
+
+nError = IFiscal.IF_WRITE("@FACTITEM|Teclado Ecovision W|1.0|4.39|0.105|M|1|0||||0|0")
+
+nError = IFiscal.IF_WRITE("@FACTITEM|Limpiador para Pant|1.0|4.44|0.210|M|1|0||||0|0")
+
+nError = IFiscal.IF_WRITE("@FACTITEM|Auricular Genius Mo|1.0|4.46|0.210|M|1|0||||0|0")
+
+nError = IFiscal.IF_WRITE("@FACTPAGO|DESCUENTO 10%|9.46|D")
+
+nError = IFiscal.IF_WRITE("@FACTPAGO|PAGO|100.00|T")
+
+nError = IFiscal.IF_WRITE("@FACTCIERRA|T|A|FINAL")
+
+// imprime el código de estado del impresor fiscal
+
+MsgBox CStr(IFiscal.IF_ERROR1(0)) 
+
+// imprime el código de estado de la controladora fiscal
+
+MsgBox CStr(IFiscal.IF_ERROR2(0))
+
+// recupera el campo nro 3 con el nro de documento recién impreso de la respuesta fiscal
+
+MsgBox IFiscal.IF_READ(3) 
+
+nError = IFiscal.IF_CLOSE()
+
+Cuando un campo de texto se quiere omitir, el campo correspondiente se deja vacío o se envía el caracter ASCII 127 (DEL) =  
+
+Se debe tener cuidado cuando se envían caracteres acentuados usando el juego de caracteres de Windows porque la impresora no los soporta,
+como  tampoco los caracteres como las ñ, Ñ.  Se deberán enviar usando el juego de caracteres de DOS ( OEM). Para tal efecto deberá 
+usar la función AnsiToOem para convertir los caracteres al que puede interpretar la impresora fiscal.
+
+
+
+Ejemplo para Visual FoxPro
+
+Ejemplo de impresión de Ticket Factura 'A' con la impresora en el COM1 a 9600 baudios
+
+SET LIBRARY TO TM20VF32.FLL
+
+nError = IF_OPEN("COM1",9600)
+
+nError = IF_WRITE("@PONEENCABEZADO|5|EJEMPLO FACTURA A")
+
+nError = IF_WRITE("@FACTABRE|T|C|A|1|P|10|I|I|Mi Empresa SRL||CUIT|30692137449|N|MEXICO 564|||Remito 01-2345||C")
+
+nError = IF_WRITE("@FACTITEM|Mouse Genius XScrol|1.0|4.08|0.105|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Patchcord Cat.5E Gr|5.0|4.10|0.210|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Microfono NG-H300 N|1.0|4.12|0.210|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Mouse Genius Netscr|1.0|4.12|0.105|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Ventilador Cyber Co|2.0|4.12|0.210|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Lector 3.5 MultiCar|2.0|4.22|0.210|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Teclado Noganet Esp|2.0|4.30|0.105|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Antena SMA Kozumi W|2.0|4.33|0.210|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Teclado Ecovision W|1.0|4.39|0.105|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Limpiador para Pant|1.0|4.44|0.210|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Auricular Genius Mo|1.0|4.46|0.210|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTPAGO|DESCUENTO 10%|9.46|D")
+
+nError = IF_WRITE("@FACTPAGO|PAGO|100.00|T")
+
+nError = IF_WRITE("@FACTCIERRA|T|A|FINAL")
+
+** imprime el código de estado del impresor fiscal
+
+? IF_ERROR1(0) 
+
+** imprime el código de estado de la controladora fiscal
+
+? IF_ERROR2(0) 
+
+** recupera el campo nro 3 de la respuesta fiscal
+
+? IF_READ(3) 
+
+nError = IF_CLOSE()
+
+RELEASE LIBRARY TM20VF32.FLL
+
+Cuando un campo de texto se quiere omitir, el campo correspondiente se deja vacío o se envía el caracter ASCII 127 (DEL) = 
+
+Se debe tener cuidado cuando se envían caracteres acentuados usando el juego de caracteres de Windows porque la impresora no los soporta,
+como  tampoco los caracteres como las ñ, Ñ.  Se deberán enviar usando el juego de caracteres de DOS ( OEM). Para tal efecto deberá 
+usar la función AnsiToOem para convertir los caracteres al que puede interpretar la impresora fiscal.
+
+
+Ejemplo para Clipper 5.2 y Clipper 5.3
+
+Ejemplo de impresión de Ticket Factura 'A' con la impresora en el COM1 y a 9600 bps
+
+nError = IF_OPEN("COM1",9600)
+
+nError = IF_WRITE("@PONEENCABEZADO|5|EJEMPLO FACTURA A")
+
+nError = IF_WRITE("@FACTABRE|T|C|A|1|P|10|I|I|Mi Empresa SRL||CUIT|30692137449|N|MEXICO 564|||Remito 01-2345||C")
+
+nError = IF_WRITE("@FACTITEM|Mouse Genius XScrol|1.0|4.08|0.105|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Patchcord Cat.5E Gr|5.0|4.10|0.210|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Microfono NG-H300 N|1.0|4.12|0.210|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Mouse Genius Netscr|1.0|4.12|0.105|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Ventilador Cyber Co|2.0|4.12|0.210|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Lector 3.5 MultiCar|2.0|4.22|0.210|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Teclado Noganet Esp|2.0|4.30|0.105|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Antena SMA Kozumi W|2.0|4.33|0.210|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Teclado Ecovision W|1.0|4.39|0.105|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Limpiador para Pant|1.0|4.44|0.210|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Auricular Genius Mo|1.0|4.46|0.210|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTPAGO|DESCUENTO 10%|9.46|D")
+
+nError = IF_WRITE("@FACTPAGO|PAGO|100.00|T")
+
+nError = IF_WRITE("@FACTCIERRA|T|A|FINAL") **imprime el código de estado del impresor fiscal
+
+? IF_ERROR1(0)
+
+** imprime el código de estado de la controladora fiscal
+
+? IF_ERROR2(0) 
+
+** recupera el campo nro 3 de la respuesta fiscal
+
+? IF_READ(3) 
+
+nError = IF_CLOSE()
+
+  
+Cuando un campo de texto se quiere omitir, el campo correspondiente se deja vacío o se envía el caracter ASCII 127 (DEL) = 
+
+Se debe tener cuidado cuando se envían caracteres acentuados usando el juego de caracteres de Windows porque la impresora no los soporta,
+como  tampoco los caracteres como las ñ, Ñ.  Se deberán enviar usando el juego de caracteres de DOS ( OEM). Para tal efecto deberá 
+usar la función AnsiToOem para convertir los caracteres al que puede interpretar la impresora fiscal.
+
+ 
+FoxPro 2.6 for DOS y Windows
+
+Ejemplo de impresión de Ticket-Factura con la impresora en el COM1 a 9600 bps
+
+** Deberá CAMBIAR A TM20VF16.FLL en FoxPro 2.6 para Windows
+
+SET LIBRARY TO TM20PLB.PLB 
+
+nError = IF_OPEN("COM1",9600) 
+
+nError = IF_WRITE("@PONEENCABEZADO|5|EJEMPLO FACTURA A")
+
+nError = IF_WRITE("@FACTABRE|T|C|A|1|P|10|I|I|Mi Empresa SRL||CUIT|30692137449|N|MEXICO 564|||Remito 01-2345||C")
+
+nError = IF_WRITE("@FACTITEM|Mouse Genius XScrol|1.0|4.08|0.105|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Patchcord Cat.5E Gr|5.0|4.10|0.210|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Microfono NG-H300 N|1.0|4.12|0.210|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Mouse Genius Netscr|1.0|4.12|0.105|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Ventilador Cyber Co|2.0|4.12|0.210|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Lector 3.5 MultiCar|2.0|4.22|0.210|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Teclado Noganet Esp|2.0|4.30|0.105|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Antena SMA Kozumi W|2.0|4.33|0.210|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Teclado Ecovision W|1.0|4.39|0.105|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Limpiador para Pant|1.0|4.44|0.210|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTITEM|Auricular Genius Mo|1.0|4.46|0.210|M|1|0||||0|0")
+
+nError = IF_WRITE("@FACTPAGO|DESCUENTO 10%|9.46|D")
+
+nError = IF_WRITE("@FACTPAGO|PAGO|100.00|T")
+
+nError = IF_WRITE("@FACTCIERRA|T|A|FINAL")
+
+** imprime el código de estado del impresor fiscal
+
+? IF_ERROR1(0) 
+
+** imprime el código de estado de la controladora fiscal
+
+? IF_ERROR2(0) 
+
+** recupera el campo nro 3 de la respuesta fiscal
+
+? IF_READ(3) 
+
+nError = IF_CLOSE()
+
+*** Deberá CAMBIAR A TM20VF16.FLL en FoxPro 2.6 para Windows
+
+RELEASE LIBRARY TM20PLB.PLB 
+
+  
+Cuando un campo de texto se quiere omitir, el campo correspondiente se deja vacío o se envía el caracter ASCII 127 (DEL) = 
+
+Se debe tener cuidado cuando se envían caracteres acentuados usando el juego de caracteres de Windows porque la impresora no los soporta,
+como  tampoco los caracteres como las ñ, Ñ.  Se deberán enviar usando el juego de caracteres de DOS ( OEM). Para tal efecto deberá 
+usar la función AnsiToOem para convertir los caracteres al que puede interpretar la impresora fiscal.
+
+
+Impresión de un Ticket Fiscal
+
+Script de ejemplo para imprimir un Ticket Fiscal
+
+@PONEENCABEZADO|1|Vendedor: Servicompras Nro 1
+
+@TIQUEABRE|C|
+
+@TIQUEITEM|ABRAZADERAS ACER.IN|1.000| 2.42|0.21|M|1|0|0|
+
+@TIQUEITEM|BARDAHL ADIT. INYECT|1.000| 4.84|0.21|M|1|0|0|
+
+@TIQUEITEM|CABALLA AL NATURAL C|1.000| 3.03|0.21|M|1|0|0|
+
+@TIQUEITEM|GALL.FLIARES C/SALVA|1.000| 2.66|0.21|M|1|0|0|
+
+@TIQUEITEM|REFRIG. FLUIDO LAVAC|1.000| 9.68|0.21|M|1|0|0|
+
+@TIQUEITEM|NAIPES CASINO x 40 |1.000| 3.39|0.21|M|1|0|0|
+
+@TIQUEITEM|PALITO BOMBON |1.000| 1.82|0.21|M|1|0|0|
+
+@TIQUEITEM|ELAION DIESEL 15W40 |1.000|10.29|0.21|M|1|0|0|
+
+@TIQUEITEM|TABLETAS FUYI |1.000| 1.21|0.21|M|1|0|0|
+
+@TIQUEITEM|D1 15W40 x 5 LT |1.000|27.83|0.21|M|1|0|0|
+
+@TIQUEPAGO|Su Pago......|70.00|T|
+
+@TIQUECIERRA|T|
+
+Cuando un campo de texto se quiere omitir, el campo correspondiente se deja vacío o se envía el caracter ASCII 127 (DEL) = 
+
+Se debe tener cuidado cuando se envían caracteres acentuados usando el juego de caracteres de Windows porque la impresora no los soporta,
+como  tampoco los caracteres como las ñ, Ñ.  Se deberán enviar usando el juego de caracteres de DOS ( OEM). Para tal efecto deberá 
+usar la función AnsiToOem para convertir los caracteres al que puede interpretar la impresora fiscal.
+
+
+Impresión de un Ticket - Factura
+
+Script de ejemplo para imprimir un Ticket - Factura "A'
+
+@PONEENCABEZADO|5|EJEMPLO FACTURA A
+
+@FACTABRE|T|C|A|1|P|10|I|I|Mi Empresa SRL||CUIT|30692137449|N|Mexico 564|||Remito 01-2345||C
+
+@FACTITEM|Mouse Genius XScrol|1.0|4.08|0.105|M|1|0||||0|0
+
+@FACTITEM|Patchcord Cat.5E Gr|5.0|4.10|0.210|M|1|0||||0|0
+
+@FACTITEM|Microfono NG-H300 N|1.0|4.12|0.210|M|1|0||||0|0
+
+@FACTITEM|Mouse Genius Netscr|1.0|4.12|0.105|M|1|0||||0|0
+
+@FACTITEM|Ventilador Cyber Co|2.0|4.12|0.210|M|1|0||||0|0
+
+@FACTITEM|Lector 3.5 MultiCar|2.0|4.22|0.210|M|1|0||||0|0
+
+@FACTITEM|Teclado Noganet Esp|2.0|4.30|0.105|M|1|0||||0|0
+
+@FACTITEM|Antena SMA Kozumi W|2.0|4.33|0.210|M|1|0||||0|0
+
+@FACTITEM|Teclado Ecovision W|1.0|4.39|0.105|M|1|0||||0|0
+
+@FACTITEM|Limpiador para Pant|1.0|4.44|0.210|M|1|0||||0|0
+
+@FACTITEM|Auricular Genius Mo|1.0|4.46|0.210|M|1|0||||0|0
+
+@FACTPAGO|DESCUENTO 10%|9.46|D
+
+@FACTPAGO|PAGO|100.00|T
+
+@FACTCIERRA|T|A|FINAL
+
+Cuando un campo de texto se quiere omitir, el campo correspondiente se deja vacío o se envía el caracter ASCII 127 (DEL) = 
+
+Se debe tener cuidado cuando se envían caracteres acentuados usando el juego de caracteres de Windows porque la impresora no los soporta,
+como  tampoco los caracteres como las ñ, Ñ.  Se deberán enviar usando el juego de caracteres de DOS ( OEM). Para tal efecto deberá 
+usar la función AnsiToOem para convertir los caracteres al que puede interpretar la impresora fiscal.
+
+Impresión de un Documento No Fiscal
+
+Script de ejemplo para imprimir un Documento No Fiscal NO HOMOLOGADO
+
+@NOFISABRE
+
+@NOFISITEM|Recibimos de Nro.Documento
+
+@NOFISITEM|VARAY FERNANDO 07985628
+
+@NOFISITEM|Cuota Credito Moneda Importe F.Vto.
+
+@NOFISITEM|1/3 132557 U$S 143.93 23/09/2001
+
+@NOFISITEM| F:0008-00008418-A
+
+@NOFISITEM|2/3 132557 U$S 139.74 23/10/2001
+
+@NOFISITEM| F:0008-00008418-A
+
+@NOFISITEM|5/5 132556 U$S 88.06 23/01/2002
+
+@NOFISITEM| F:0008-00008417-A
+
+@NOFISITEM| Total: 371.73
+
+@NOFISITEM|La cuota contiene:(U$S) 4.19 de sellado
+
+@NOFISITEM| Efectivo Imp. -$-: 221.73
+
+@NOFISITEM| Efectivo Imp. U$S: 150.00
+
+@NOFISITEM|Por pago a cuenta de mayor cantidad y en
+
+@NOFISITEM|concepto de capital reclamado sus
+
+@NOFISITEM|intereses y costas ocasionados en el
+
+@NOFISITEM|Expediente iniciado por el/los credito/s
+
+@NOFISITEM|de referencia. Este pago no significa
+
+@NOFISITEM|novacion,espera,quita,mora, transaccion,
+
+@NOFISITEM|ni prorroga alguna, debiendo deducirse
+
+@NOFISITEM|el mismo de la liquid. correspondiente
+
+@NOFISITEM|y proseguirse el juicio segun su estado
+
+@NOFISITEM|y por el saldo.
+
+@NOFISCIERRA|T
+
+Cuando un campo de texto se quiere omitir, el campo correspondiente se deja vacío o se envía el caracter ASCII 127 (DEL) = 
+
+Se debe tener cuidado cuando se envían caracteres acentuados usando el juego de caracteres de Windows porque la impresora no los soporta,
+como  tampoco los caracteres como las ñ, Ñ.  Se deberán enviar usando el juego de caracteres de DOS ( OEM). Para tal efecto deberá 
+usar la función AnsiToOem para convertir los caracteres al que puede interpretar la impresora fiscal.
+
+
+Impresión de un Documento No Fiscal
+
+Script de ejemplo para imprimir un Documento No Fiscal NO HOMOLOGADO
+
+@NOFISABRE
+
+@NOFISITEM|Recibimos de Nro.Documento
+
+@NOFISITEM|VARAY FERNANDO 07985628
+
+@NOFISITEM|Cuota Credito Moneda Importe F.Vto.
+
+@NOFISITEM|1/3 132557 U$S 143.93 23/09/2001
+
+@NOFISITEM| F:0008-00008418-A
+
+@NOFISITEM|2/3 132557 U$S 139.74 23/10/2001
+
+@NOFISITEM| F:0008-00008418-A
+
+@NOFISITEM|5/5 132556 U$S 88.06 23/01/2002
+
+@NOFISITEM| F:0008-00008417-A
+
+@NOFISITEM| Total: 371.73
+
+@NOFISITEM|La cuota contiene:(U$S) 4.19 de sellado
+
+@NOFISITEM| Efectivo Imp. -$-: 221.73
+
+@NOFISITEM| Efectivo Imp. U$S: 150.00
+
+@NOFISITEM|Por pago a cuenta de mayor cantidad y en
+
+@NOFISITEM|concepto de capital reclamado sus
+
+@NOFISITEM|intereses y costas ocasionados en el
+
+@NOFISITEM|Expediente iniciado por el/los credito/s
+
+@NOFISITEM|de referencia. Este pago no significa
+
+@NOFISITEM|novacion,espera,quita,mora, transaccion,
+
+@NOFISITEM|ni prorroga alguna, debiendo deducirse
+
+@NOFISITEM|el mismo de la liquid. correspondiente
+
+@NOFISITEM|y proseguirse el juicio segun su estado
+
+@NOFISITEM|y por el saldo.
+
+@NOFISCIERRA|T
+
+Cuando un campo de texto se quiere omitir, el campo correspondiente se deja vacío o se envía el caracter ASCII 127 (DEL) = 
+
+Se debe tener cuidado cuando se envían caracteres acentuados usando el juego de caracteres de Windows porque la impresora no los soporta,
+como  tampoco los caracteres como las ñ, Ñ.  Se deberán enviar usando el juego de caracteres de DOS ( OEM). Para tal efecto deberá 
+usar la función AnsiToOem para convertir los caracteres al que puede interpretar la impresora fiscal.
+
+
+Programación de encabezamientos y factura
+
+Script de ejemplo de programación de encabezamientos y factura
+
+@ENCABEZADO|11|Los bienes gozan de garantia
+
+@ENCABEZADO|12|Una cuota impaga hara caducar 
+
+@ENCABEZADO|13|los plazos pactados aplicando intereses 
+
+@ENCABEZADO|14|101900003812
+
+Cuando un campo de texto se quiere omitir, el campo correspondiente se deja vacío o se envía el caracter ASCII 127 (DEL) = 
+
+En este caso para resetear un encabezado se envía el campo vacío o el caracter ASCII 127 en el campo correspondiente al encabezado a programar.
+
+Se debe tener cuidado cuando se envían caracteres acentuados usando el juego de caracteres de Windows porque la impresora no los soporta,
+como  tampoco los caracteres como las ñ, Ñ.  Se deberán enviar usando el juego de caracteres de DOS ( OEM). Para tal efecto deberá 
+usar la función AnsiToOem para convertir los caracteres al que puede interpretar la impresora fiscal.
+
+ 

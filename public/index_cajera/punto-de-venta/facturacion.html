@@ -868,6 +868,8 @@ const style = document.createElement('style');
     let tipoEmisionFiscal = "TICKET_NO_FISCAL";
     let isSearchingClient = false;
     let extendedSelectedProduct = null;
+    let currentEmissionMode = 'TICKET_NO_FISCAL';
+    let isFiscalMode = false;
 
 function filterProducts(query, type, resultsId) {
 
@@ -2062,11 +2064,11 @@ async function processSale() {
     
     // 1. BLOQUEO DE DOBLE CLIC
     if (window.isProcessingSale) return;
-
     window.isProcessingSale = true;
+
     if (confirmBtn) {
         confirmBtn.disabled = true;
-        confirmBtn.textContent = 'Guardando...';
+        confirmBtn.textContent = 'Verificando...';
     }
 
     // 2. CAPTURA DE TOTALES
@@ -2091,7 +2093,53 @@ async function processSale() {
     }
     
     try {
-        // 4. CÁLCULOS FISCALES RÁPIDOS
+        // 🔥 CAPTURA DE CRÉDITO
+        const montoCreditoBs = parseFloat(document.getElementById('credito-amount').value) || 0;
+        if (montoCreditoBs > 0 && !window.clienteCreditoSeleccionado) {
+            throw new Error("⚠️ Debes adjudicar el crédito a un cliente.");
+        }
+
+        // 🔥 PASO A: VERIFICAR Y DESCONTAR STOCK EN EL MAESTRO
+        const respuestaStock = await window.nexusAPI.verificarYDescontarStockMaestro(cart);
+        if (!respuestaStock.exito) throw new Error(respuestaStock.mensaje || "Stock insuficiente.");
+
+        // 🔥 PASO B: OBTENER CORRELATIVO OFICIAL
+        const correlativo = await window.nexusAPI.obtenerProximoCorrelativo('FORMA_LIBRE');
+        if (correlativo.error) throw new Error("Error de correlativo en Master.");
+        const nroFacturaOficial = correlativo.formato;
+
+        if (currentEmissionMode === 'ELECTRONICA') {
+            const objetoHKA = prepararJSONFacturaHKA(clienteActivo, nroFacturaOficial);
+            
+            // Enviamos al Main Process para que lo mande a la nube
+            const resultadoHKA = await window.nexusAPI.emitirFacturaHKA(objetoHKA);
+            
+            if (resultadoHKA.exito) {
+                console.log("✅ Factura Electrónica emitida con éxito:", resultadoHKA.data.trackingId);
+                // Opcional: Guardar la URL del PDF que devuelve la API
+                newSale.url_factura_electronica = resultadoHKA.data.urlAceptacion;
+            } else {
+                throw new Error(`Fallo en Fiscalización: ${resultadoHKA.error}`);
+            }
+        }
+
+        // 🔥 PASO D: REGISTRAR ABONOS/PAGOS DE DEUDA
+        const abonosEnCarrito = cart.filter(item => 
+            String(item.nombre || '').toUpperCase().includes('ABONO') || 
+            String(item.nombre || '').toUpperCase().includes('PAGO DE DEUDA')
+        );
+
+        if (abonosEnCarrito.length > 0) {
+            let totalAbonoBs = 0;
+            abonosEnCarrito.forEach(item => totalAbonoBs += item.subtotal);
+            const registroAbono = {
+                cliente_id: clienteActivo.rif || clienteActivo.ci,
+                monto_bs: totalAbonoBs
+            };
+            if (window.nexusAPI.registrarAbonoMaestro) await window.nexusAPI.registrarAbonoMaestro(registroAbono);
+        }
+
+        // 4. CÁLCULOS FISCALES
         let montoExento = 0;
         let baseImponible = 0;
         let montoIva = 0;
@@ -2105,30 +2153,20 @@ async function processSale() {
             }
         });
 
-        const montoCreditoIngresado = parseFloat(document.getElementById('credito-amount').value) || 0;
-        if (montoCreditoIngresado > 0 && !window.clienteCreditoSeleccionado) {
-            window.isProcessingSale = false;
-            if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Confirmar Venta (F3)'; }
-            return messageBox("⚠️ Debes adjudicar el crédito a un cliente (Botón Adjudicar Crédito).", 'bg-red-600');
-        }
-
         const dolarRecibido = parseFloat(document.getElementById('dolar-amount').value) || 0;
         const montoIgtf = dolarRecibido > 0 ? (dolarRecibido * (window.dolarExchangeRate || 1)) * 0.03 : 0;
-
-        // Generamos un identificador local único para la transacción
         const localId = `VTA-${Date.now()}`;
-        const montoCreditoBs = parseFloat(document.getElementById('credito-amount').value) || 0;
         const tasaActual = window.dolarExchangeRate || 1;
         const montoCreditoDolar = montoCreditoBs > 0 ? (montoCreditoBs / tasaActual) : 0;
 
         // 5. ESTRUCTURA DE LA VENTA
         const newSale = {
             id: localId,
-            company_id: companyId,
-            branch_id: branchId,
-            cashier_id: userId,
-            numero_factura: localId, // Identificador temporal como número de factura
-            numero_control: "LOCAL-001",
+            company_id: window.companyId,
+            branch_id: window.branchId,
+            cashier_id: window.userId,
+            numero_factura: nroFacturaOficial, 
+            numero_control: "MAESTRO-001",
             cliente_nombre: clienteActivo.nombre || clienteActivo.name || 'CONSUMIDOR FINAL',
             cliente_rif: clienteActivo.rif || clienteActivo.ci || 'V000000000',
             monto_exento: montoExento,
@@ -2136,47 +2174,40 @@ async function processSale() {
             monto_iva: montoIva,
             monto_igtf: montoIgtf,
             monto_total: total + montoIgtf,
-            tasa_bcv: window.dolarExchangeRate || 1,
+            tasa_bcv: tasaActual,
+            items: cart, // Aseguramos que los items viajen para la impresora
             metodo_pago: JSON.stringify({
                 efectivo: (parseFloat(document.getElementById('efectivo-amount').value) || 0),
                 pagomovil: (parseFloat(document.getElementById('pago-movil-amount').value) || 0),
-                dolar: (parseFloat(document.getElementById('dolar-amount').value) || 0),
+                dolar: dolarRecibido,
                 debito: parseFloat(document.getElementById('debito-amount').value) || 0,
-                biopago: parseFloat(document.getElementById('bio-pago-amount').value) || 0,
-                transferencia: parseFloat(document.getElementById('transferencia-amount').value) || 0,
-                deposito: parseFloat(document.getElementById('deposito-amount').value) || 0,
-                credito: montoCreditoBs, // Se mantiene en Bs para el JSON general de la venta
-                tarjetaCredito: parseFloat(document.getElementById('tarjeta-credito-amount').value) || 0,
-                monto_credito_divisa: montoCreditoDolar,
-                tasa_credito: tasaActual,
-                cliente_credito: montoCreditoBs > 0 ? window.clienteCreditoSeleccionado : null
+                credito: montoCreditoBs
+                // ... los demás métodos que ya tienes
             }),
-            datos_json: JSON.stringify({
-                productos: cart,
-                cliente: clienteActivo,
-                tasa: window.dolarExchangeRate
-            })
+            datos_json: JSON.stringify({ productos: cart, cliente: clienteActivo, tasa: tasaActual })
         };
         
         // 6. GUARDADO LOCAL DIRECTO
-        // 6. GUARDADO LOCAL DIRECTO
         const respuestaDB = await window.nexusAPI.guardarVentaLocal(newSale);
-        
         if (respuestaDB && respuestaDB.error) throw new Error(respuestaDB.error);
 
-        // 7. FINALIZACIÓN
-        messageBox("✅ Venta guardada en base de datos local.", 'bg-green-500');
-
-        // 🔥 ¡AQUÍ ESTABA LA DESCONEXIÓN! MANDAMOS A IMPRIMIR ANTES DE BORRAR EL CARRITO
-        if (typeof printInvoice === 'function') {
-            await printInvoice();
+        // --- BIFURCACIÓN DE IMPRESIÓN ---
+        if (isFiscalMode) {
+            const fiscalResult = await window.nexusAPI.imprimirFacturaFiscal(newSale);
+            if (fiscalResult.success) {
+                Swal.fire("Éxito", "Factura Fiscal Generada", "success");
+            } else {
+                // Notificación de error físico pero con respaldo digital hecho
+                Swal.fire("Aviso Fiscal", "Venta guardada pero fallo en impresora: " + fiscalResult.msg, "warning");
+            }
+        } else {
+            await imprimirTicketNoFiscal(newSale);
         }
 
-        if (typeof window.closePaymentModal === 'function') {
-            window.closePaymentModal();
-        }
-
-        // Limpiamos los campos y el carrito
+        // 7. FNALIZACIÓN Y LIMPIEZA
+        messageBox(`✅ Venta ${nroFacturaOficial} procesada.`, 'bg-green-500');
+        
+        if (typeof window.closePaymentModal === 'function') window.closePaymentModal();
         resetPaymentModalState();        
         clearCart();
         
@@ -2184,7 +2215,6 @@ async function processSale() {
             window.GestorClientes.limpiarSeleccion();
         }
 
-        // Liberamos el botón de procesar para la siguiente venta
         window.isProcessingSale = false; 
         if (confirmBtn) { 
             confirmBtn.textContent = 'Confirmar Venta (F3)'; 
@@ -2192,12 +2222,11 @@ async function processSale() {
         }
 
     } catch (error) {
-        messageBox(`Error: ${error.message}`, 'bg-red-500');
+        messageBox(`❌ Error en Venta: ${error.message}`, 'bg-red-600');
         window.isProcessingSale = false;
         if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Confirmar Venta (F3)'; }
     }
 }
-
 
 
 
@@ -3323,74 +3352,286 @@ window.closePaymentModal = function() {
         return lines;
     };
 
+
+    // Receptor de logs desde el proceso principal (Main)
+if (window.nexusAPI && typeof window.nexusAPI.onHkaAuthLog === 'function') {
+    window.nexusAPI.onHkaAuthLog((data) => {
+        // Extraemos el texto, ya sea que venga como objeto o como string directo
+        const texto = typeof data === 'object' ? data.mensaje : data;
+        const esError = typeof data === 'object' ? data.esError : false;
+
+        const estilo = esError ? "color: #ff0000; font-weight: bold;" : "color: #00bcff;";
+        console.log(`%c[SERVIDOR-MAIN]%c ${texto}`, estilo, "color: inherit;");
+    });
+}
+
 async function fetchFacturaConfig() {
-    // Validamos que la API local (SQLite) esté disponible
     if (!window.nexusAPI || typeof window.nexusAPI.obtenerConfiguracion !== 'function') {
         console.warn("[CONFIG] API local no disponible. Usando valores por defecto.");
         enableMulticurrency = false;
         return;
     }
-    
+
     try {
-        // 🟢 NUEVO: Leer configuración directamente desde SQLite local
+        // 1. Primero obtenemos la data cruda
         const configDataRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
 
+        // 2. Si existe data, la procesamos
         if (configDataRaw) {
             const fullConfigData = JSON.parse(configDataRaw);
 
-            // 🟢 LÓGICA PARA CARGAR TAMAÑO DE IMPRESORA
+            // 3. Identificación y LOGS de los 4 modos de emisión
+            currentEmissionMode = fullConfigData.tipo_emision || 'TICKET_NO_FISCAL';
+            
+            if (currentEmissionMode === 'FISCAL_HKA') {
+                isFiscalMode = true;
+                console.log("🚀 Modo seleccionado: Máquina Fiscal (HKA/Bematech)");
+                console.log("Nexus POS usará la impresora fiscal conectada localmente.");
+                if (typeof checkFiscalStatus === 'function') checkFiscalStatus(); 
+
+            } else if (currentEmissionMode === 'ELECTRONICA') {
+                isFiscalMode = false;
+                console.log("🌐 Modo seleccionado: Facturación Electrónica (API)");
+                
+                // 🟢 AQUÍ EXTRAEMOS LOS TOKENS (Porque fullConfigData ya existe)
+                const tokenUsuario = fullConfigData.token_usuario;
+                const tokenPassword = fullConfigData.token_password;
+                console.log("Datos recuperados de SQLite:", { tokenUsuario, tokenPassword });
+                
+                try {
+                    if (!tokenUsuario || !tokenPassword) {
+                        console.error("❌ Error: Faltan credenciales API en la configuración.");
+                    } else {
+                        console.log("Modo Electrónico detectado. Iniciando Auth Worker dinámico...");
+                        if (window.nexusAPI && typeof window.nexusAPI.iniciarAuthWorkerHKA === 'function') {
+                            // 🟢 LE PASAMOS LOS TOKENS AL MAIN
+                            window.nexusAPI.iniciarAuthWorkerHKA({
+                                usuario: tokenUsuario,
+                                clave: tokenPassword
+                            });
+                        } else {
+                            throw new Error("Bridge 'iniciarAuthWorkerHKA' no disponible en preload.js");
+                        }
+                    }
+                } catch (err) {
+                    console.error("❌ Error: No se pudo iniciar el Auth Worker:", err.message);
+                }
+
+            } else if (currentEmissionMode === 'FORMA_LIBRE') {
+                isFiscalMode = false;
+                console.log("📄 Modo seleccionado: Forma Libre");
+                console.log("Preparando sistema para impresión en formato pre-impreso SENIAT.");
+
+            } else {
+                // Caso por defecto: TICKET_NO_FISCAL
+                isFiscalMode = false;
+                console.log("⚠️ Modo seleccionado: Ticket No Fiscal");
+                console.log("Nexus POS emitirá documentos internos/notas de entrega.");
+            }
+
+            // 4. Lógica para cargar tamaño de impresora
             if (fullConfigData.tamañoImpresora && (fullConfigData.tamañoImpresora === "80" || fullConfigData.tamañoImpresora === "58")) {
                 printerSize = fullConfigData.tamañoImpresora; 
                 console.log(`[CONFIG] Tamaño de impresora cargado: ${printerSize}mm.`);
             } else {
                 printerSize = "58"; 
-                console.warn("[CONFIG] Campo 'tamañoImpresora' inválido/no encontrado. Usando 58mm.");
+                console.warn("[CONFIG] Campo 'tamañoImpresora' inválido o ausente. Usando 58mm por defecto.");
             }
 
-             // 🟢 LÓGICA PARA CARGAR FACTURA MULTIMONEDA
-             const enableMulticurrencyFromDb = fullConfigData.enableMulticurrency;
-             enableMulticurrency = (enableMulticurrencyFromDb === true); 
-             tipoEmisionFiscal = fullConfigData.tipo_emision || "TICKET_NO_FISCAL";console.log(`[CONFIG] Modo Fiscal establecido a: ${tipoEmisionFiscal}`);
-             console.log(`[CONFIG] Factura Multimoneda: ${enableMulticurrency ? 'Habilitada' : 'Deshabilitada'}.`);
+            // 5. Lógica para cargar multimoneda e indicadores globales
+            enableMulticurrency = (fullConfigData.enableMulticurrency === true); 
+            tipoEmisionFiscal = currentEmissionMode;
+            console.log(`[CONFIG] Factura Multimoneda: ${enableMulticurrency ? 'Habilitada' : 'Deshabilitada'}.`);
 
-            // 🟢 LÓGICA PARA EL ENCABEZADO
+            // 6. Lógica para el encabezado
             if (fullConfigData.encabezadoFactura) {
                 const configDataEncabezado = fullConfigData.encabezadoFactura;
-                if (configDataEncabezado.line1 && configDataEncabezado.line2 && configDataEncabezado.line3 && configDataEncabezado.line4) {
+                if (configDataEncabezado.line1 && configDataEncabezado.line2) {
                     encabezadoFactura = configDataEncabezado;
-                    console.log("[CONFIG] Encabezado de factura cargado de SQLite.");
+                    console.log("[CONFIG] Encabezado de factura cargado correctamente.");
                 } else {
-                    console.warn("[CONFIG] La configuración de 'encabezadoFactura' está incompleta. Usando valores por defecto.");
+                    console.warn("[CONFIG] Datos de encabezado incompletos en la base de datos.");
                 }
-            } else {
-                console.warn("[CONFIG] No se encontró el campo 'encabezadoFactura'. Usando valores por defecto.");
             }
 
         } else {
-            console.warn("[CONFIG] No se encontró configuración de 'factura' en SQLite. Usando todos los valores por defecto.");
+            console.warn("[CONFIG] No se encontró registro 'config_factura' en SQLite. Usando valores por defecto.");
             enableMulticurrency = false; 
+            currentEmissionMode = 'TICKET_NO_FISCAL';
         }
     } catch (error) {
-        console.error("[CONFIG] Error al buscar la configuración de factura local:", error);
+        console.error("[CONFIG] Error crítico al procesar la configuración de factura:", error);
         enableMulticurrency = false; 
     }
 }
 
 
+async function checkFiscalStatus() {
+    console.log("🟢 [FRONTEND] Iniciando checkFiscalStatus...");
+    
+    try {
+        console.log("🟢 [FRONTEND] Llamando al puente (preload.js)...");
+        const status = await window.nexusAPI.consultarEstadoFiscal();
+        
+        console.log("🟢 [FRONTEND] Respuesta recibida del backend:", status);
 
-async function printInvoice() {
+        if (!status || !status.success) {
+            messageBox("⚠️ Impresora Fiscal desconectada o apagada.", 'bg-red-500');
+        } else {
+            console.log("🟢 [FRONTEND] Impresora en línea.");
+        }
+    } catch (error) {
+        console.error("🔴 [FRONTEND] El puente colapsó antes de llegar al main.js:", error);
+        messageBox("Error de comunicación con el hardware.", 'bg-red-500');
+    }
+}
+
+
+function prepararJSONFacturaHKA(cliente, nroFactura) {
+    const tasaActual = window.dolarExchangeRate || 1;
+    const pagoDolar = parseFloat(document.getElementById('dolar-amount').value) || 0;
+    
+    // 🟢 1. FECHA Y HORA
+    const hoy = new Date();
+    const fechaHKA = `${String(hoy.getDate()).padStart(2, '0')}/${String(hoy.getMonth() + 1).padStart(2, '0')}/${hoy.getFullYear()}`;
+    const horaHKA = hoy.toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' }).toLowerCase();
+
+    // 🟢 2. LIMPIEZA DE DATOS
+    const idCruda = (cliente.rif || cliente.ci || "V00000000").toUpperCase().replace(/[-.,\s]/g, '');
+    let tipoId = idCruda.charAt(0);
+    let numId = idCruda.substring(1);
+    if (!['V', 'E', 'J', 'G', 'P', 'C'].includes(tipoId)) { tipoId = 'V'; numId = idCruda; }
+    const numeroLimpio = String(nroFactura).replace(/[^0-9]/g, '');
+
+    // 🟢 3. CÁLCULOS Y DETALLES
+    let totalBase = 0, totalIva = 0, totalExento = 0;
+
+    const detallesHKA = cart.map((item, index) => {
+        const factor = (item.moneda === 'USD' || item.isUSD === true) ? tasaActual : 1;
+        const base = (item.baseImponible || 0) * factor;
+        const iva = (item.montoIva || 0) * factor;
+        const total = (item.subtotal || 0) * factor;
+        const tasa = parseFloat(item.tasaIva) || 16.00;
+
+        if (tasa > 0) { totalBase += base; totalIva += iva; } 
+        else { totalExento += total; }
+
+        return {
+            "NumeroLinea": String(index + 1),
+            "CodigoPLU": item.codigo || "0001",
+            "IndicadorBienoServicio": "1",
+            "Descripcion": item.nombre.toUpperCase(),
+            "Cantidad": parseFloat(item.cantidad || 1).toFixed(2),
+            "UnidadMedida": "UND",
+            "PrecioUnitario": base.toFixed(2),
+            "DescuentoMonto": "0.00",
+            "RecargoMonto": "0.00",
+            "PrecioItem": base.toFixed(2),
+            "PrecioAntesDescuento": base.toFixed(2),
+            "CodigoImpuesto": tasa > 0 ? "G" : "E",
+            "TasaIVA": tasa.toFixed(0),
+            "ValorIVA": iva.toFixed(2),
+            "ValorTotalItem": total.toFixed(2)
+        };
+    });
+
+    const igtfBS = pagoDolar > 0 ? (pagoDolar * tasaActual * 0.03) : 0;
+    const subtotalBS = totalBase + totalExento;
+    const totalPagarBS = subtotalBS + totalIva + igtfBS;
+
+    // 🟢 4. ARMADO INTELIGENTE DE IMPUESTOS (Protege contra Exentos)
+    const impuestosSubtotal = [];
+    if (totalBase > 0) {
+        impuestosSubtotal.push({
+            "CodigoTotalImp": "G",
+            "AlicuotaImp": "16.00",
+            "BaseImponibleImp": totalBase.toFixed(2),
+            "ValorTotalImp": totalIva.toFixed(2)
+        });
+    }
+    if (totalExento > 0) {
+        impuestosSubtotal.push({
+            "CodigoTotalImp": "E",
+            "AlicuotaImp": "0.00",
+            "BaseImponibleImp": totalExento.toFixed(2),
+            "ValorTotalImp": "0.00"
+        });
+    }
+
+    // 🟢 5. CAJA TOTALES (Dentro de Encabezado)
+    const totalesHKA = {
+        "NroItems": String(detallesHKA.length),
+        "MontoGravadoTotal": totalBase.toFixed(2),
+        "MontoExentoTotal": totalExento.toFixed(2),
+        "SubtotalAntesDescuento": subtotalBS.toFixed(2),
+        "Subtotal": subtotalBS.toFixed(2),
+        "TotalIVA": totalIva.toFixed(2),
+        "MontoTotalConIVA": (subtotalBS + totalIva).toFixed(2),
+        "TotalAPagar": totalPagarBS.toFixed(2),
+        "MontoEnLetras": "MONTO CORRESPONDIENTE A LA FACTURA",
+        "ImpuestosSubtotal": impuestosSubtotal,
+        "FormasPago": [{
+            "Descripcion": "Contado",
+            "Fecha": fechaHKA,
+            "Forma": "01",
+            "Monto": totalPagarBS.toFixed(2),
+            "Moneda": "VES",
+            "TipoCambio": "1.0000"
+        }]
+    };
+
+    if (igtfBS > 0) {
+        totalesHKA["TotalIGTF"] = igtfBS.toFixed(2);
+        totalesHKA["TotalIGTF_VES"] = igtfBS.toFixed(2);
+    }
+
+    // 🟢 6. RETORNO FINAL (Jerarquía Corregida y Sucursal 0001)
+    return {
+        "documentoElectronico": {
+            "Encabezado": {
+                "IdentificacionDocumento": {
+                    "TipoDocumento": "01",
+                    "NumeroDocumento": numeroLimpio,
+                    "FechaEmision": fechaHKA,
+                    "FechaVencimiento": fechaHKA,
+                    "HoraEmision": horaHKA,
+                    "TipoDePago": "Contado",
+                    "Serie": "",
+                    "Sucursal": "0001", 
+                    "TipoDeVenta": "Interna",
+                    "Moneda": "VES"
+                },
+                "Comprador": {
+                    "TipoIdentificacion": tipoId,
+                    "NumeroIdentificacion": numId,
+                    "RazonSocial": (cliente.nombre || cliente.name).toUpperCase(),
+                    "Direccion": (cliente.direccion || "VALENCIA").toUpperCase(),
+                    "Pais": "VE"
+                },
+                "Totales": totalesHKA 
+            },
+            "DetallesItems": detallesHKA
+        }
+    };
+}
+
+
+async function printInvoice(saleData = null) {
     if (cart.length === 0) {
         messageBox("El carrito está vacío.", 'bg-red-500');
         return;
     }
 
-    if (!selectedCustomer) {
+    const clienteActivo = saleData ? { nombre: saleData.cliente_nombre, rif: saleData.cliente_rif } : selectedCustomer;
+
+    if (!clienteActivo) {
         messageBox("Por favor, seleccione un cliente.", 'bg-red-500');
         return;
     }
     
     // --- 1. RECUPERAR CONFIGURACIÓN ---
     let printerName = null;
+    let printerSize = "58"; 
     const configDataRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
     if (configDataRaw) {
         const configFactura = JSON.parse(configDataRaw);
@@ -3403,79 +3644,63 @@ async function printInvoice() {
         return;
     }
 
-    const correlativo = await window.nexusAPI.obtenerProximoCorrelativo('FORMA_LIBRE');
-    const nroFactura = (correlativo && correlativo.formato) ? correlativo.formato : `FL-${Math.floor(Math.random() * 900000)}`;
-    const nroControl = `00-${Math.floor(Math.random() * 900000)}`;
+    // 🔥 USAR DATOS DEL MASTER (CORRELATIVO REAL)
+    let nroFactura, nroControl;
+    if (saleData) {
+        nroFactura = saleData.numero_factura;
+        nroControl = saleData.numero_control;
+    } else {
+        const correlativo = await window.nexusAPI.obtenerProximoCorrelativo('FORMA_LIBRE');
+        nroFactura = (correlativo && correlativo.formato) ? correlativo.formato : `FL-${Math.floor(Math.random() * 900000)}`;
+        nroControl = `00-${Math.floor(Math.random() * 900000)}`;
+    }
     
     // --- 2. CÁLCULOS FISCALES PRECISOS EN BS ---
-    let totalExentoBS = 0;
-    let baseGeneralBS = 0; 
-    let ivaGeneralBS = 0;
-    let globalTotalBS = 0;
-    
+    let totalExentoBS = 0, baseGeneralBS = 0, ivaGeneralBS = 0, globalTotalBS = 0;
     const LINE_WIDTH = (printerSize === "80") ? 48 : 32;
-    const CRLF = "\r\n";
-    const SEPARATOR = "-".repeat(LINE_WIDTH) + CRLF;
-
-    // Encabezado de la tabla (1 sola línea)
-    const colQty = 4;
-    const colPrice = 7;
-    const colSubt = 7; 
+    const CRLF = "\r\n", SEPARATOR = "-".repeat(LINE_WIDTH) + CRLF;
+    const colQty = 4, colPrice = 7, colSubt = 7; 
     const colDesc = LINE_WIDTH - colQty - colPrice - colSubt - 3;
 
     let tableBody = "";
-
     cart.forEach(item => {
-        const tasaCambioItem = item.tasa || window.dolarExchangeRate || 1;
+        const tasaItem = item.tasa || window.dolarExchangeRate || 1;
         const esUSD = item.moneda === 'USD' || item.isUSD === true;
-        
-        // Convertimos montos base a BS
-        const baseImponibleBS = esUSD ? (item.baseImponible * tasaCambioItem) : item.baseImponible;
-        const montoIvaBS = esUSD ? (item.montoIva * tasaCambioItem) : item.montoIva;
-        const subtotalConIvaBS = baseImponibleBS + montoIvaBS;
-
-        // Acumular para el resumen final
+        const baseBS = esUSD ? (item.baseImponible * tasaItem) : item.baseImponible;
+        const ivaBS = esUSD ? (item.montoIva * tasaItem) : item.montoIva;
         const alicuota = parseFloat(item.tasaIva);
-        if (alicuota === 0) {
-            totalExentoBS += baseImponibleBS;
-        } else {
-            baseGeneralBS += baseImponibleBS;
-            ivaGeneralBS += montoIvaBS;
-        }
-        globalTotalBS += subtotalConIvaBS;
+        
+        if (alicuota === 0) totalExentoBS += baseBS;
+        else { baseGeneralBS += baseBS; ivaGeneralBS += ivaBS; }
+        globalTotalBS += (baseBS + ivaBS);
 
-        // Formatear fila de la tabla (Usando Base Imponible para P.UNIT y SUBT)
         const indicador = (alicuota === 0) ? "(E)" : "(G)";
         const descStr = `${item.nombre.toUpperCase()} ${indicador}`.substring(0, colDesc).padEnd(colDesc);
-        const cantStr = Number(item.cantidad).toString().substring(0, colQty).padStart(colQty);
-        
-        // P.Unitario Base en BS
-        const pUnitBaseBS = (baseImponibleBS / item.cantidad).toFixed(2).substring(0, colPrice).padStart(colPrice);
-        // Subtotal Base en BS
-        const subtBaseBS = baseImponibleBS.toFixed(2).substring(0, colSubt).padStart(colSubt);
-        
-        tableBody += `${cantStr} ${descStr} ${pUnitBaseBS} ${subtBaseBS}${CRLF}`;
+        tableBody += `${Number(item.cantidad).toString().padStart(colQty)} ${descStr} ${(baseBS / item.cantidad).toFixed(2).padStart(colPrice)} ${baseBS.toFixed(2).padStart(colSubt)}${CRLF}`;
     });
 
-    // Cálculo de IGTF y Total Final
     const pagoDolar = parseFloat(document.getElementById('dolar-amount').value) || 0;
-    const montoIGTFBS = pagoDolar > 0 ? (pagoDolar * dolarExchangeRate) * 0.03 : 0;
+    const montoIGTFBS = pagoDolar > 0 ? (pagoDolar * (window.dolarExchangeRate || 1)) * 0.03 : 0;
     const totalConIGTF_BS = globalTotalBS + montoIGTFBS;
     const totalFinalUSD = totalConIGTF_BS / (window.dolarExchangeRate || 1);
 
-    // --- 3. CONSTRUCCIÓN DEL TICKET ---
+
     let t = "\x1B\x40"; 
-    t += centerText(encabezadoFactura.line1.toUpperCase(), LINE_WIDTH) + CRLF;
-    t += centerText(`RIF: ${encabezadoFactura.line3.toUpperCase()}`, LINE_WIDTH) + CRLF;
-    t += centerText(encabezadoFactura.line2, LINE_WIDTH) + CRLF;
+
+    if (encabezadoFactura.line1) t += centerText(encabezadoFactura.line1.toUpperCase(), LINE_WIDTH) + CRLF;
+    if (encabezadoFactura.line2) t += centerText(encabezadoFactura.line2.toUpperCase(), LINE_WIDTH) + CRLF;
+    if (encabezadoFactura.line3) t += centerText(`RIF: ${encabezadoFactura.line3.toUpperCase()}`, LINE_WIDTH) + CRLF;
+    if (encabezadoFactura.line4) t += centerText(encabezadoFactura.line4.toUpperCase(), LINE_WIDTH) + CRLF;
+    if (encabezadoFactura.line6) t += centerText(encabezadoFactura.line6.toUpperCase(), LINE_WIDTH) + CRLF;
+    if (encabezadoFactura.line5) t += centerText(`TLF: ${encabezadoFactura.line5}`, LINE_WIDTH) + CRLF;
     t += SEPARATOR;
     t += centerText("FACTURA", LINE_WIDTH) + CRLF;
-    t += `NRO FACTURA: ${nroFactura}${CRLF}`;
+    t += `NRO FACTURA: ${nroFactura}${CRLF}`; // ✅ NÚMERO DEL MASTER
     t += `NRO CONTROL: ${nroControl}${CRLF}`;
     t += `FECHA: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}${CRLF}`;
     t += SEPARATOR;
-    t += `CLIENTE: ${selectedCustomer.nombre || selectedCustomer.name}${CRLF}`;
-    t += `RIF/CI: ${selectedCustomer.rif || selectedCustomer.ci}${CRLF}`;
+    t += `CLIENTE: ${clienteActivo.nombre}${CRLF}`;
+    t += `RIF/CI: ${clienteActivo.rif}${CRLF}`;
     t += SEPARATOR;
 
     t += "CANT".padEnd(colQty) + " " + "DESCRIP".padEnd(colDesc) + " " + "P.UNIT".padStart(colPrice) + " " + "SUBT.".padStart(colSubt) + CRLF;
@@ -3483,27 +3708,28 @@ async function printInvoice() {
     t += tableBody;
     t += SEPARATOR;
 
-    // Resumen Fiscal
     if (totalExentoBS > 0) t += formatLR("BI EXENTO:", totalExentoBS.toFixed(2), LINE_WIDTH) + CRLF;
     if (baseGeneralBS > 0) {
         t += formatLR("BI GENERAL (16%):", baseGeneralBS.toFixed(2), LINE_WIDTH) + CRLF;
         t += formatLR("IVA (16%):", ivaGeneralBS.toFixed(2), LINE_WIDTH) + CRLF;
     }
     if (montoIGTFBS > 0) t += formatLR("IGTF (3%):", montoIGTFBS.toFixed(2), LINE_WIDTH) + CRLF;
-    
     t += formatLR("TOTAL BS:", totalConIGTF_BS.toFixed(2), LINE_WIDTH) + CRLF;
     
-    if (enableMulticurrency) {
+    if (typeof enableMulticurrency !== 'undefined' && enableMulticurrency) {
         t += SEPARATOR;
         t += formatLR("TOTAL USD ($):", totalFinalUSD.toFixed(2), LINE_WIDTH) + CRLF;
         t += formatLR("TASA BCV (BS):", (window.dolarExchangeRate || 1).toFixed(2), LINE_WIDTH) + CRLF;
     }
     
-    t += SEPARATOR;
-    t += centerText("DOCUMENTO EMITIDO CONFORME A LA", LINE_WIDTH) + CRLF;
+t += SEPARATOR;
     t += centerText("PROVIDENCIA SNAT/2024/000102", LINE_WIDTH) + CRLF;
     t += centerText(`HASH: ${btoa(nroFactura).substring(0, 16)}`, LINE_WIDTH) + CRLF;
-    t += CRLF.repeat(2) + "\x1D\x56\x42\x00"; 
+    if (printerSize === "80") {
+        t += CRLF.repeat(2) + "\x1B\x6D"; 
+    } else {
+        t += CRLF.repeat(2)+ "\x1B\x6D"; 
+    }
 
     try {
         const result = await window.nexusAPI.imprimirTextoLibre(t, printerName);
@@ -3958,3 +4184,4 @@ async function arrancarSistema() {
 // ⚡ Ejecutar Inmediatamente (Al ser type="module", el DOM ya está garantizado)
 arrancarSistema();
 </script>
+

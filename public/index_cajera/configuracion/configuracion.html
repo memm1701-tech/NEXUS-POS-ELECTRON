@@ -72,6 +72,25 @@
                     <option value="ELECTRONICA">Facturación Electrónica (Conexión API Proveedor)</option>
                 </select>
             </div>
+
+            <div id="section_electronica" style="display: none; border: 1px solid #00bcff; padding: 20px; border-radius: 8px; margin-top: 15px; background-color: #f0f9ff;">
+                <h3 class="text-md font-bold mb-4" style="color: #00bcff;"><i class="fas fa-key mr-2"></i>Credenciales API The Factory HKA</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Token Usuario:</label>
+                        <input type="text" id="configTokenUsuario" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2.5 border" placeholder="Usuario API">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Token Password:</label>
+                        <input type="password" id="configTokenPassword" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2.5 border" placeholder="Password API">
+                    </div>
+                </div>
+            </div>
+
+            <div id="config-puerto-serial" class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Puerto COM de la Impresora/maquina "FISCAL". En caso de ser selecionada la opcion "Máquina Fiscal" colocar en mayusculas "COM" seguido del numero del puerto:</label>
+                <input type="text" id="configPuertoCOM" class="border rounded p-2 w-full" placeholder="Ej: COM7">
+            </div>
         </div>
 
         <div class="space-y-4 text-left p-6 border border-gray-200 bg-gray-50 rounded-md">
@@ -203,11 +222,30 @@
             const facturaDataRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
             if (facturaDataRaw) {
                 const data = JSON.parse(facturaDataRaw);
+                const configPuertoCOMInput = document.getElementById('configPuertoCOM');
+                    if (configPuertoCOMInput && data.puerto_com_fiscal) {
+                        configPuertoCOMInput.value = data.puerto_com_fiscal;
+                    }
                 const savedPrinter = data.impresoraSeleccionada;
                 const savedPrinterSize = data.tamañoImpresora; 
                 const headerConfig = data.encabezadoFactura; 
                 const enableMulticurrency = data.enableMulticurrency; 
-                const savedTipoEmision = data.tipo_emision;if (tipoEmisionSelect && savedTipoEmision) {tipoEmisionSelect.value = savedTipoEmision;}
+                const savedTipoEmision = data.tipo_emision;
+                    if (tipoEmisionSelect && savedTipoEmision) {
+                        tipoEmisionSelect.value = savedTipoEmision;
+                        
+                        // 🟢 NUEVO: Lógica de inicialización visual automática
+                        const sectionElectronica = document.getElementById('section_electronica');
+                        if (sectionElectronica) {
+                            sectionElectronica.style.display = (savedTipoEmision === 'ELECTRONICA') ? 'block' : 'none';
+                        }
+                    }
+
+                    // 🟢 CARGA DE CAMPOS (Tus líneas intactas)
+                    const tokenUserInput = document.getElementById('configTokenUsuario');
+                    const tokenPassInput = document.getElementById('configTokenPassword');
+                    if (tokenUserInput) tokenUserInput.value = data.token_usuario || '';
+                    if (tokenPassInput) tokenPassInput.value = data.token_password || '';
                 
                 // Cargar Impresora si sigue instalada en Windows
                 if (savedPrinter && impresorasValidas.includes(savedPrinter)) {
@@ -303,8 +341,10 @@
      const selectedPrinter = printerSelect.value;
      const selectedPrinterSize = printerSizeSelect ? printerSizeSelect.value : '58';
      const enableMulticurrencyState = multicurrencyCheckbox ? multicurrencyCheckbox.checked : false;
-     const tipoEmisionState = tipoEmisionSelect ? tipoEmisionSelect.value : 'TICKET_NO_FISCAL'; // 🟢 NUEVO
-
+     const tipoEmisionState = document.getElementById('tipo-emision-select').value;
+     const tokenUser = document.getElementById('configTokenUsuario').value.trim();
+     const tokenPass = document.getElementById('configTokenPassword').value.trim();
+     const puertoCom = document.getElementById('configPuertoCOM').value || 'COM2';
      const facturaData = {
          ultimoCambio: new Date().toISOString(),
          configuracionEjemplo: {
@@ -314,7 +354,10 @@
          },
          impresoraSeleccionada: selectedPrinter || "", 
          tamañoImpresora: selectedPrinterSize, 
-         tipo_emision: tipoEmisionState, // 🟢 NUEVO: Guardamos el modo fiscal en SQLite
+         puerto_com_fiscal: puertoCom,  
+         tipo_emision: tipoEmisionState,
+         token_usuario: tokenUser,
+         token_password: tokenPass,
          modificadoPor: userId,
          encabezadoFactura: {
              line1: configLine1.value.trim() || "",
@@ -372,6 +415,23 @@
             showMessage("❌ Hubo un problema al guardar. Revisa la consola.", 'red');
         }
     }
+
+
     
     saveConfigBtn.addEventListener('click', saveConfiguration);
+
+const sectionElectronica = document.getElementById('section_electronica');
+
+if (tipoEmisionSelect && sectionElectronica) {
+    // Escuchar el cambio en el selector
+    tipoEmisionSelect.addEventListener('change', function() {
+        sectionElectronica.style.display = (this.value === 'ELECTRONICA') ? 'block' : 'none';
+    });
+
+    // Verificación inicial al cargar la pantalla
+    if (tipoEmisionSelect.value === 'ELECTRONICA') {
+        sectionElectronica.style.display = 'block';
+    }
+}
+
 </script>

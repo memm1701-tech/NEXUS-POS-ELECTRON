@@ -83,7 +83,6 @@
         
         @media (min-width: 768px) {
             .sales-view-wrapper {
-                /* Misma proporción que el historial de cierres */
                 display: grid;
                 grid-template-columns: 70fr 30fr; 
                 gap: 20px;
@@ -106,7 +105,6 @@
             flex-direction: column;
         }
 
-        /* --- ESTILOS PANEL DE DETALLES --- */
         #sale-detail-panel {
             order: 2; 
             background-color: #f8fafc; 
@@ -116,7 +114,6 @@
             text-align: left;
         }
 
-        /* Estilos de contenido inyectado en el detalle */
         #sale-detail-content h3 {
             font-size: 1.05rem;
             font-weight: 700;
@@ -134,7 +131,6 @@
             display: inline-block;
             min-width: 100px;
         }
-        /* ---------------------------------------------------- */
 
         .table-section {
             width: 100%;
@@ -177,7 +173,6 @@
             margin-top: 1px;
         }
 
-        /* Ajustes para los filtros en móvil */
         @media (max-width: 1024px) {
             .filters-container {
                 flex-direction: column;
@@ -226,7 +221,6 @@
         <div class="sales-view-wrapper">
             
             <div id="sales-table-panel" class="sales-panel">
-                
                 <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center p-2 mb-2 gap-4 border-b border-gray-100 pb-4">
                     <h2 class="text-xl font-bold text-gray-800 shrink-0">Historial de Ventas</h2>
                     
@@ -287,7 +281,7 @@
         let userRole = null;
         let userBranchId = null;
         let salesCache = {}; 
-        let rawSalesData = []; // Guardar datos crudos para filtrar por fecha sin recargar
+        let rawSalesData = []; 
 
         // --- Referencias al DOM ---
         const messageBox = document.getElementById('message-box');
@@ -322,49 +316,80 @@
             document.getElementById('sale-id-display').textContent = 'No Seleccionada';
             saleDetailContent.innerHTML = '<p class="text-gray-500 text-center mt-6 text-sm">Haz clic en una venta de la tabla para ver sus detalles aquí.</p>';
             
-            // Limpia selección de fila
             document.querySelectorAll('.sale-row').forEach(row => row.classList.remove('bg-red-50'));
+        }
+
+        // --- EXTRACCIÓN DE FECHA DESDE EL ID (VTA-TIMESTAMP) ---
+        function obtenerFechaDeVenta(sale) {
+            if (sale.fecha_emision) return new Date(sale.fecha_emision);
+            if (sale.createdAt) return new Date(sale.createdAt);
+            
+            if (sale.id && sale.id.startsWith('VTA-')) {
+                const timestamp = parseInt(sale.id.replace('VTA-', ''));
+                if (!isNaN(timestamp)) return new Date(timestamp);
+            }
+            return new Date(); // Fallback
         }
 
         function formatSaleDetails(saleData) {
             let itemsArray = [];
             let paymentsObject = {};
+            let datosJson = {};
 
-            try { itemsArray = JSON.parse(saleData.items || '[]'); } catch (e) {}
-            try { paymentsObject = JSON.parse(saleData.payments || saleData.metodo_pago || '{}'); } catch (e) {}
+            // Parsear campos que vienen en formato JSON desde SQLite (como se guarda en facturacion.html)
+            try { datosJson = JSON.parse(saleData.datos_json || '{}'); } catch (e) {}
+            try { paymentsObject = JSON.parse(saleData.metodo_pago || '{}'); } catch (e) {}
             
-            const fechaCruda = saleData.fecha_emision || saleData.createdAt || new Date().toISOString();
-            const createdAtDate = new Date(fechaCruda).toLocaleString('es-VE');
+            itemsArray = datosJson.productos || [];
+            
+            const saleDate = obtenerFechaDeVenta(saleData);
+            const createdAtDate = saleDate.toLocaleString('es-VE');
             const cashierName = saleData.cashier_id || saleData.userId || 'N/A';
-            const totalDolar = paymentsObject.dolar || paymentsObject.divisa || paymentsObject.zinli || 0;
+            
+            // Totales fiscales base
+            const subtotal = parseFloat(saleData.base_imponible || 0) + parseFloat(saleData.monto_exento || 0);
+            const iva = parseFloat(saleData.monto_iva || 0);
+            const igtf = parseFloat(saleData.monto_igtf || 0);
+            const totalBs = parseFloat(saleData.monto_total || 0);
+            
+            const totalDolarPagado = parseFloat(paymentsObject.dolar || 0);
 
             let details = '<div>';
             
-            // Info Principal
+            // Info Principal (Adaptado a campos de SQLite)
+            details += `<p><strong>Nro Control:</strong> ${saleData.numero_control || 'N/A'}</p>`;
             details += `<p><strong>Cajero:</strong> ${cashierName}</p>`;
             details += `<p><strong>Fecha:</strong> ${createdAtDate}</p>`;
-            details += `<p><strong>C.I./RIF:</strong> ${saleData.customerIdNumber || saleData.cliente_rif || 'N/A'}</p>`;
-            details += `<p><strong>Cliente:</strong> ${saleData.customerName || saleData.cliente_nombre || 'N/A'}</p>`;
+            details += `<p><strong>C.I./RIF:</strong> ${saleData.cliente_rif || 'N/A'}</p>`;
+            details += `<p><strong>Cliente:</strong> ${saleData.cliente_nombre || 'N/A'}</p>`;
             
             // Totales
             details += '<hr class="my-4 border-gray-200">';
-            details += '<h3>Totales</h3>';
-            details += `<p><strong>Subtotal:</strong> Bs ${(saleData.subtotal || 0).toFixed(2)}</p>`;
-            details += `<p><strong>IVA:</strong> Bs ${(saleData.iva || 0).toFixed(2)}</p>`;
-            details += `<p><strong>Total Bs:</strong> <span class="text-red-600 font-bold">Bs ${(saleData.total || 0).toFixed(2)}</span></p>`;
-            if (totalDolar > 0) {
-                details += `<p><strong>Total Divisa:</strong> <span class="text-green-600 font-bold">$ ${totalDolar.toFixed(2)}</span></p>`;
-            }
-
+            details += '<h3>Totales Facturados</h3>';
+            details += `<p><strong>Subtotal (BI + Exento):</strong> Bs ${subtotal.toFixed(2)}</p>`;
+            details += `<p><strong>IVA (16%):</strong> Bs ${iva.toFixed(2)}</p>`;
+            if (igtf > 0) details += `<p><strong>IGTF (3%):</strong> Bs ${igtf.toFixed(2)}</p>`;
+            details += `<p><strong>Total Factura:</strong> <span class="text-red-600 font-bold">Bs ${totalBs.toFixed(2)}</span></p>`;
+            
             // Métodos de Pago
             details += '<hr class="my-4 border-gray-200">';
-            details += '<h3>Métodos de Pago</h3>';
-            for (const [method, amount] of Object.entries(paymentsObject)) {
-                if (amount > 0) {
-                    const isDollar = method === 'dolar' || method === 'zinli' || method === 'divisa';
+            details += '<h3>Métodos de Pago Utilizados</h3>';
+            
+            // Mapeo dinámico de métodos de pago
+            const paymentLabels = {
+                'efectivo': 'Efectivo (Bs)', 'pagomovil': 'Pago Móvil', 'debito': 'Débito', 
+                'biopago': 'Biopago', 'dolar': 'Efectivo ($)', 'transferencia': 'Transferencia',
+                'deposito': 'Depósito', 'credito': 'A Crédito', 'tarjetaCredito': 'T. Crédito'
+            };
+
+            for (const [methodKey, amount] of Object.entries(paymentsObject)) {
+                const numAmount = parseFloat(amount);
+                // Ignoramos campos auxiliares del json como 'tasa_credito' o strings como 'cliente_credito'
+                if (!isNaN(numAmount) && numAmount > 0 && paymentLabels[methodKey]) {
+                    const isDollar = methodKey === 'dolar';
                     const symbol = isDollar ? '$' : 'Bs';
                     const colorClass = isDollar ? 'text-green-600 font-bold' : 'text-gray-800';
-                    details += `<p><strong>${method.toUpperCase()}:</strong> <span class="${colorClass}">${symbol} ${amount.toFixed(2)}</span></p>`;
+                    details += `<p><strong>${paymentLabels[methodKey]}:</strong> <span class="${colorClass}">${symbol} ${numAmount.toFixed(2)}</span></p>`;
                 }
             }
 
@@ -373,13 +398,17 @@
             details += `<h3>Productos Vendidos (${itemsArray.length})</h3>`;
             if (itemsArray.length > 0) {
                 itemsArray.forEach(item => {
-                    const nombreItem = item.name || item.nombre || 'Producto N/A';
-                    const cantItem = item.quantity || item.cantidad || 0;
-                    const precioItem = item.price || item.precio || 0;
-                    details += `<p class="mb-2"><strong>${nombreItem}</strong><br><span class="text-sm text-gray-500">Cant: ${cantItem} | Precio: Bs ${precioItem.toFixed(2)}</span></p>`;
+                    const nombreItem = item.nombre || item.name || 'Producto N/A';
+                    const cantItem = item.cantidad || item.quantity || 0;
+                    const precioItem = item.precio || item.price || 0;
+                    const subtotalItem = item.subtotal || (cantItem * precioItem);
+                    details += `
+                        <p class="mb-2"><strong>${nombreItem}</strong><br>
+                        <span class="text-sm text-gray-500">Cant: ${cantItem} ${item.unit || 'UN'} | P.Unit: Bs ${parseFloat(precioItem).toFixed(2)} | Subt: Bs ${parseFloat(subtotalItem).toFixed(2)}</span></p>
+                    `;
                 });
             } else {
-                details += `<p class="text-sm text-gray-500">No hay detalles de productos disponibles.</p>`;
+                details += `<p class="text-sm text-gray-500">No hay detalles de productos disponibles (Revisar datos_json).</p>`;
             }
 
             details += '</div>';
@@ -390,15 +419,13 @@
             const saleData = salesCache[saleId];
             if (!saleData) return;
 
-            document.getElementById('sale-id-display').textContent = saleId;
+            document.getElementById('sale-id-display').textContent = saleData.numero_factura || saleId;
             saleDetailContent.innerHTML = formatSaleDetails(saleData);
 
-            // Limpiar estilos de otras filas y añadir clase de seleccionado
             document.querySelectorAll('.sale-row').forEach(row => row.classList.remove('bg-red-50'));
             const selectedRow = document.getElementById(`sale-row-${saleId}`);
             if(selectedRow) selectedRow.classList.add('bg-red-50');
             
-            // Scroll en móvil
             if (window.innerWidth < 768) {
                 saleDetailPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
@@ -428,7 +455,6 @@
             }
         }
 
-        // Renderiza la tabla basado en los datos almacenados y los filtros actuales
         window.renderSalesTable = function() {
             const cashierId = cashierSelect.value;
             const dateFromValue = dateFromInput.value;
@@ -440,36 +466,26 @@
 
             let ventasMostrar = rawSalesData;
 
-            // Filtro por Cajera
+            // Filtro por Cajera Dinámica
             if (cashierId && cashierId !== 'TODAS' && cashierId !== "") {
-                ventasMostrar = ventasMostrar.filter(s => (s.cashier_id || s.userId) === cashierId);
+                ventasMostrar = ventasMostrar.filter(s => s.cashier_id === cashierId);
             }
 
-            // Filtros de Fecha
+            // Filtros de Fecha usando la función de parseo
             if (dateFromValue) {
                 const dateFrom = new Date(dateFromValue).getTime();
-                ventasMostrar = ventasMostrar.filter(s => {
-                    const sDate = new Date(s.fecha_emision || s.createdAt).getTime();
-                    return sDate >= dateFrom;
-                });
+                ventasMostrar = ventasMostrar.filter(s => obtenerFechaDeVenta(s).getTime() >= dateFrom);
             }
 
             if (dateToValue) {
                 const dateTo = new Date(dateToValue);
                 dateTo.setHours(23, 59, 59, 999);
                 const dateToMs = dateTo.getTime();
-                ventasMostrar = ventasMostrar.filter(s => {
-                    const sDate = new Date(s.fecha_emision || s.createdAt).getTime();
-                    return sDate <= dateToMs;
-                });
+                ventasMostrar = ventasMostrar.filter(s => obtenerFechaDeVenta(s).getTime() <= dateToMs);
             }
 
-            // Ordenar Descendente
-            ventasMostrar.sort((a, b) => {
-                const dateA = new Date(a.fecha_emision || a.createdAt).getTime();
-                const dateB = new Date(b.fecha_emision || b.createdAt).getTime();
-                return dateB - dateA;
-            });
+            // Ordenar Descendente (Más recientes primero)
+            ventasMostrar.sort((a, b) => obtenerFechaDeVenta(b).getTime() - obtenerFechaDeVenta(a).getTime());
 
             const historyBody = document.getElementById('sales-history-body');
 
@@ -480,29 +496,33 @@
 
             let tableHTML = '';
             ventasMostrar.forEach(sale => {
-                const saleId = sale.id || sale.venta_ID;
+                const saleId = sale.id;
                 salesCache[saleId] = sale; 
 
                 let paymentsObject = {};
-                try { paymentsObject = JSON.parse(sale.payments || sale.metodo_pago || '{}'); } catch (e) {}
+                try { paymentsObject = JSON.parse(sale.metodo_pago || '{}'); } catch (e) {}
 
-                const totalDolar = paymentsObject.dolar || paymentsObject.divisa || paymentsObject.zinli || 0;
+                const totalDolar = parseFloat(paymentsObject.dolar || 0);
+                const efectivoBs = parseFloat(paymentsObject.efectivo || 0);
+                const debitoBs = parseFloat(paymentsObject.debito || 0);
+                const pagomovilBs = parseFloat(paymentsObject.pagomovil || 0);
                 
                 tableHTML += `
                     <tr id="sale-row-${saleId}" class="sale-row hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-200" onclick="window.displaySaleDetails('${saleId}')">
                         <td class="p-3">
-                            <div class="font-bold text-gray-900">${sale.customerName || sale.cliente_nombre || 'Anónimo'}</div>
-                            <div class="text-xs text-gray-500">${sale.customerIdNumber || sale.cliente_rif || 'S/ID'}</div>
+                            <div class="font-bold text-gray-900">${sale.cliente_nombre || 'Anónimo'}</div>
+                            <div class="text-xs text-gray-500">${sale.cliente_rif || 'S/ID'}</div>
                         </td>
-                        <td class="p-3 text-gray-700 font-medium">${sale.cashier_id || sale.userId || 'N/A'}</td>
+                        <td class="p-3 text-gray-700 font-medium">${sale.cashier_id || 'N/A'}</td>
                         <td class="p-3">
                             <ul class="payment-summary text-xs">
-                                <li>Efectivo: Bs ${(paymentsObject.efectivo || paymentsObject.cash || 0).toFixed(2)}</li>
-                                <li>Débito: Bs ${(paymentsObject.debito || 0).toFixed(2)}</li>
+                                ${efectivoBs > 0 ? `<li>Efectivo: Bs ${efectivoBs.toFixed(2)}</li>` : ''}
+                                ${debitoBs > 0 ? `<li>Débito: Bs ${debitoBs.toFixed(2)}</li>` : ''}
+                                ${pagomovilBs > 0 ? `<li>Pago Móvil: Bs ${pagomovilBs.toFixed(2)}</li>` : ''}
                                 ${totalDolar > 0 ? `<li class="text-green-600 font-bold">Dólar: $${totalDolar.toFixed(2)}</li>` : ''}
                             </ul>
                         </td>
-                        <td class="p-3 font-bold text-red-600">Bs ${(sale.total || 0).toFixed(2)}</td>
+                        <td class="p-3 font-bold text-red-600">Bs ${parseFloat(sale.monto_total || 0).toFixed(2)}</td>
                         <td class="p-3 font-bold text-green-600">$ ${totalDolar.toFixed(2)}</td>
                     </tr>
                 `;
@@ -539,7 +559,6 @@
             }
         }
 
-        // Obtiene la data de la DB local una sola vez por sucursal
         window.fetchSalesData = async function() {
             const branchId = branchSelect.value;
             const historyBody = document.getElementById('sales-history-body');
@@ -549,10 +568,12 @@
                 return;
             }
 
-            historyBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-500">Cargando historial (Usando índices de SQLite)...</td></tr>`;
+            historyBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-500">Cargando historial local...</td></tr>`;
 
             try {
-                rawSalesData = await window.nexusAPI.obtenerVentasPendientesCaja({ 
+                // Llama al endpoint de tu preload. Ajusta el nombre si en tu backend se llama distinto.
+                // En facturacion se usa guardarVentaLocal. Aquí usamos la de lectura:
+                rawSalesData = await window.nexusAPI.obtenerVentasLocales({ 
                     companyId: userCompanyId, 
                     branchId: branchId 
                 });
@@ -562,9 +583,10 @@
                     return;
                 }
 
-                // Cargar cajeras dinámicamente basado en la data
+                // Extraer CAJERAS DINÁMICAS basadas en las ventas reales
                 if (cashierSelect.dataset.branch !== branchId) {
-                    const cajerasUnicas = [...new Set(rawSalesData.map(s => s.cashier_id || s.userId))].filter(Boolean);
+                    const cajerasUnicas = [...new Set(rawSalesData.map(s => s.cashier_id))].filter(Boolean);
+                    
                     cashierSelect.innerHTML = '<option value="TODAS" selected>Todas las cajeras</option>';
                     cajerasUnicas.forEach(c => {
                         cashierSelect.innerHTML += `<option value="${c}">${c}</option>`;
@@ -576,12 +598,11 @@
 
             } catch (error) {
                 console.error("Error al cargar el historial local:", error);
-                historyBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-red-500">Error de base de datos: ${error.message}</td></tr>`;
+                historyBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-red-500">Error de base de datos local: ${error.message}</td></tr>`;
             }
         }
 
         window.loadSalesHistory = function() {
-            // Si la data está vacía (por ej. primer clic en buscar), hacemos fetch. Si no, solo renderizamos.
             if (rawSalesData.length === 0) {
                 window.fetchSalesData();
             } else {
@@ -613,18 +634,17 @@
             }
         }
 
-        // Inicialización y Event Listeners
         document.addEventListener('DOMContentLoaded', inicializarApp);
 
-        // Disparar recarga total al cambiar Sucursal
+        // Disparar recarga al cambiar Sucursal
         branchSelect.addEventListener('change', () => {
             cashierSelect.innerHTML = '<option value="">Selecciona una cajera...</option>';
             cashierSelect.dataset.branch = "";
-            rawSalesData = []; // Limpiar cache crudo
+            rawSalesData = []; 
             window.fetchSalesData();
         });
 
-        // Solo filtrar la vista al cambiar Cajera
+        // Filtrar al cambiar Cajera
         cashierSelect.addEventListener('change', window.loadSalesHistory);
         
         // Botón Buscar

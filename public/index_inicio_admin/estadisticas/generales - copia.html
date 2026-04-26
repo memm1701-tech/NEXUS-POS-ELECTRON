@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estadísticas Globales Nexus</title>
+    <style>
+        :root {
+            --primary-blue: #0284c7;
+            --success-green: #059669;
+            --warning-yellow: #d97706;
+            --danger-red: #dc2626;
+            --indigo-profit: #4f46e5;
+            --gray-bg: #f3f4f6;
+        }
+
+        /* Reset y Base */
+        html, body { 
+            height: 100%; 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; 
+            background-color: var(--gray-bg);
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .stats-container { 
+            width: 100%; 
+            height: 100vh;
+            padding: 24px; 
+            box-sizing: border-box; 
+            overflow-y: auto;
+        }
+        
+        /* Dashboard Principal */
+        .stats-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; }
+        .stats-header h1 { font-size: 1.75rem; color: #1f2937; margin: 0; font-weight: 700; }
+        .stats-header p { color: #6b7280; margin-top: 8px; }
+
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; }
+        .kpi-card { 
+            background-color: #ffffff; border-radius: 12px; padding: 18px; display: flex; align-items: center; 
+            border: 1px solid #f3f4f6; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: all 0.2s;
+        }
+
+        .kpi-card.clickable { cursor: pointer; }
+        .kpi-card.clickable:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-color: #d1d5db; }
+        
+        .kpi-icon-wrapper { width: 44px; height: 44px; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-right: 12px; flex-shrink: 0; }
+        .kpi-title { font-size: 0.7rem; color: #6b7280; margin: 0; font-weight: 600; text-transform: uppercase; letter-spacing: 0.025em; }
+        .kpi-value { font-size: 1.2rem; font-weight: 700; color: #111827; margin: 0; }
+        
+        .icon-blue { background-color: #e0f2fe; color: var(--primary-blue); }
+        .icon-yellow { background-color: #fef3c7; color: var(--warning-yellow); }
+        .icon-green { background-color: #d1fae5; color: var(--success-green); }
+        .icon-red { background-color: #fee2e2; color: var(--danger-red); }
+        .icon-indigo { background-color: #e0e7ff; color: var(--indigo-profit); }
+
+        /* --- VISTA DE DETALLES --- */
+        #view-details { 
+            display: none; 
+            flex-direction: column; 
+            width: 100%; 
+            height: 100vh; 
+            padding: 20px; 
+            box-sizing: border-box; 
+        }
+        
+        .detail-header { flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        
+        #detalle-titulo { font-size: 2rem; color: #111827; margin: 0; font-weight: 800; letter-spacing: -0.025em; }
+        #detalle-subtitulo { font-size: 1rem; color: #4b5563; margin-top: 4px; font-weight: 500; }
+
+        .btn-back { 
+            display: flex; align-items: center; gap: 8px; background-color: #ffffff; color: #374151; 
+            padding: 8px 14px; border-radius: 8px; border: 1px solid #d1d5db; cursor: pointer; 
+            font-weight: 600; transition: background 0.2s;
+        }
+
+        .table-container { 
+            flex-grow: 1; 
+            background: #fff; 
+            border-radius: 12px; 
+            border: 1px solid #e5e7eb; 
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .table-scroll { flex-grow: 1; overflow-y: auto; }
+
+        .detail-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        
+        .detail-table th, .detail-table td { 
+            padding: 14px 10px; 
+            box-sizing: border-box; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            white-space: nowrap; 
+        }
+
+        .detail-table th { 
+            position: sticky; top: 0; z-index: 10;
+            background: #f9fafb; font-size: 0.75rem; 
+            color: #6b7280; text-transform: uppercase; border-bottom: 2px solid #f3f4f6; 
+        }
+
+        .detail-table td { 
+            border-bottom: 1px solid #f3f4f6; 
+            font-size: 0.85rem; 
+            color: #111827; 
+            font-weight: 700; 
+        }
+
+        .detail-table tr:hover { background-color: #f8fafc; }
+        
+        /* Definición Estricta de Columnas para Alineación Perfecta */
+        .col-item   { width: 35%; text-align: left; }
+        .col-mon    { width: 10%; text-align: center; }
+        .col-precio { width: 15%; text-align: right; }
+        .col-cant   { width: 10%; text-align: right; }
+        .col-tasa   { width: 12%; text-align: right; }
+        .col-subt   { width: 18%; text-align: right; }
+
+        /* Forzar alineación en encabezados según la columna */
+        .detail-table th.col-item   { text-align: left; }
+        .detail-table th.col-mon    { text-align: center; }
+        .detail-table th.col-precio { text-align: right; }
+        .detail-table th.col-cant   { text-align: right; }
+        .detail-table th.col-tasa   { text-align: right; }
+        .detail-table th.col-subt   { text-align: right; }
+
+        .text-blue { color: var(--primary-blue); }
+        .text-green { color: var(--success-green); }
+        .text-red { color: var(--danger-red); }
+
+        /* Barra de Totales */
+        .total-bar { 
+            flex-shrink: 0;
+            background-color: #f8fafc; 
+            border-top: 2px solid #e5e7eb;
+            z-index: 20;
+        }
+        .total-bar td { border-bottom: none; font-size: 1rem; padding: 15px 10px; }
+    </style>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+
+    <div id="view-dashboard" class="stats-container">
+        <div class="stats-header">
+            <div>
+                <h1>Resumen de Inventario (Nivel Empresa)</h1>
+                <p>Consolidado de todas las sucursales en tiempo real.</p>
+            </div>
+        </div>
+
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon-wrapper icon-blue"><span class="material-icons">inventory_2</span></div>
+                <div class="kpi-content"><p class="kpi-title">Productos</p><h3 class="kpi-value" id="kpi-total-articulos">...</h3></div>
+            </div>
+
+            <div class="kpi-card clickable" onclick="mostrarDetalles('costo')">
+                <div class="kpi-icon-wrapper icon-yellow"><span class="material-icons">account_balance_wallet</span></div>
+                <div class="kpi-content"><p class="kpi-title">Costo Empresa ▾</p><h3 class="kpi-value" id="kpi-valor-costo">...</h3></div>
+            </div>
+
+            <div class="kpi-card clickable" onclick="mostrarDetalles('venta')">
+                <div class="kpi-icon-wrapper icon-green"><span class="material-icons">monetization_on</span></div>
+                <div class="kpi-content"><p class="kpi-title">Venta Empresa ▾</p><h3 class="kpi-value" id="kpi-valor-venta">...</h3></div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon-wrapper icon-indigo"><span class="material-icons">trending_up</span></div>
+                <div class="kpi-content"><p class="kpi-title">Ganancia Bruta</p><h3 class="kpi-value" id="kpi-ganancia-bruta">...</h3></div>
+            </div>
+
+            <div class="kpi-card clickable" onclick="mostrarDetalles('critico')">
+                <div class="kpi-icon-wrapper icon-red"><span class="material-icons">warning</span></div>
+                <div class="kpi-content"><p class="kpi-title">Bajo Stock ▾</p><h3 class="kpi-value" id="kpi-stock-critico">...</h3></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-details">
+        <div class="detail-header">
+            <div>
+                <h1 id="detalle-titulo">Detalle</h1>
+                <p id="detalle-subtitulo">Desglose de valores.</p>
+            </div>
+            <button class="btn-back" onclick="retroceder()">
+                <span class="material-icons">arrow_back</span>
+                Retroceder
+            </button>
+        </div>
+
+        <div class="table-container">
+            <div class="table-scroll">
+                <table class="detail-table">
+                    <thead>
+                        <tr>
+                            <th class="col-item">Producto</th>
+                            <th class="col-mon">Mon.</th>
+                            <th id="th-precio" class="col-precio">P. Unit.</th>
+                            <th class="col-cant">Cant.</th>
+                            <th class="col-tasa">Tasa Div.</th>
+                            <th class="col-subt">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cuerpo-tabla-detalles"></tbody>
+                </table>
+            </div>
+
+            <div class="total-bar">
+                <table class="detail-table">
+                    <tfoot>
+                        <tr>
+                            <td class="col-item" style="text-align: right;">TOTAL CONSOLIDADO:</td>
+                            <td class="col-mon"></td>
+                            <td class="col-precio"></td>
+                            <td class="col-cant"></td>
+                            <td class="col-tasa"></td>
+                            <td id="celda-total-final" class="col-subt text-blue">$ 0.00</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+<script>
+    (function() {
+        let datosCargados = {
+            productos: [],
+            mapaStock: {},
+            totales: { costo: 0, venta: 0 },
+            tasaBCV: 1
+        };
+
+        const format = new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' });
+
+        window.mostrarDetalles = function(tipo) {
+            const dashboard = document.getElementById('view-dashboard');
+            const details = document.getElementById('view-details');
+            const cuerpo = document.getElementById('cuerpo-tabla-detalles');
+            const titulo = document.getElementById('detalle-titulo');
+            const subTitulo = document.getElementById('detalle-subtitulo');
+            const thPrecio = document.getElementById('th-precio');
+            const totalFinal = document.getElementById('celda-total-final');
+
+            cuerpo.innerHTML = '';
+            let totalVista = 0;
+            
+            if (tipo === 'costo') {
+                titulo.textContent = "Valor Costo Empresa";
+                subTitulo.textContent = "Cálculos basados en costos de compra.";
+                thPrecio.textContent = "Costo (USD)";
+                totalFinal.className = "col-subt text-blue";
+                totalVista = datosCargados.totales.costo;
+            } else if (tipo === 'venta') {
+                titulo.textContent = "Valor Venta Estimado";
+                subTitulo.textContent = "Proyección de ingresos según precios de venta.";
+                thPrecio.textContent = "Venta (USD)";
+                totalFinal.className = "col-subt text-green";
+                totalVista = datosCargados.totales.venta;
+            } else {
+                titulo.textContent = "Stock Crítico";
+                subTitulo.textContent = "Productos con 10 unidades o menos.";
+                thPrecio.textContent = "Venta (USD)";
+                totalFinal.className = "col-subt text-red";
+            }
+
+            datosCargados.productos.forEach(p => {
+                const stock = datosCargados.mapaStock[String(p.id)] || 0;
+                if (tipo === 'critico' && stock > 10) return;
+                if (tipo !== 'critico' && stock <= 0) return;
+
+                let d = {};
+                try { d = typeof p.datos_json === 'string' ? JSON.parse(p.datos_json) : (p.datos_json || {}); } catch(e){}
+
+                let pc = parseFloat(d.precio_compra || p.precio_compra || 0);
+                let pv = parseFloat(d.precio_venta || p.precio || 0);
+                const moneda = p.moneda || d.moneda || 'USD';
+                
+                const esBS = (moneda === 'BS' || moneda === 'VES');
+                const tasaAMostrar = esBS ? datosCargados.tasaBCV.toFixed(2) : '-';
+
+                if (esBS) {
+                    pc = pc / datosCargados.tasaBCV;
+                    pv = pv / datosCargados.tasaBCV;
+                }
+
+                const precio = (tipo === 'costo') ? pc : pv;
+                const subtotal = precio * stock;
+                if (tipo === 'critico') totalVista += subtotal;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="col-item">${p.nombre || 'Producto'}</td>
+                    <td class="col-mon">${esBS ? 'BS' : 'USD'}</td>
+                    <td class="col-precio">${format.format(precio)}</td>
+                    <td class="col-cant">${stock}</td>
+                    <td class="col-tasa">${tasaAMostrar}</td>
+                    <td class="col-subt">${format.format(subtotal)}</td>
+                `;
+                cuerpo.appendChild(tr);
+            });
+
+            totalFinal.textContent = format.format(totalVista);
+            dashboard.style.display = 'none';
+            details.style.display = 'flex';
+        };
+
+        window.retroceder = function() {
+            document.getElementById('view-dashboard').style.display = 'block';
+            document.getElementById('view-details').style.display = 'none';
+        };
+
+        (async () => {
+            try {
+                const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+                if (!api) throw new Error("API no detectada.");
+
+                const sesion = await api.obtenerSesionLocal();
+                const companyId = sesion?.companyId;
+                const servidorIP = localStorage.getItem('serverIP') || '192.168.0.111';
+
+                const tasaSistema = await api.obtenerConfiguracion('TASA_BCV');
+                datosCargados.tasaBCV = parseFloat(tasaSistema) || 1;
+
+                const [productos, resStock] = await Promise.all([
+                    api.obtenerProductosLocal(companyId),
+                    fetch(`http://${servidorIP}:3000/api/maestro/stock?companyId=${companyId}`).then(r => r.json())
+                ]);
+
+                datosCargados.productos = productos || [];
+                resStock.forEach(s => {
+                    const id = String(s.producto_id);
+                    datosCargados.mapaStock[id] = (datosCargados.mapaStock[id] || 0) + parseFloat(s.cantidad_real || 0);
+                });
+
+                let capTotal = 0, venTotal = 0, criticos = 0;
+                datosCargados.productos.forEach(p => {
+                    const stock = datosCargados.mapaStock[String(p.id)] || 0;
+                    let d = {};
+                    try { d = typeof p.datos_json === 'string' ? JSON.parse(p.datos_json) : (p.datos_json || {}); } catch(e){}
+                    
+                    let pc = parseFloat(d.precio_compra || p.precio_compra || 0);
+                    let pv = parseFloat(d.precio_venta || p.precio || 0);
+
+                    const moneda = p.moneda || d.moneda || 'USD';
+                    if (moneda === 'BS' || moneda === 'VES') {
+                        pc = pc / datosCargados.tasaBCV;
+                        pv = pv / datosCargados.tasaBCV;
+                    }
+
+                    capTotal += (pc * stock);
+                    venTotal += (pv * stock);
+                    if (stock <= 10) criticos++;
+                });
+
+                datosCargados.totales.costo = capTotal;
+                datosCargados.totales.venta = venTotal;
+
+                document.getElementById('kpi-total-articulos').textContent = datosCargados.productos.length;
+                document.getElementById('kpi-valor-costo').textContent = format.format(capTotal);
+                document.getElementById('kpi-valor-venta').textContent = format.format(venTotal);
+                document.getElementById('kpi-stock-critico').textContent = criticos;
+                
+                const ganancia = venTotal - capTotal;
+                const elGanancia = document.getElementById('kpi-ganancia-bruta');
+                elGanancia.textContent = format.format(ganancia);
+                elGanancia.style.color = ganancia >= 0 ? 'var(--indigo-profit)' : 'var(--danger-red)';
+
+            } catch (err) { console.error("Error Nexus:", err.message); }
+        })();
+    })();
+</script>
+</body>
+</html>

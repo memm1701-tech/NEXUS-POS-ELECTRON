@@ -1,0 +1,3974 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="tailwindcss.js"></script>
+    <link rel="stylesheet" href="../node_modules/@fortawesome/fontawesome-free/css/all.min.css">
+    <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <title>Sistema de Facturación</title>
+    <style>
+
+* {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #ffffff;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .main-content {
+            padding: 0 !important;
+        }
+
+        .card {
+            background-color: #ffffff;
+            border-radius: 0;
+            box-shadow: none;
+            width: 100%;
+            margin: 0;
+            max-width: none;
+        }
+        
+        .autocomplete-container {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+/* CONTENEDOR PRINCIPAL: Sombra, bordes redondeados y separación */
+        .autocomplete-results {
+            position: absolute;
+            z-index: 9999;
+            top: 100%;
+            left: 0;
+            right: 0;
+            border: 1px solid #e5e7eb; /* Borde gris muy suave */
+            background-color: #ffffff;
+            border-radius: 0.5rem; /* Bordes redondeados (8px) */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Sombra flotante elegante */
+            max-height: 250px;
+            overflow-y: auto;
+            display: none;
+            margin-top: 0.5rem; /* Separación de la barra de búsqueda */
+        }
+
+        /* CADA PRODUCTO EN LA LISTA */
+        .autocomplete-item {
+            padding: 12px 16px; /* Más espacio para que respire el texto */
+            cursor: pointer;
+            background-color: #ffffff;
+            border: none !important; 
+            outline: none !important;
+            box-shadow: none !important;
+            border-bottom: 1px solid #f3f4f6; /* Línea divisoria súper sutil */
+            transition: background-color 0.2s ease; /* Efecto suave al pasar el mouse */
+        }
+
+        /* Quitar la línea divisoria al último producto */
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        /* EFECTO HOVER (Cuando pasas el mouse por encima) */
+        .autocomplete-item:hover {
+            background-color: #f9fafb !important; /* Gris ultra claro */
+        }
+
+        .autocomplete-active {
+            background-color: #bfdbfe !important; /* Azul más intenso y vivo */
+            border-left: 4px solid #2563eb !important; /* Franja gruesa azul oscuro a la izquierda */
+            border-top: none !important;
+            border-right: none !important;
+            border-bottom: 1px solid #bfdbfe !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        /* Estilo del botón selector de Tier en el carrito */
+        .tier-select {
+            appearance: none;
+            -webkit-appearance: none;
+            background-color: #ffffff;
+            border: 1px solid #d1d5db; /* Gris de las barras */
+            border-radius: 0.375rem; /* Bordes redondos */
+            padding: 2px 20px 2px 8px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            color: #374151;
+            cursor: pointer;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 4px center;
+            background-size: 10px;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            width: 45px;
+            height: 28px;
+            text-align: center;
+        }
+        .tier-select:hover {
+            background-color: #f9fafb;
+            border-color: #9ca3af;
+        }
+        .tier-select:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+
+        /* Estilos para el Modal Extendido 70/30 */
+.extended-modal-content {
+    display: flex;
+    flex-direction: row;
+    /* Usamos flex-1 para que ocupe el espacio disponible y overflow-hidden para contener el scroll interno */
+    flex: 1;
+    overflow: hidden; 
+    height: 70vh; /* Ajuste para que siempre quepa en laptops y pantallas grandes */
+}
+
+/* Línea separadora vertical que no toca los bordes */
+.vertical-separator {
+    width: 1px;
+    background-color: #e5e7eb;
+    margin-top: 40px;
+    margin-bottom: 40px;
+    height: calc(100% - 80px);
+}
+
+.product-table-container {
+    flex: 0 0 70%;
+    overflow-y: auto; /* Habilita el scroll vertical solo en la tabla */
+    max-height: 100%;
+}
+
+.product-preview-container {
+    flex: 0 0 30%;
+    padding: 20px;
+    overflow-y: auto; /* Permite scroll si la descripción del producto es muy larga */
+}
+
+#extended-search-modal .max-w-7xl {
+    max-height: 95vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Scrollbar personalizado para la tabla interna */
+.product-table-container::-webkit-scrollbar {
+    width: 6px;
+}
+.product-table-container::-webkit-scrollbar-thumb {
+    background-color: #d1d5db;
+    border-radius: 10px;
+}
+
+        /* ESTILOS INTERNOS DE TEXTO (Se mantienen igual) */
+        .item-info {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+
+        .item-name {
+            font-weight: 600;
+            color: #1f2937;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            line-height: 1.2;
+        }
+
+        .item-code {
+            font-size: 0.7rem;
+            color: #9ca3af;
+            margin-top: 2px;
+            font-weight: 400;
+        }
+
+        .item-price {
+            font-weight: 700;
+            color: #059669;
+            font-size: 1rem;
+            margin-left: 15px;
+            white-space: nowrap;
+        }
+        
+        /* DISEÑO DE LA BARRA DE SCROLL */
+        .autocomplete-results::-webkit-scrollbar {
+            width: 6px;
+        }
+        .autocomplete-results::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 10px;
+        }
+        
+        /* CORRECCIÓN DE FOCO DE LA BARRA DE BÚSQUEDA */
+        #product-search:focus, #barcode-search:focus {
+            border-color: #0062ff !important; /* Borde azul suave al hacer clic */
+            outline: none !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important; /* Anillo de luz azul */
+        }
+
+        .quantity-input {
+            width: 70px;
+            text-align: center;
+        }
+        .delete-btn {
+            color: #dc2626;
+            transition: color 0.2s;
+        }
+        .delete-btn:hover {
+            color: #b91c1c;
+        }
+        
+        .client-info-container {
+            min-height: 0px;
+        }
+        
+        .load-invoice-cell {
+            cursor: pointer;
+            transition: background-color 0.15s;
+        }
+        .load-invoice-cell:hover {
+            background-color: #f3f4f6;
+        }
+
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .btn-deuda-animado {
+            animation: pulse-red 2s infinite;
+        }
+    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+
+<main class="main-content min-h-screen bg-white">
+    <div class="p-4 w-full mx-auto bg-white"> 
+        <div class="space-y-0">
+            <div class="text-center">
+                <h1 class="text-3xl font-bold text-gray-800">Sistema de Facturación</h1>
+            </div>
+            
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-[1px] space-y-4 md:space-y-0">
+    <div class="w-full md:w-1/2">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Seleccionar Cliente (C)</h2>
+        <div class="flex items-center space-x-2">
+            <input type="text" id="client-search" placeholder="Buscar por Cédula o Nombre..." class="flex-1 rounded-md border-gray-300 shadow-sm sm:text-sm p-2 outline-none border">
+            <button id="search-client-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md shadow-md transition duration-300 ease-in-out">Buscar</button>
+        </div>
+    </div>
+
+    <div class="flex items-center">
+        <button id="btn-catalog" 
+                onclick="openExtendedSearchModal()" 
+                class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-6 rounded-md shadow-lg transition duration-300 ease-in-out flex items-center">
+            <i class="fas fa-boxes mr-2"></i> CATÁLOGO (P)
+        </button>
+    </div>
+</div>
+
+<div class="w-full md:w-1/2 mb-[10px]">
+    <div id="client-info-container" class="client-info-container">
+        <div id="client-found-message" class="hidden bg-blue-50 p-3 rounded-md border border-blue-100 flex justify-between items-center">
+            <p class="text-base font-medium text-blue-800">
+                Cliente Seleccionado: <span id="client-found-name" class="font-bold"></span> (<span id="client-found-id"></span>)
+            </p>
+            <button id="btn-alerta-deuda-principal" onclick="window.verDetallesDeuda()" class="hidden btn-deuda-animado bg-red-100 text-red-700 border border-red-300 px-3 py-1 rounded-full text-xs font-bold hover:bg-red-200 transition flex items-center shadow-sm">
+                <span class="material-icons text-xs mr-1">warning</span> DEUDA PENDIENTE
+            </button>
+        </div>
+    </div>
+
+    <div id="add-new-client-prompt" class="hidden flex items-center justify-between p-3 rounded-md bg-gray-100 border border-gray-200">
+        <p class="text-sm text-gray-700">Este cliente no existe. ¿Desea agregarlo?</p>
+        <button id="show-add-client-form-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-4 rounded-md shadow-md transition">Sí</button>
+    </div>
+
+    <div id="add-client-form" class="hidden space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-inner">
+        <div class="flex flex-col space-y-3">
+            <input type="text" id="new-client-name" placeholder="Nombre completo" class="w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm">
+            <div class="flex flex-col md:flex-row md:space-x-3 space-y-3 md:space-y-0">
+                <input type="text" id="new-client-id" placeholder="Cédula/RIF" class="flex-1 rounded-md border-gray-300 shadow-sm p-2 border text-sm">
+                <input type="text" id="new-client-address" placeholder="Dirección" class="flex-1 rounded-md border-gray-300 shadow-sm p-2 border text-sm">
+            </div>
+        </div>
+        <button id="add-client-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md shadow-md transition w-full text-sm">
+            Agregar Cliente
+        </button>
+    </div>
+</div>
+  
+
+            <div class="flex flex-col md:grid md:grid-cols-10 md:gap-x-8 !mt-[10px]">
+                <div class="flex-1 flex flex-col space-y-4 md:col-span-10">
+                    <h2 class="text-xl font-bold text-gray-800">Crear Factura</h2>
+                    
+                    <div class="flex flex-col md:flex-row md:space-x-4 space-y-4 md:space-y-0">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-medium text-gray-700">Buscar Productos (F1)</h3>
+                            <div class="autocomplete-container">
+                                <input type="text" id="product-search" placeholder="Buscar producto..." class="mt-2 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm p-2 outline-none">
+                                <div id="autocomplete-results" class="autocomplete-results">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex-1">
+                            <h3 class="text-lg font-medium text-gray-700">Buscar codigo (barra)</h3>
+                            <div class="autocomplete-container">
+                                <input type="text" id="barcode-search" placeholder="Buscar por código..." class="mt-2 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm p-2 outline-none">
+                                <div id="barcode-autocomplete-results" class="autocomplete-results">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex-1">
+                            <h3 class="text-lg font-medium text-gray-700">Último Código Escaneado</h3>
+                            <input type="text" id="last-scanned-code" readonly class="mt-2 block w-full rounded-md border-gray-300 bg-gray-100 text-gray-600 shadow-sm sm:text-sm p-2 outline-none">
+                        </div>
+                    </div>
+                    
+<div class="flex items-center space-x-4">
+    <div class="flex-2">
+        <div id="weight-mode-toggle-bar" class="hidden"> 
+            <div class="flex items-center justify-between mb-1">
+                <label for="unidad-mode-toggle" class="block text-sm font-medium text-gray-700">
+                    Modo: <span id="mode-text">Peso (Kg)</span>
+                </label>
+                <label class="flex items-center cursor-pointer">
+                    <div class="relative">
+                        <input type="checkbox" id="unit-mode-toggle" class="sr-only">
+                        <div class="block bg-gray-600 w-10 h-6 rounded-full"></div>
+                        <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition"></div>
+                    </div>
+                </label>
+            </div>
+        </div>
+        <div id="manual-quantity-container" class="hidden">
+            <input type="number" id="manual-quantity" value="1" min="1" 
+                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 text-lg text-right" 
+                   placeholder="Cantidad (Unidades)">
+        </div>
+
+        <div id="weight-input-container">
+            <input type="number" id="cantidad" value="0.00" step="0.01" readonly
+                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 text-lg text-right bg-gray-100" 
+                   placeholder="Peso (Kg)">
+        </div>
+    </div>
+    
+    <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md shadow-md transition duration-300 ease-in-out w-full" onclick="addItem()">Añadir al Carrito</button>
+</div>
+
+<div class="p-4 overflow-x-auto">
+                        <table class="min-w-full table-fixed divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="w-[35%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PRODUCTO</th>
+                                    <th scope="col" class="w-[15%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CANTIDAD</th>
+                                    <th scope="col" class="w-[20%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">P. UNIT. (BS)</th>
+                                    <th scope="col" class="w-[15%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SUBTOTAL (BS)</th>
+                                    <th scope="col" class="w-[15%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ACCIONES</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cart-items" class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td colspan="5" class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">No hay productos en el carrito.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="flex flex-col items-end space-y-2">
+    <button id="btn-process-sale" onclick="openPaymentModal()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-md shadow-md transition duration-300 ease-in-out mt-6 w-full md:w-auto">Procesar Venta (F2)</button>
+                        <div class="flex justify-between w-full max-w-sm">
+                            <span class="text-sm font-medium text-gray-700">Subtotal:</span>
+                            <span id="subtotal" class="text-sm font-bold">Bs0.00</span>
+                        </div>
+
+                        <div class="flex justify-between w-full max-w-sm">
+                            <span class="text-lg font-bold text-gray-900">Total:</span>
+                            <span id="total" class="text-lg font-bold text-gray-900">Bs0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex-1 flex flex-col space-y-4 mt-8 md:mt-0 md:col-span-10">
+                    <h2 class="text-xl font-bold text-gray-800">Facturas Guardadas (Borradores)</h2>
+                    <div class="flex space-x-2">
+    <button id="btn-save-invoice" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-md shadow-md transition duration-300 ease-in-out" onclick="saveInvoice()">Guardar Factura Actual (F4)</button>
+    <button class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md shadow-md transition duration-300 ease-in-out" onclick="newInvoice()">Nueva Factura(N)</button>
+    <button class="" onclick=""></button>
+</div>
+                    <div class="p-4 overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CLIENTE</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TOTAL (BS)</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">FECHA</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ACCIONES</th>
+                                </tr>
+                            </thead>
+                            <tbody id="invoices-list" class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td colspan="4" class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">Cargando facturas...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<div id="payment-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+    <div id="payment-content" class="bg-white rounded-lg shadow-lg w-full max-w-4xl p-6 relative transition-all duration-500 ease-in-out">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2 text-center">Métodos de Pago</h2>
+        
+        <div id="payment-grid" class="grid md:grid-cols-1 gap-8">
+            <div class="space-y-4">
+                <h3 class="text-lg font-semibold text-gray-700 mb-3 border-b pb-1">Ingreso de Pagos</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 flex items-center">
+                            <span class="material-icons text-green-600 mr-2">payments</span>
+                            Efectivo (F5)
+                        </label>
+                        <input type="number" id="efectivo-amount" class="payment-input w-full border rounded-md p-2 text-right" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 flex items-center">
+                            <span class="material-icons text-blue-600 mr-2">credit_card</span>
+                            Débito (F6)
+                        </label>
+                        <input type="number" id="debito-amount" class="payment-input w-full border rounded-md p-2 text-right" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 flex items-center">
+                            <span class="material-icons text-purple-600 mr-2">phone_iphone</span>
+                            Pago Móvil (F7)
+                        </label>
+                        <input type="number" id="pago-movil-amount" class="payment-input w-full border rounded-md p-2 text-right" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 flex items-center">
+                            <span class="material-icons text-red-600 mr-2">fingerprint</span>
+                            Biopago (F8)
+                        </label>
+                        <input type="number" id="bio-pago-amount" class="payment-input w-full border rounded-md p-2 text-right" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 flex items-center">
+                            <span class="material-icons text-emerald-600 mr-2">attach_money</span>
+                            Dólares (F9)
+                        </label>
+                        <input type="number" id="dolar-amount" class="payment-input w-full border rounded-md p-2 text-right" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 flex items-center">
+                            <span class="material-icons text-cyan-600 mr-2">account_balance</span>
+                            Transferencia (F10)
+                        </label>
+                        <input type="number" id="transferencia-amount" class="payment-input w-full border rounded-md p-2 text-right" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 flex items-center">
+                            <span class="material-icons text-yellow-600 mr-2">payments</span>
+                            Depósito (F11)
+                        </label>
+                        <input type="number" id="deposito-amount" class="payment-input w-full border rounded-md p-2 text-right" placeholder="0.00">
+                    </div>
+                    <div class="relative">
+                        <label class="block text-sm font-medium text-gray-700 flex items-center mb-1">
+                            <span class="material-icons text-orange-600 mr-2">receipt_long</span>
+                            Crédito (F12)
+                        </label>
+                        <input type="number" id="credito-amount" class="payment-input w-full border rounded-md p-2 text-right" placeholder="0.00">
+                        <button onclick="window.abrirModalCredito()" class="mt-2 w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1.5 px-2 rounded shadow transition">
+                            Adjudicar Crédito
+                        </button>
+                        <div id="credit-client-display" class="text-xs text-green-700 font-bold mt-1.5 hidden text-center bg-green-50 p-1 rounded border border-green-200">
+                            Cliente: <span id="credit-client-name"></span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 flex items-center">
+                            <span class="material-icons text-red-600 mr-2">credit_card</span>
+                            T. Crédito (J)
+                        </label>
+                        <input type="number" id="tarjeta-credito-amount" class="payment-input w-full border rounded-md p-2 text-right" placeholder="0.00">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-gray-50 p-4 rounded-lg shadow-inner flex flex-col justify-between h-full">
+                
+                <div class="space-y-3 mb-6">
+                    <h3 class="text-xl font-bold mb-3 border-b pb-2 text-indigo-700">Total de la Venta</h3>
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="text-base text-gray-700 font-medium">TOTAL Bs:</span>
+                        <span id="resumen-total-bs" class="text-2xl font-extrabold text-gray-900">Bs0.00</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-base text-gray-700 font-medium">TOTAL Divisa:</span>
+                        <span id="resumen-total-usd" class="text-xl font-bold text-gray-800">$0.00</span>
+                    </div>
+                </div>
+                
+                <div class="space-y-3 mt-auto pt-4 border-t border-gray-300">
+                    <h3 class="text-xl font-bold mb-3 text-gray-700">Monto Pagado</h3>
+                    
+                    <div class="flex justify-between">
+                        <span class="text-base font-medium">Pagado Bs:</span>
+                        <span id="montoPagado" class="text-xl font-bold text-green-600">Bs0.00</span>
+                    </div>
+
+                    <hr class="my-2 border-dashed border-gray-400">
+
+                    <div class="flex justify-between items-center">
+                        <span id="etiqueta-faltante-bs" class="text-lg font-bold">FALTANTE Bs:</span>
+                        <span id="resumen-faltante-bs" class="text-3xl font-extrabold text-red-600">Bs0.00</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span id="etiqueta-faltante-usd" class="text-base font-medium">FALTANTE $:</span>
+                        <span id="resumen-faltante-usd" class="text-xl font-bold text-red-600">$0.00</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="vuelto-column" class="bg-gray-50 p-4 rounded-lg shadow-inner flex flex-col justify-start h-full hidden">
+    
+    <div class="space-y-3">
+        <h3 class="text-xl font-bold mb-3 border-b pb-2 text-green-700">Vuelto (Cambio)</h3> 
+        
+        <div class="grid grid-cols-1 gap-4">
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Efectivo (Bs)</label>
+                <input type="number" id="vuelto-efectivo-amount" class="payment-input w-full border rounded-md p-2 text-right" placeholder="0.00" value="">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Dólares ($)</label>
+                <input type="number" id="vuelto-dolar-amount" class="payment-input w-full border rounded-md p-2 text-right" placeholder="0.00" value="">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Pago Móvil (Bs)</label>
+                <input type="number" id="vuelto-pago-movil-amount" class="payment-input w-full border rounded-md p-2 text-right" placeholder="0.00" value="">
+            </div>
+            
+        </div>
+    </div>
+</div>
+            
+        <div class="mt-6 flex justify-between">
+    <button onclick="closePaymentModal()" class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-md">Cerrar(Esc)</button>
+    <button id="btn-confirm-payment"  class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md">Confirmar Venta (F3)</button>
+</div>
+        <button onclick="closePaymentModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-xl font-bold">×</button>
+    </div>
+</div>
+
+
+<div id="modal-adjudicar-credito" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-[70]">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden h-[75vh]">
+        <div class="p-5 border-b bg-gray-50 flex flex-col gap-4">
+            <div class="flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                    <span class="material-icons text-orange-600 mr-2 text-3xl">assignment_ind</span> Adjudicar Crédito
+                </h2>
+                <button onclick="window.cerrarModalCredito()" class="text-gray-400 hover:text-gray-700"><span class="material-icons text-2xl">close</span></button>
+            </div>
+            <div class="relative">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><i class="fas fa-search"></i></span>
+                <input type="text" id="buscador-clientes-credito" oninput="window.filtrarClientesCredito(this.value)" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-gray-700" placeholder="Buscar cliente por nombre o RIF...">
+            </div>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto p-2" id="lista-clientes-credito">
+            </div>
+
+        <div class="p-5 border-t bg-white flex flex-col gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+            <div class="flex justify-between items-center">
+                <div class="text-sm text-gray-500 font-medium">
+                    CLIENTE SELECCIONADO:<br>
+                    <div class="flex items-center gap-2">
+                        <span id="cliente-seleccionado-credito" class="font-black text-indigo-700 text-lg uppercase">Ninguno</span>
+                        <button id="btn-alerta-deuda" onclick="window.verDetallesDeuda()" class="hidden btn-deuda-animado bg-red-100 text-red-700 border border-red-300 px-3 py-1 rounded-full text-xs font-bold hover:bg-red-200 transition flex items-center">
+                            <span class="material-icons text-xs mr-1">warning</span> TIENE DEUDA
+                        </button>
+                    </div>
+                </div>
+                <button onclick="window.confirmarClienteCredito()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-xl shadow-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" id="btn-confirmar-credito" disabled>
+                    Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+</main>
+<script type="module">
+
+
+function updateWeightUI(isEnabled) {
+    isScaleEnabled = isEnabled; // Asigna el estado a la variable global
+
+    // --- Referencias DOM (Asegúrate de que existan) ---
+    const weightModeToggleBar = document.getElementById('weight-mode-toggle-bar'); // El nuevo contenedor
+    const unitModeToggle = document.getElementById('unit-mode-toggle'); 
+    const modeText = document.getElementById('mode-text');
+    const weightInputContainer = document.getElementById('weight-input-container');
+    const manualQuantityContainer = document.getElementById('manual-quantity-container');
+    const weightQuantityInput = document.getElementById('cantidad'); // Input de Peso
+    const manualQuantityInput = document.getElementById('manual-quantity'); // Input de Cantidad Manual
+    
+    // 🔴 SE ELIMINÓ LA LÍNEA QUE CAUSABA EL ERROR (sesion is not defined)
+    // ----------------------
+
+    if (!weightModeToggleBar || !unitModeToggle) {
+        console.error("Elementos de control de modo (Peso/Unidad) no encontrados en el DOM.");
+        return;
+    }
+
+    if (isEnabled) {
+        // 🟢 Báscula Habilitada: Mostrar la barra de alternancia
+        weightModeToggleBar.classList.remove('hidden');
+
+        // Habilitamos el interruptor
+        unitModeToggle.disabled = false;
+        
+        // Comprobar estado actual del toggle (Asumiendo: checked=Unidad, unchecked=Peso)
+        if (unitModeToggle.checked) {
+             // Modo Unidad
+             modeText.textContent = 'Unidad';
+             manualQuantityContainer.classList.remove('hidden');
+             weightInputContainer.classList.add('hidden');
+        } else {
+             // Modo Peso (iniciado por defecto)
+             modeText.textContent = 'Peso (Kg)';
+             manualQuantityContainer.classList.add('hidden');
+             weightInputContainer.classList.remove('hidden');
+             if(weightQuantityInput) weightQuantityInput.value = '0.00'; // Limpiar al iniciar en modo peso
+        }
+
+    } else {
+        // 🔴 Báscula Deshabilitada: Ocultar la barra de alternancia (¡Tu Requisito!)
+        weightModeToggleBar.classList.add('hidden');
+
+        // Forzar el modo Unidad
+        unitModeToggle.disabled = true;
+        unitModeToggle.checked = true; // Forzar el switch a la posición de Unidad
+        
+        // UI Mode: Force to Unit (mostramos la entrada manual)
+        modeText.textContent = 'Unidad';
+        manualQuantityContainer.classList.remove('hidden');
+        weightInputContainer.classList.add('hidden');
+        
+        // Asegurar que la entrada de cantidad esté en estado de Unidad
+        if(manualQuantityInput) manualQuantityInput.value = 1;
+        if(weightQuantityInput) weightQuantityInput.value = '0.00'; // Limpiar el peso por seguridad
+    }
+}
+
+
+// --- LÓGICA DE BÁSCULA DIRECTA (REEMPLAZA ESTE BLOQUE EN TU HTML) ---
+// --- LÓGICA DE BÁSCULA DIRECTA (REEMPLAZA ESTE BLOQUE EN TU HTML) ---
+async function loadBasculaConfigAndInitSocket() {
+    if (!window.nexusAPI) {
+        console.warn("Balanza: API local no disponible.");
+        updateWeightUI(false); 
+        return;
+    }
+    
+    try {
+        // 1. Leer puerto y estado desde la configuración local
+        const basculaDataRaw = await window.nexusAPI.obtenerConfiguracion('config_bascula');
+        
+        if (basculaDataRaw) {
+            const data = JSON.parse(basculaDataRaw);
+            const enableScale = data.enableScale === true;
+            const puerto = data.puertoCOM; 
+
+            updateWeightUI(enableScale); 
+
+            if (enableScale && puerto) {
+                console.log(`🚀 Iniciando lectura directa en ${puerto}`);
+                
+                // 2. ORDEN AL MAIN: "Abre el puerto y envíame el peso"
+                window.nexusAPI.iniciarLecturaPuerto(puerto);
+
+                // 3. RECEPTOR: Escuchar el evento que enviará Electron
+                window.nexusAPI.onPesoRecibido((pesoPuro) => {
+                    // Validar si estamos en modo manual
+                    const unitToggle = document.getElementById('unit-mode-toggle');
+                    if (unitToggle && unitToggle.checked) return;
+
+                    const cantidadInput = document.getElementById('cantidad');
+                    if (cantidadInput) {
+                        const pesoNumerico = parseFloat(pesoPuro);
+                        if (!isNaN(pesoNumerico)) {
+                            // Sincronizado con los 3 decimales de tu Arduino
+                            cantidadInput.value = pesoNumerico.toFixed(3);
+                        }
+                    }
+                });
+            }
+        } else {
+            // 🔥 NUEVO: Si no hay configuración en la BD, forzamos por defecto el modo UNIDAD
+            console.log("Balanza: Sin configuración previa. Usando modo UNIDAD por defecto.");
+            updateWeightUI(false);
+        }
+    } catch (error) {
+        console.error("Balanza: Error al conectar:", error);
+        // 🔥 NUEVO: En caso de error en la BD, también forzamos a UNIDAD
+        updateWeightUI(false);
+    }
+}
+
+const style = document.createElement('style');
+    style.textContent = `
+        body {
+            background-color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .main-content {
+            padding: 0;
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 0;
+            box-shadow: none;
+            width: 100%;
+            margin: 0;
+            max-width: none;
+            /* CAMBIO CLAVE: Permitir que el menú desplegable sea visible */
+            overflow: visible !important; 
+        }
+        
+        .autocomplete-container {
+            position: relative;
+            display: block; /* Cambiado de inline-block para mejor control */
+            width: 100%;
+        }
+
+        .autocomplete-results {
+            position: absolute;
+            z-index: 9999; /* Aumentado para que siempre esté al frente */
+            top: 100%;
+            left: 0;
+            right: 0;
+            border: 1px solid #d1d5db;
+            background-color: #ffffff;
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-height: 250px; /* Un poco más de espacio */
+            overflow-y: auto;
+            display: none;
+        }
+        
+        /* Asegúrate de que los items tengan fondo blanco para no ser transparentes */
+        .autocomplete-item {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #e5e7eb;
+            background-color: #ffffff; 
+        }
+
+
+.autocomplete-item:hover {
+    background-color: #006eff78; 
+    color: #1e3a8a !important;
+}
+        
+        .autocomplete-results::-webkit-scrollbar {
+            width: 8px;
+        }
+        .autocomplete-results::-webkit-scrollbar-thumb {
+            background-color: #d1d5db;
+            border-radius: 4px;
+        }
+        
+        #product-search:focus {
+            border-color: #60a5fa;
+            box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.5);
+        }
+
+        .quantity-input {
+            width: 70px;
+            text-align: center;
+        }
+        .delete-btn {
+            color: #dc2626;
+            transition: color 0.2s;
+        }
+        .delete-btn:hover {
+            color: #b91c1c;
+        }
+        .client-info-container {
+            min-height: 0px;
+        }
+        .load-invoice-cell {
+            cursor: pointer;
+            transition: background-color 0.15s;
+        }
+        .load-invoice-cell:hover {
+            background-color: #f3f4f6;
+        }
+    `;
+    document.head.appendChild(style);
+
+    async function verificarSesionLocal() {
+    try {
+        const sesion = await window.nexusAPI.obtenerSesionLocal();
+        if (sesion) {
+            companyId = sesion.companyId;
+            branchId = sesion.branchId;
+            console.log("✅ Sesión local de Nexus POS detectada:", companyId);
+        } else {
+            console.warn("⚠️ No hay sesión activa.");
+            // Aquí podrías redirigir al login si quisieras
+        }
+    } catch (error) {
+        console.error("Error al obtener sesión:", error);
+    }
+}
+
+
+    // App state
+    let cart = [];
+    let productsList = [];
+    let isScaleEnabled = false;
+    let selectedProduct = null;
+    let allProducts = [];   
+    let isProcessingSale = false;
+    let userId = null;
+    let companyId = null;
+    let enableMulticurrency = false;
+    let userRole = null;
+    let isAuthReady = false;
+    let productFocus = -1; 
+    let barcodeFocus = -1;
+    let filteredProducts = [];
+    let tipoEmisionFiscal = "TICKET_NO_FISCAL";
+    let isSearchingClient = false;
+    let extendedSelectedProduct = null;
+
+function filterProducts(query, type, resultsId) {
+
+    // 1. REINICIAR EL FOCO SEGÚN EL TIPO
+    if (type === 'name') {
+        productFocus = -1;
+    } else {
+        barcodeFocus = -1;
+    }
+
+    if (!allProducts || allProducts.length === 0) {
+        console.error("❌ ERROR: 'allProducts' está vacío. ¿Falló el PASO 1?");
+        document.getElementById(resultsId).style.display = 'none';
+        return;
+    }
+
+    const normalizedQuery = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
+    let filteredProducts = allProducts.filter(product => {
+        if (!product.nombre) return false;
+        const productName = product.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        
+        if (type === 'name') {
+            return productName.includes(normalizedQuery);
+        } else if (type === 'code') {
+            return product.codigo && String(product.codigo).toLowerCase().includes(normalizedQuery);
+        }
+        return false;
+    });
+
+    // Ordenar resultados
+    filteredProducts.sort((a, b) => {
+        const aName = a.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const bName = b.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const aStarts = aName.startsWith(normalizedQuery) ? 0 : 1;
+        const bStarts = bName.startsWith(normalizedQuery) ? 0 : 1;
+        return aStarts - bStarts;
+    });
+
+    const topResults = filteredProducts.slice(0, 10);
+
+    // Enviar a renderizar
+    renderAutocompleteResults(topResults, resultsId, type);
+}
+
+    let currentInvoiceId = null;
+    let branchId = null;
+    let selectedCustomer = null;
+    let lastUsedInputId = null; 
+    let globalCategories = [];
+    let dolarExchangeRate = 240.00; 
+    let printerSize = "58";
+    let encabezadoFactura = {
+    line1: "porfavor",
+    line2: "seleciona un",
+    line3: "encabezado de factura",
+    line4: "desde la configuracion en el menu"
+};
+
+const unitModeToggle = document.getElementById('unit-mode-toggle');
+const modeText = document.getElementById('mode-text');
+const manualQuantityContainer = document.getElementById('manual-quantity-container');
+const weightInputContainer = document.getElementById('weight-input-container');
+const manualQuantityInput = document.getElementById('manual-quantity');
+const quantityInput = document.getElementById('cantidad'); 
+
+unitModeToggle.addEventListener('change', () => {
+    if (unitModeToggle.checked) {
+        modeText.textContent = 'Unidades (Pzas)';
+        weightInputContainer.classList.add('hidden');
+        manualQuantityContainer.classList.remove('hidden');
+        manualQuantityInput.focus();
+        quantityInput.value = '0.00';
+    } else {
+        modeText.textContent = 'Peso (Kg)';
+        manualQuantityContainer.classList.add('hidden');
+        weightInputContainer.classList.remove('hidden');
+        manualQuantityInput.value = '1';
+    }
+});
+
+let scannedBarcode = ''; 
+let scanTimer;           
+let lastScannedTimestamp = 0;    
+let lastScannedCodeGlobal = '';
+
+
+function applyHighlight(items, focusIndex) {
+    if (!items || items.length === 0) return;
+    
+    // Limpiamos el gris de todos los items de esta lista específica
+    items.forEach(el => {
+        el.classList.remove("autocomplete-active");
+        el.style.backgroundColor = ""; 
+    });
+    
+    // Aplicamos el gris solo al índice actual
+    if (focusIndex > -1 && items[focusIndex]) {
+        items[focusIndex].classList.add("autocomplete-active");
+        items[focusIndex].style.backgroundColor = "#e5e7eb"; 
+        
+        // Scroll automático
+        items[focusIndex].scrollIntoView({ block: "nearest" });
+    }
+}
+
+
+document.addEventListener('keydown', (event) => {
+    const activeElement = document.activeElement;
+    const isInputActive = activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA');
+    const key = event.key;
+    const keyLower = key.toLowerCase();
+
+    // --- 1. DEFINICIÓN DE ESTADOS DE INTERFAZ ---
+    const paymentModal = document.getElementById('payment-modal');
+    const isPaymentVisible = paymentModal && (paymentModal.style.display === 'flex' || !paymentModal.classList.contains('hidden'));
+
+    // --- 2. CAPTURAS GLOBALES PRIORITARIAS (Escape) ---
+    if (key === 'Escape') {
+        if (typeof window.closeExtendedSearchModal === 'function') window.closeExtendedSearchModal();
+        if (typeof window.closePaymentModal === 'function') window.closePaymentModal();
+        return;
+    }
+
+    // --- 3. ATAJO DE CATÁLOGO (Únicamente la letra 'P') ---
+    // Se activa con la 'p' solo si no estás escribiendo nada y el modal de pagos está cerrado
+    if (keyLower === 'p' && !isInputActive && !isPaymentVisible) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (typeof window.openExtendedSearchModal === 'function') window.openExtendedSearchModal();
+        return;
+    }
+    // --- 4. NAVEGACIÓN EN BUSCADORES (Flechas y Enter en Autocompletado) ---
+    if (activeElement.id === "product-search" || activeElement.id === "barcode-search") {
+        const isProduct = activeElement.id === "product-search";
+        const resultsId = isProduct ? 'autocomplete-results' : 'barcode-autocomplete-results';
+        const resultsContainer = document.getElementById(resultsId);
+        
+        if (resultsContainer && resultsContainer.style.display !== 'none') {
+            const items = resultsContainer.querySelectorAll('.autocomplete-item');
+
+            if (items.length > 0) {
+                let tempFocus = isProduct ? productFocus : barcodeFocus;
+
+                if (key === "ArrowDown" || key === "ArrowUp") {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    
+                    if (key === "ArrowDown") {
+                        tempFocus++;
+                        if (tempFocus >= items.length) tempFocus = 0;
+                    } else {
+                        tempFocus--;
+                        if (tempFocus < 0) tempFocus = items.length - 1;
+                    }
+
+                    if (isProduct) productFocus = tempFocus; else barcodeFocus = tempFocus;
+                    applyHighlight(items, tempFocus);
+                    return;
+                } 
+                
+                if (key === "Enter") {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    const finalIndex = tempFocus > -1 ? tempFocus : 0;
+                    if (items[finalIndex]) {
+                        items[finalIndex].click();
+                        if (isProduct) productFocus = -1; else barcodeFocus = -1;
+                    }
+                    return;
+                }
+            }
+        }
+    }
+
+    // --- 5. ATAJOS DE TECLADO GENERALES ---
+
+    // Confirmar venta con Enter si el modal de pago está abierto
+    if (key === 'Enter' && isPaymentVisible) {
+        event.preventDefault();
+        document.getElementById('btn-confirm-payment')?.click();
+        return;
+    }
+
+    // Atajos que requieren que NO haya un input activo
+    if (!isInputActive) {
+        // Barra Espaciadora: Desmarcar Checkboxes
+        if (event.code === 'Space') {
+            event.preventDefault();
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.checked = false;
+                cb.dispatchEvent(new Event('change'));
+            });
+            return;
+        }
+
+        // Atajos de letras simples (n, c, j)
+        if (keyLower === 'n') {
+            event.preventDefault();
+            if (typeof newInvoice === 'function') newInvoice();
+            return;
+        }
+        if (keyLower === 'c') {
+            event.preventDefault();
+            document.getElementById('client-search')?.focus();
+            return;
+        }
+        if (keyLower === 'j' && isPaymentVisible) {
+            event.preventDefault();
+            const input = document.getElementById('tarjeta-credito-amount');
+            if (input) { input.focus(); input.select(); }
+            return;
+        }
+    }
+
+    // --- 6. TECLAS DE FUNCIÓN (F1 - F12) ---
+    // --- 6. TECLAS DE FUNCIÓN (F1 - F12) ---
+    if (key.startsWith('F')) {
+        // No bloqueamos F12 (Consola) ni F5 (Refrescar) si no es necesario
+        if (key === 'F12' || (key === 'F5' && !isPaymentVisible)) return;
+
+        event.preventDefault();
+
+        // 🔥 LA MAGIA: Doble función de F8
+        // Si el modal de pagos NO está visible, F8 abre el catálogo y cortamos la ejecución.
+        if (key === 'F8' && !isPaymentVisible) {
+            if (typeof window.openExtendedSearchModal === 'function') window.openExtendedSearchModal();
+            return;
+        }
+
+        // Acciones directas
+        const fActions = {
+            'F1': () => (document.getElementById('product-search') || document.getElementById('barcode-search'))?.focus(),
+            'F2': () => document.getElementById('btn-process-sale')?.click(),
+            'F3': () => isPaymentVisible ? document.getElementById('btn-confirm-payment')?.click() : document.getElementById('btn-process-sale')?.click(),
+            'F4': () => document.getElementById('btn-save-invoice')?.click()
+        };
+
+        if (fActions[key]) {
+            fActions[key]();
+            return;
+        }
+
+        // Mapeo de métodos de pago (F5 - F12)
+        if (isPaymentVisible) {
+            const paymentMap = {
+                'F5': 'efectivo-amount', 'F6': 'debito-amount', 'F7': 'pago-movil-amount',
+                'F8': 'bio-pago-amount', 'F9': 'dolar-amount', 'F10': 'transferencia-amount',
+                'F11': 'deposito-amount', 'F12': 'credito-amount'
+            };
+            const targetId = paymentMap[key];
+            if (targetId) {
+                const input = document.getElementById(targetId);
+                if (input) { input.focus(); input.select(); }
+            }
+        }
+        return;
+    }
+
+    // --- 7. LÓGICA DEL ESCÁNER DE CÓDIGO DE BARRAS ---
+    // Si hay un input activo (excepto los de búsqueda), ignoramos la acumulación del escáner
+    if (isInputActive) return;
+
+    if (key === 'Enter' && scannedBarcode.length > 0) {
+        event.preventDefault();
+        const finalBarcode = scannedBarcode.trim();
+        scannedBarcode = ''; 
+        clearTimeout(scanTimer);
+        
+        const now = Date.now();
+        if (finalBarcode === lastScannedCodeGlobal && (now - lastScannedTimestamp) < 600) return;
+        
+        lastScannedCodeGlobal = finalBarcode;
+        lastScannedTimestamp = now;
+
+        const pSearch = document.getElementById('product-search');
+        if (pSearch) pSearch.value = ''; 
+        if (typeof processBarcodeScan === 'function') processBarcodeScan(finalBarcode);
+        return;
+    }
+
+    // Acumulador de caracteres
+    if (key.length === 1 && /[a-zA-Z0-9-]/.test(key)) {
+        scannedBarcode += key;
+        clearTimeout(scanTimer);
+        
+        scanTimer = setTimeout(() => {
+            if (scannedBarcode.length > 2) {
+                const finalBarcode = scannedBarcode.trim();
+                scannedBarcode = '';
+                const now = Date.now();
+                if (finalBarcode === lastScannedCodeGlobal && (now - lastScannedTimestamp) < 600) return;
+
+                lastScannedCodeGlobal = finalBarcode;
+                lastScannedTimestamp = now;
+                if (typeof processBarcodeScan === 'function') processBarcodeScan(finalBarcode);
+            } else {
+                scannedBarcode = ''; 
+            }
+        }, 150);
+    }
+});
+
+
+
+// Modificación en updateCartAndRender para soportar Tiers
+function updateCartAndRender(producto, cantidad) {
+    const precioUnitario = parseFloat(producto.precio_venta || producto.precio) || 0;
+    const porcentajeIva = parseFloat(producto.tipo_alicuota || producto.iva) || 16; 
+    
+    const totalItem = precioUnitario * cantidad;
+    const baseImponible = totalItem / (1 + (porcentajeIva / 100));
+    const montoIva = totalItem - baseImponible;
+
+    const itemCarrito = {
+        id: producto.producto_ID || producto.id,
+        nombre: producto.nombre,
+        codigo: producto.codigo,
+        cantidad: cantidad,
+        precio: precioUnitario,
+        tier: 'p1', // <-- SIEMPRE SE AÑADE COMO P1 POR DEFECTO
+        tasaIva: porcentajeIva,
+        baseImponible: baseImponible,
+        montoIva: montoIva,
+        subtotal: totalItem,
+        moneda: producto.currency || 'BS'
+    };
+
+    const indexExistente = cart.findIndex(item => item.codigo === itemCarrito.codigo);
+    
+    if (indexExistente > -1) {
+        // Si ya existe, sumamos cantidad pero mantenemos su Tier actual
+        cart[indexExistente].cantidad += cantidad;
+        const nuevoTotal = cart[indexExistente].precio * cart[indexExistente].cantidad;
+        cart[indexExistente].subtotal = nuevoTotal;
+        cart[indexExistente].baseImponible = nuevoTotal / (1 + (cart[indexExistente].tasaIva / 100));
+        cart[indexExistente].montoIva = nuevoTotal - cart[indexExistente].baseImponible;
+    } else {
+        cart.push(itemCarrito);
+    }
+
+    localStorage.setItem('cart', JSON.stringify(cart));
+    renderCart();
+}
+
+// Nueva función para cambiar el Tier desde el carrito
+window.updateItemTier = function(index, newTier) {
+    const item = cart[index];
+    
+    // Buscamos el producto en la lista cargada (allProducts)
+    const originalProduct = allProducts.find(p => p.id === item.id);
+    
+    if (!originalProduct || !originalProduct.precios) {
+        // Si entra aquí, es porque originalProduct.precios sigue siendo null
+        messageBox("Este producto no tiene niveles de precios definidos en memoria.", 'bg-red-500');
+        renderCart(); 
+        return;
+    }
+
+    // Buscamos el valor dentro de p1, p2 o p3
+    const tierData = originalProduct.precios[newTier];
+    
+    if (!tierData || tierData.venta === undefined) {
+        messageBox(`El precio ${newTier.toUpperCase()} no está configurado.`, 'bg-yellow-600');
+        renderCart();
+        return;
+    }
+
+    const nuevoPrecio = parseFloat(tierData.venta);
+
+    // Actualizamos el objeto en el carrito
+    item.tier = newTier;
+    item.precio = nuevoPrecio;
+    
+    // Recalculamos totales del item
+    item.subtotal = item.precio * item.cantidad;
+    const tasaIva = parseFloat(item.tasaIva || 16);
+    item.baseImponible = item.subtotal / (1 + (tasaIva / 100));
+    item.montoIva = item.subtotal - item.baseImponible;
+
+    // Guardar en localStorage y refrescar tabla
+    localStorage.setItem('cart', JSON.stringify(cart));
+    renderCart();
+    
+    messageBox(`Precio cambiado a ${newTier.toUpperCase()}: ${nuevoPrecio.toFixed(2)}`, 'bg-blue-600');
+};
+
+function normalizarIdentificacion(idInput) {
+    if (!idInput) return '';
+    
+    // Limpiamos todo rastro de espacios y guiones ingresados por el usuario
+    let limpio = idInput.replace(/[-\s]/g, '').toUpperCase();
+    
+    // 1. Asignación inteligente de letra si el usuario solo ingresó números
+    if (/^\d+$/.test(limpio)) {
+        if (limpio.length === 9) {
+            limpio = 'J' + limpio; // Si tiene 9 números exactos, asumimos Jurídico (J)
+        } else {
+            limpio = 'V' + limpio; // Si tiene menos, asumimos Venezolano (V)
+        }
+    }
+    
+    // 2. Formateo Visual (Añadir los guiones)
+    if (/^[VJEGPC]\d{9}$/.test(limpio)) {
+        // Formato RIF Completo (Ej: J-30123456-7)
+        return `${limpio.charAt(0)}-${limpio.substring(1, 9)}-${limpio.charAt(9)}`;
+    } else if (/^[VE]\d{6,8}$/.test(limpio)) {
+        // Formato Cédula (Ej: V-20315990)
+        return `${limpio.charAt(0)}-${limpio.substring(1)}`;
+    }
+    
+    return limpio; // Por si ingresan un pasaporte o dato extranjero, lo devuelve limpio
+}
+
+
+function validarRIF(rif) {
+    if (!rif) return false;
+    // Limpiamos los guiones solo para que la expresión regular valide la matemática pura
+    const limpio = rif.replace(/[-\s]/g, '').toUpperCase();
+    // Validamos que sea una letra válida seguida de 6 a 9 números
+    const regexConLetra = /^[VJEGPC]\d{6,9}$/;
+    return regexConLetra.test(limpio);
+}
+    
+
+async function fetchExchangeRate() {
+    if (!companyId) return;
+
+    let tasaRecuperada = null;
+
+    // 1. INTENTAR OBTENER DESDE EL SERVIDOR XEON (Prioridad Central vía Cloudflare)
+    try {
+        if (navigator.onLine) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 seg de espera
+
+            // Actualizado: Subdominio correcto, sin puertos y con HTTPS para el túnel
+            const response = await fetch(`https://scarping.nexusposgobal.com/api/companias/tasa_de_cambio/${companyId}`, {
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.tasa) {
+                    tasaRecuperada = parseFloat(data.tasa);
+                    console.log("📡 Tasa obtenida desde Servidor Xeon Global:", tasaRecuperada);
+
+                    // Sincronizar con SQLite local para futuros arranques offline
+                    if (window.nexusAPI && typeof window.nexusAPI.guardarTasaBCV === 'function') {
+                        await window.nexusAPI.guardarTasaBCV(tasaRecuperada);
+                    }
+                }
+            }
+        }
+    } catch (xeonError) {
+        console.warn("⚠️ Servidor Xeon Global no disponible. Iniciando recuperación local.");
+    }
+
+    // 2. MODO RESPALDO: SI FALLÓ EL XEON O NO HAY INTERNET, USAR SQLITE LOCAL
+    if (tasaRecuperada === null) {
+        try {
+            if (window.nexusAPI && typeof window.nexusAPI.obtenerHistorialTasas === 'function') {
+                const historial = await window.nexusAPI.obtenerHistorialTasas();
+                if (historial && historial.length > 0) {
+                    // Tomamos el valor más reciente del historial local
+                    tasaRecuperada = parseFloat(historial[0].valor);
+                    console.log("📂 Tasa cargada desde Respaldo Local (SQLite):", tasaRecuperada);
+                }
+            }
+        } catch (localError) {
+            console.error("❌ Error al leer respaldo local de tasa:", localError);
+        }
+    }
+
+    // 3. APLICAR EL RESULTADO AL SISTEMA DE FACTURACIÓN
+    if (tasaRecuperada !== null && tasaRecuperada > 0) {
+        // Se actualiza la variable global de facturación
+        dolarExchangeRate = tasaRecuperada;
+        
+        // Actualizar UI del panel de ventas
+        const displayTasa = document.getElementById('tasa-actual-display');
+        if (displayTasa) {
+            displayTasa.textContent = `Tasa: ${tasaRecuperada.toFixed(2)} BS`;
+        }
+    } else {
+        // Valor de seguridad extremo (1:1) si fallan Xeon y SQLite
+        dolarExchangeRate = 1.00; 
+        if (typeof messageBox === 'function') {
+            messageBox("Atención: No se pudo obtener la tasa. Usando valor 1:1.", 'bg-red-600');
+        }
+    }
+
+    // Forzar actualización de precios en el carrito de compras
+    if (typeof renderCart === 'function') renderCart();
+}
+
+    function initializeFirestoreListeners() {
+    if (!isAuthReady || !userId) {
+        return;
+    }
+    // ----------------------------------------------------------------------
+    // 🟢 FASE 1: SIMULACIÓN DE LECTURA DE BORRADORES (Pronto SQLite)
+    // ----------------------------------------------------------------------
+    console.log("⏳ [Fase 1] Esperando módulo SQLite para cargar facturas guardadas en UI.");
+    
+    // Dejamos la tabla limpia por ahora para que no de error
+    const invoicesList = document.getElementById('invoices-list');
+    if (invoicesList) {
+        invoicesList.innerHTML = `<tr><td colspan="4" class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">Borradores locales habilitándose pronto...</td></tr>`;
+    }
+}
+    
+function renderCart() {
+    const cartItems = document.getElementById('cart-items');
+    if (!cartItems) return;
+    
+    cartItems.innerHTML = '';
+    
+    // Variables globales para almacenar los totales exactos
+    window.exactTotalBs = 0;
+    window.exactTotalUsd = 0;
+
+    cart.forEach((item, index) => {
+        // Determinamos si es divisa
+        const isDivisa = item.moneda === 'USD' || item.isUSD === true;
+        
+        // --- CORRECCIÓN: Compatibilidad Español/Inglés y prevención de undefined ---
+        const precioItem = item.precio !== undefined ? item.precio : (item.price || 0);
+        const cantidadItem = item.cantidad || 0; 
+        const nombreItem = item.nombre || item.name || 'Producto';
+        const tasaItem = item.tasa !== undefined ? item.tasa : dolarExchangeRate;
+        
+        // --- NUEVO: Identificar el Tier actual del item ---
+        const tierActual = item.tier || 'p1'; 
+        
+        // --- LÓGICA DE CÁLCULO ---
+        let itemTotalBs = 0;
+        let itemTotalUsd = 0;
+
+        if (isDivisa) {
+            // CASO 1: Producto en Dólares (Divisa)
+            itemTotalUsd = precioItem * cantidadItem;
+            itemTotalBs = itemTotalUsd * tasaItem;
+        } else {
+            // CASO 2: Producto en Bolívares
+            itemTotalBs = precioItem * cantidadItem;
+            itemTotalUsd = itemTotalBs / dolarExchangeRate;
+        }
+
+        // Acumulamos a los totales globales
+        window.exactTotalBs += itemTotalBs;
+        window.exactTotalUsd += itemTotalUsd;
+
+        const row = document.createElement('tr');
+        
+        // Lógica visual para Precio Unitario
+        let precioDisplayHTML = '';
+        if (isDivisa) {
+            precioDisplayHTML = `
+                <div class="flex flex-col">
+                    <span class="font-bold text-green-700">$${precioItem.toFixed(2)}</span>
+                    <span class="text-xs text-gray-500">Tasa: ${tasaItem.toFixed(2)}</span>
+                </div>
+            `;
+        } else {
+            precioDisplayHTML = `
+                <span class="font-bold text-blue-700">Bs${precioItem.toFixed(2)}</span>
+            `;
+        }
+
+        // El botón invisible mantiene el espacio
+        const editButtonHTML = isDivisa 
+            ? `<button onclick="editItemTasa(${index})" class="text-yellow-500 hover:text-yellow-700 p-2"><i class="fas fa-pencil-alt"></i></button>`
+            : `<button class="p-2 invisible pointer-events-none"><i class="fas fa-pencil-alt"></i></button>`;
+
+        row.innerHTML = `
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                <div class="flex items-center space-x-3">
+                    <select onchange="window.updateItemTier(${index}, this.value)" class="tier-select">
+                        <option value="p1" ${tierActual === 'p1' ? 'selected' : ''}>P1</option>
+                        <option value="p2" ${tierActual === 'p2' ? 'selected' : ''}>P2</option>
+                        <option value="p3" ${tierActual === 'p3' ? 'selected' : ''}>P3</option>
+                    </select>
+                    <span class="truncate max-w-xs">${nombreItem}</span>
+                </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <input type="number" value="${cantidadItem}" onchange="updateQuantity(${index}, this.value)" 
+                       class="quantity-input border rounded p-1 text-sm w-20 text-center" min="0.001" step="any">
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                ${precioDisplayHTML}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
+                Bs${itemTotalBs.toFixed(2)}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <div class="flex items-center">
+                    ${editButtonHTML}
+                    <button onclick="removeItemFromCart(${index})" class="text-red-600 hover:text-red-900" title="Eliminar">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+            </td>
+        `;
+        cartItems.appendChild(row);
+    });
+
+    // Actualizar Totales Globales en la interfaz principal
+    if (document.getElementById('subtotal')) document.getElementById('subtotal').textContent = `Bs${window.exactTotalBs.toFixed(2)}`; 
+    if (document.getElementById('total')) document.getElementById('total').textContent = `Bs${window.exactTotalBs.toFixed(2)}`;
+
+    // Forzar el recálculo del resumen de pagos con los nuevos valores
+    calculatePaymentSummary(); 
+    
+    if (cart.length === 0) {
+        cartItems.innerHTML = `<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">No hay productos en el carrito.</td></tr>`;
+    }
+}
+
+
+
+function updateGlobalIVAConfig(value) {
+    console.log("IVA actualizado. Nuevo valor de includeIVA:", value); 
+    includeIVA = value;
+    renderCart(); 
+}
+
+
+    function renderInvoices(invoices) {
+        const invoicesList = document.getElementById('invoices-list');
+        if (!invoicesList) {
+            return;
+        }
+        invoicesList.innerHTML = '';
+
+        if (invoices.length === 0) {
+            invoicesList.innerHTML = `<tr><td colspan="4" class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">No hay facturas guardadas.</td></tr>`;
+        } else {
+            const sortedInvoices = invoices.sort((a, b) => b.createdAt - a.createdAt);
+            sortedInvoices.forEach(invoice => {
+                const date = new Date(invoice.createdAt);
+                const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                const row = document.createElement('tr');
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 load-invoice-cell">
+                        ${invoice.customerName || invoice.id}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Bs${invoice.total.toFixed(2)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formattedDate}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <button class="delete-btn" onclick="deleteInvoice('${invoice.id}')" title="Eliminar borrador">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                const loadCell = row.querySelector('.load-invoice-cell');
+                loadCell.onclick = (e) => {
+                    if (!e.target.closest('.delete-btn')) { 
+                       loadInvoice(invoice);
+                    }
+                };
+
+                invoicesList.appendChild(row);
+            });
+        }
+    }
+    
+function updateCartItemQuantity(index, newQuantity) {
+    const quantity = parseFloat(newQuantity);
+    
+    if (isNaN(quantity) || quantity <= 0) {
+        messageBox("La cantidad debe ser un número positivo.", 'bg-red-500');
+        renderCart();
+        return;
+    }
+
+    // 🟢 ESTANDARIZACIÓN: Usamos 'cantidad' para que coincida con el resto del sistema
+    const item = cart[index];
+    item.cantidad = quantity; 
+    
+    // 🔥 RE-CALCULAR VALORES (Importante para que el total cambie en la tabla)
+    item.subtotal = item.precio * item.cantidad;
+    item.baseImponible = item.subtotal / (1 + (item.tasaIva / 100));
+    item.montoIva = item.subtotal - item.baseImponible;
+
+    localStorage.setItem('cart', JSON.stringify(cart));
+    renderCart();
+}
+
+
+
+
+
+async function processBarcodeScan(barcode) {
+    if (!isAuthReady) return; 
+    
+    barcode = barcode.trim();
+    if (!barcode) return;
+
+    try {
+        const product = allProducts.find(p => String(p.codigo) === barcode);
+
+        if (product) {
+            let quantity;
+            const productUnit = product.unit || 'UN'; 
+            
+            if (productUnit === 'Unidad' || productUnit === 'UN') { 
+                quantity = 1;
+            } else {
+                const quantityInput = document.getElementById('cantidad');
+                quantity = parseFloat(quantityInput.value) || 0; 
+                // ... validación de cantidad ...
+            }
+
+            updateCartAndRender(product, quantity);
+            
+            // 🔥 SOLUCIÓN AL PROBLEMA SECUENCIAL:
+            // Al limpiar esto aquí, permitimos que si el usuario borra el item 
+            // y vuelve a escanear de inmediato, el sistema no piense que es un "rebote"
+            lastScannedCodeGlobal = ''; 
+            lastScannedTimestamp = 0;
+
+            // Limpieza de interfaz
+            selectedProduct = null; 
+            if (document.getElementById('cantidad')) document.getElementById('cantidad').value = '1';
+            document.getElementById('product-search').value = '';
+            document.getElementById('barcode-search').value = '';
+            
+            const productSearch = document.getElementById('product-search');
+            const barcodeSearch = document.getElementById('barcode-search');
+            if (productSearch) productSearch.value = '';
+            if (barcodeSearch) barcodeSearch.value = ''; 
+
+            console.log(`✅ Producto ${product.nombre} añadido por escáner.`);
+
+        } else {
+            if (typeof messageBox === 'function') {
+                messageBox(`Producto con código ${barcode} no encontrado en el inventario local.`, 'bg-red-500');
+            }
+        }
+
+    } catch (error) {
+        console.error("❌ Error al procesar el escaneo local:", error);
+        if (typeof messageBox === 'function') {
+            messageBox("Error al procesar el código de barras.", 'bg-red-500');
+        }
+    }
+}
+
+
+function removeCartItem(index) {
+    if (index < 0 || index >= cart.length) {
+        console.error("❌ Intento de eliminar un índice inexistente:", index);
+        return;
+    }
+
+    // 1. Identificamos qué es lo que se está borrando ANTES de cortarlo
+    const itemEliminado = cart[index];
+    const nombreProducto = itemEliminado.nombre || "Producto";
+
+    // 2. Lo sacamos del carrito
+    cart.splice(index, 1);
+
+    // 3. 🔥 PROTECCIÓN DE DEUDA: Si lo que borraron fue el abono, reseteamos el estado
+    if (itemEliminado && itemEliminado.id === 'PAGO-DEUDA') {
+        window.esPagoDeDeuda = null;
+        console.log("🚫 Abono de deuda cancelado desde el carrito. Volviendo a la normalidad.");
+    }
+
+    // 4. Continuamos con tu lógica original de guardado y UI
+    localStorage.setItem('cart', JSON.stringify(cart));
+    lastScannedCodeGlobal = '';
+    lastScannedTimestamp = 0;
+    
+    if (typeof renderCart === 'function') {
+        renderCart();
+    }
+    
+    if (typeof messageBox === 'function') {
+        messageBox(`${nombreProducto} eliminado del carrito.`, 'bg-red-500');
+    }
+
+    console.log(`🗑️ Item "${nombreProducto}" eliminado. Reset de memoria de escáner completado.`);
+}
+
+function processAndRenderItem(itemToAdd, quantity) {
+    const existingItemIndex = cart.findIndex(item => item.name === itemToAdd.name);
+    
+    if (existingItemIndex > -1) {
+        cart[existingItemIndex].quantity += quantity;
+    } else {
+        const newItem = {
+            id: itemToAdd.id, 
+            name: itemToAdd.name,
+            quantity: quantity, 
+            price: itemToAdd.price,
+            unit: itemToAdd.unit 
+        };
+        cart.push(newItem);
+    }
+    
+    renderCart(); 
+}
+
+window.addItem = function() {
+    if (!selectedProduct) {
+        messageBox("Por favor, seleccione un producto.", 'bg-red-500');
+        return;
+    }
+    
+    let cantidad = 0;
+    
+    // Determinamos la cantidad según el tipo de producto (Unidad o Pesable)
+    // Se incluye 'UN' como alias común en la base de datos local
+    if (selectedProduct.unit === 'Unidad' || selectedProduct.unit === 'UN') {
+        cantidad = 1;
+        const manualInput = document.getElementById('manual-quantity');
+        if (manualInput) manualInput.value = '1';
+    } else {
+        if (unitModeToggle.checked) {
+            const manualInput = document.getElementById('manual-quantity'); 
+            cantidad = parseFloat(manualInput ? manualInput.value : 0) || 0; 
+        } else {
+            // Peso proveniente de la balanza o el input de cantidad
+            const quantityInput = document.getElementById('cantidad');
+            cantidad = parseFloat(quantityInput ? quantityInput.value : 0) || 0; 
+        }
+    }
+
+    if (isNaN(cantidad) || cantidad <= 0) { 
+        messageBox("Por favor, ingrese una cantidad válida y mayor que cero.", 'bg-red-500');
+        return;
+    }
+
+    // --- PROCESAMIENTO ---
+    // updateCartAndRender ahora maneja la detección de USD/BS y cálculos fiscales (IVA/Base Imponible)
+    updateCartAndRender(selectedProduct, cantidad); 
+
+    // --- LIMPIEZA Y RESETEO DE INTERFAZ ---
+    if (unitModeToggle.checked) {
+        const manualInput = document.getElementById('manual-quantity');
+        if (manualInput) manualInput.value = '1';
+    }
+    
+    selectedProduct = null; 
+    
+    // Limpiar inputs de búsqueda
+    document.getElementById('product-search').value = '';
+    document.getElementById('barcode-search').value = ''; 
+    document.getElementById('cantidad').value = '0.00';
+    
+    // Ocultar listas de autocompletado
+    const resultsContainer = document.getElementById('autocomplete-results');
+    const barcodeResultsContainer = document.getElementById('barcode-autocomplete-results');
+    if (resultsContainer) resultsContainer.style.display = 'none';
+    if (barcodeResultsContainer) barcodeResultsContainer.style.display = 'none';
+    
+    // Foco automático al lector de barras para la siguiente operación
+    document.getElementById('barcode-search').focus(); 
+};
+
+function clearCart() {
+    // 1. Vaciar el array global y actualizar la vista
+    cart = [];
+    
+    // 🔥 PROTECCIÓN: Si vacían el carrito, también se cancela la deuda
+    window.esPagoDeDeuda = null; 
+    
+    renderCart();
+    
+    // 2. Limpiar todos los campos de pago (Métodos de pago)
+    const paymentIds = [
+        'efectivo-amount', 'debito-amount', 'pago-movil-amount', 
+        'bio-pago-amount', 'dolar-amount', 'transferencia-amount', 
+        'deposito-amount', 'credito-amount', 'tarjeta-credito-amount'
+    ];
+    
+    paymentIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+
+    // 3. Notificar al usuario
+    messageBox("Carrito limpiado.", 'bg-yellow-500');
+}
+    
+    function clearSelectedCustomer() {
+        selectedCustomer = null; 
+        // 🟢 NUEVO: Limpiamos la memoria del Gestor también
+        if (typeof GestorClientes !== 'undefined') GestorClientes.selectedCustomer = null; 
+        
+        const clientFoundMessage = document.getElementById('client-found-message');
+        if (clientFoundMessage) {
+            clientFoundMessage.classList.add('hidden');
+        }
+        const clientSearchInput = document.getElementById('client-search');
+        if (clientSearchInput) {
+            clientSearchInput.value = '';
+        }
+    
+        messageBox("Cliente deseleccionado, listo para nueva venta.", 'bg-yellow-500');
+    }
+
+
+    async function sendProfitCalculation(companyId, branchId, cashierId, saleId, cartItems) {
+        const API_URL = 'https://profit.api.nexusposgobal.com/calculate-profit';
+        const simplifiedCartItems = cartItems.map(item => ({
+            productId: item.id,
+            quantity: item.quantity
+        }));
+
+        const payload = {
+            companyId: companyId,
+            branchId: branchId,
+            cashierId: cashierId,
+            saleId: saleId,
+            cartItems: simplifiedCartItems
+        };
+
+        console.log("Enviando datos a la API de ganancias:", payload);
+
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: 'Respuesta no JSON.' }));
+                throw new Error(errorData.message || `Error HTTP: ${response.status}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.success) {
+                console.log(`✅ Cálculo de ganancia exitoso. Profit: ${result.profit}`);
+                messageBox(`Ganancia procesada: Bs${result.profit}`, 'bg-blue-500');
+                return result.profit;
+            } else {
+                throw new Error(result.message || "Error en el cálculo de ganancia reportado por el servidor.");
+            }
+
+        } catch (error) {
+            console.error("❌ Error al procesar la ganancia. El documento de venta NO tendrá el campo 'profit':", error.message);
+            messageBox(`❌ ERROR en la API de ganancias: ${error.message}`, 'bg-red-500');
+            return null; 
+        }
+    }
+
+
+
+// --- FUNCIONES DINÁMICAS DEL CATÁLOGO (SIN SCROLL A LA DERECHA) ---
+window.openExtendedSearchModal = function() {
+    console.log("📦 Generando Catálogo dinámicamente...");
+    try {
+        const oldModal = document.getElementById('extended-search-modal');
+        if (oldModal) oldModal.remove();
+
+        const modalHTML = `
+<div id="extended-search-modal" class="fixed inset-0 z-[999999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-7xl h-[92vh] min-h-[650px] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-300">
+        
+        <div class="p-5 border-b flex justify-between items-center bg-white shrink-0">
+            <h2 class="text-2xl font-black text-gray-800">TODOS LOS PRODUCTOS</h2>
+            <div class="flex items-center space-x-4">
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text" id="extended-search-filter" oninput="window.renderExtendedList()" 
+                        class="pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none w-80" 
+                        placeholder="Filtrar por nombre o código...">
+                </div>
+                <button onclick="window.closeExtendedSearchModal()" class="text-gray-400 hover:text-gray-600 text-3xl">&times;</button>
+            </div>
+        </div>
+
+        <div class="extended-modal-content flex flex-row flex-1 overflow-hidden">
+            <div class="product-table-container p-4 flex-[0_0_70%] overflow-y-auto h-full">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50 sticky top-0 z-10">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Imagen</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Producto</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">P1 Detal</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">P2 Mayor</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">P3 G. Mayor</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase text-center">Und.</th>
+                        </tr>
+                    </thead>
+                    <tbody id="extended-list-body" class="bg-white divide-y divide-gray-100">
+                        </tbody>
+                </table>
+            </div>
+
+            <div class="vertical-separator bg-gray-200 w-px my-4 shrink-0"></div>
+
+            <div class="product-preview-container flex flex-col flex-[0_0_30%] p-6 overflow-y-auto h-full">
+                <div id="preview-empty" class="flex-1 flex flex-col items-center justify-center text-gray-400 h-full">
+                    <i class="fas fa-hand-pointer text-5xl mb-4"></i>
+                    <p class="text-center font-medium">Selecciona un producto<br>para ver los detalles</p>
+                </div>
+
+                <div id="preview-data" class="hidden flex-1 flex flex-col h-full">
+                    <div class="w-full h-[200px] rounded-2xl border-2 border-dashed border-gray-200 overflow-hidden mb-3 bg-gray-50 shrink-0 flex items-center justify-center">
+                        <img id="preview-img" src="" class="max-w-full max-h-full object-contain">
+                    </div>
+                    
+                    <h3 id="preview-name" class="text-xl font-black text-gray-800 uppercase leading-tight mb-2 shrink-0 line-clamp-2"></h3>
+                    
+                    <div class="space-y-1.5 mb-4 text-sm shrink-0">
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Categoría:</span>
+                            <span id="preview-cat" class="font-bold text-blue-600 truncate max-w-[150px] text-right"></span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Código:</span>
+                            <span id="preview-code" class="font-mono font-bold truncate max-w-[150px] text-right"></span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Alícuota:</span>
+                            <span id="preview-tax" class="font-bold"></span>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 p-3 rounded-xl space-y-2 mb-4 shrink-0 border border-gray-100">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-gray-500">P1 (DETAL):</span>
+                            <span id="preview-p1" class="text-lg font-black text-gray-900"></span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-gray-500">P2 (MAYOR):</span>
+                            <span id="preview-p2" class="text-[1.05rem] font-black text-blue-700"></span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-gray-500">P3 (G. MAYOR):</span>
+                            <span id="preview-p3" class="text-[1.05rem] font-black text-green-700"></span>
+                        </div>
+                    </div>
+
+                    <div class="mt-auto pt-2 shrink-0">
+                        <div class="mb-3">
+                            <label class="block text-[11px] font-bold text-gray-500 mb-1">CANTIDAD A AGREGAR:</label>
+                            <input type="number" id="extended-qty" value="1" min="1" step="any"
+                                   class="w-full p-2.5 border-2 border-gray-300 rounded-xl text-center text-xl font-bold focus:border-blue-500 outline-none">
+                        </div>
+                        <button onclick="window.addSelectedToCart()" 
+                                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3.5 rounded-xl shadow-lg transition-all active:scale-95 text-sm">
+                            AGREGAR AL CARRITO
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>`;
+
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+        setTimeout(() => {
+            const filterInput = document.getElementById('extended-search-filter');
+            if (filterInput) {
+                filterInput.value = '';
+                filterInput.focus();
+            }
+            if (typeof window.renderExtendedList === 'function') {
+                window.renderExtendedList();
+            }
+        }, 50); 
+    } catch (error) {
+        console.error("❌ Error al abrir catálogo dinámico:", error);
+    }
+};
+
+window.closeExtendedSearchModal = function() {
+    // Busca el modal con el ID que proporcionaste y lo elimina del HTML
+    const modal = document.getElementById('extended-search-modal');
+    if (modal) modal.remove();
+    window.extendedSelectedProduct = null;
+};
+
+window.closeExtendedSearchModal = function() {
+    const modal = document.getElementById('extended-search-modal');
+    if (modal) {
+        // 🔥 Forzar la desaparición inmediata
+        modal.style.display = 'none'; 
+        modal.classList.add('hidden');
+        window.extendedSelectedProduct = null;
+    }
+};
+
+window.renderExtendedList = function() {
+    const filterInput = document.getElementById('extended-search-filter');
+    const filter = filterInput ? filterInput.value.toLowerCase() : '';
+    const tbody = document.getElementById('extended-list-body');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    // Filtrado seguro
+    const filtered = allProducts.filter(p => 
+        (p.nombre && p.nombre.toLowerCase().includes(filter)) || 
+        (p.codigo && String(p.codigo).toLowerCase().includes(filter))
+    );
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-400">No se encontraron productos</td></tr>';
+        return;
+    }
+
+    filtered.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-blue-50 cursor-pointer transition-colors border-b border-gray-50";
+        
+        // Formatear precios (P1, P2, P3)
+        const p1 = p.precios?.p1?.venta ? parseFloat(p.precios.p1.venta).toFixed(2) : parseFloat(p.precio || 0).toFixed(2);
+        const p2 = p.precios?.p2?.venta ? parseFloat(p.precios.p2.venta).toFixed(2) : "---";
+        const p3 = p.precios?.p3?.venta ? parseFloat(p.precios.p3.venta).toFixed(2) : "---";
+
+
+            tr.innerHTML = `
+                <td class="px-2 py-2 w-12">
+                    <div class="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
+                        <img src="${p.imagen || 'https://placehold.co/100x100?text=Sin+Foto'}" class="w-full h-full object-cover">
+                    </div>
+                </td>
+                <td class="px-4 py-2">
+                    <div class="flex flex-col">
+                        <span class="text-xs font-bold text-gray-800 uppercase leading-tight">${p.nombre}</span>
+                        <span class="text-[10px] text-gray-500 font-mono">${p.codigo || 'S/C'}</span>
+                    </div>
+                </td>
+                <td class="px-4 py-2 text-sm font-black text-gray-700 text-right">${p1}</td>
+                <td class="px-4 py-2 text-sm font-bold text-blue-600 text-right">${p2}</td>
+                <td class="px-4 py-2 text-sm font-bold text-green-600 text-right">${p3}</td>
+                <td class="px-4 py-2 text-center text-[10px] font-bold text-gray-400">${p.unit || 'UN'}</td>
+            `;
+
+        tr.onclick = () => window.showExtendedPreview(p);
+        tbody.appendChild(tr);
+    });
+};
+
+window.showExtendedPreview = function(product) {
+    window.extendedSelectedProduct = product;
+    document.getElementById('preview-empty').classList.add('hidden');
+    document.getElementById('preview-data').classList.remove('hidden');
+
+    const img = document.getElementById('preview-img');
+    img.src = product.imagen || '';
+    img.style.display = product.imagen ? 'block' : 'none';
+
+    document.getElementById('preview-name').textContent = product.nombre;
+    document.getElementById('preview-cat').textContent = product.categoria.toUpperCase();
+    document.getElementById('preview-code').textContent = product.codigo || 'NO DISPONIBLE';
+    document.getElementById('preview-tax').textContent = `IVA ${product.iva}%`;
+
+    const p1 = product.precios?.p1?.venta ? parseFloat(product.precios.p1.venta).toFixed(2) : parseFloat(product.precio || 0).toFixed(2);
+    const p2 = product.precios?.p2?.venta ? parseFloat(product.precios.p2.venta).toFixed(2) : "---";
+    const p3 = product.precios?.p3?.venta ? parseFloat(product.precios.p3.venta).toFixed(2) : "---";
+
+    document.getElementById('preview-p1').textContent = `${p1} ${product.currency || 'BS'}`;
+    document.getElementById('preview-p2').textContent = p2 !== "---" ? `${p2} ${product.currency || 'BS'}` : "N/A";
+    document.getElementById('preview-p3').textContent = p3 !== "---" ? `${p3} ${product.currency || 'BS'}` : "N/A";
+    
+    document.getElementById('extended-qty').focus();
+}
+
+window.addSelectedToCart = function() {
+    if (!window.extendedSelectedProduct) return;
+    
+    const qty = parseFloat(document.getElementById('extended-qty').value);
+    if (isNaN(qty) || qty <= 0) {
+        messageBox("Ingresa una cantidad válida", "bg-red-600");
+        return;
+    }
+
+    updateCartAndRender(window.extendedSelectedProduct, qty);
+    window.closeExtendedSearchModal();
+    messageBox(`${window.extendedSelectedProduct.nombre} añadido.`, "bg-green-600");
+};
+
+
+async function processSale() {
+    const confirmBtn = document.getElementById('btn-confirm-payment');
+    
+    // 1. BLOQUEO DE DOBLE CLIC
+    if (window.isProcessingSale) return;
+
+    window.isProcessingSale = true;
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Verificando...';
+    }
+
+    // 2. CAPTURA DE TOTALES
+    const totalElement = document.getElementById('total');
+    const total = parseFloat(totalElement ? totalElement.textContent.replace(/[^\d.]/g, '') : '0'); 
+
+    // 3. VALIDACIONES BÁSICAS
+    if (cart.length === 0) {
+        window.isProcessingSale = false;
+        if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Confirmar Venta (F3)'; }
+        return messageBox("El carrito está vacío.", 'bg-red-500');
+    }
+    
+    const clienteActivo = (window.GestorClientes && window.GestorClientes.selectedCustomer) 
+                            ? window.GestorClientes.selectedCustomer 
+                            : (typeof selectedCustomer !== 'undefined' ? selectedCustomer : null);
+
+    if (!clienteActivo) {
+        window.isProcessingSale = false;
+        if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Confirmar Venta (F3)'; }
+        return messageBox("Debe seleccionar un cliente.", 'bg-red-500');
+    }
+    
+    try {
+        // 🔥 CAPTURAMOS EL CRÉDITO PRIMERO PARA EVITAR ERRORES DE VARIABLE INDEFINIDA
+        const montoCreditoBs = parseFloat(document.getElementById('credito-amount').value) || 0;
+        
+        if (montoCreditoBs > 0 && !window.clienteCreditoSeleccionado) {
+            throw new Error("⚠️ Debes adjudicar el crédito a un cliente.");
+        }
+
+        // 🔥 PASO A: VERIFICAR Y DESCONTAR STOCK EN EL MAESTRO
+        const respuestaStock = await window.nexusAPI.verificarYDescontarStockMaestro(cart);
+        if (!respuestaStock.exito) {
+            throw new Error(respuestaStock.mensaje || "Stock insuficiente en el Servidor Master.");
+        }
+
+        // 🔥 PASO B: OBTENER CORRELATIVO OFICIAL DEL MAESTRO
+        const correlativo = await window.nexusAPI.obtenerProximoCorrelativo('FORMA_LIBRE');
+        if (correlativo.error) throw new Error("No se pudo obtener el correlativo del Master.");
+        
+        const nroFacturaOficial = correlativo.formato;
+
+        // 🔥 PASO C: REGISTRAR DEUDA EN EL MAESTRO (AHORA SÍ TENEMOS EL NRO DE FACTURA Y EL MONTO)
+        if (montoCreditoBs > 0) {
+            const registroDeuda = {
+                cliente_id: window.clienteCreditoSeleccionado.id || window.clienteCreditoSeleccionado.rif,
+                cliente_nombre: clienteActivo.nombre || clienteActivo.name,
+                monto_bs: montoCreditoBs,
+                monto_usd: montoCreditoBs / (window.dolarExchangeRate || 1), // Deuda calculada en USD
+                numero_factura: nroFacturaOficial,
+                fecha: new Date().toISOString()
+            };
+
+            const resDeuda = await window.nexusAPI.registrarDeudaMaestro(registroDeuda);
+            if (!resDeuda.exito) {
+                throw new Error("No se pudo registrar la deuda en el Servidor Maestro: " + resDeuda.mensaje);
+            }
+        }
+
+        // 4. CÁLCULOS FISCALES RÁPIDOS
+        let montoExento = 0;
+        let baseImponible = 0;
+        let montoIva = 0;
+
+        cart.forEach(item => {
+            if (parseFloat(item.tasaIva) === 0) {
+                montoExento += item.subtotal;
+            } else {
+                baseImponible += item.baseImponible || (item.subtotal / 1.16);
+                montoIva += item.montoIva || (item.subtotal - (item.subtotal / 1.16));
+            }
+        });
+
+        const dolarRecibido = parseFloat(document.getElementById('dolar-amount').value) || 0;
+        const montoIgtf = dolarRecibido > 0 ? (dolarRecibido * (window.dolarExchangeRate || 1)) * 0.03 : 0;
+
+        const localId = `VTA-${Date.now()}`;
+        const tasaActual = window.dolarExchangeRate || 1;
+        const montoCreditoDolar = montoCreditoBs > 0 ? (montoCreditoBs / tasaActual) : 0;
+
+        // 5. ESTRUCTURA DE LA VENTA
+        const newSale = {
+            id: localId,
+            company_id: window.companyId,
+            branch_id: window.branchId,
+            cashier_id: window.userId,
+            numero_factura: nroFacturaOficial, // ✅ USA EL NRO OFICIAL DEL MASTER
+            numero_control: "MAESTRO-001",
+            cliente_nombre: clienteActivo.nombre || clienteActivo.name || 'CONSUMIDOR FINAL',
+            cliente_rif: clienteActivo.rif || clienteActivo.ci || 'V000000000',
+            monto_exento: montoExento,
+            base_imponible: baseImponible,
+            monto_iva: montoIva,
+            monto_igtf: montoIgtf,
+            monto_total: total + montoIgtf,
+            tasa_bcv: window.dolarExchangeRate || 1,
+            metodo_pago: JSON.stringify({
+                efectivo: (parseFloat(document.getElementById('efectivo-amount').value) || 0),
+                pagomovil: (parseFloat(document.getElementById('pago-movil-amount').value) || 0),
+                dolar: (parseFloat(document.getElementById('dolar-amount').value) || 0),
+                debito: parseFloat(document.getElementById('debito-amount').value) || 0,
+                biopago: parseFloat(document.getElementById('bio-pago-amount').value) || 0,
+                transferencia: parseFloat(document.getElementById('transferencia-amount').value) || 0,
+                deposito: parseFloat(document.getElementById('deposito-amount').value) || 0,
+                credito: montoCreditoBs,
+                tarjetaCredito: parseFloat(document.getElementById('tarjeta-credito-amount').value) || 0,
+                monto_credito_divisa: montoCreditoDolar,
+                tasa_credito: tasaActual,
+                cliente_credito: montoCreditoBs > 0 ? window.clienteCreditoSeleccionado : null
+            }),
+            datos_json: JSON.stringify({
+                productos: cart,
+                cliente: clienteActivo,
+                tasa: window.dolarExchangeRate
+            })
+        };
+        
+        // 6. GUARDADO LOCAL DIRECTO
+        const respuestaDB = await window.nexusAPI.guardarVentaLocal(newSale);
+        
+        if (respuestaDB && respuestaDB.error) throw new Error(respuestaDB.error);
+
+        // 7. FINALIZACIÓN
+        messageBox(`✅ Venta ${nroFacturaOficial} guardada con éxito.`, 'bg-green-500');
+
+        // 🔥 IMPRESIÓN OFICIAL
+        if (typeof printInvoice === 'function') {
+            await printInvoice(newSale); 
+        }
+
+        if (typeof window.closePaymentModal === 'function') {
+            window.closePaymentModal();
+        }
+
+        resetPaymentModalState();        
+        clearCart();
+        
+        if (window.GestorClientes && typeof window.GestorClientes.limpiarSeleccion === 'function') {
+            window.GestorClientes.limpiarSeleccion();
+        }
+
+        window.isProcessingSale = false; 
+        if (confirmBtn) { 
+            confirmBtn.textContent = 'Confirmar Venta (F3)'; 
+            confirmBtn.disabled = false; 
+        }
+
+    } catch (error) {
+        messageBox(`❌ Error en Venta: ${error.message}`, 'bg-red-600');
+        window.isProcessingSale = false;
+        if (confirmBtn) { 
+            confirmBtn.disabled = false; 
+            confirmBtn.textContent = 'Confirmar Venta (F3)'; 
+        }
+    }
+}
+
+
+
+
+function handleF2Shortcut() {
+    const openModalBtn = document.getElementById('btn-process-sale');
+    if (openModalBtn) {
+        openModalBtn.click();
+    } else {
+        console.error("❌ ID no encontrado: btn-process-sale"); 
+    }
+}
+
+function handleF3Shortcut(isPaymentModalVisible) {
+    if (isPaymentModalVisible) {
+        processSale(); 
+    } else {
+        const openModalBtn = document.getElementById('btn-process-sale');
+        if (openModalBtn) {
+            openModalBtn.click();
+        }
+    }
+}
+
+document.getElementById('btn-confirm-payment').addEventListener('click', () => {
+    processSale();
+});
+
+
+function resetPaymentModalState() {
+    const paymentInputIds = [
+        'efectivo-amount', 'debito-amount', 'pago-movil-amount', 'bio-pago-amount', 
+        'dolar-amount', 'transferencia-amount', 'deposito-amount', 'credito-amount', 
+        'tarjeta-credito-amount',
+        'vuelto-efectivo-amount', 
+        'vuelto-dolar-amount', 
+        'vuelto-pago-movil-amount'
+    ];
+
+
+    paymentInputIds.forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.value = ''; 
+        }
+    });
+
+    const montoPagadoDisplay = document.getElementById('montoPagado');
+    const resumenFaltanteBs = document.getElementById('resumen-faltante-bs');
+    const resumenFaltanteUsd = document.getElementById('resumen-faltante-usd');
+    const vueltoColumn = document.getElementById('vuelto-column');
+    if (montoPagadoDisplay) montoPagadoDisplay.textContent = 'Bs0.00';
+    if (resumenFaltanteBs) resumenFaltanteBs.textContent = 'Bs0.00';
+    if (resumenFaltanteUsd) resumenFaltanteUsd.textContent = '$0.00';
+    if (vueltoColumn) vueltoColumn.classList.add('hidden'); 
+    
+    console.log("Estado del modal de pagos restablecido.");
+}
+
+
+async function loadIVAConfigFromDB() {
+    if (!window.nexusAPI || typeof window.nexusAPI.obtenerConfiguracion !== 'function') {
+        console.warn("[CONFIG IVA] API local no disponible. Usando configuración de IVA por defecto (TRUE).");
+        updateGlobalIVAConfig(true);
+        return;
+    }
+    
+    try {
+        // 🟢 NUEVO: Leer configuración directamente desde SQLite local
+        const configDataRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
+        
+        if (configDataRaw) {
+            const data = JSON.parse(configDataRaw);
+            const shouldIncludeIVA = (data.includeIVA === undefined || data.includeIVA === null) ? true : data.includeIVA;
+            
+            // Actualizar la variable global e invocar el recálculo
+            updateGlobalIVAConfig(shouldIncludeIVA);
+            console.log(`[CONFIG IVA] Cargado desde SQLite: ${shouldIncludeIVA}`);
+            
+        } else {
+            console.log("[CONFIG IVA] No se encontró configuración de factura. Usando IVA por defecto.");
+            updateGlobalIVAConfig(true);
+        }
+    } catch (error) {
+        console.error("[CONFIG IVA] Error al cargar la configuración de IVA desde SQLite:", error);
+    }
+}
+
+function calculatePaymentSummary() {
+    const totalElement = document.getElementById('total');
+    if (!totalElement) return;
+
+    // Obtener elementos de control de estilo
+    const paymentContent = document.getElementById('payment-content'); 
+    const paymentGrid = document.getElementById('payment-grid');       
+    
+    // --- CAMBIO PRINCIPAL AQUÍ ---
+    // En lugar de leer el HTML y dividir, usamos los acumuladores exactos
+    const totalBs = window.exactTotalBs || 0;
+    const totalUsd = window.exactTotalUsd || 0;
+    // -----------------------------
+    
+    // 1. OBTENER MONTOS PAGADOS
+    const efectivo = parseFloat(document.getElementById('efectivo-amount')?.value) || 0;
+    const debito = parseFloat(document.getElementById('debito-amount')?.value) || 0;
+    const pagomovil = parseFloat(document.getElementById('pago-movil-amount')?.value) || 0;
+    const biopago = parseFloat(document.getElementById('bio-pago-amount')?.value) || 0;
+    const dolarInput = parseFloat(document.getElementById('dolar-amount')?.value) || 0;
+    const transferencia = parseFloat(document.getElementById('transferencia-amount')?.value) || 0;
+    const deposito = parseFloat(document.getElementById('deposito-amount')?.value) || 0;
+    const credito = parseFloat(document.getElementById('credito-amount')?.value) || 0;
+    const tarjetaCredito = parseFloat(document.getElementById('tarjeta-credito-amount')?.value) || 0;
+    
+    // Calcular el monto pagado TOTAL en BS
+    // Usamos la tasa global para convertir los dólares que PAGAN (billetes recibidos)
+    const montoDolarBs = dolarInput * dolarExchangeRate;
+    
+    const montoPagadoBs = efectivo + debito + pagomovil + biopago + montoDolarBs +
+                          transferencia + deposito + credito + tarjetaCredito;
+
+    // 2. CALCULAR FALTANTE / CAMBIO
+    const faltanteBs = totalBs - montoPagadoBs;
+    
+    // OBTENER MONTOS DE VUELTO DADO
+    const vueltoEfectivoDado = parseFloat(document.getElementById('vuelto-efectivo-amount')?.value) || 0;
+    const vueltoDolarDado = parseFloat(document.getElementById('vuelto-dolar-amount')?.value) || 0;
+    const vueltoPagoMovilDado = parseFloat(document.getElementById('vuelto-pago-movil-amount')?.value) || 0;
+    
+    const vueltoDolarDadoBs = vueltoDolarDado * dolarExchangeRate;
+    const totalVueltoDadoBs = vueltoEfectivoDado + vueltoDolarDadoBs + vueltoPagoMovilDado;
+
+    // 3. ACTUALIZAR PANELES DE RESUMEN
+    const resumenFaltanteBs = document.getElementById('resumen-faltante-bs');
+    const resumenFaltanteUsd = document.getElementById('resumen-faltante-usd');
+    const etiquetaFaltanteBs = document.getElementById('etiqueta-faltante-bs');
+    const etiquetaFaltanteUsd = document.getElementById('etiqueta-faltante-usd');
+    const montoPagadoDisplay = document.getElementById('montoPagado');
+    const vueltoColumn = document.getElementById('vuelto-column');
+    
+    // Actualizar Totales (en el panel de resumen)
+    document.getElementById('resumen-total-bs').textContent = `Bs${totalBs.toFixed(2)}`;
+    // Aquí mostramos el TOTAL USD calculado correctamente (sumando $ + $ convertidos)
+    document.getElementById('resumen-total-usd').textContent = `$${totalUsd.toFixed(2)}`;
+    
+    montoPagadoDisplay.textContent = `Bs${montoPagadoBs.toFixed(2)}`;
+
+    [resumenFaltanteBs, resumenFaltanteUsd].forEach(el => {
+        el.classList.remove('text-red-600', 'text-green-600');
+    });
+
+    const hayCambio = faltanteBs < -0.01;
+
+    if (hayCambio) {
+        // VUELTO PRESENTE
+        const cambioTotalBs = Math.abs(faltanteBs);
+        const cambioPendienteBs = cambioTotalBs - totalVueltoDadoBs;
+        const cambioPendienteUsd = cambioPendienteBs / dolarExchangeRate; // El vuelto siempre se calcula a tasa global
+        
+        etiquetaFaltanteBs.textContent = "CAMBIO Bs:";
+        etiquetaFaltanteUsd.textContent = "CAMBIO $:";
+        
+        resumenFaltanteBs.textContent = `Bs${Math.abs(cambioPendienteBs).toFixed(2)}`;
+        resumenFaltanteUsd.textContent = `$${Math.abs(cambioPendienteUsd).toFixed(2)}`;
+
+        if (cambioPendienteBs > 0.01) {
+             resumenFaltanteBs.classList.add('text-red-600'); 
+             resumenFaltanteUsd.classList.add('text-red-600');
+        } else if (cambioPendienteBs < -0.01) {
+             resumenFaltanteBs.classList.add('text-red-600');
+             resumenFaltanteUsd.classList.add('text-red-600');
+             etiquetaFaltanteBs.textContent = "VUELTO EXCESIVO:";
+             etiquetaFaltanteUsd.textContent = "VUELTO EXCESIVO:";
+        } else {
+             resumenFaltanteBs.classList.add('text-green-600');
+             resumenFaltanteUsd.classList.add('text-green-600');
+             etiquetaFaltanteBs.textContent = "VUELTO CUADRADO:";
+             etiquetaFaltanteUsd.textContent = "VUELTO CUADRADO:";
+        }
+        
+        vueltoColumn?.classList.remove('hidden');
+        paymentContent.classList.remove('max-w-2xl');
+        paymentContent.classList.add('max-w-4xl');
+        paymentGrid.classList.remove('md:grid-cols-2');
+        paymentGrid.classList.add('md:grid-cols-3');
+
+    } else {
+        // NO HAY VUELTO (Faltante o Exacto)
+        // El faltante en USD se muestra referencial a la tasa global para que el cliente sepa cuántos $ faltan
+        const faltanteUsd = faltanteBs / dolarExchangeRate;
+
+        if (faltanteBs > 0.01) {
+            etiquetaFaltanteBs.textContent = "FALTANTE Bs:";
+            etiquetaFaltanteUsd.textContent = "FALTANTE $:";
+            resumenFaltanteBs.textContent = `Bs${faltanteBs.toFixed(2)}`;
+            resumenFaltanteUsd.textContent = `$${faltanteUsd.toFixed(2)}`;
+            resumenFaltanteBs.classList.add('text-red-600');
+            resumenFaltanteUsd.classList.add('text-red-600');
+        } else {
+            etiquetaFaltanteBs.textContent = "Pagado Exacto:";
+            etiquetaFaltanteUsd.textContent = "Pagado Exacto:";
+            resumenFaltanteBs.textContent = `Bs0.00`;
+            resumenFaltanteUsd.textContent = `$0.00`;
+        }
+
+        vueltoColumn?.classList.add('hidden');
+        paymentContent.classList.remove('max-w-4xl');
+        paymentContent.classList.add('max-w-2xl');
+        paymentGrid.classList.remove('md:grid-cols-3');
+        paymentGrid.classList.add('md:grid-cols-2');
+    }
+}
+
+   // Saves the current cart as a new invoice (Borrador)
+async function saveInvoice() {
+    if (!isAuthReady || !userId || !companyId || !branchId) {
+        messageBox("Error: La sesión no está lista. Intenta de nuevo.", 'bg-red-500');
+        return;
+    }
+    
+    // 🟢 NUEVO: Extraemos el cliente del nuevo Gestor Local
+    const clienteActivo = (window.GestorClientes && window.GestorClientes.selectedCustomer) 
+                          ? window.GestorClientes.selectedCustomer 
+                          : (typeof selectedCustomer !== 'undefined' && selectedCustomer ? selectedCustomer : null);
+
+    if (!clienteActivo) {
+        messageBox("Por favor, seleccione o agregue un cliente para guardar la factura en espera.", 'bg-red-500');
+        return;
+    }
+
+    if (cart.length > 0) {
+        try {
+            const subtotal = cart.reduce((sum, item) => {
+                const p = item.precio || 0;
+                const q = item.cantidad || 0; // 🟢 Cambiado a 'cantidad'
+                return sum + (p * q);
+            }, 0);
+            const ivaRate = 0;
+            const ivaAmount = subtotal * ivaRate;
+            const total = subtotal + ivaAmount;
+
+            const payments = {
+                efectivo: parseFloat(document.getElementById('efectivo-amount').value) || 0,
+                debito: parseFloat(document.getElementById('debito-amount').value) || 0,
+                pagomovil: parseFloat(document.getElementById('pago-movil-amount').value) || 0,
+                biopago: parseFloat(document.getElementById('bio-pago-amount').value) || 0,
+                dolar: parseFloat(document.getElementById('dolar-amount').value) || 0,
+                transferencia: parseFloat(document.getElementById('transferencia-amount').value) || 0,
+                deposito: parseFloat(document.getElementById('deposito-amount').value) || 0,
+                credito: parseFloat(document.getElementById('credito-amount').value) || 0,
+                tarjetaCredito: parseFloat(document.getElementById('tarjeta-credito-amount').value) || 0,
+            };
+
+            const invoiceData = {
+                items: JSON.stringify(cart),
+                subtotal: subtotal,
+                iva: ivaAmount,
+                total: total,
+                payments: JSON.stringify(payments),
+                createdAt: Date.now(),
+                userId: userId,
+                companyId: companyId,
+                branchId: branchId,
+                // 🟢 NUEVO: Soporta la estructura SQLite (.nombre / .rif)
+                customerName: clienteActivo.nombre || clienteActivo.name || 'CONSUMIDOR FINAL',
+                customerIdNumber: clienteActivo.rif || clienteActivo.ci || 'V000000000'
+            };
+            
+            // ----------------------------------------------------------------------
+            // 🟢 FASE 1: SIMULACIÓN DE GUARDADO DE BORRADOR (Pronto SQLite)
+            // ----------------------------------------------------------------------
+            console.log("⏳ [Fase 1] Simulación: Borrador listo para BD local.", invoiceData);
+            
+            if (currentInvoiceId) {
+                // Simula la actualización
+                console.log(`Borrador ${currentInvoiceId} actualizado localmente.`);
+                messageBox(`Factura borrador actualizada. Cliente: ${invoiceData.customerName}`, 'bg-purple-500');
+            } else {
+                // Simula la creación
+                currentInvoiceId = `BORR-${Date.now()}`;
+                console.log(`Nuevo borrador creado localmente con ID: ${currentInvoiceId}`);
+                messageBox(`Factura guardada en espera (ID: ${currentInvoiceId}). Cliente: ${invoiceData.customerName}`, 'bg-purple-500');
+            }
+            // ----------------------------------------------------------------------
+            
+        } catch (error) {
+            console.error("Error al guardar el borrador:", error);
+            messageBox("Error al guardar la factura.", 'bg-red-500');
+        }
+    } else {
+        messageBox("No se puede guardar una factura vacía.", 'bg-red-500');
+    }
+}
+
+    // Starts a new invoice by clearing the cart
+    function newInvoice() {
+        cart = [];
+        currentInvoiceId = null;
+        selectedCustomer = null;
+        renderCart();
+        // Dejar en blanco los campos de pago
+        document.getElementById('efectivo-amount').value = '';
+        document.getElementById('debito-amount').value = '';
+        document.getElementById('pago-movil-amount').value = '';
+        document.getElementById('bio-pago-amount').value = '';
+        document.getElementById('dolar-amount').value = '';
+        document.getElementById('transferencia-amount').value = '';
+        document.getElementById('deposito-amount').value = '';
+        document.getElementById('credito-amount').value = '';
+        document.getElementById('tarjeta-credito-amount').value = '';
+        messageBox("Nueva factura creada. El carrito se ha vaciado.", 'bg-gray-500');
+        
+        selectedProduct = null;
+        document.getElementById('product-search').value = '';
+        document.getElementById('barcode-search').value = '';
+        document.getElementById('autocomplete-results').style.display = 'none';
+        
+        // Vuelve a enfocar el campo de código de barras
+        document.getElementById('barcode-search').focus();
+    }
+
+    // Loads a saved invoice into the cart
+    function loadInvoice(invoice) {
+        try {
+            cart = invoice.items;
+            currentInvoiceId = invoice.id;
+            
+            // Si la factura guardada tiene información de cliente, cargarla
+            if (invoice.customerName && invoice.customerIdNumber) {
+                selectedCustomer = { name: invoice.customerName, ci: invoice.customerIdNumber };
+                document.getElementById('client-search').value = invoice.customerIdNumber;
+                clientFoundName.textContent = invoice.customerName;
+                clientFoundId.textContent = invoice.customerIdNumber;
+                clientFoundMessage.classList.remove('hidden');
+                addNewClientPrompt.classList.add('hidden');
+                addClientForm.classList.add('hidden');
+            }
+
+            renderCart();
+            messageBox(`Factura ${invoice.id} (${invoice.customerName || 'sin nombre'}) cargada.`, 'bg-blue-500');
+            const payments = JSON.parse(invoice.payments);
+            // Cargar los valores guardados, usando '' si el valor es 0 para que inicie en blanco (a menos que el valor guardado sea no-cero)
+            document.getElementById('efectivo-amount').value = (payments.efectivo || 0) === 0 ? '' : payments.efectivo.toFixed(2);
+            document.getElementById('debito-amount').value = (payments.debito || 0) === 0 ? '' : payments.debito.toFixed(2);
+            document.getElementById('pago-movil-amount').value = (payments.pagomovil || 0) === 0 ? '' : payments.pagomovil.toFixed(2);
+            document.getElementById('bio-pago-amount').value = (payments.biopago || 0) === 0 ? '' : payments.biopago.toFixed(2);
+            document.getElementById('dolar-amount').value = (payments.dolar || 0) === 0 ? '' : payments.dolar.toFixed(2);
+            document.getElementById('transferencia-amount').value = (payments.transferencia || 0) === 0 ? '' : payments.transferencia.toFixed(2);
+            document.getElementById('deposito-amount').value = (payments.deposito || 0) === 0 ? '' : payments.deposito.toFixed(2);
+            document.getElementById('credito-amount').value = (payments.credito || 0) === 0 ? '' : payments.credito.toFixed(2);
+            document.getElementById('tarjeta-credito-amount').value = (payments.tarjetaCredito || 0) === 0 ? '' : payments.tarjetaCredito.toFixed(2);
+            calculatePaymentSummary();
+        } catch (e) {
+            messageBox("Error al cargar la factura.", 'bg-red-500');
+        }
+    }
+    
+    // MODIFICACIÓN 4: Nueva función para eliminar factura borrador
+async function deleteInvoice(invoiceId) {
+    if (!isAuthReady || !userId) {
+        messageBox("Error: La sesión no está lista.", 'bg-red-500');
+        return;
+    }
+
+    if (invoiceId === currentInvoiceId) {
+        currentInvoiceId = null;
+        newInvoice(); 
+    }
+    
+    try {
+        // ----------------------------------------------------------------------
+        // 🟢 FASE 1: SIMULACIÓN DE ELIMINACIÓN DE BORRADOR (Pronto SQLite)
+        // ----------------------------------------------------------------------
+        console.log(`⏳ [Fase 1] Simulación: Borrador ${invoiceId} eliminado de BD local.`);
+        messageBox(`Factura borrador ${invoiceId} eliminada.`, 'bg-red-600');
+        
+        // Pronto aquí irá: await window.nexusAPI.eliminarBorradorLocal(invoiceId);
+        
+    } catch (error) {
+        messageBox("Error al eliminar la factura borrador.", 'bg-red-500');
+        console.error("Error al eliminar la factura borrador:", error);
+    }
+}
+
+
+// --- CARGA DE PRODUCTOS 100% LOCAL Y SIN BLOQUEOS DE RED ---
+async function fetchProducts() {
+    const productSearchInput = document.getElementById('product-search');
+    const resultsContainer = document.getElementById('autocomplete-results');
+    if (!productSearchInput || !window.companyId) return;
+
+    try {
+        // Pedimos Productos y Categorías a SQLite al MISMO TIEMPO
+        const [productosDB, categoriasDB] = await Promise.all([
+            window.nexusAPI.obtenerProductosLocal(window.companyId),
+            window.nexusAPI.obtenerCategoriasLocal() // ⚡ ¡100% Offline!
+        ]);
+
+        window.globalCategories = categoriasDB || [];
+
+        if (!productosDB || productosDB.length === 0) {
+            if (resultsContainer) resultsContainer.innerHTML = `<div class="autocomplete-item text-center text-gray-500">No hay productos registrados.</div>`;
+            allProducts = []; 
+            return;
+        }
+
+        allProducts = productosDB.map(p => {
+            let monedaReal = p.currency || p.moneda || 'BS';
+            let unidadReal = p.unit || 'UN'; 
+            let preciosMulti = null;
+            
+            try {
+                if (p.datos_json) {
+                    const datosParseados = typeof p.datos_json === 'string' ? JSON.parse(p.datos_json) : p.datos_json;
+                    if (datosParseados.currency || datosParseados.moneda) monedaReal = datosParseados.currency || datosParseados.moneda;
+                    if (datosParseados.unit) unidadReal = datosParseados.unit; 
+                    if (datosParseados.precios) preciosMulti = datosParseados.precios;
+                }
+            } catch (e) {}
+
+            const categoriaNombre = window.globalCategories.find(c => 
+                (c.id === p.categoria || c.categoria_ID === p.categoria)
+            )?.nombre || 'General';
+
+            return {
+                id: p.producto_ID || p.id,
+                nombre: p.nombre || p.name,
+                codigo: p.codigo || p.code,
+                precio: parseFloat(p.precio_venta || p.precio || 0),
+                precios: preciosMulti,
+                imagen: p.imagen || '',
+                iva: p.tipo_alicuota || '16', 
+                stock: p.stock || 0,
+                categoria: categoriaNombre,
+                currency: monedaReal, 
+                isUSD: monedaReal === 'USD' || p.isUSD || false,
+                unit: unidadReal 
+            };
+        });
+
+    } catch (error) {
+        console.error("❌ Error crítico al cargar inventario:", error);
+    }
+}
+
+function renderAutocompleteResults(products, resultsId, type) {
+    
+    const resultsContainer = document.getElementById(resultsId);
+    if (!resultsContainer) {
+        console.error(`❌ ERROR: No existe el contenedor con ID: ${resultsId}`);
+        return;
+    }
+
+    resultsContainer.innerHTML = '';
+    
+    if (type === 'name') {
+        productFocus = -1;
+    } else {
+        barcodeFocus = -1;
+    }
+
+    if (products.length === 0) {
+        console.log("⚠️ Array vacío al renderizar. Ocultando menú.");
+        resultsContainer.style.display = 'none';
+        return;
+    }
+
+
+   products.forEach((product) => {
+        const div = document.createElement('div');
+        div.className = 'autocomplete-item';
+        div.style.backgroundColor = "transparent"; 
+        
+        const isUSD = product.currency === 'USD' || product.isUSD;
+        const symbol = isUSD ? 'USD' : 'BS';
+        const symbolColor = isUSD ? '#059669' : '#2563eb';
+        
+        // Variables conectadas al "Cerebro" local (SQLite)
+        const price = product.precio ? parseFloat(product.precio).toFixed(2) : '0.00';
+        const productCode = product.codigo || 'NC';
+
+        // Tu diseño original intocable
+        div.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; pointer-events: none;">
+                <div style="display: flex; flex-direction: column; flex-grow: 1;">
+                    <span style="text-transform: uppercase; font-weight: 600; font-size: 0.85rem; color: #1f2937;">
+                        ${product.nombre}
+                    </span>
+                    <span style="font-size: 0.7rem; color: #9ca3af; font-weight: 400; margin-top: 2px;">
+                        Código: ${productCode}
+                    </span>
+                </div>
+                <div style="margin-left: 15px; white-space: nowrap; font-size: 0.95rem; font-weight: 700;">
+                    <span style="color: #111827;">${price}</span> 
+                    <span style="color: ${symbolColor}; margin-left: 4px;">${symbol}</span>
+                </div>
+            </div>
+        `;
+
+        div.addEventListener('click', () => {
+            console.log(`🖱️ Producto seleccionado: ${product.nombre}`);
+            selectedProduct = product; 
+            resultsContainer.style.display = 'none';
+            addItem(); 
+
+            const inputId = (type === 'name') ? 'product-search' : 'barcode-search';
+            const searchInput = document.getElementById(inputId);
+            if (searchInput) {
+                searchInput.value = ''; 
+                searchInput.focus();
+            }
+        });
+
+        resultsContainer.appendChild(div);
+    }); 
+
+    resultsContainer.style.display = 'block';
+}
+
+
+function setupSearchListener() {
+    const searchInput = document.getElementById('product-search');
+    const resultsContainer = document.getElementById('autocomplete-results');
+    
+    if (!searchInput) return;
+
+    // 1. RASTREO DE ENFOQUE
+    searchInput.addEventListener('focusin', () => {
+        lastUsedInputId = 'product-search';
+    });
+
+    // 2. BÚSQUEDA DINÁMICA CON DETECCIÓN DE ESCÁNER
+    searchInput.addEventListener('input', (event) => {
+        const query = event.target.value.trim(); 
+        
+        if (!query) {
+            resultsContainer.style.display = 'none';
+            return;
+        }
+
+        // --- LÓGICA DE DETECCIÓN AUTOMÁTICA DE BARCODE ---
+        // Si el usuario escanea teniendo el foco aquí, entrará una cadena numérica larga.
+        // El regex /^\d{7,}$/ detecta si son solo números de 7 o más dígitos.
+        const isPotentialBarcode = /^\d{7,}$/.test(query); 
+
+        if (isPotentialBarcode) {
+            // Buscamos el producto por su código exacto en el array local
+            const product = allProducts.find(p => String(p.codigo) === query);
+            
+            if (product) {
+                console.log(`🚀 Escáner detectado en barra de búsqueda. Producto: ${product.nombre}`);
+                
+                // 1. Limpiamos la barra y cerramos sugerencias de inmediato
+                searchInput.value = '';
+                resultsContainer.style.display = 'none';
+                
+                // 2. Lo asignamos y usamos la función nativa para añadir al carrito
+                selectedProduct = product;
+                addItem(); 
+                
+                return; // Cortamos el flujo para no buscar por nombre
+            }
+        }
+
+        // Si no es un código de barras, procedemos con la búsqueda normal por nombre
+        filterProducts(query, 'name', 'autocomplete-results');
+    });
+
+    // 3. NAVEGACIÓN, SELECCIÓN Y ESCÁNER (TECLAS)
+    searchInput.addEventListener('keydown', (e) => {
+        
+        // --- LÓGICA DE ENTER (Escáner vs Selección Manual) ---
+        if (e.key === 'Enter') {
+            
+            // A. Si viene del flujo de variables del escáner global
+            if (typeof scannedBarcode !== 'undefined' && scannedBarcode.length > 4) { 
+                e.preventDefault();
+                const cleanBarcode = scannedBarcode.trim();
+                processBarcodeScan(cleanBarcode);
+                scannedBarcode = ''; 
+                searchInput.value = '';
+                return; 
+            }
+
+            // B. Si es selección del menú con las flechas
+            let items = resultsContainer.querySelectorAll('.autocomplete-item');
+            if (typeof productFocus !== 'undefined' && productFocus > -1 && items[productFocus]) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                items[productFocus].click();
+                productFocus = -1; // Reseteamos la posición
+                return;
+            }
+        }
+        
+        // --- NAVEGACIÓN CON FLECHAS ---
+        let items = resultsContainer.querySelectorAll('.autocomplete-item');
+        if (items.length === 0) return;
+
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            productFocus++;
+            if (productFocus >= items.length) productFocus = 0;
+            applyHighlight(items, productFocus);
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            productFocus--;
+            if (productFocus < 0) productFocus = items.length - 1;
+            applyHighlight(items, productFocus);
+        }
+    });
+    
+    document.addEventListener('click', (e) => {
+    const btnPrincipal = e.target.closest('#btn-alerta-deuda-principal');
+    if (btnPrincipal) {
+        console.log("🖱️ Forzando apertura de Estado de Cuenta...");
+        e.preventDefault();
+        e.stopPropagation();
+        window.verDetallesDeuda(); // Esta función crea el modal dinámico en document.body
+    }
+});
+}
+
+function setupBarcodeSearchListener() {
+    const barcodeInput = document.getElementById('barcode-search');
+    const resultsContainer = document.getElementById('barcode-autocomplete-results');
+    const lastScannedInput = document.getElementById('last-scanned-code');
+
+    if (!barcodeInput) return;
+
+    // Agregar listener para rastrear el enfoque
+    barcodeInput.addEventListener('focusin', () => {
+        lastUsedInputId = 'barcode-search';
+    });
+
+    barcodeInput.addEventListener('input', (event) => {
+        const query = event.target.value.toLowerCase().trim();
+        
+        if (!query) {
+            resultsContainer.style.display = 'none';
+            return;
+        }
+        
+        let filteredProducts = allProducts.filter(product =>
+            product.codigo && String(product.codigo).toLowerCase().includes(query)
+        );
+        
+        // 🟢 CORRECCIÓN: Le pasamos 'code' para que coincida con la lógica de la función
+        renderAutocompleteResults(filteredProducts, 'barcode-autocomplete-results', 'code');
+    });
+        
+    
+    barcodeInput.addEventListener('keydown', (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            const code = barcodeInput.value.trim();
+            if (!code) return;
+
+            // 🔥 APLICAR MISMO FILTRO ANTI-REBOTE AQUÍ
+            const now = Date.now();
+            if (code === lastScannedCodeGlobal && (now - lastScannedTimestamp) < 600) return;
+            
+            lastScannedCodeGlobal = code;
+            lastScannedTimestamp = now;
+
+            const product = allProducts.find(p => String(p.codigo) === code);
+            if (product) {
+                selectedProduct = product;
+                addItem(); 
+                barcodeInput.value = ''; // Limpiar inmediatamente
+            } else {
+                if (typeof messageBox === 'function') messageBox("Producto no encontrado.", 'bg-red-500');
+            }
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (resultsContainer && !barcodeInput.contains(e.target) && !resultsContainer.contains(e.target)) {
+            resultsContainer.style.display = 'none';
+        }
+    });
+}
+
+    // Highlights an item in the autocomplete dropdown
+    function highlightItem(items) {
+        if (!items) return;
+        for (let i = 0; i < items.length; i++) {
+            items[i].classList.remove('highlighted');
+        }
+        if (items[currentFocus]) {
+            items[currentFocus].classList.add('highlighted');
+            items[currentFocus].scrollIntoView({ block: 'nearest' });
+        }
+    }
+    
+    
+    // Custom message box function instead of alert()
+    function messageBox(message, bgColor) {
+        let box = document.getElementById('message-box');
+        if (!box) {
+            box = document.createElement('div');
+            box.id = 'message-box';
+            document.body.appendChild(box);
+        }
+        
+        box.textContent = message;
+        box.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg text-white transition-opacity duration-300 z-50 ${bgColor} opacity-100`;
+        
+        setTimeout(() => {
+            box.classList.remove('opacity-100');
+            box.classList.add('opacity-0');
+        }, 3000);
+    }
+    
+// --- MÓDULO LOCAL DE CLIENTES (NEXUS POS) ---
+const GestorClientes = {
+    lista: [], 
+    selectedCustomer: null,
+    isAddingClient: false,
+
+    // Referencias al DOM (Mismos IDs de tu HTML)
+    ui: {
+        searchInput: document.getElementById('client-search'),
+        searchBtn: document.getElementById('search-client-btn'),
+        foundMessage: document.getElementById('client-found-message'),
+        foundName: document.getElementById('client-found-name'),
+        foundId: document.getElementById('client-found-id'),
+        newPrompt: document.getElementById('add-new-client-prompt'),
+        showFormBtn: document.getElementById('show-add-client-form-btn'),
+        addForm: document.getElementById('add-client-form'),
+        newName: document.getElementById('new-client-name'),
+        newId: document.getElementById('new-client-id'),
+        newAddress: document.getElementById('new-client-address'),
+        addBtn: document.getElementById('add-client-btn')
+    },
+
+    async inicializar() {
+        await this.cargarTodos();
+        this.configurarEventos();
+    },
+
+    async cargarTodos() {
+        try {
+            const clientesDB = await window.nexusAPI.obtenerClientesLocal();
+            this.lista = clientesDB || [];
+            console.log(`👥 ${this.lista.length} Clientes cargados en base de datos SQlite.`);
+        } catch (e) {
+            console.error("Error cargando clientes en SQlite:", e);
+        }
+    },
+
+    // Variable de control (fuera de la función) para evitar peticiones duplicadas
+
+
+async buscarCliente() {
+        // 1. Bloqueo de seguridad: Si ya hay una búsqueda en curso, ignoramos la nueva
+        if (isSearchingClient) return; 
+
+        const searchValueRaw = this.ui.searchInput.value.trim();
+        const searchValue = searchValueRaw.toUpperCase();
+        
+        // Resetear la vista antes de buscar
+        this.ui.foundMessage.classList.add('hidden');
+        this.ui.newPrompt.classList.add('hidden');
+        this.ui.addForm.classList.add('hidden');
+        this.selectedCustomer = null;
+
+        // Ocultar botón de alerta de deuda principal por defecto al iniciar nueva búsqueda
+        const btnDeudaPrin = document.getElementById('btn-alerta-deuda-principal');
+        if(btnDeudaPrin) btnDeudaPrin.classList.add('hidden');
+
+        if (!searchValueRaw) return;
+
+        isSearchingClient = true; // Activamos el bloqueo
+        
+        // 🔥 PREPARAMOS LOS DATOS PARA UNA BÚSQUEDA A PRUEBA DE BALAS
+        const searchNormalizado = normalizarIdentificacion(searchValueRaw);
+        const searchLimpio = searchValueRaw.replace(/[-\s]/g, '').toUpperCase();
+
+        console.log(`🔍 Buscando cliente (Local): ${searchNormalizado}`);
+
+        // --- BÚSQUEDA 100% LOCAL (Instantánea) ---
+        let clienteEncontrado = this.lista.find(c => {
+            const rifDB = c.rif.toUpperCase();
+            const rifDBLimpio = rifDB.replace(/[-\s]/g, '');
+            
+            // Compara: Exacto formateado, exacto limpio, o asumiendo V / J
+            return rifDB === searchNormalizado || 
+                   rifDBLimpio === searchLimpio || 
+                   rifDBLimpio === ('V' + searchLimpio) ||
+                   rifDBLimpio === ('J' + searchLimpio) ||
+                   c.nombre.toUpperCase().includes(searchValue);
+        });
+
+        // --- Procesamiento del Resultado ---
+        if (clienteEncontrado) {
+            this.selectedCustomer = clienteEncontrado;
+            
+            // Sincronización con variables globales para compatibilidad del sistema
+            selectedCustomer = clienteEncontrado;
+            selectedCustomer.name = clienteEncontrado.nombre;
+            selectedCustomer.ci = clienteEncontrado.rif;
+            
+            this.ui.foundName.textContent = clienteEncontrado.nombre;
+            this.ui.foundId.textContent = clienteEncontrado.rif;
+            this.ui.foundMessage.classList.remove('hidden');
+
+            // 🔴 NUEVO: Verificamos de forma global si este cliente tiene deudas pendientes
+            if (typeof window.chequearDeudaGlobal === 'function') {
+                window.chequearDeudaGlobal(clienteEncontrado.rif);
+            }
+            
+        } else {
+            // Al no depender de Internet, mostramos el prompt de registro inmediatamente
+            console.log("❌ Cliente no está en el PC. Abriendo registro de una vez.");
+            this.ui.newPrompt.classList.remove('hidden');
+            // 🔥 PRECARGAMOS EL RIF YA FORMATEADO BONITO
+            this.ui.newId.value = searchNormalizado; 
+        }
+
+        isSearchingClient = false; // Liberamos el bloqueo
+    },
+
+    limpiarSeleccion() {
+        this.selectedCustomer = null;
+        if (this.ui.searchInput) this.ui.searchInput.value = '';
+        if (this.ui.foundMessage) this.ui.foundMessage.classList.add('hidden');
+
+        // Limpiar avisos de deuda al deseleccionar
+        const btnDeudaPrin = document.getElementById('btn-alerta-deuda-principal');
+        if(btnDeudaPrin) btnDeudaPrin.classList.add('hidden');
+    },
+
+    mostrarFormulario() {
+        this.ui.newPrompt.classList.add('hidden');
+        this.ui.addForm.classList.remove('hidden');
+        
+        setTimeout(() => this.ui.newName.focus(), 100);
+    },
+    
+    async agregarCliente() {
+        // 1. ESCUDO ANTIBLOQUEO: Usamos 'this' para referirnos a la variable del objeto
+        if (this.isAddingClient) return;
+
+        const nombre = this.ui.newName.value.trim();
+        let idInput = this.ui.newId.value.trim().toUpperCase();
+        const direccion = this.ui.newAddress.value.trim() || 'No especificada';
+
+        if (!nombre || !idInput) {
+            if (typeof messageBox === 'function') messageBox('Nombre y Cédula/RIF son obligatorios.', 'bg-red-500');
+            return;
+        }
+
+        // 🔥 LA MAGIA OCURRE AQUÍ: Pasamos el input por el normalizador inteligente
+        let rifFinal = normalizarIdentificacion(idInput);
+
+        if (!validarRIF(rifFinal)) {
+            if (typeof messageBox === 'function') messageBox('Identificación no válida.', 'bg-red-600');
+            return;
+        }
+
+        this.isAddingClient = true; // 🔒 Bloqueamos el proceso
+
+        try {
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
+            const companyIdActual = sesion ? sesion.companyId : 'DEFAULT';
+
+            const objetoCliente = {
+                rif: rifFinal, // Ahora sí se guarda como J-06500004-0
+                nombre: nombre,
+                direccion: direccion,
+                telefono: "00000000000", 
+                correo: "sin@correo.com", 
+                empresa_ID: companyIdActual,
+                fecha_modificacion: new Date().toISOString()
+            };
+
+            // 1. Guardado local prioritario (SQLite)
+            const resultado = await window.nexusAPI.guardarClienteLocal(objetoCliente);
+
+            if (resultado && !resultado.error) {
+                // --- ACTUALIZACIÓN VISUAL Y DE MEMORIA ---
+                this.selectedCustomer = objetoCliente;
+                selectedCustomer = objetoCliente; 
+                selectedCustomer.name = objetoCliente.nombre;
+                selectedCustomer.ci = objetoCliente.rif;
+                
+                this.ui.foundName.textContent = objetoCliente.nombre;
+                this.ui.foundId.textContent = objetoCliente.rif;
+                this.ui.foundMessage.classList.remove('hidden');
+
+                // --- LIMPIEZA DE INTERFAZ ---
+                this.ui.addForm.classList.add('hidden');
+                this.ui.newPrompt.classList.add('hidden'); 
+                this.ui.newName.value = '';
+                this.ui.newId.value = '';
+                this.ui.newAddress.value = '';
+                this.ui.searchInput.value = '';
+
+                await this.cargarTodos(); 
+                if (typeof messageBox === 'function') messageBox(`Cliente registrado y seleccionado.`, 'bg-green-500');
+
+                // 2. SINCRONIZACIÓN EN SEGUNDO PLANO
+                fetch('https://clientes.nexusposgobal.com/api/clientes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(objetoCliente)
+                })
+                .then(async (res) => {
+                    if (res.ok) {
+                        console.log("✅ Cliente sincronizado en Xeon Global.");
+                    } else {
+                        const errData = await res.json();
+                        console.warn("⚠️ El Xeon rechazó el registro. Motivo:", errData);
+                    }
+                })
+                .catch(() => console.warn("📡 Modo Offline: Se sincronizará después."));
+            }
+        } catch (err) {
+            console.error("Error al agregar cliente:", err);
+        } finally {
+            this.isAddingClient = false; // 🔓 Liberamos el bloqueo siempre al finalizar
+        }
+    },
+
+    configurarEventos() {
+        // Captura de elementos
+        this.ui.searchBtn = document.getElementById('search-client-btn');
+        this.ui.searchInput = document.getElementById('client-search');
+        this.ui.showFormBtn = document.getElementById('show-add-client-form-btn');
+        this.ui.addBtn = document.getElementById('add-client-btn');
+
+        // 1. Evento del botón buscar (Lupa)
+        if (this.ui.searchBtn) {
+            this.ui.searchBtn.onclick = (e) => {
+                e.preventDefault(); // 🟢 Evita cualquier acción por defecto del botón
+                this.buscarCliente();
+            };
+        }
+
+        // 2. Lógica de Enter en el Buscador (Búsqueda o Apertura de Formulario)
+        if (this.ui.searchInput) {
+            this.ui.searchInput.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault(); // 🟢 CRÍTICO: Bloquea el envío doble del navegador
+                    if (this.ui.newPrompt && !this.ui.newPrompt.classList.contains('hidden')) {
+                        this.mostrarFormulario();
+                    } else {
+                        this.buscarCliente();
+                    }
+                }
+            };
+        }
+
+        // 3. MEJORA: Lógica de Enter dentro del Formulario de Registro
+        // Si el cajero termina de escribir la dirección y da Enter, se guarda.
+        const inputsFormulario = [this.ui.newName, this.ui.newId, this.ui.newAddress];
+        inputsFormulario.forEach(input => {
+            if (input) {
+                input.onkeydown = (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault(); // 🟢 CRÍTICO: Bloquea el envío doble del navegador
+                        console.log("⌨️ Enter detectado en formulario: Guardando cliente...");
+                        this.agregarCliente();
+                    }
+                };
+            }
+        });
+
+        // 4. Botones manuales
+        if (this.ui.showFormBtn) {
+            this.ui.showFormBtn.onclick = (e) => {
+                e.preventDefault(); // 🟢 Evita rebote
+                this.mostrarFormulario();
+            };
+        }
+
+        if (this.ui.addBtn) {
+            this.ui.addBtn.onclick = (e) => {
+                e.preventDefault(); // 🟢 Evita que el clic del botón dispare eventos extra
+                this.agregarCliente();
+            };
+        }
+    }
+}; // 🟢 AQUÍ ESTABA EL ERROR: ESTA LLAVE CIERRA EL OBJETO GESTORCLIENTES
+
+// --- FUNCIONES INDEPENDIENTES (FUERA DEL OBJETO) ---
+
+async function sincronizarClientesPendientes() {
+    if (!navigator.onLine) return;
+
+    try {
+        const clientesLocales = await window.nexusAPI.obtenerClientesLocal();
+        if (!clientesLocales || clientesLocales.length === 0) return;
+
+        let subidosNuevos = 0;
+        console.log("🔄 Verificando clientes locales pendientes de subir...");
+
+        for (const cliente of clientesLocales) {
+            try {
+                // 🔥 MANTENEMOS EL FORMATO: Usamos la normalizadora para respetar la 'J' y los guiones
+                let rifSeguro = normalizarIdentificacion(cliente.rif);
+
+                const clienteSeguro = {
+                    rif: rifSeguro,
+                    nombre: cliente.nombre,
+                    direccion: cliente.direccion || 'No especificada',
+                    telefono: cliente.telefono || '00000000000',
+                    correo: cliente.correo || 'sin@correo.com',
+                    empresa_ID: cliente.empresa_ID || window.companyId || 'DEFAULT',
+                    fecha_modificacion: cliente.fecha_modificacion || new Date().toISOString()
+                };
+
+                const res = await fetch('https://clientes.nexusposgobal.com/api/clientes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(clienteSeguro)
+                }).catch(() => { /* Ignoramos errores de caída de red limpia */ });
+
+                // Cubrimos 200 (Actualizado) y 201 (Creado)
+                if (res && (res.status === 201 || res.status === 200)) {
+                    subidosNuevos++;
+                } 
+                
+            } catch (innerError) {
+                continue; 
+            }
+        }
+
+        if (subidosNuevos > 0) {
+            console.log(`🚀 [Motor Sync] ${subidosNuevos} nuevos clientes respaldados en la nube.`);
+        } else {
+            console.log(`✅ Todos los clientes locales ya están sincronizados.`);
+        }
+
+    } catch (error) {
+        console.warn("⚠️ [Motor Sync] Pausado temporalmente.");
+    }
+}
+
+// 2. Cuando el internet regresa: Hacemos un solo escaneo para subir lo que se vendió offline
+window.addEventListener('online', () => {
+    console.log("🌐 Internet restablecido. Sincronizando datos pendientes...");
+    if (typeof messageBox === 'function') messageBox("Conexión restablecida. Sincronizando...", 'bg-blue-500');
+    setTimeout(sincronizarClientesPendientes, 2000);
+});
+
+
+window.addItem = addItem;
+window.GestorClientes = GestorClientes;
+window.clearCart = clearCart;
+window.processSale = processSale;
+window.saveInvoice = saveInvoice;
+window.newInvoice = newInvoice;
+window.loadInvoice = loadInvoice;
+window.printInvoice = printInvoice;
+window.calculatePaymentSummary = calculatePaymentSummary;
+window.deleteInvoice = deleteInvoice;
+
+// 🟢 Clave: Solo exponemos los alias usados en renderCart (updateQuantity y removeItemFromCart)
+window.updateQuantity = updateCartItemQuantity; 
+window.removeItemFromCart = removeCartItem;
+
+    // Lógica para vincular eventos de cálculo de pagos
+    const paymentInputs = document.querySelectorAll('.payment-input');
+    
+    paymentInputs.forEach(input => {
+        // Adjuntar el cálculo al evento 'input' (mientras se escribe) y 'change' (al salir)
+        input.addEventListener('input', calculatePaymentSummary);
+        input.addEventListener('change', calculatePaymentSummary);
+    });
+
+    // Funciones para abrir/cerrar modal de métodos de pago
+window.openPaymentModal = function() {
+    const modal = document.getElementById('payment-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.style.zIndex = '999999';
+        modal.classList.remove('hidden');
+    }
+};
+
+window.closePaymentModal = function() {
+    const modal = document.getElementById('payment-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.add('hidden');
+    }
+    
+    // Forzar el cierre del modal de adjudicación de crédito si quedó abierto
+    if (typeof window.cerrarModalCredito === 'function') {
+        window.cerrarModalCredito();
+    }
+};
+
+    calculatePaymentSummary();
+
+    const formatLine = (label, amountText) => {
+        // ⚠️ DEBE INCLUIR ESTAS DOS LÍNEAS PARA SOLUCIONAR EL ERROR
+        const safeLabel = String(label || ''); 
+        const safeAmountText = String(amountText || '');
+
+        const maxLabelWidth = 23;
+        const maxAmountWidth = 25; 
+        
+        // Debe usar las variables 'safeLabel' y 'safeAmountText'
+        const paddedLabel = (safeLabel + ':').padEnd(maxLabelWidth);
+        const paddedAmount = safeAmountText.padStart(maxAmountWidth);
+        
+        return paddedLabel + paddedAmount + '\n';
+    };
+    
+    // Función auxiliar para envolver el texto por recuento de caracteres (17 caracteres)
+    const wrapText = (text, maxLength) => {
+        const lines = [];
+        while (text.length > 0) {
+            // Tomar el segmento y limpiar espacios al inicio si se lleva a la siguiente línea
+            let segment = text.substring(0, maxLength);
+            lines.push(segment.trimStart());
+            text = text.substring(maxLength);
+        }
+        return lines;
+    };
+
+async function fetchFacturaConfig() {
+    // Validamos que la API local (SQLite) esté disponible
+    if (!window.nexusAPI || typeof window.nexusAPI.obtenerConfiguracion !== 'function') {
+        console.warn("[CONFIG] API local no disponible. Usando valores por defecto.");
+        enableMulticurrency = false;
+        return;
+    }
+    
+    try {
+        // 🟢 NUEVO: Leer configuración directamente desde SQLite local
+        const configDataRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
+
+        if (configDataRaw) {
+            const fullConfigData = JSON.parse(configDataRaw);
+
+            // 🟢 LÓGICA PARA CARGAR TAMAÑO DE IMPRESORA
+            if (fullConfigData.tamañoImpresora && (fullConfigData.tamañoImpresora === "80" || fullConfigData.tamañoImpresora === "58")) {
+                printerSize = fullConfigData.tamañoImpresora; 
+                console.log(`[CONFIG] Tamaño de impresora cargado: ${printerSize}mm.`);
+            } else {
+                printerSize = "58"; 
+                console.warn("[CONFIG] Campo 'tamañoImpresora' inválido/no encontrado. Usando 58mm.");
+            }
+
+             // 🟢 LÓGICA PARA CARGAR FACTURA MULTIMONEDA
+             const enableMulticurrencyFromDb = fullConfigData.enableMulticurrency;
+             enableMulticurrency = (enableMulticurrencyFromDb === true); 
+             tipoEmisionFiscal = fullConfigData.tipo_emision || "TICKET_NO_FISCAL";console.log(`[CONFIG] Modo Fiscal establecido a: ${tipoEmisionFiscal}`);
+             console.log(`[CONFIG] Factura Multimoneda: ${enableMulticurrency ? 'Habilitada' : 'Deshabilitada'}.`);
+
+            // 🟢 LÓGICA PARA EL ENCABEZADO
+            if (fullConfigData.encabezadoFactura) {
+                const configDataEncabezado = fullConfigData.encabezadoFactura;
+                if (configDataEncabezado.line1 && configDataEncabezado.line2 && configDataEncabezado.line3 && configDataEncabezado.line4) {
+                    encabezadoFactura = configDataEncabezado;
+                    console.log("[CONFIG] Encabezado de factura cargado de SQLite.");
+                } else {
+                    console.warn("[CONFIG] La configuración de 'encabezadoFactura' está incompleta. Usando valores por defecto.");
+                }
+            } else {
+                console.warn("[CONFIG] No se encontró el campo 'encabezadoFactura'. Usando valores por defecto.");
+            }
+
+        } else {
+            console.warn("[CONFIG] No se encontró configuración de 'factura' en SQLite. Usando todos los valores por defecto.");
+            enableMulticurrency = false; 
+        }
+    } catch (error) {
+        console.error("[CONFIG] Error al buscar la configuración de factura local:", error);
+        enableMulticurrency = false; 
+    }
+}
+
+
+
+async function printInvoice(saleData = null) {
+    if (cart.length === 0) {
+        messageBox("El carrito está vacío.", 'bg-red-500');
+        return;
+    }
+
+    const clienteActivo = saleData ? { nombre: saleData.cliente_nombre, rif: saleData.cliente_rif } : selectedCustomer;
+
+    if (!clienteActivo) {
+        messageBox("Por favor, seleccione un cliente.", 'bg-red-500');
+        return;
+    }
+    
+    // --- 1. RECUPERAR CONFIGURACIÓN ---
+    let printerName = null;
+    let printerSize = "58"; 
+    const configDataRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
+    if (configDataRaw) {
+        const configFactura = JSON.parse(configDataRaw);
+        printerName = configFactura.impresoraSeleccionada;
+        if(configFactura.tamañoImpresora) printerSize = configFactura.tamañoImpresora;
+    }
+
+    if (!printerName) {
+        messageBox("⚠️ Impresora no configurada.", 'bg-yellow-500');
+        return;
+    }
+
+    // 🔥 USAR DATOS DEL MASTER (CORRELATIVO REAL)
+    let nroFactura, nroControl;
+    if (saleData) {
+        nroFactura = saleData.numero_factura;
+        nroControl = saleData.numero_control;
+    } else {
+        const correlativo = await window.nexusAPI.obtenerProximoCorrelativo('FORMA_LIBRE');
+        nroFactura = (correlativo && correlativo.formato) ? correlativo.formato : `FL-${Math.floor(Math.random() * 900000)}`;
+        nroControl = `00-${Math.floor(Math.random() * 900000)}`;
+    }
+    
+    // --- 2. CÁLCULOS FISCALES PRECISOS EN BS ---
+    let totalExentoBS = 0, baseGeneralBS = 0, ivaGeneralBS = 0, globalTotalBS = 0;
+    const LINE_WIDTH = (printerSize === "80") ? 48 : 32;
+    const CRLF = "\r\n", SEPARATOR = "-".repeat(LINE_WIDTH) + CRLF;
+    const colQty = 4, colPrice = 7, colSubt = 7; 
+    const colDesc = LINE_WIDTH - colQty - colPrice - colSubt - 3;
+
+    let tableBody = "";
+    cart.forEach(item => {
+        const tasaItem = item.tasa || window.dolarExchangeRate || 1;
+        const esUSD = item.moneda === 'USD' || item.isUSD === true;
+        const baseBS = esUSD ? (item.baseImponible * tasaItem) : item.baseImponible;
+        const ivaBS = esUSD ? (item.montoIva * tasaItem) : item.montoIva;
+        const alicuota = parseFloat(item.tasaIva);
+        
+        if (alicuota === 0) totalExentoBS += baseBS;
+        else { baseGeneralBS += baseBS; ivaGeneralBS += ivaBS; }
+        globalTotalBS += (baseBS + ivaBS);
+
+        const indicador = (alicuota === 0) ? "(E)" : "(G)";
+        const descStr = `${item.nombre.toUpperCase()} ${indicador}`.substring(0, colDesc).padEnd(colDesc);
+        tableBody += `${Number(item.cantidad).toString().padStart(colQty)} ${descStr} ${(baseBS / item.cantidad).toFixed(2).padStart(colPrice)} ${baseBS.toFixed(2).padStart(colSubt)}${CRLF}`;
+    });
+
+    const pagoDolar = parseFloat(document.getElementById('dolar-amount').value) || 0;
+    const montoIGTFBS = pagoDolar > 0 ? (pagoDolar * (window.dolarExchangeRate || 1)) * 0.03 : 0;
+    const totalConIGTF_BS = globalTotalBS + montoIGTFBS;
+    const totalFinalUSD = totalConIGTF_BS / (window.dolarExchangeRate || 1);
+
+
+    let t = "\x1B\x40"; 
+
+    if (encabezadoFactura.line1) t += centerText(encabezadoFactura.line1.toUpperCase(), LINE_WIDTH) + CRLF;
+    if (encabezadoFactura.line2) t += centerText(encabezadoFactura.line2.toUpperCase(), LINE_WIDTH) + CRLF;
+    if (encabezadoFactura.line3) t += centerText(`RIF: ${encabezadoFactura.line3.toUpperCase()}`, LINE_WIDTH) + CRLF;
+    if (encabezadoFactura.line4) t += centerText(encabezadoFactura.line4.toUpperCase(), LINE_WIDTH) + CRLF;
+    if (encabezadoFactura.line6) t += centerText(encabezadoFactura.line6.toUpperCase(), LINE_WIDTH) + CRLF;
+    if (encabezadoFactura.line5) t += centerText(`TLF: ${encabezadoFactura.line5}`, LINE_WIDTH) + CRLF;
+    t += SEPARATOR;
+    t += centerText("FACTURA", LINE_WIDTH) + CRLF;
+    t += `NRO FACTURA: ${nroFactura}${CRLF}`; // ✅ NÚMERO DEL MASTER
+    t += `NRO CONTROL: ${nroControl}${CRLF}`;
+    t += `FECHA: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}${CRLF}`;
+    t += SEPARATOR;
+    t += `CLIENTE: ${clienteActivo.nombre}${CRLF}`;
+    t += `RIF/CI: ${clienteActivo.rif}${CRLF}`;
+    t += SEPARATOR;
+
+    t += "CANT".padEnd(colQty) + " " + "DESCRIP".padEnd(colDesc) + " " + "P.UNIT".padStart(colPrice) + " " + "SUBT.".padStart(colSubt) + CRLF;
+    t += SEPARATOR;
+    t += tableBody;
+    t += SEPARATOR;
+
+    if (totalExentoBS > 0) t += formatLR("BI EXENTO:", totalExentoBS.toFixed(2), LINE_WIDTH) + CRLF;
+    if (baseGeneralBS > 0) {
+        t += formatLR("BI GENERAL (16%):", baseGeneralBS.toFixed(2), LINE_WIDTH) + CRLF;
+        t += formatLR("IVA (16%):", ivaGeneralBS.toFixed(2), LINE_WIDTH) + CRLF;
+    }
+    if (montoIGTFBS > 0) t += formatLR("IGTF (3%):", montoIGTFBS.toFixed(2), LINE_WIDTH) + CRLF;
+    t += formatLR("TOTAL BS:", totalConIGTF_BS.toFixed(2), LINE_WIDTH) + CRLF;
+    
+    if (typeof enableMulticurrency !== 'undefined' && enableMulticurrency) {
+        t += SEPARATOR;
+        t += formatLR("TOTAL USD ($):", totalFinalUSD.toFixed(2), LINE_WIDTH) + CRLF;
+        t += formatLR("TASA BCV (BS):", (window.dolarExchangeRate || 1).toFixed(2), LINE_WIDTH) + CRLF;
+    }
+    
+t += SEPARATOR;
+    t += centerText("PROVIDENCIA SNAT/2024/000102", LINE_WIDTH) + CRLF;
+    t += centerText(`HASH: ${btoa(nroFactura).substring(0, 16)}`, LINE_WIDTH) + CRLF;
+    if (printerSize === "80") {
+        t += CRLF.repeat(2) + "\x1B\x6D"; 
+    } else {
+        t += CRLF.repeat(2)+ "\x1B\x6D"; 
+    }
+
+    try {
+        const result = await window.nexusAPI.imprimirTextoLibre(t, printerName);
+        if (result.exito) messageBox(`✅ Factura ${nroFactura} Impresa`, 'bg-green-500');
+    } catch (error) {
+        messageBox(`Error: ${error.message}`, 'bg-red-500');
+    }
+}
+
+
+function centerText(text, width) {
+    text = text.trim();
+    if (text.length >= width) return text.substring(0, width);
+    const spaces = Math.floor((width - text.length) / 2);
+    return " ".repeat(spaces) + text;
+}
+
+// Función auxiliar para alinear izquierda-derecha
+function formatLR(left, right, width) {
+    const safeLeft = String(left || '');
+    const safeRight = String(right || '');
+    const spaceNeeded = width - safeLeft.length - safeRight.length;
+    if (spaceNeeded > 0) {
+        return safeLeft + " ".repeat(spaceNeeded) + safeRight;
+    }
+    return safeLeft.substring(0, width - safeRight.length - 1) + " " + safeRight;
+}
+
+window.editingItemIndex = null;
+
+// Función Principal: Crea y abre el modal
+window.editItemTasa = function(index) {
+    const item = cart[index];
+    if (!item) return;
+    window.editingItemIndex = index;
+
+    // Limpieza de seguridad
+    const oldModal = document.getElementById('tasa-modal');
+    if (oldModal) oldModal.remove();
+
+    const modalHTML = `
+    <div id="tasa-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style="z-index: 999999;">
+        <div class="bg-white rounded-[20px] shadow-2xl w-full max-w-[450px] overflow-hidden p-6 relative">
+            
+            <button onclick="window.closeTasaModal()" class="absolute top-4 right-5 text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+
+            <h2 class="text-[#1e293b] text-2xl font-bold text-center mb-6">Ajustar Tasa</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-[#1e293b] font-semibold mb-1.5 ml-1">Producto</label>
+                    <div class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-500 italic">
+                        ${item.name}
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-[#1e293b] font-semibold mb-1.5 ml-1">Nueva Tasa (Bs)</label>
+                    <input type="number" id="nueva-tasa-input" step="0.01" 
+                           value="${item.tasa || window.dolarExchangeRate || 0}"
+                           placeholder="0.00"
+                           class="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all">
+                </div>
+
+                <div class="flex gap-3 mt-8">
+                    <button onclick="window.closeTasaModal()" 
+                            class="flex-1 bg-[#64748b] text-white py-3.5 rounded-xl font-bold hover:bg-[#475569] transition-colors">
+                        Cancelar
+                    </button>
+                    <button onclick="window.saveTasaChanges()" 
+                            class="flex-1 bg-[#dc2626] text-white py-3.5 rounded-xl font-bold hover:bg-[#b91c1c] shadow-lg shadow-red-200 transition-colors">
+                        Confirmar Tasa
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>`;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    // Foco y selección instantánea
+    setTimeout(() => {
+        const input = document.getElementById('nueva-tasa-input');
+        if (input) { input.focus(); input.select(); }
+    }, 50);
+};
+
+// --- Las funciones closeTasaModal y saveTasaChanges se mantienen igual ---
+window.closeTasaModal = function() {
+    const modal = document.getElementById('tasa-modal');
+    if (modal) modal.remove();
+    window.editingItemIndex = null;
+};
+
+window.saveTasaChanges = function() {
+    const input = document.getElementById('nueva-tasa-input');
+    if (!input) return;
+    const nuevaTasa = parseFloat(input.value);
+
+    if (!isNaN(nuevaTasa) && nuevaTasa > 0 && window.editingItemIndex !== null) {
+        cart[window.editingItemIndex].tasa = nuevaTasa;
+        cart[window.editingItemIndex].moneda = 'USD';
+        if (typeof renderCart === 'function') renderCart(); 
+        window.closeTasaModal();
+        if (typeof messageBox === 'function') messageBox("Tasa actualizada", 'bg-green-600');
+    }
+};
+
+// ==========================================
+// MÓDULO DE ADJUDICACIÓN DE CRÉDITO
+// ==========================================
+window.clienteCreditoSeleccionado = null;
+window.clienteCreditoTemporal = null;
+let clientesCreditoCache = [];
+
+window.abrirModalCredito = async function() {
+    document.getElementById('modal-adjudicar-credito').classList.remove('hidden');
+    document.getElementById('buscador-clientes-credito').value = '';
+    document.getElementById('lista-clientes-credito').innerHTML = '<div class="text-center p-8 text-gray-500"><div class="spinner mx-auto border-t-indigo-600 mb-2"></div>Cargando clientes...</div>';
+    
+    try {
+        clientesCreditoCache = await window.nexusAPI.obtenerClientesLocal() || [];
+        window.filtrarClientesCredito('');
+        document.getElementById('buscador-clientes-credito').focus();
+    } catch(e) {
+        console.error(e);
+        document.getElementById('lista-clientes-credito').innerHTML = '<div class="text-center p-4 text-red-500">Error al cargar clientes</div>';
+    }
+};
+
+window.cerrarModalCredito = function() {
+    document.getElementById('modal-adjudicar-credito').classList.add('hidden');
+};
+
+window.filtrarClientesCredito = function(query) {
+    const q = query.toLowerCase().trim();
+    const lista = document.getElementById('lista-clientes-credito');
+    lista.innerHTML = '';
+    
+    const filtrados = clientesCreditoCache.filter(c => 
+        c.nombre.toLowerCase().includes(q) || 
+        c.rif.toLowerCase().includes(q)
+    );
+
+    if(filtrados.length === 0) {
+        lista.innerHTML = '<div class="text-center p-8 text-gray-500 font-medium">No se encontraron clientes</div>';
+        return;
+    }
+
+    filtrados.forEach(c => {
+        const div = document.createElement('div');
+        div.className = "p-4 border-b border-gray-100 hover:bg-indigo-50 cursor-pointer flex justify-between items-center transition-colors rounded-lg mx-2 my-1";
+        div.innerHTML = `
+            <div>
+                <div class="font-bold text-gray-800 uppercase">${c.nombre}</div>
+                <div class="text-xs font-mono text-gray-500">${c.rif}</div>
+            </div>
+            <span class="material-icons text-gray-300">chevron_right</span>
+        `;
+        div.onclick = () => {
+            // Efecto visual de selección
+            Array.from(lista.children).forEach(el => el.classList.remove('bg-indigo-100', 'border-indigo-300'));
+            div.classList.add('bg-indigo-100', 'border-indigo-300');
+            window.seleccionarClienteCredito(c);
+        };
+        lista.appendChild(div);
+    });
+};
+
+window.seleccionarClienteCredito = async function(cliente) {
+    console.log("-----------------------------------------");
+    console.log("👤 [RASTREO] Seleccionando a:", cliente.nombre);
+    
+    // 1. UI Básica: Actualizar nombre y activar botón de confirmar
+    window.clienteCreditoTemporal = cliente;
+    const label = document.getElementById('cliente-seleccionado-credito');
+    const btnConfirmar = document.getElementById('btn-confirmar-credito');
+    const btnAlerta = document.getElementById('btn-alerta-deuda');
+
+    if (label) label.innerText = `${cliente.nombre} (${cliente.rif})`;
+    if (btnConfirmar) btnConfirmar.disabled = false;
+
+    // 2. Verificación de comunicación con el Bridge (Cerebro)
+    if (!window.nexusAPI || !window.nexusAPI.obtenerDeudaCliente) {
+        console.error("❌ [ERROR] nexusAPI.obtenerDeudaCliente no está definido en preload.js");
+        return;
+    }
+
+    try {
+        console.log("📡 [RASTREO] Enviando RIF a DB:", cliente.rif);
+        // Llamada a la base de datos local
+        const deudas = await window.nexusAPI.obtenerDeudaCliente(cliente.rif);
+        
+        console.log("📦 [RASTREO] Datos recibidos de DB:", deudas);
+
+        if (deudas && deudas.length > 0) {
+            // Calcular deuda pendiente (monto_deuda - monto_pagado)
+            const totalDeudaUsd = deudas.reduce((acc, d) => acc + (d.monto_deuda - (d.monto_pagado || 0)), 0);
+            
+            if (totalDeudaUsd > 0) {
+                console.log(`⚠️ [RASTREO] Deuda encontrada: $${totalDeudaUsd.toFixed(2)}`);
+                window.deudaActualCliente = totalDeudaUsd;
+                window.detallesDeudaArray = deudas;
+                
+                if (btnAlerta) btnAlerta.classList.remove('hidden');
+            } else {
+                console.log("✅ [RASTREO] El historial indica saldo 0.");
+                if (btnAlerta) btnAlerta.classList.add('hidden');
+            }
+        } else {
+            console.log("✨ [RASTREO] Cliente sin registros de deuda.");
+            window.deudaActualCliente = 0;
+            if (btnAlerta) btnAlerta.classList.add('hidden');
+        }
+    } catch (err) {
+        console.error("❌ [RASTREO] Error en la consulta:", err);
+    }
+    console.log("-----------------------------------------");
+};
+
+window.confirmarClienteCredito = function() {
+    if(!window.clienteCreditoTemporal) return;
+    window.clienteCreditoSeleccionado = window.clienteCreditoTemporal;
+    
+    const display = document.getElementById('credit-client-display');
+    const nameSpan = document.getElementById('credit-client-name');
+    
+    nameSpan.textContent = window.clienteCreditoSeleccionado.nombre;
+    display.classList.remove('hidden');
+    
+    window.cerrarModalCredito();
+};
+const originalSeleccionar = window.seleccionarClienteCredito;
+
+
+window.deudaActualCliente = 0;
+
+// --- FUNCIÓN BLINDADA Y DINÁMICA PARA VER DETALLES ---
+window.verDetallesDeuda = function() {
+    console.log("🔥 Ejecutando verDetallesDeuda de forma dinámica...");
+    try {
+        // 1. Si ya existe un modal viejo en pantalla, lo destruimos
+        const oldModal = document.getElementById('modal-detalles-deuda-dinamico');
+        if (oldModal) oldModal.remove();
+
+        const tasa = window.dolarExchangeRate || 1;
+        const totalBs = window.deudaActualCliente * tasa;
+
+        const filas = (window.detallesDeudaArray || []).map(d => `
+            <tr class="border-b hover:bg-gray-50 transition-colors">
+                <td class="p-3">${new Date(d.fecha_emision).toLocaleDateString()}</td>
+                <td class="p-3 text-xs font-mono text-gray-500">${d.venta_id}</td>
+                <td class="p-3 text-right font-black text-red-600">$${(d.monto_deuda - d.monto_pagado).toFixed(2)}</td>
+            </tr>
+        `).join('');
+
+        // 2. Creamos el modal desde cero y lo inyectamos al body
+        const modalHTML = `
+        <div id="modal-detalles-deuda-dinamico" class="fixed inset-0 bg-black/70 flex items-center justify-center backdrop-blur-sm" style="z-index: 999999;">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in duration-200 scale-100">
+                <div class="p-5 border-b bg-red-50 flex justify-between items-center">
+                    <h2 class="text-xl font-black text-red-800 flex items-center">
+                        <span class="material-icons mr-2">account_balance_wallet</span> ESTADO DE CUENTA
+                    </h2>
+                    <button onclick="document.getElementById('modal-detalles-deuda-dinamico').remove()" class="text-gray-400 hover:text-red-600 transition-colors">
+                        <span class="material-icons text-3xl">close</span>
+                    </button>
+                </div>
+                <div class="p-6">
+                    <div class="bg-red-50 p-6 rounded-xl border border-red-100 text-center shadow-inner">
+                        <div class="text-gray-600 text-sm uppercase font-bold tracking-widest">Total Pendiente</div>
+                        <div class="text-5xl font-black text-red-600 my-2">$${(window.deudaActualCliente || 0).toFixed(2)}</div>
+                        <div class="text-2xl font-bold text-gray-800">Bs. ${totalBs.toLocaleString('es-VE', {minimumFractionDigits: 2})}</div>
+                        <div class="text-xs text-gray-400 mt-2 font-medium">Tasa BCV aplicada: ${tasa}</div>
+                    </div>
+                    <div class="max-h-60 overflow-y-auto mt-6 border border-gray-200 rounded-lg shadow-sm">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-100 text-gray-700 uppercase text-xs sticky top-0 shadow-sm">
+                                <tr>
+                                    <th class="p-3 font-bold">Fecha</th>
+                                    <th class="p-3 font-bold">Recibo</th>
+                                    <th class="p-3 text-right font-bold">Monto ($)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${filas}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="p-5 bg-gray-50 border-t flex justify-end">
+                    <button onclick="window.iniciarPagoDeuda()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 px-10 rounded-xl shadow-lg transition transform hover:scale-105 active:scale-95 text-lg">
+                        PAGAR DEUDA AHORA
+                    </button>
+                </div>
+            </div>
+        </div>`;
+
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        console.log("✅ Modal de deuda inyectado dinámicamente sobre todo el sistema.");
+    } catch (error) {
+        console.error("❌ Error interno al generar el modal de deuda:", error);
+    }
+};
+
+// --- FUNCIÓN PARA COBRAR ---
+// --- FUNCIÓN PARA COBRAR E INYECTAR EN CARRITO ---
+// --- FUNCIÓN PARA COBRAR E INYECTAR EN CARRITO (CORREGIDA) ---
+window.iniciarPagoDeuda = function() {
+    console.log("💳 Iniciando proceso de cobro de deuda...");
+    
+    const modalDeuda = document.getElementById('modal-detalles-deuda-dinamico');
+    if (modalDeuda) modalDeuda.remove();
+    if (typeof window.cerrarModalCredito === 'function') window.cerrarModalCredito();
+    
+    const clienteDeudor = window.clienteCreditoTemporal || (window.GestorClientes ? window.GestorClientes.selectedCustomer : null) || selectedCustomer;
+    
+    if (!clienteDeudor) {
+        console.error("❌ Error: Cliente no detectado en memoria al intentar pagar.");
+        return;
+    }
+
+    const totalDeudaBs = window.deudaActualCliente * (window.dolarExchangeRate || 1);
+    
+    // 🔥 NUEVO: INYECTAR LA DEUDA AL CARRITO
+    // Verificamos que no se haya agregado ya para evitar duplicados si le dan doble clic
+    const existeDeuda = cart.find(item => item.id === 'PAGO-DEUDA');
+    if (!existeDeuda) {
+        cart.push({
+            id: 'PAGO-DEUDA', // ID especial para que el sistema lo reconozca
+            codigo: 'DEUDA',
+            nombre: `ABONO DE DEUDA - ${clienteDeudor.nombre}`,
+            precio: totalDeudaBs,
+            cantidad: 1,
+            tier: 'p1', // Aseguramos que la tabla lo reconozca
+            tasaIva: 0, // Las deudas son EXENTAS de IVA porque ya pagaron impuestos en la venta original
+            baseImponible: totalDeudaBs,
+            montoIva: 0,
+            subtotal: totalDeudaBs,
+            tasa: window.dolarExchangeRate || 1,
+            moneda: 'BS'
+        });
+        
+        // 🟢 CORRECCIÓN: Llamamos a la función correcta de renderizado de tu sistema
+        if (typeof renderCart === 'function') renderCart();
+    }
+    
+    // Abrimos la caja de pagos (automáticamente tomará el total del carrito)
+    if (typeof window.openPaymentModal === 'function') window.openPaymentModal();
+    
+    console.log(`✅ Deuda de Bs ${totalDeudaBs} agregada al carrito para ${clienteDeudor.nombre}`);
+};
+
+// 🛡️ ESCUDO ANTI-BLOQUEOS: Forzar apertura al hacer clic en el botón principal
+document.addEventListener('click', (e) => {
+    const btnPrincipal = e.target.closest('#btn-alerta-deuda-principal');
+    if (btnPrincipal) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.verDetallesDeuda();
+    }
+});
+
+
+// --- VERIFICADOR GLOBAL DE DEUDAS ---
+window.chequearDeudaGlobal = async function(rif) {
+    const btnPrincipal = document.getElementById('btn-alerta-deuda-principal');
+    const btnModal = document.getElementById('btn-alerta-deuda');
+    
+    try {
+        console.log(`📡 Consultando deuda para RIF: ${rif}`);
+        const deudas = await window.nexusAPI.obtenerDeudaCliente(rif);
+        
+        if (deudas && deudas.length > 0) {
+            const totalDeudaUsd = deudas.reduce((acc, d) => acc + (d.monto_deuda - (d.monto_pagado || 0)), 0);
+            
+            if (totalDeudaUsd > 0) {
+                console.log(`⚠️ DEUDA DETECTADA: $${totalDeudaUsd.toFixed(2)}`);
+                window.deudaActualCliente = totalDeudaUsd;
+                window.detallesDeudaArray = deudas;
+                
+                // Mostrar botones en ambas pantallas
+                if (btnPrincipal) btnPrincipal.classList.remove('hidden');
+                if (btnModal) btnModal.classList.remove('hidden');
+                return;
+            }
+        }
+        
+        // Si no hay deuda o está pagada
+        console.log(`✅ Cliente SOLVENTE.`);
+        window.deudaActualCliente = 0;
+        if (btnPrincipal) btnPrincipal.classList.add('hidden');
+        if (btnModal) btnModal.classList.add('hidden');
+        
+    } catch(e) {
+        console.error("❌ Error checando deuda:", e);
+    }
+};
+
+// ==========================================
+// 🚀 MOTOR DE ARRANQUE ULTRARRÁPIDO (CORREGIDO)
+// ==========================================
+async function arrancarSistema() {
+    console.time("⏱️ Tiempo de carga Nexus"); 
+    
+    try {
+        const sesion = await window.nexusAPI.obtenerSesionLocal();
+        if (!sesion) {
+            console.warn("⚠️ No hay sesión activa.");
+            return;
+        }
+
+        // Asignaciones globales seguras (las variables ya existen aquí abajo)
+        companyId = sesion.companyId;
+        branchId = sesion.branchId;
+        userRole = sesion.role;
+        userId = sesion.uid;
+        isAuthReady = true; 
+        window.companyId = sesion.companyId;
+        window.branchId = sesion.branchId;
+        window.userId = sesion.uid;
+        window.isAuthReady = true;
+
+        // 🔥 CARGA EN PARALELO: Ejecutamos todo al mismo tiempo
+        await Promise.all([
+            fetchProducts(),
+            (typeof GestorClientes !== 'undefined') ? GestorClientes.inicializar() : Promise.resolve(),
+            (typeof fetchFacturaConfig === 'function') ? fetchFacturaConfig() : Promise.resolve(),
+            (typeof fetchExchangeRate === 'function') ? fetchExchangeRate() : Promise.resolve()
+        ]);
+
+        // Inicialización de interfaces
+        try { if (typeof loadBasculaConfigAndInitSocket === 'function') loadBasculaConfigAndInitSocket(); } catch(e){}
+        if (typeof renderCart === 'function') renderCart();
+        if (typeof setupSearchListener === 'function') setupSearchListener();
+        if (typeof setupBarcodeSearchListener === 'function') setupBarcodeSearchListener();
+        if (typeof calculatePaymentSummary === 'function') calculatePaymentSummary();
+
+        console.timeEnd("⏱️ Tiempo de carga Nexus"); 
+        console.log("🚀 Sistema de Facturación Nexus POS listo.");
+
+        // Retrasamos la subida de datos a la nube para no afectar el arranque
+        setTimeout(() => {
+            if (typeof sincronizarClientesPendientes === 'function') sincronizarClientesPendientes();
+        }, 5000);
+
+    } catch (error) {
+        console.error("❌ Error crítico al arrancar:", error);
+    }
+}
+
+// ⚡ Ejecutar Inmediatamente (Al ser type="module", el DOM ya está garantizado)
+arrancarSistema();
+</script>

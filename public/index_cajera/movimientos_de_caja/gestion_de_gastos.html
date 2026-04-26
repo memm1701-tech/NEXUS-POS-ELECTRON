@@ -254,72 +254,79 @@
     }
 
     // --- 3. LÓGICA DE REGISTRO (GUARDAR EN SQLITE) ---
-    async function addExpense() {
-        // 1. Validaciones con alertas visuales (Anti-Fallo Silencioso)
-        if (!isAuthReady) {
-            showModal("Sistema Ocupado", "El módulo aún está cargando la base de datos local. Espera un segundo.", true);
-            return;
-        }
-        if (!userId) {
-            showModal("Error de Sesión", "No se detectó la identidad del cajero. Vuelve al Login.", true);
-            return;
-        }
-        if (!window.nexusAPI || typeof window.nexusAPI.guardarMovimientoCaja !== 'function') {
-            showModal("Fallo de Puente", "El HTML no puede ver a preload.js", true);
-            return;
-        }
-
-        const description = expenseDescriptionInput.value.trim();
-        const amountBs = parseFloat(expenseAmountBsInput.value) || 0;
-        const amountUsd = parseFloat(expenseAmountUsdInput.value) || 0;
-        const methodBs = expenseMethodBs.value.trim(); 
-
-        // 2. Validaciones de negocio
-        if (description === '' || (amountBs <= 0 && amountUsd <= 0)) {
-            showModal("Datos Incompletos", "Debes ingresar una descripción y un monto válido.", true);
-            return;
-        }
-        
-        if (amountBs > 0 && methodBs === '') {
-            showModal("Falta Método", "Selecciona de dónde salió el dinero en Bolívares.", true);
-            return;
-        }
-
-        addExpenseBtn.disabled = true;
-        addExpenseBtn.innerHTML = `<span class="spinner"></span> Registrando...`;
-
-        try {
-            // Estructura compatible con SQLite (Observa que el tipo es GASTO)
-            const nuevoMovimiento = {
-                id: `GST-${Date.now()}`,
-                tipo: 'GASTO',
-                concepto: description,
-                monto: amountBs,
-                monto_usd: amountUsd,
-                metodo_pago: amountBs > 0 ? methodBs : 'DIVISA',
-                fecha: new Date().toISOString(),
-                cashier_id: userId,
-                company_id: companyId,
-                branch_id: branchId || 'SUC-01'
-            };
-
-            // 3. ENVÍO DIRECTO A MAIN.JS
-            const resultado = await window.nexusAPI.guardarMovimientoCaja(nuevoMovimiento);
-            
-            if (resultado && !resultado.error) {
-                showModal("Éxito", "Gasto guardado localmente para el Cierre Z.");
-                limpiarCampos();
-                loadExpenses(); // Refrescar la tabla al instante
-            } else {
-                throw new Error(resultado.error || "SQLite rechazó la inserción.");
-            }
-        } catch (error) {
-            showModal("Error SQL", `Fallo interno: ${error.message}`, true);
-        } finally {
-            addExpenseBtn.disabled = false;
-            addExpenseBtn.innerHTML = `<span class="material-icons mr-2">remove_circle_outline</span> Agregar Gasto`;
-        }
+async function addExpense() {
+    if (!isAuthReady) {
+        showModal("Sistema Ocupado", "El módulo aún está cargando la base de datos local. Espera un segundo.", true);
+        return;
     }
+    if (!userId) {
+        showModal("Error de Sesión", "No se detectó la identidad del cajero. Vuelve al Login.", true);
+        return;
+    }
+    if (!window.nexusAPI || typeof window.nexusAPI.guardarMovimientoCaja !== 'function') {
+        showModal("Fallo de Puente", "El HTML no puede ver a preload.js", true);
+        return;
+    }
+
+    const description = expenseDescriptionInput.value.trim();
+    const amountBs = parseFloat(expenseAmountBsInput.value) || 0;
+    const amountUsd = parseFloat(expenseAmountUsdInput.value) || 0;
+    const methodBs = expenseMethodBs.value.trim();
+
+    if (description === '' || (amountBs <= 0 && amountUsd <= 0)) {
+        showModal("Datos Incompletos", "Debes ingresar una descripción y un monto válido.", true);
+        return;
+    }
+
+    if (amountBs > 0 && methodBs === '') {
+        showModal("Falta Método", "Selecciona de dónde salió el dinero en Bolívares.", true);
+        return;
+    }
+
+    addExpenseBtn.disabled = true;
+    addExpenseBtn.innerHTML = `<span class="spinner"></span> Registrando...`;
+
+    try {
+        const nuevoMovimiento = {
+            id: `EXP-${Date.now()}`,
+            tipo: 'GASTO',
+            concepto: description,
+            monto: amountBs,
+            monto_usd: amountUsd,
+            metodo_pago: amountBs > 0 ? methodBs : 'DIVISA',
+            fecha: new Date().toISOString(),
+            cashier_id: userId,
+            company_id: companyId,
+            branch_id: branchId || 'SUC-01'
+        };
+
+        const resultado = await window.nexusAPI.guardarMovimientoCaja(nuevoMovimiento);
+
+        if (resultado && !resultado.error) {
+            showModal("Éxito", "Gasto guardado localmente para el Cierre Z.");
+            
+            // 🔥 AQUÍ LLAMAMOS A LA IMPRESORA CON LOS DATOS DEL GASTO 🔥
+            if (typeof imprimirReciboGasto === 'function') {
+                await imprimirReciboGasto({
+                    concepto: description,
+                    montoBs: amountBs,
+                    metodoBs: methodBs,
+                    montoUsd: amountUsd
+                });
+            }
+
+            limpiarCampos();
+            loadExpenses();
+        } else {
+            throw new Error(resultado.error || "SQLite rechazó la inserción.");
+        }
+    } catch (error) {
+        showModal("Error SQL", `Fallo interno: ${error.message}`, true);
+    } finally {
+        addExpenseBtn.disabled = false;
+        addExpenseBtn.innerHTML = `<span class="material-icons mr-2">remove_circle_outline</span> Registrar Gasto`;
+    }
+}
 
     // --- 4. CARGA DE DATOS (LECTURA DESDE SQLITE) ---
     async function loadExpenses() {
@@ -408,6 +415,91 @@
     // Modales
     document.getElementById('close-info-message-modal')?.addEventListener('click', () => modalOverlay.classList.remove('open'));
     document.getElementById('info-message-ok-btn')?.addEventListener('click', () => modalOverlay.classList.remove('open'));
+
+// --- FUNCIÓN PARA IMPRIMIR RECIBO DE GASTO ---
+async function imprimirReciboGasto(gastoData) {
+    let printerName = null;
+    let printerSize = "58"; 
+    try {
+        const configDataRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
+        if (configDataRaw) {
+            const configFactura = JSON.parse(configDataRaw);
+            printerName = configFactura.impresoraSeleccionada;
+            if(configFactura.tamañoImpresora) printerSize = configFactura.tamañoImpresora;
+        }
+    } catch (e) {
+        console.warn("⚠️ No se pudo leer la configuración de la impresora.");
+    }
+
+    if (!printerName) {
+        console.warn("No hay impresora configurada. Se omite impresión del recibo.");
+        return;
+    }
+
+    const LINE_WIDTH = (printerSize === "80") ? 48 : 32;
+    const CRLF = "\r\n";
+    const SEPARATOR = "-".repeat(LINE_WIDTH) + CRLF;
+
+    const centerText = (text, width) => {
+        if (!text) return "";
+        const str = text.toString().substring(0, width);
+        const pad = Math.floor((width - str.length) / 2);
+        return str.padStart(pad + str.length).padEnd(width);
+    };
+
+    const formatLR = (left, right, width) => {
+        const l = left.toString();
+        const r = right.toString();
+        const space = width - l.length - r.length;
+        return space > 0 ? l + " ".repeat(space) + r : (l + " " + r).substring(0, width);
+    };
+
+    let t = "\x1B\x40"; // Resetear impresora
+    
+    t += centerText("RECIBO DE EGRESO (GASTO)", LINE_WIDTH) + CRLF;
+    t += SEPARATOR;
+    t += `FECHA: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}${CRLF}`;
+    t += SEPARATOR;
+    
+    t += `CONCEPTO:${CRLF}`;
+    const conceptoStr = gastoData.concepto.toUpperCase();
+    for (let i = 0; i < conceptoStr.length; i += LINE_WIDTH) {
+        t += conceptoStr.substring(i, i + LINE_WIDTH) + CRLF;
+    }
+    t += SEPARATOR;
+
+    if (gastoData.montoBs > 0) {
+        t += formatLR("MONTO BS:", gastoData.montoBs.toFixed(2), LINE_WIDTH) + CRLF;
+        t += formatLR("MÉTODO:", (gastoData.metodoBs || "N/A").toUpperCase(), LINE_WIDTH) + CRLF;
+    }
+
+    if (gastoData.montoUsd > 0) {
+        if (gastoData.montoBs > 0) t += CRLF; 
+        t += formatLR("MONTO USD ($):", gastoData.montoUsd.toFixed(2), LINE_WIDTH) + CRLF;
+        t += formatLR("MÉTODO:", "EFECTIVO", LINE_WIDTH) + CRLF;
+    }
+
+    t += SEPARATOR;
+    t += CRLF.repeat(2);
+    t += centerText("________________________", LINE_WIDTH) + CRLF;
+    t += centerText("FIRMA AUTORIZADA", LINE_WIDTH) + CRLF;
+    t += CRLF.repeat(2);
+    t += centerText("________________________", LINE_WIDTH) + CRLF;
+    t += centerText("RECIBÍ CONFORME", LINE_WIDTH) + CRLF;
+
+    // 🔥 LÓGICA DE CORTE EXACTA
+    if (printerSize === "80") {
+        t += CRLF.repeat(2) + "\x1B\x6D"; 
+    } else {
+        t += CRLF.repeat(2) + "\x1B\x6D"; 
+    }
+
+    try {
+        await window.nexusAPI.imprimirTextoLibre(t, printerName);
+    } catch (error) {
+        console.error("Error imprimiendo recibo de gasto:", error);
+    }
+}
 
 </script>
 </body>

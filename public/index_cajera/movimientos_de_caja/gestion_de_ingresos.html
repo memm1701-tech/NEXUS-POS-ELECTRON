@@ -316,6 +316,17 @@ async function addIncome() {
             
             if (resultado && !resultado.error) {
                 showModal("Éxito", "Ingreso guardado localmente para el Cierre Z.");
+                
+                // 🔥 AQUÍ LLAMAMOS A LA IMPRESORA CON TUS VARIABLES 🔥
+                if (typeof imprimirReciboIngreso === 'function') {
+                    await imprimirReciboIngreso({
+                        concepto: description, // Usa la variable description de tu código
+                        montoBs: amountBs,     // Usa amountBs
+                        metodoBs: methodBs,    // Usa methodBs
+                        montoUsd: amountUsd    // Usa amountUsd
+                    });
+                }
+
                 limpiarCampos();
                 loadIncomes(); 
             } else {
@@ -415,6 +426,95 @@ async function addIncome() {
     // 4. Asignamos los modales
     document.getElementById('close-info-message-modal')?.addEventListener('click', () => modalOverlay.classList.remove('open'));
     document.getElementById('info-message-ok-btn')?.addEventListener('click', () => modalOverlay.classList.remove('open'));
+
+// --- FUNCIÓN PARA IMPRIMIR RECIBO DE INGRESO ---
+async function imprimirReciboIngreso(ingresoData) {
+    // 1. OBTENER CONFIGURACIÓN DE LA IMPRESORA
+    let printerName = null;
+    let printerSize = "58"; 
+    try {
+        const configDataRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
+        if (configDataRaw) {
+            const configFactura = JSON.parse(configDataRaw);
+            printerName = configFactura.impresoraSeleccionada;
+            if(configFactura.tamañoImpresora) printerSize = configFactura.tamañoImpresora;
+        }
+    } catch (e) {
+        console.warn("⚠️ No se pudo leer la configuración de la impresora.");
+    }
+
+    if (!printerName) {
+        console.warn("No hay impresora configurada. Se omite impresión del recibo.");
+        return;
+    }
+
+    // 2. HERRAMIENTAS DE FORMATO (Integradas para evitar errores)
+    const LINE_WIDTH = (printerSize === "80") ? 48 : 32;
+    const CRLF = "\r\n";
+    const SEPARATOR = "-".repeat(LINE_WIDTH) + CRLF;
+
+    const centerText = (text, width) => {
+        if (!text) return "";
+        const str = text.toString().substring(0, width);
+        const pad = Math.floor((width - str.length) / 2);
+        return str.padStart(pad + str.length).padEnd(width);
+    };
+
+    const formatLR = (left, right, width) => {
+        const l = left.toString();
+        const r = right.toString();
+        const space = width - l.length - r.length;
+        return space > 0 ? l + " ".repeat(space) + r : (l + " " + r).substring(0, width);
+    };
+
+    // 3. CONSTRUCCIÓN DEL TICKET
+    let t = "\x1B\x40"; // Resetear impresora
+    
+    t += centerText("RECIBO DE INGRESO", LINE_WIDTH) + CRLF;
+    t += SEPARATOR;
+    t += `FECHA: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}${CRLF}`;
+    t += SEPARATOR;
+    
+    t += `CONCEPTO:${CRLF}`;
+    // Dividimos el concepto si es muy largo para que no se corte feo
+    const conceptoStr = ingresoData.concepto.toUpperCase();
+    for (let i = 0; i < conceptoStr.length; i += LINE_WIDTH) {
+        t += conceptoStr.substring(i, i + LINE_WIDTH) + CRLF;
+    }
+    t += SEPARATOR;
+
+    // Imprimir Bs si hay
+    if (ingresoData.montoBs > 0) {
+        t += formatLR("MONTO BS:", ingresoData.montoBs.toFixed(2), LINE_WIDTH) + CRLF;
+        t += formatLR("METODO:", (ingresoData.metodoBs || "N/A").toUpperCase(), LINE_WIDTH) + CRLF;
+    }
+
+    // Imprimir USD si hay
+    if (ingresoData.montoUsd > 0) {
+        if (ingresoData.montoBs > 0) t += CRLF; // Separador visual si pagó mixto
+        t += formatLR("MONTO USD ($):", ingresoData.montoUsd.toFixed(2), LINE_WIDTH) + CRLF;
+        t += formatLR("METODO:", "EFECTIVO", LINE_WIDTH) + CRLF;
+    }
+
+    t += SEPARATOR;
+    t += CRLF.repeat(2);
+    t += centerText("________________________", LINE_WIDTH) + CRLF;
+    t += centerText("FIRMA RESPONSABLE", LINE_WIDTH) + CRLF;
+
+    // 🔥 LÓGICA DE CORTE EXACTA
+    if (printerSize === "80") {
+        t += CRLF.repeat(2) + "\x1B\x6D"; 
+    } else {
+        t += CRLF.repeat(4) + "\x1B\x6D"; 
+    }
+
+    // 4. ENVIAR A IMPRIMIR
+    try {
+        await window.nexusAPI.imprimirTextoLibre(t, printerName);
+    } catch (error) {
+        console.error("Error imprimiendo recibo de ingreso:", error);
+    }
+}
 
 </script>
 

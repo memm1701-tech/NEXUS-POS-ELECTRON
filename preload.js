@@ -30,6 +30,7 @@ contextBridge.exposeInMainWorld('nexusAPI', {
     consultarIA: (datos) => ipcRenderer.invoke('consultar-ia-nexus', datos),
     guardarVentaLocal: (venta) => ipcRenderer.invoke('guardar-venta-local', venta),
     obtenerProximoCorrelativo: (tipo) => ipcRenderer.invoke('obtener-proximo-correlativo', tipo),
+    verificarYDescontarStockMaestro: (items) => ipcRenderer.invoke('verificar-y-descontar-stock-maestro', items),
     obtenerVentaPorId: (id) => ipcRenderer.invoke('obtener-venta-por-id', id),
     onProductosCambiados: (callback) => {ipcRenderer.removeAllListeners('productos-actualizados'); ipcRenderer.on('productos-actualizados', () => callback());},
     guardarSucursalLocal: (sucursal) => ipcRenderer.invoke('guardar-sucursal-local', sucursal),
@@ -61,6 +62,13 @@ contextBridge.exposeInMainWorld('nexusAPI', {
     obtenerVentasPendientesCaja: (datos) => ipcRenderer.invoke('obtener-ventas-pendientes-caja', datos),
     procesarCierreCajaLocal: (datos) => ipcRenderer.invoke('procesar-cierre-caja-local', datos),
     obtenerDeudaCliente: (rif) => ipcRenderer.invoke('obtener-deuda-cliente', rif),
+    registrarDeudaMaestro: (datos) => ipcRenderer.invoke('registrar-deuda-maestro', datos),
+    registrarAbonoMaestro: (datos) => ipcRenderer.invoke('registrar-abono-maestro', datos),
+    imprimirFacturaFiscal: (saleData) => ipcRenderer.invoke('imprimir-factura-fiscal', saleData),
+    consultarEstadoFiscal: () => ipcRenderer.invoke('consultar-estado-fiscal'),
+    iniciarAuthWorkerHKA: (credentials) => ipcRenderer.send('ejecutar-auth-hka', credentials),
+    onHkaAuthLog: (callback) => ipcRenderer.on('hka-auth-log', (event, message) => callback(message)),
+    emitirFacturaHKA: (facturaJSON) => ipcRenderer.invoke('emitir-factura-hka', facturaJSON),
 
 });
 

@@ -6,7 +6,6 @@
     <title>Bienvenido a NEXUS POS</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
 
     <style>
@@ -21,14 +20,22 @@
             padding: 0;
             min-height: 100vh;
             background-color: #f9fafb;
+            overflow-x: hidden; /* Evita scroll horizontal indeseado */
         }
 
         /* 🌟 CORRECCIÓN: Cambiamos el nombre de la clase para evitar conflicto con inicio.html 🌟 */
         .house-container {
             flex-grow: 1; 
-            display: block; 
+            display: flex; /* Cambiado a flex para dividir la pantalla */
+            flex-direction: column;
             width: 100%; 
-            /* Al quitar la clase main-content, evitamos que herede el margen de 280px */
+            min-height: 100vh;
+        }
+
+        @media (min-width: 1024px) {
+            .house-container {
+                flex-direction: row; /* En pantallas grandes, divide izquierda/derecha */
+            }
         }
         
         /* Estilos de Tarjetas INTERACTIVAS */
@@ -70,7 +77,7 @@
             color: #1e3a8a;
         }
 
-        /* Media query para pantallas más grandes */
+        /* Media query para pantallas más grandes (MANTENIDA ORIGINAL) */
         @media (min-width: 768px) {
             .main-card {
                 padding: 3rem;
@@ -88,12 +95,61 @@
                 margin-bottom: 1rem;
             }
         }
+
+        /* =========================================================
+           NUEVOS ESTILOS PARA EL MODAL Y EL SPINNER DE CARGA
+           ========================================================= */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #2563eb; /* Azul Tailwind */
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { 
+            0% { transform: rotate(0deg); } 
+            100% { transform: rotate(360deg); } 
+        }
+
+        #modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(3px);
+            z-index: 50;
+            align-items: center;
+            justify-content: center;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
+
+    <div id="modal-overlay">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 transform transition-all relative">
+            <div id="modal-content" class="text-center">
+                
+                <div id="modal-icon" class="flex justify-center mb-5"></div>
+                
+                <h3 id="modal-title" class="text-xl font-black text-gray-800 mb-2">Procesando...</h3>
+                <p id="modal-text" class="text-sm text-gray-600 mb-6 font-medium">Por favor, espera un momento.</p>
+                
+                <div id="progress-container" class="hidden w-full bg-gray-200 rounded-full h-3 mb-6 overflow-hidden shadow-inner">
+                    <div id="progress-bar" class="bg-blue-600 h-3 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+                </div>
+
+                <button id="modal-btn" onclick="closeModal()" class="hidden w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition shadow-md">
+                    Aceptar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="house-container"> 
         
-        <div class="bg-white p-6 md:p-12 text-center main-card min-height-screen">
+        <div class="w-full lg:w-3/4 bg-white p-6 md:p-12 text-center main-card min-height-screen relative z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
             
             <h1 class="font-extrabold text-gray-900 mb-2">¡NEXUS POS! Tu Negocio, Optimizado.</h1>
             <p class="text-lg text-gray-500 mb-8 subtitle">
@@ -153,6 +209,144 @@
             </div>
             
         </div>
+
+        <div class="w-full lg:w-1/4 bg-gray-50 border-t lg:border-t-0 lg:border-l border-gray-200 p-6 flex flex-col relative z-0">
+            
+            <div class="flex items-center justify-between mb-6 mt-4">
+                <h2 class="text-xl font-black text-gray-800 flex items-center">
+                    <svg class="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    Sistema
+                </h2>
+                <span class="text-xs font-bold bg-gray-200 text-gray-700 px-3 py-1 rounded-full shadow-inner">v1.1.5</span>
+            </div>
+
+            <div class="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center mb-6 shadow-sm">
+                <div class="relative flex h-3 w-3 mr-4 flex-shrink-0">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500 shadow-[0_0_8px_#22c55e]"></span>
+                </div>
+                <div>
+                    <p class="text-[10px] font-black text-green-800 uppercase tracking-widest mb-0.5">Certificado de Integridad</p>
+                    <p class="text-xs text-green-700 font-medium">Núcleo Fiscal: <span class="font-bold font-mono">v1.0.0</span></p>
+                </div>
+            </div>
+
+            <button onclick="simularBusqueda()" class="w-full flex items-center justify-center bg-white border border-gray-300 hover:border-blue-500 hover:text-blue-600 text-gray-700 font-bold py-3 px-4 rounded-xl transition duration-200 mb-8 shadow-sm group">
+                <svg class="w-5 h-5 mr-2 text-gray-400 group-hover:text-blue-500 group-hover:rotate-180 transition-all duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                Buscar actualizaciones
+            </button>
+
+            <div id="update-banner" class="bg-[#e6f7ff] border border-[#b3e0ff] rounded-xl p-5 relative shadow-md">
+                <div class="absolute -top-3 -right-3 bg-blue-600 text-white text-xs font-black px-3 py-1 rounded-full shadow-lg border-2 border-white animate-pulse">NUEVO</div>
+                <h3 class="font-black text-blue-900 text-base mb-1">NEXUS POS v1.2</h3>
+                <p class="text-sm text-blue-700 mb-4 leading-tight">Módulo avanzado de reportes y correcciones de sincronización en la nube.</p>
+                <button onclick="simularActualizacion()" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2.5 px-4 rounded-lg transition duration-200 shadow">
+                    Actualizar Ahora
+                </button>
+            </div>
+
+            <div class="mt-auto pt-8">
+                <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Conexión</h4>
+                <div class="flex items-center text-sm font-medium text-gray-600 mb-2">
+                    <span class="relative flex h-3 w-3 mr-3">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                    </span>
+                    Servidor Estable
+                </div>
+            </div>
+
+        </div>
     </div>
+
+    <script>
+        const overlay = document.getElementById('modal-overlay');
+        const mTitle = document.getElementById('modal-title');
+        const mText = document.getElementById('modal-text');
+        const mIcon = document.getElementById('modal-icon');
+        const mBtn = document.getElementById('modal-btn');
+        const pContainer = document.getElementById('progress-container');
+        const pBar = document.getElementById('progress-bar');
+        const updateBanner = document.getElementById('update-banner');
+
+        function openModal(title, text, showSpinner = false) {
+            overlay.style.display = 'flex';
+            mTitle.innerText = title;
+            mText.innerText = text;
+            // Si requiere spinner de carga, insertamos el div con la clase loader
+            mIcon.innerHTML = showSpinner ? '<div class="loader"></div>' : '';
+            mBtn.classList.add('hidden');
+            pContainer.classList.add('hidden');
+        }
+
+        function closeModal() { 
+            overlay.style.display = 'none'; 
+        }
+
+        // Simulación: Buscar Actualizaciones
+        function simularBusqueda() {
+            openModal("Conectando...", "Conectando con el servidor para buscar actualizaciones...", true);
+            
+            setTimeout(() => {
+                mIcon.innerHTML = '<span class="text-5xl drop-shadow-md">🔍</span>';
+                mTitle.innerText = "Búsqueda Completada";
+                mText.innerText = "Ya tienes una actualización pendiente (v1.2) en tu panel lateral.";
+                mBtn.classList.remove('hidden');
+            }, 2500); // Tarda 2.5 segundos simulando la búsqueda
+        }
+
+        // Simulación: Proceso de Actualización Completo
+        function simularActualizacion() {
+            openModal("Iniciando...", "Preparando el entorno de actualización...", true);
+            
+            // Pausa breve antes de empezar la barra
+            setTimeout(() => {
+                mIcon.innerHTML = '<span class="text-5xl drop-shadow-md animate-bounce">📦</span>';
+                mTitle.innerText = "Actualizando Sistema";
+                pContainer.classList.remove('hidden');
+                pBar.style.width = "0%";
+                
+                // 🛠️ ACTUALIZACIÓN DE FASES: Añadida la verificación del Certificado
+                let fases = [
+                    { porcentaje: 15, texto: "Iniciando descarga e instalación..." },
+                    { porcentaje: 35, texto: "Descargando paquetes de NEXUS POS v1.2..." },
+                    { porcentaje: 60, texto: "Descomprimiendo e instalando archivos..." },
+                    { porcentaje: 80, texto: "Verificando Certificado de Integridad..." },
+                    { porcentaje: 95, texto: "Configurando bases de datos..." },
+                    { porcentaje: 100, texto: "Reiniciando servicios del servidor local..." }
+                ];
+
+                let faseActual = 0;
+                
+                // Intervalo que avanza la barra cada 1.5 segundos
+                let intervalo = setInterval(() => {
+                    if (faseActual < fases.length) {
+                        pBar.style.width = fases[faseActual].porcentaje + "%";
+                        mText.innerText = fases[faseActual].texto;
+                        faseActual++;
+                    } else {
+                        // Terminó la carga
+                        clearInterval(intervalo);
+                        setTimeout(() => {
+                            mIcon.innerHTML = '<span class="text-5xl drop-shadow-md">🚀</span>';
+                            mTitle.innerText = "¡Actualización Exitosa!";
+                            mText.innerText = "NEXUS POS se ha actualizado correctamente. El sistema está listo para operar.";
+                            
+                            pContainer.classList.add('hidden');
+                            mBtn.classList.remove('hidden');
+                            mBtn.innerText = "Finalizar";
+                            
+                            // Ocultamos el banner lateral porque ya actualizamos
+                            updateBanner.style.display = 'none';
+                            
+                            // Actualizamos el numerito de versión en el panel
+                            document.querySelector('.bg-gray-200.text-gray-700.px-3').innerText = 'v1.2.0';
+                        }, 1000);
+                    }
+                }, 1500); // Tiempo entre cada fase
+
+            }, 1500);
+        }
+    </script>
 </body>
 </html>

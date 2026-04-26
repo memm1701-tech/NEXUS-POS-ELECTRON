@@ -20,19 +20,15 @@
             margin: 0;
             padding: 0;
             min-height: 100vh;
-            display: flex; 
-            flex-direction: column;
             background-color: #f9fafb;
         }
 
-        /* Estilos para CENTRALIZAR el contenido y asegurar el borde de 20px */
-        .main-content {
+        /* 🌟 CORRECCIÓN: Cambiamos el nombre de la clase para evitar conflicto con inicio.html 🌟 */
+        .house-container {
             flex-grow: 1; 
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            /* El recuadro está a 20px de los bordes del espacio disponible */
-            padding: var(--border-gap); 
+            display: block; 
+            width: 100%; 
+            /* Al quitar la clase main-content, evitamos que herede el margen de 280px */
         }
         
         /* Estilos de Tarjetas INTERACTIVAS */
@@ -48,8 +44,10 @@
         /* Estilos del Recuadro Principal */
         .main-card {
             padding: 1.5rem;
-            max-width: 100%; /* Por defecto en móvil */
             width: 100%;
+            margin: 0;
+            min-height: 100vh;
+            box-shadow: none;
         }
         
         /* Estilos de Tipografía */
@@ -72,15 +70,11 @@
             color: #1e3a8a;
         }
 
-        /* Media query para pantallas más grandes (tabletas y escritorio) */
+        /* Media query para pantallas más grandes */
         @media (min-width: 768px) {
-            .main-content {
-                padding: var(--border-gap); 
-            }
             .main-card {
                 padding: 3rem;
-                /* ANCHO AUMENTADO A 1600PX */
-                max-width: 1600px; 
+                max-width: 100%; 
             }
             h1 {
                 font-size: 3rem;
@@ -97,9 +91,9 @@
     </style>
 </head>
 <body class="bg-gray-50">
-    <main class="main-content"> 
+    <div class="house-container"> 
         
-        <div class="bg-white p-6 md:p-12 rounded-xl shadow-2xl text-center main-card">
+        <div class="bg-white p-6 md:p-12 text-center main-card min-height-screen">
             
             <h1 class="font-extrabold text-gray-900 mb-2">¡NEXUS POS! Tu Negocio, Optimizado.</h1>
             <p class="text-lg text-gray-500 mb-8 subtitle">
@@ -138,6 +132,11 @@
                     ¡Empieza Creando Una Sucursal!
                 </a>
             </div>
+            <div class="text-center mt-8 p-4 rounded-xl">
+                <p class="text-base text-gray-700 leading-relaxed">
+                    NEXUS POS es tu socio estratégico. Olvídate de las tareas manuales y ¡CONCENTRATE EN HACER CRECER TU NEGOCIO!. Hemos diseñado una interfaz limpia e intuitiva, poniendo la gestión completa de tus puntos de venta al alcance de tu mano.
+                </p>
+            </div>
             
             <div class="mt-6 pt-6 border-t border-gray-200 text-center">
                 <h3 class="text-xl font-semibold text-gray-700 mb-4">Síguenos en nuestras redes sociales</h3>
@@ -153,12 +152,7 @@
                 </p>
             </div>
             
-            <div class="text-center mt-8 p-4 rounded-xl">
-                <p class="text-base text-gray-700 leading-relaxed">
-                    NEXUS POS es tu socio estratégico. Olvídate de las tareas manuales y ¡CONCENTRATE EN HACER CRECER TU NEGOCIO!. Hemos diseñado una interfaz limpia e intuitiva, poniendo la gestión completa de tus puntos de venta al alcance de tu mano.
-                </p>
-            </div>
         </div>
-    </main>
+    </div>
 </body>
 </html>
