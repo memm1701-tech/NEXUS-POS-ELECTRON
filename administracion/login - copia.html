@@ -78,6 +78,15 @@
                 <h1 class="text-3xl font-semibold text-center text-gray-800 mb-6">Crear Cuenta de Administrador</h1>
                 <form id="register-form">
                     <div class="mb-4">
+                        <label for="register-company-name" class="block text-gray-700 font-bold mb-2">Nombre Usuario Administrador</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                                <i class="material-icons text-gray-400">business</i>
+                            </span>
+                            <input type="text" id="register-company-name" name="companyName" class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        </div>
+                    </div>
+                    <div class="mb-4">
                         <label for="register-email" class="block text-gray-700 font-bold mb-2">Correo Electrónico</label>
                         <div class="relative">
                             <span class="absolute inset-y-0 left-0 flex items-center pl-3">
@@ -101,8 +110,7 @@
                     <a href="#" id="show-login" class="text-blue-600 hover:underline">¿Ya tienes una cuenta? Inicia Sesión</a>
                 </div>
             </div>
-            
-        </div>
+            </div>
     </div>
     
 
@@ -111,9 +119,8 @@
     <script type="module">
         // Importar las funciones necesarias de Firebase SDK
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"; // Se mantiene por si se usa en el futuro
 
         // ==================================================================================================
         // === CONFIGURACIÓN DE FIREBASE Y VARIABLES GLOBALES ===
@@ -128,14 +135,13 @@
             measurementId: "G-K1EQVJWJHG"
         };
         
-        // La URL del backend no es relevante para el registro simple, pero se mantiene.
+        // La URL del backend para la API de registro
         const VPS_BACKEND_URL = 'https://admin.backend.api.nexusposgobal.com/'; 
-
 
         // Inicializar Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        const db = getFirestore(app);
+        const db = getFirestore(app); // No se usa directamente pero se mantiene
         
         // ==================================================================================================
         // === FUNCIONES DE AUTENTICACIÓN ===
@@ -149,10 +155,35 @@
         }
 
         /**
-         * Función para registrar un nuevo usuario administrador.
+         * Función para registrar un nuevo usuario administrador llamando al BACKEND.
          */
         async function registerAdminUser(email, password) {
-            return await createUserWithEmailAndPassword(auth, email, password);
+            // Utilizamos el name 'companyName' del input
+            const companyName = registerForm['companyName'].value;
+            
+            const response = await fetch(`${VPS_BACKEND_URL}registerCompanyAndAdmin`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    companyName: companyName, // Nombre de la empresa enviado al backend
+                    adminEmail: email,
+                    adminPassword: password
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                // Lanza un error para ser capturado en el catch del submit listener.
+                const error = new Error(data.message || "Error desconocido al registrar en el backend.");
+                error.code = data.errorCode || 'backend/unknown-error';
+                throw error;
+            }
+
+            // Si es exitoso, devuelve la data (contiene companyId y adminUid)
+            return data;
         }
 
         // ==================================================================================================
@@ -225,10 +256,10 @@
                 if (user) {
                     // **FIX para el bucle post-logout:** Si se detecta un usuario DESPUÉS de un logout
                     if (isLogoutDetected) {
-                         console.warn("ADVERTENCIA: Usuario detectado temporalmente después de logout. Mostrando login.");
-                         appContent.classList.remove('hidden'); 
-                         toggleForms('login'); 
-                         return; // EVITA la redirección a clientes.html
+                             console.warn("ADVERTENCIA: Usuario detectado temporalmente después de logout. Mostrando login.");
+                             appContent.classList.remove('hidden'); 
+                             toggleForms('login'); 
+                             return; // EVITA la redirección a clientes.html
                     }
                     
                     // Si el usuario está autenticado y NO venimos de un logout, redirigir
@@ -279,30 +310,38 @@
             if (registerForm) {
                 registerForm.addEventListener('submit', async (e) => {
                     e.preventDefault();
+                    
+                    // Se obtienen los valores de los campos
                     const email = registerForm['register-email'].value;
                     const password = registerForm['register-password'].value;
                     
                     try {
+                        // 1. Llama a la función que usa el backend para CREAR el usuario
                         await registerAdminUser(email, password);
-                        showMessage("¡Cuenta de Administrador creada! Inicia sesión para continuar.", "success");
-                        toggleForms('login'); // Redirigir al login después del registro
+                        
+                        // 🚀 MODIFICACIÓN CLAVE: Iniciar sesión en el cliente
+                        // Esto establece la sesión de Firebase Auth localmente, asegurando que 
+                        // clientes.html detecte un usuario logueado inmediatamente.
+                        await signIn(email, password); 
+                        
+                        // 2. Si todo es exitoso, mostrar mensaje y redirigir
+                        showMessage("¡Cuenta de Administrador Creada Exitosamente! Redirigiendo...", "success");
+                        window.location.replace('clientes.html');
+                        
                     } catch (error) {
                         console.error("Error al registrar usuario administrador:", error);
-                        let errorMessage = "Ocurrió un error al registrarse.";
-                        switch (error.code) {
-                            case 'auth/email-already-in-use':
-                                errorMessage = 'El correo electrónico ya está en uso.';
-                                break;
-                            case 'auth/invalid-email':
-                                errorMessage = 'El correo electrónico es inválido.';
-                                break;
-                            case 'auth/weak-password':
-                                errorMessage = 'La contraseña es demasiado débil. Debe tener al menos 6 caracteres.';
-                                break;
-                            default:
-                                errorMessage = 'Ocurrió un error inesperado.';
-                                break;
+                        // Los errores son devueltos por la función 'registerAdminUser'
+                        let errorMessage = error.message.includes('Error desconocido') 
+                            ? "Ocurrió un error al registrarse. Inténtalo de nuevo." 
+                            : error.message; 
+                        
+                        // Manejo de errores específicos del backend/Firebase
+                        if (error.code === 'auth/email-already-exists') {
+                            errorMessage = 'El correo electrónico ya está en uso.';
+                        } else if (error.code === 'auth/weak-password') {
+                            errorMessage = 'La contraseña es demasiado débil. Debe tener al menos 6 caracteres.';
                         }
+
                         showMessage(errorMessage, "error");
                     }
                 });

@@ -1181,20 +1181,172 @@ COMPANIES_DATA.push({
             }
         };
 
-        const renderContentContact = (company) => {
-            contents.contact.innerHTML = `
-                <h3>Datos de la Compañía</h3>
-                <p><strong>Razón Social:</strong> ${company.razon_social}</p>
-                <p><strong>Teléfono:</strong> ${company.telefono}</p>
-                <p><strong>Email Principal:</strong> ${company.email}</p>
-                <p><strong>Fecha de Creación:</strong> ${company.created || 'N/A'}</p>
+const renderEditContactForm = (company) => {
+    // Usamos contents.contact, asumiendo que es el div que contiene el contenido de la pestaña
+    contents.contact.innerHTML = `
+        <h3>Editar Datos de la Compañía</h3>
+        <form id="contactInfoForm">
+            <div class="form-group">
+                <label for="companyName">Nombre de la Compañía:</label>
+                <input type="text" id="companyName" required value="${company.nombre || ''}">
+            </div>
+            
+            <div class="form-group">
+                <label for="razonSocial">Razón Social:</label>
+                <input type="text" id="razonSocial" value="${company.razon_social || ''}">
+            </div>
 
-                <p style="margin-top: 2rem;">
-                    <small>Aquí se podrían añadir campos editables para actualizar la información de contacto y facturación.
-                    Esto requeriría otra llamada al backend/Firebase.</small>
-                </p>
-            `;
-        };
+            <div class="form-group">
+                <label for="companyPhone">Teléfono:</label>
+                <input type="text" id="companyPhone" value="${company.telefono || ''}" placeholder="Ej: +58 412 1234567">
+            </div>
+
+            <div class="form-group">
+                <label for="companyEmail">Email Personal Principal (Administrador):</label>
+                <input type="email" id="companyEmail" required value="${company.email || ''}" placeholder="admin@compania.com">
+            </div>
+            
+            <div class="form-group">
+                <label for="companyAddress">Dirección (Campo Adicional):</label>
+                <textarea id="companyAddress" placeholder="Dirección física o de facturación">${company.address || ''}</textarea>
+            </div>
+            
+            <button type="submit" style="
+                background-color: var(--success-color); 
+                color: white; 
+                border: none; 
+                padding: 1rem; 
+                margin-top: 1.5rem; 
+                border-radius: 4px; 
+                font-size: 1.1em; 
+                cursor: pointer;
+                width: 100%;
+                transition: background-color 0.3s;
+            ">💾 Guardar Cambios</button>
+            
+            <button type="button" id="cancelEditBtn" style="
+                background-color: var(--secondary-color); 
+                color: white; 
+                border: none; 
+                padding: 0.75rem; 
+                margin-top: 0.5rem; 
+                border-radius: 4px; 
+                font-size: 1em; 
+                cursor: pointer;
+                width: 100%;
+                transition: background-color 0.3s;
+            ">❌ Cancelar Edición</button>
+        </form>
+    `;
+
+    // Adjuntar listeners para guardar y cancelar
+    document.getElementById('contactInfoForm').addEventListener('submit', handleUpdateContactInfo);
+    // Al cancelar, volvemos a la vista de solo lectura
+    document.getElementById('cancelEditBtn').addEventListener('click', () => renderContentContact(company)); 
+};
+
+
+/**
+ * Renderiza la vista inicial de solo lectura de la información de contacto.
+ * (Función principal de la pestaña "Información Básica")
+ */
+const renderContentContact = (company) => {
+    // Definimos la vista de solo lectura
+    contents.contact.innerHTML = `
+        <h3>Datos de la Compañía</h3>
+        <div style="border: 1px solid var(--border-color); padding: 1.5rem; border-radius: 4px; background-color: var(--bg-light);">
+            <p><strong>Nombre de la Compañía:</strong> ${company.nombre || 'N/A'}</p>
+            <p><strong>Razón Social:</strong> ${company.razon_social || 'N/A'}</p>
+            <p><strong>Teléfono:</strong> ${company.telefono || 'N/A'}</p>
+            <p><strong>Email Principal (Personal):</strong> ${company.email || 'N/A'}</p>
+            <p><strong>Dirección:</strong> ${company.address || 'N/A'}</p>
+        </div>
+
+        <p style="margin-top: 2rem;">
+            <small><strong>ID de la Compañía:</strong> <code>${company.id}</code></small>
+            <br>
+            <small><strong>Fecha de Creación:</strong> ${company.created || 'N/A'}</small>
+        </p>
+
+        <button type="button" id="editContactBtn" style="
+            background-color: var(--success-color); 
+            color: white; 
+            border: none; 
+            padding: 1rem; 
+            margin-top: 1.5rem; 
+            border-radius: 4px; 
+            font-size: 1.1em; 
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s;
+        ">✏️ Editar Información</button>
+    `;
+
+    // Listener para el botón de edición
+    document.getElementById('editContactBtn').addEventListener('click', () => {
+        // Al hacer clic, se llama a la función que renderiza el formulario
+        renderEditContactForm(company);
+    });
+};
+
+/**
+ * Gestiona el guardado de la información de contacto y básica de la compañía en Firestore.
+ */
+const handleUpdateContactInfo = async (e) => {
+    e.preventDefault();
+
+    if (!selectedCompany || !selectedCompany.id) {
+        alert("Error: No hay una compañía seleccionada para actualizar.");
+        return;
+    }
+
+    const companyName = document.getElementById('companyName').value.trim();
+    const razonSocial = document.getElementById('razonSocial').value.trim();
+    const companyPhone = document.getElementById('companyPhone').value.trim();
+    const companyEmail = document.getElementById('companyEmail').value.trim();
+    const companyAddress = document.getElementById('companyAddress').value.trim(); 
+    
+    // Validar email
+    if (!companyEmail || !companyEmail.includes('@')) {
+        alert("Por favor ingrese un email válido.");
+        return;
+    }
+
+    const updatedData = {
+        name: companyName, 
+        razon_social: razonSocial,
+        telefono: companyPhone,
+        adminEmail: companyEmail, 
+        address: companyAddress, 
+        updatedAt: new Date(),
+    };
+    
+    // 1. Aplicar los cambios al documento de la compañía en Firestore
+    try {
+        const companyRef = doc(db, "companies", selectedCompany.id); 
+        
+        await updateDoc(companyRef, updatedData); 
+
+        // 2. Confirmación y actualización de UI
+        showToast(`✅ Información básica de ${companyName} actualizada exitosamente.`);
+
+        // Actualizar los datos locales
+        selectedCompany.nombre = companyName;
+        selectedCompany.razon_social = razonSocial;
+        selectedCompany.telefono = companyPhone;
+        selectedCompany.email = companyEmail;
+        selectedCompany.address = companyAddress; 
+        
+        filterCompanies(); 
+        
+        // 3. Vuelve a la vista de solo lectura con los datos actualizados
+        renderContentContact(selectedCompany); 
+
+    } catch (error) {
+        console.error("Error al actualizar la información de contacto de la compañía en Firestore:", error);
+        alert(`⚠️ Error al guardar los cambios en la base de datos. Revise la consola.`);
+    }
+};
         
 const renderContentHistory = async (company) => {
             contents.history.innerHTML = '<p>⏳ Cargando historial de cambios...</p>';

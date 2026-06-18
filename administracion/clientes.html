@@ -448,8 +448,7 @@
         // ====================================================================
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        // Importación de funciones para Firestore (Agregado updateDoc para la modificación de clientes)
-        import { getFirestore, collection, getDocs, doc, setDoc, updateDoc, addDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"; 
+        import { getFirestore, collection, getDocs, doc, setDoc, updateDoc, addDoc, query, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"; 
         
         const firebaseConfig = {
             apiKey: "AIzaSyDN9mZ1n-OkC-Qz52eTCOy4yJH7M0U9zYI",
@@ -494,11 +493,10 @@
             { id: 'CASHIERS', label: 'Usuarios Cajeros', type: 'max_number', max_id: 'CASHIERS_MAX' },
         ];
         
-        // Permisos de módulos (los que van en el grid)
+       // Permisos de módulos (los que van en el grid)
         const CORE_PERMISSIONS = [
             { id: 'POS_FULL', label: 'Punto de Venta (Completo)', type: 'checkbox' },
-            { id: 'STATS_ADV', label: 'Estadísticas Avanzadas', type: 'checkbox' },
-            { id: 'INVENTORY', label: 'Gestión de Inventario', type: 'checkbox' },
+            { id: 'STATS_ADV', label: 'Estadísticas basicas/Avanzadas', type: 'checkbox' },
             { id: 'CASH_ADMIN', label: 'Movimientos de caja admin', type: 'checkbox' },
             { id: 'PACK_UNITS', label: 'Unidades de empaque', type: 'checkbox' },
             { id: 'DATA_BACKUP', label: 'Respaldo de datos', type: 'checkbox' },
@@ -514,7 +512,7 @@
         
         // Variables para la Tasa de Cambio
         let exchangeRateUSD = null; 
-        const API_URL_TASAS = 'https://api.nexusposgobal.com:3002/api/tasas';
+        const API_URL_TASAS = 'http://api.nexusposgobal.com:3002/api/tasas';
         
 
         // Función de utilidad para mostrar notificaciones flotantes
@@ -757,7 +755,7 @@ COMPANIES_DATA.push({
         }
 
         /**
-         * Alterna entre la tabla de planes y el formulario de creación.
+         * Alterna entre la tabla de planes y el formulario de creación/edición.
          * @param {'list'|'create'} showView - La vista a mostrar.
          */
         function togglePlanView(showView) {
@@ -765,6 +763,7 @@ COMPANIES_DATA.push({
             const formContainer = document.getElementById('planCreationView');
 
             if (showView === 'list') {
+                window.editingPlanKey = null; // Reiniciar estado de edición al volver a la lista
                 listContainer.style.display = 'block';
                 formContainer.style.display = 'none';
                 renderPlanListView(); // Recargar la lista por si se hizo un cambio
@@ -850,7 +849,7 @@ COMPANIES_DATA.push({
             // Generar HTML para los permisos de limitación (Multi-sucursal y Usuarios Cajeros)
             const limitedPermissionsHtml = LIMITED_PERMISSIONS.map(p => `
                 <div class="permission-item max-number max-number-standalone">
-                    <input type="checkbox" id="perm-${p.id}" name="permisos" value="${p.id}" style="margin-right: 10px; transform: scale(1.1);">
+                    <input type="checkbox" id="perm-${p.id}" name="permisos" value="${p.label}" style="margin-right: 10px; transform: scale(1.1);">
                     <label for="perm-${p.id}" style="margin-top:0.1rem; font-weight: 600; width: auto; flex-grow: 1;">${p.label}</label>
                     <label for="${p.max_id}" style="font-weight: 400; margin-bottom: 0; margin-right: 5px;">Máx:</label>
                     <input type="number" id="${p.max_id}" name="${p.max_id}" min="1" value="1" style="width: 80px; padding: 5px;">
@@ -861,7 +860,7 @@ COMPANIES_DATA.push({
             // Generar HTML para los permisos de módulos (los que van en el grid gris)
             const corePermissionsCheckboxes = CORE_PERMISSIONS.map(p => `
                 <div class="permission-item">
-                    <input type="checkbox" id="perm-${p.id}" name="permisos" value="${p.id}">
+                    <input type="checkbox" id="perm-${p.id}" name="permisos" value="${p.label}">
                     <label for="perm-${p.id}" style="margin-top:0.1rem; font-weight: 400;">${p.label}</label>
                 </div>
             `).join('');
@@ -873,7 +872,7 @@ COMPANIES_DATA.push({
                         <label for="planKey">Clave de Producto (ID Único):</label>
                         <input type="text" id="planKey" required 
                                placeholder="Ej: PRO-ILIMITADO-2026. Debe ser único y sin espacios." 
-                               pattern="[-a-zA-Z0-9_]+" title="Solo letras, números, guiones y guiones bajos."
+                               pattern="[a-zA-Z0-9_\\-]+" title="Solo letras, números, guiones y guiones bajos."
                                style="text-transform: uppercase;">
                         <small style="color: var(--secondary-color);">Este será el ID único en Firestore (Ej: PRO-2026).</small>
                     </div>
@@ -944,7 +943,7 @@ COMPANIES_DATA.push({
             }
         }
 
-        function renderPlansTable() {
+       function renderPlansTable() {
             if (GLOBAL_PLANES_CATALOG.length === 0) {
                 return '';
             }
@@ -956,13 +955,79 @@ COMPANIES_DATA.push({
                     <td style="padding: 10px; border: 1px solid var(--border-color);">$${plan.precio.toFixed(2)}</td>
                     <td style="padding: 10px; border: 1px solid var(--border-color); font-size: 0.85em;">${plan.permisos.join(', ')}</td>
                     <td style="padding: 10px; border: 1px solid var(--border-color); text-align: center;">
-                        <button onclick="alert('Editar plan ${plan.clave_producto}')" style="background: var(--primary-color); color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 0.9em;">Editar</button>
+                        <button onclick="window.startEditPlan('${plan.clave_producto}')" style="background: var(--primary-color); color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 0.9em; margin-right: 1px;">Editar</button>
+                        <button onclick="window.deletePlan('${plan.clave_producto}')" style="background: var(--danger-color); color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 0.9em;">Eliminar</button>
                     </td>
                 </tr>
             `).join('');
         }
-        
-        // --- LÓGICA DE CREACIÓN DEL PLAN (sin cambios en su funcionamiento) ---
+
+        window.startEditPlan = (planKey) => {
+            const planToEdit = GLOBAL_PLANES_CATALOG.find(p => p.clave_producto === planKey);
+            if (!planToEdit) return;
+
+            // Guardamos globalmente que estamos editando
+            window.editingPlanKey = planKey;
+            
+            // 1. Mostrar la vista del formulario
+            togglePlanView('create');
+
+            // 2. Cambiar títulos y botón de guardado
+            const formContainer = document.getElementById('planCreationView');
+            formContainer.querySelector('h3').textContent = 'Editar Plan de Suscripción';
+            const submitBtn = formContainer.querySelector('button[type="submit"]');
+            submitBtn.innerHTML = '💾 Guardar'; // Cambiado explícitamente a Guardar
+            
+            // 3. Rellenar los campos de texto
+            const inputKey = document.getElementById('planKey');
+            inputKey.value = planToEdit.clave_producto;
+            inputKey.setAttribute('readonly', 'true'); // Bloquear ID
+            inputKey.style.backgroundColor = '#e9ecef'; // Dar feedback visual de bloqueo
+            
+            document.getElementById('planLabel').value = planToEdit.label;
+            document.getElementById('planPriceUSD').value = planToEdit.precio;
+            
+            // Recalcular precio en BS basado en el valor rellenado
+            calculateBSPrice();
+
+            // 4. Marcar los checkboxes de los permisos correspondientes (compara con el valor en español)
+            const allCheckboxes = document.querySelectorAll('#newPlanForm input[name="permisos"]');
+            allCheckboxes.forEach(cb => {
+                if (planToEdit.permisos.includes(cb.value)) {
+                    cb.checked = true;
+                }
+            });
+
+            // 5. Rellenar los límites de recursos si el plan los posee (buscando en español)
+            if (planToEdit.permisos.includes('Multi-sucursal') && document.getElementById('MULTI_BRANCH_MAX')) {
+                document.getElementById('MULTI_BRANCH_MAX').value = planToEdit.max_multi_branch || 1;
+            }
+            if (planToEdit.permisos.includes('Usuarios Cajeros') && document.getElementById('CASHIERS_MAX')) {
+                document.getElementById('CASHIERS_MAX').value = planToEdit.max_cashiers || 1;
+            }
+        };
+
+
+        window.deletePlan = async (planKey) => {
+            // Confirmación de seguridad para evitar borrados accidentales
+            const confirmDelete = confirm(`¿Estás seguro de que deseas eliminar permanentemente el plan con ID: ${planKey}? Esta acción no se puede deshacer.`);
+            if (!confirmDelete) return;
+
+            try {
+                const planRef = doc(db, "planes", planKey);
+                await deleteDoc(planRef); // Elimina el documento de Firestore
+                
+                showToast(`✅ Plan "${planKey}" eliminado correctamente.`);
+                
+                // Recargar los planes desde Firestore y refrescar la tabla visualmente
+                await fetchPlans();
+                togglePlanView('list');
+
+            } catch (error) {
+                console.error("Error al eliminar el plan de Firestore:", error);
+                alert(`⚠️ Error al eliminar el plan. Revise la consola. Posiblemente se deba a permisos en las Reglas de Seguridad.`);
+            }
+        };
         
         async function handleCreateNewPlan(e) {
             e.preventDefault();
@@ -976,7 +1041,7 @@ COMPANIES_DATA.push({
             const multiBranchMax = document.getElementById('MULTI_BRANCH_MAX') ? parseInt(document.getElementById('MULTI_BRANCH_MAX').value) : 0;
             const cashiersMax = document.getElementById('CASHIERS_MAX') ? parseInt(document.getElementById('CASHIERS_MAX').value) : 0;
 
-            // Obtener los permisos seleccionados
+            // Obtener los permisos seleccionados (ahora vienen en español)
             const selectedPermissions = Array.from(document.querySelectorAll('#newPlanForm input[name="permisos"]:checked'))
                                              .map(checkbox => checkbox.value);
 
@@ -993,7 +1058,9 @@ COMPANIES_DATA.push({
                 alert("No se pudo obtener la tasa de cambio del BCV. Intente recargar la vista.");
                 return;
             }
-            if (GLOBAL_PLANES_CATALOG.some(p => p.clave_producto === planKey)) {
+            
+            // Validación de duplicados: Solo se aplica si NO estamos editando
+            if (!window.editingPlanKey && GLOBAL_PLANES_CATALOG.some(p => p.clave_producto === planKey)) {
                 alert(`Error: La clave de producto "${planKey}" ya existe. Use un identificador único.`);
                 return;
             }
@@ -1007,23 +1074,34 @@ COMPANIES_DATA.push({
                 precio_bs: parseFloat(precioBsCalculado.toFixed(2)),
                 tasa_usd_bcv: exchangeRateUSD,
                 permisos: selectedPermissions,
-                // Incluir máximo solo si el permiso fue seleccionado.
-                max_multi_branch: selectedPermissions.includes('MULTI_BRANCH') ? multiBranchMax : 0,
-                max_cashiers: selectedPermissions.includes('CASHIERS') ? cashiersMax : 0,
-                createdAt: new Date(), 
+                // Incluir máximo solo si el permiso fue seleccionado (buscando en español).
+                max_multi_branch: selectedPermissions.includes('Multi-sucursal') ? multiBranchMax : 0,
+                max_cashiers: selectedPermissions.includes('Usuarios Cajeros') ? cashiersMax : 0,
             };
+
+            // Manejo de fecha de creación o actualización
+            if (!window.editingPlanKey) {
+                newPlanObject.createdAt = new Date();
+            } else {
+                newPlanObject.updatedAt = new Date();
+            }
 
             try {
                 const planRef = doc(db, "planes", planKey);
-                await setDoc(planRef, newPlanObject);
+                // setDoc con { merge: true } actualiza si existe, crea si no.
+                await setDoc(planRef, newPlanObject, { merge: true });
 
-                showToast(`✅ Plan "${planLabel}" (ID: ${planKey}) creado y guardado en Firestore.`);
+                // Ajustar el mensaje de éxito
+                const accion = window.editingPlanKey ? "actualizado" : "creado";
+                showToast(`✅ Plan "${planLabel}" (ID: ${planKey}) ${accion} y guardado en Firestore.`);
                 
+                // Limpiar estado y refrescar
+                window.editingPlanKey = null; 
                 await fetchPlans();
                 togglePlanView('list');
 
             } catch (error) {
-                console.error("Error al crear el nuevo plan en Firestore:", error);
+                console.error("Error al guardar el plan en Firestore:", error);
                 alert(`⚠️ Error al guardar el plan. Revise la consola. Posiblemente se deba a: ${error.code === 'permission-denied' ? 'Falta de permisos en Reglas de Seguridad.' : 'Otro error de la base de datos.'}`);
             }
         }

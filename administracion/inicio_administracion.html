@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración - Nexus</title>
+    <style>
+        /* ====================
+           ESTILOS GENERALES Y LAYOUT
+           ==================== */
+        :root {
+            --primary-color: #3b5998;
+            --accent-color: #00bcd4;
+            --sidebar-bg: #2d3e50;
+            --bg-light: #f4f6f9;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background-color: var(--bg-light);
+            display: flex; /* Flexbox para dividir pantalla */
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* --- Barra de Navegación Estática (Menú Principal) --- */
+        .nav-sidebar {
+            width: 250px;
+            background-color: var(--sidebar-bg);
+            color: white;
+            padding-top: 20px;
+            flex-shrink: 0;
+            position: fixed;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 100;
+        }
+
+        .logo-nexus {
+            width: 80px;
+            height: 80px;
+            display: block;
+            margin: 0 auto 10px auto;
+            border-radius: 50%;
+            border: 3px solid var(--accent-color);
+            object-fit: cover;
+        }
+
+        .nav-sidebar h2 {
+            text-align: center;
+            margin-bottom: 2rem;
+            margin-top: 0;
+            font-size: 1.5rem;
+        }
+
+        .nav-sidebar ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .nav-sidebar li a {
+            display: block;
+            padding: 1rem 1.5rem;
+            text-decoration: none;
+            color: #f4f6f9;
+            transition: background-color 0.2s, color 0.2s;
+            font-size: 0.95rem;
+            border-left: 5px solid transparent;
+        }
+
+        .nav-sidebar li a:hover,
+        .nav-sidebar li.active a {
+            background-color: #495e77;
+            color: white;
+            border-left-color: var(--accent-color);
+        }
+
+        /* --- Área Principal (Donde se cargan los hijos) --- */
+        .main-content {
+            flex-grow: 1;
+            margin-left: 250px; /* Deja espacio para el menú fijo */
+            background-color: var(--bg-light);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            width: calc(100% - 250px);
+        }
+
+        #dynamic-content-area {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            /* Aquí se inyectará el HTML de los hijos */
+        }
+
+        /* --- Spinner de Carga --- */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 50px auto;
+            display: none; /* Oculto por defecto */
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .welcome-screen {
+            text-align: center;
+            padding: 50px 20px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="nav-sidebar">
+        <img src="logo_nexus.png" alt="Logo Nexus" class="logo-nexus" onerror="this.src='https://via.placeholder.com/80'">
+        <h2>Admin Panel</h2>
+        <ul id="sidebar-menu">
+            <li class="active">
+                <a href="#" id="menu-clientes" data-page="gestion_de_clientes.html">
+                    <span class="icon">💼</span> Gestión de Clientes
+                </a>
+            </li>
+            <li>
+                <a href="#" id="menu-planes" data-page="gestion_de_planes_Y_precios.html">
+                    <span class="icon">🏷️</span> Gestión de Planes y Precios
+                </a>
+            </li>
+            <li><a href="#"><span class="icon">🧾</span> Facturación / Pagos</a></li>
+            <li><a href="#"><span class="icon">⚙️</span> Configuración Global</a></li>
+            <li><a href="#"><span class="icon">📈</span> Reportes y Uso</a></li>
+            <li><a href="#"><span class="icon">🔒</span> Auditoría de Logs</a></li>
+            
+            <li style="margin-top: 50px;">
+                <a href="#" id="logout-button" style="color: #ff9800;">
+                    <span class="icon">🚪</span> Cerrar Sesión
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <main class="main-content">
+        <div id="loading-spinner" class="spinner"></div>
+        
+        <div id="dynamic-content-area">
+            <div class="welcome-screen">
+                <h2>Bienvenido al Panel de Administración Global</h2>
+                <p>Selecciona una opción en el menú lateral para comenzar a gestionar el sistema.</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ==========================================
+        // 1. GESTIÓN DE SESIÓN (PASA DATOS A HIJOS)
+        // ==========================================
+        
+        // Variables globales que los scripts hijos podrán leer (Ej: window.currentCompanyId)
+        window.currentCompanyId = null;
+        window.adminSessionData = null;
+
+        async function inicializarSesionAdministrador() {
+            console.log("🔒 Verificando sesión de administrador...");
+            
+            try {
+                // Si usas el puente de Electron (nexusAPI)
+                if (window.nexusAPI && typeof window.nexusAPI.obtenerSesionLocal === 'function') {
+                    const sesion = await window.nexusAPI.obtenerSesionLocal();
+                    if (sesion && sesion.companyId) {
+                        // Guardamos globalmente
+                        window.currentCompanyId = sesion.companyId;
+                        window.adminSessionData = sesion;
+                        // Guardamos en LocalStorage para los hijos
+                        localStorage.setItem('companyId', sesion.companyId);
+                        localStorage.setItem('adminSession', JSON.stringify(sesion));
+                    } else {
+                        throw new Error("No hay sesión activa.");
+                    }
+                } else {
+                    // Modo de desarrollo web puro (Si abres el HTML directo en el navegador)
+                    console.warn("⚠️ Puente NexusAPI no detectado. Simulando sesión para desarrollo.");
+                    window.currentCompanyId = "ADMIN_GLOBAL_001";
+                    localStorage.setItem('companyId', "ADMIN_GLOBAL_001");
+                }
+            } catch (error) {
+                console.error("Error validando sesión:", error);
+                // Si falla la validación real, descomentar esto:
+                // window.location.href = "login.html"; 
+            }
+        }
+
+        // ==========================================
+        // 2. MOTOR DE CARGA DINÁMICA DE VISTAS (SPA)
+        // ==========================================
+        
+        const dynamicContentArea = document.getElementById('dynamic-content-area');
+        const spinner = document.getElementById('loading-spinner');
+
+        function mostrarLoading() {
+            spinner.style.display = 'block';
+            dynamicContentArea.style.display = 'none';
+        }
+
+        function ocultarLoading() {
+            spinner.style.display = 'none';
+            dynamicContentArea.style.display = 'flex'; // Usamos flex para mantener el diseño
+        }
+
+        // Función extraída exactamente de tu inicio.html original
+        window.loadPageContent = function(pageUrl) {
+            if (!dynamicContentArea) return;
+
+            mostrarLoading();
+
+            fetch(pageUrl)
+                .then(response => {
+                    if (!response.ok) throw new Error(`Error cargando: ${pageUrl}`);
+                    return response.text();
+                })
+                .then(html => {
+                    // 1. Inyectamos el HTML en el contenedor derecho
+                    dynamicContentArea.innerHTML = html;
+                    
+                    // 2. Reiniciamos el scroll arriba
+                    window.scrollTo(0, 0);
+                    
+                    // 3. Magia Negra: Extraer y ejecutar los scripts (Firebase, JS) de la vista inyectada
+                    const scripts = dynamicContentArea.querySelectorAll("script");
+                    scripts.forEach(oldScript => {
+                        const newScript = document.createElement("script");
+                        // Copiamos atributos (src, type="module", etc)
+                        Array.from(oldScript.attributes).forEach(attr => {
+                            newScript.setAttribute(attr.name, attr.value);
+                        });
+                        // Copiamos el contenido JS
+                        newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                        // Reemplazamos en el DOM para forzar al navegador a ejecutarlo
+                        oldScript.parentNode.replaceChild(newScript, oldScript);
+                    });
+
+                    ocultarLoading();
+                })
+                .catch(error => {
+                    console.error('Error de navegación:', error);
+                    dynamicContentArea.innerHTML = `<div style="padding: 2rem; color: var(--danger-color, red); text-align: center;">
+                        <h2>Error 404</h2>
+                        <p>No se pudo cargar la vista <b>${pageUrl}</b>.</p>
+                        <small>${error.message}</small>
+                    </div>`;
+                    ocultarLoading();
+                });
+        }
+
+        // ==========================================
+        // 3. EVENTOS DEL MENÚ LATERAL
+        // ==========================================
+        
+        function setActiveMenu(clickedLi) {
+            document.querySelectorAll('.nav-sidebar li').forEach(li => li.classList.remove('active'));
+            clickedLi.classList.add('active');
+        }
+
+        // Interceptar TODOS los clics en los enlaces que tengan el atributo "data-page"
+        document.querySelectorAll('.nav-sidebar a[data-page]').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault(); // Evita recargar la página
+
+                const targetLi = e.currentTarget.closest('li');
+                const pageToLoad = e.currentTarget.getAttribute('data-page');
+
+                // 1. Cambiar indicador visual
+                setActiveMenu(targetLi);
+
+                // 2. Cargar el HTML hijo dinámicamente
+                if (pageToLoad) {
+                    loadPageContent(pageToLoad);
+                }
+            });
+        });
+
+        // ==========================================
+        // 4. INICIALIZACIÓN
+        // ==========================================
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 1. Validar y preparar datos de sesión para los hijos
+            await inicializarSesionAdministrador();
+            
+            // 2. (Opcional) Cargar una vista por defecto automáticamente
+            // const primerMenu = document.querySelector('.nav-sidebar a[data-page]');
+            // if(primerMenu) {
+            //    loadPageContent(primerMenu.getAttribute('data-page'));
+            // }
+        });
+
+        // Evento genérico para cerrar sesión
+        document.getElementById('logout-button').addEventListener('click', (e) => {
+            e.preventDefault();
+            if(confirm("¿Seguro que deseas cerrar la sesión de administración?")) {
+                localStorage.removeItem('adminSession');
+                window.location.replace('login.html'); // O usar window.nexusAPI.cerrarYVolverAlLogin()
+            }
+        });
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Clientes - Nexus</title>
+    <style>
+        /* ====================
+           ESTILOS CSS AISLADOS (Gestión de Clientes)
+           ==================== */
+        
+        :root {
+            --primary-color: #3b5998;
+            --secondary-color: #6c757d;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --bg-light: #f4f6f9;
+            --border-color: #dee2e6;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background-color: var(--bg-light);
+            color: #343a40;
+            height: 100vh;
+        }
+
+        /* --- Toast Notification (Mensaje Flotante) --- */
+        #toastNotification {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: white;
+            color: var(--success-color);
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+            min-width: 300px;
+        }
+
+        #toastNotification.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-10px);
+        }
+
+        #toastIcon {
+            font-size: 1.5rem;
+            margin-right: 15px;
+            animation: pulse 1s infinite alternate;
+        }
+        
+        @keyframes pulse {
+            from { transform: scale(1); color: var(--success-color); }
+            to { transform: scale(1.1); color: #1e7e34; }
+        }
+
+        /* --- Layout General --- */
+        .admin-layout {
+            display: flex;
+            height: 100vh;
+        }
+
+        .work-area {
+            flex-grow: 1;
+            display: flex;
+            width: 100%;
+        }
+
+        /* --- Columna de Búsqueda --- */
+        .search-column {
+            width: 350px;
+            background-color: white;
+            padding: 1.5rem;
+            border-right: 1px solid var(--border-color);
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .search-column h3 {
+            margin-top: 0;
+            color: var(--primary-color);
+        }
+
+        #searchTerm {
+            width: 100%;
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .results-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .results-list li {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            flex-direction: column; 
+            align-items: flex-start; 
+        }
+        
+        .results-list li:hover, .results-list li.selected {
+            background-color: var(--bg-light);
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .results-list li strong {
+            display: block;
+            color: #212529;
+            margin-bottom: 0.25rem;
+        }
+
+        .results-list li span {
+            font-size: 0.85em;
+            color: var(--secondary-color);
+        }
+
+        /* --- Panel Principal de Gestión --- */
+        .main-panel {
+            flex-grow: 1;
+            padding: 2rem;
+            background-color: white;
+            overflow-y: auto;
+        }
+
+        .welcome-message {
+            padding: 2rem;
+            text-align: center;
+            color: var(--secondary-color);
+            font-size: 1.1em;
+            margin-top: 10vh;
+        }
+
+        #companyNameHeader {
+            color: var(--primary-color);
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+        }
+
+        .tabs button {
+            background: none;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--secondary-color);
+            border-bottom: 3px solid transparent;
+            margin-bottom: -1px;
+            transition: color 0.2s, border-bottom 0.2s;
+        }
+
+        .tabs button.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+
+        /* --- Contenido de Pestañas --- */
+        .tab-content h3 {
+            color: var(--primary-color);
+            margin-top: 0;
+        }
+
+        .current-plan-info {
+            background-color: #e9ecef;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 2rem;
+            border-left: 5px solid var(--success-color);
+            line-height: 1.6;
+        }
+
+        .history-item {
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            background-color: var(--bg-light);
+        }
+        .history-item span {
+            display: block;
+            font-size: 0.9em;
+            color: var(--secondary-color);
+            margin-top: 5px;
+        }
+
+        /* Estilos generales para formularios */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-group label {
+            display: block;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        .form-group input[type="date"], 
+        .form-group input[type="text"], 
+        .form-group input[type="email"], 
+        .form-group select, 
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+
+        form button[type="submit"] {
+            display: block;
+            width: 100%;
+            border: none;
+            padding: 1rem;
+            margin-top: 2rem;
+            border-radius: 4px;
+            font-size: 1.1em;
+            cursor: pointer;
+            background-color: var(--success-color);
+            color: white;
+            transition: background-color 0.3s;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="admin-layout">
+        <div class="work-area">
+
+            <div class="search-column">
+                <h3>Búsqueda Rápida</h3>
+                <input type="text" id="searchTerm" placeholder="ID, Nombre o Razón Social..." autofocus>
+                <ul id="resultsList" class="results-list"></ul>
+            </div>
+
+            <div class="main-panel" id="mainPanel">
+                <div id="welcomeMessage" class="welcome-message">
+                    <p>⏳ **Cargando compañías...**</p>
+                </div>
+
+                <div id="planManagerContainer" style="display:none;">
+                    <h2 id="companyNameHeader"></h2>
+
+                    <div class="tabs">
+                        <button id="tabPlan" class="active">Plan y Suscripción</button>
+                        <button id="tabContact">Información Básica</button>
+                        <button id="tabHistory">Historial de Cambios</button>
+                    </div>
+
+                    <div id="tabContent">
+                        <div id="contentPlan" class="tab-content"></div>
+                        <div id="contentContact" class="tab-content" style="display:none;"></div>
+                        <div id="contentHistory" class="tab-content" style="display:none;"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="toastNotification" style="display: none;">
+        <span id="toastIcon">✅</span>
+        <span id="toastMessage"></span>
+    </div>
+
+    <script type="module">
+        // ====================================================================
+        // === CONFIGURACIÓN Y AUTENTICACIÓN REAL DE FIREBASE ===
+        // ====================================================================
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"; 
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyDN9mZ1n-OkC-Qz52eTCOy4yJH7M0U9zYI",
+            authDomain: "nexus-pos-75593.firebaseapp.com",
+            projectId: "nexus-pos-75593",
+            storageBucket: "nexus-pos-75593.firebasestorage.app",
+            messagingSenderId: "626840984883",
+            appId: "1:626840984883:web:08d56544ee28bc8e637246",
+            measurementId: "G-K1EQVJWJHG"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app); 
+
+        // --- 1. VARIABLES GLOBALES ---
+        let GLOBAL_PLANES_CATALOG = [];
+        let COMPANIES_DATA = [];
+        let selectedCompany = null;
+
+        // Referencias del DOM 
+        const resultsList = document.getElementById('resultsList');
+        const searchTermInput = document.getElementById('searchTerm');
+        const welcomeMessage = document.getElementById('welcomeMessage');
+        const planManagerContainer = document.getElementById('planManagerContainer');
+        const companyNameHeader = document.getElementById('companyNameHeader');
+
+        const tabs = {
+            plan: document.getElementById('tabPlan'),
+            contact: document.getElementById('tabContact'),
+            history: document.getElementById('tabHistory')
+        };
+        const contents = {
+            plan: document.getElementById('contentPlan'),
+            contact: document.getElementById('contentContact'),
+            history: document.getElementById('contentHistory')
+        };
+
+        // --- UTILIDADES ---
+        function showToast(message, isSuccess = true) {
+            const toast = document.getElementById('toastNotification');
+            const icon = document.getElementById('toastIcon');
+            const msg = document.getElementById('toastMessage');
+
+            msg.textContent = message;
+            if (isSuccess) {
+                icon.textContent = '✅';
+                toast.style.backgroundColor = '#e6ffed';
+                toast.style.color = 'var(--success-color)';
+            } else {
+                icon.textContent = '⚠️';
+                toast.style.backgroundColor = '#fff3cd';
+                toast.style.color = '#856404'; 
+            }
+
+            toast.style.display = 'flex';
+            setTimeout(() => { toast.classList.add('show'); }, 10); 
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => { toast.style.display = 'none'; }, 500); 
+            }, 4000);
+        }
+
+        // --- OBTENER DATOS DE FIRESTORE ---
+
+        async function fetchPlans() {
+            GLOBAL_PLANES_CATALOG = [];
+            try {
+                const plansCol = collection(db, "planes");
+                const planSnapshot = await getDocs(plansCol);
+                planSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    GLOBAL_PLANES_CATALOG.push({
+                        clave_producto: doc.id,
+                        label: data.label || "Nombre de Plan Desconocido",
+                        precio: data.precio || 0,
+                        permisos: data.permisos || []
+                    });
+                });
+            } catch (error) {
+                console.error("Error al cargar los planes desde Firestore:", error);
+            }
+        }
+
+        async function fetchCompanies() {
+            COMPANIES_DATA = []; 
+            welcomeMessage.innerHTML = '<p>⏳ **Cargando compañías...**</p>';
+            welcomeMessage.style.display = 'block';
+
+            try {
+                const companiesCol = collection(db, "companies");
+                const companySnapshot = await getDocs(companiesCol);
+                
+                companySnapshot.forEach(doc => {
+                    const data = doc.data();
+                    
+                    let companyPlan = data.plan || { 
+                        clave_producto: "NO_ASIGNADO", 
+                        nombre_plan: "Plan No Asignado", 
+                        estado: "PENDIENTE",
+                        fecha_vencimiento: "N/A",
+                        permisos: []
+                    };
+                    
+                    let createdDate = "Fecha Desconocida";
+                    if (data.createdAt && data.createdAt.toDate) { 
+                        createdDate = data.createdAt.toDate().toLocaleDateString("es-ES", {
+                            year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                        });
+                    }
+
+                    COMPANIES_DATA.push({
+                        id: doc.id, 
+                        nombre: data.name || "Nombre Desconocido",
+                        razon_social: data.razon_social || data.name || "Razón Social Pendiente",
+                        telefono: data.telefono || "N/A",
+                        email: data.adminEmail || "N/A",
+                        created: createdDate,
+                        plan: companyPlan,
+                    });
+                });
+                
+                welcomeMessage.style.display = 'none'; 
+                filterCompanies(); // Mostrar resultados iniciales
+
+            } catch (error) {
+                console.error("Error al cargar las compañías desde Firestore:", error);
+                welcomeMessage.innerHTML = '<p>⚠️ **Error al conectar con la base de datos.** Verifique la consola.</p>';
+                welcomeMessage.style.display = 'block';
+            }
+        }
+
+        async function fetchCompanyHistory(companyId) {
+            try {
+                const historyCol = collection(db, "companies", companyId, "plan_history");
+                const q = query(historyCol, orderBy("createdAt", "desc")); 
+                const historySnapshot = await getDocs(q);
+
+                const historyData = [];
+                historySnapshot.forEach(doc => {
+                    const data = doc.data();
+                    let formattedDate = data.fecha; 
+                    if (data.createdAt && data.createdAt.toDate) {
+                         formattedDate = data.createdAt.toDate().toLocaleDateString("es-ES", {
+                            year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                        });
+                    }
+                    historyData.push({ ...data, fecha: formattedDate, id: doc.id });
+                });
+                return historyData;
+
+            } catch (error) {
+                console.error(`Error al cargar el historial:`, error);
+                return [];
+            }
+        }
+
+        // --- LÓGICA DE BÚSQUEDA ---
+
+        const renderResults = (results) => {
+            resultsList.innerHTML = '';
+            
+            if (results.length === 0) {
+                const message = searchTermInput.value.length > 0
+                    ? 'No se encontraron compañías.'
+                    : 'No hay compañías registradas.';
+                resultsList.innerHTML = `<li style="justify-content:center; color:var(--danger-color); cursor:default;">${message}</li>`;
+                return;
+            }
+
+            results.forEach(company => {
+                const li = document.createElement('li');
+                li.className = selectedCompany && selectedCompany.id === company.id ? 'selected' : '';
+                
+                const isPlanAssigned = company.plan && company.plan.clave_producto !== "NO_ASIGNADO";
+                const secondaryLine = isPlanAssigned
+                                      ? `Plan: ${company.plan.nombre_plan}`
+                                      : `Creada: ${company.created || 'N/A'}`;
+                                      
+                li.innerHTML = `
+                    <strong>${company.nombre} <span style="font-weight:normal; font-size:0.9em; color:#666;">(${company.id})</span></strong>
+                    <span>${secondaryLine}</span>
+                `;
+                li.addEventListener('click', () => handleCompanySelect(company.id, li));
+                resultsList.appendChild(li);
+            });
+        };
+
+        const filterCompanies = () => {
+            const term = searchTermInput.value.toLowerCase().trim();
+            
+            if (term.length === 0) {
+                renderResults(COMPANIES_DATA);
+                return;
+            }
+
+            const filtered = COMPANIES_DATA.filter(company => 
+                company.nombre.toLowerCase().includes(term) || 
+                company.id.toLowerCase().includes(term) ||
+                company.razon_social.toLowerCase().includes(term)
+            );
+            renderResults(filtered);
+        };
+
+        searchTermInput.addEventListener('input', filterCompanies);
+
+
+        // --- LÓGICA DE SELECCIÓN Y PESTAÑAS ---
+
+        const handleCompanySelect = (companyId, listItem) => {
+            document.querySelectorAll('.results-list li').forEach(li => li.classList.remove('selected'));
+            listItem.classList.add('selected');
+            
+            const companyData = COMPANIES_DATA.find(c => c.id === companyId);
+            if (!companyData) return;
+
+            selectedCompany = companyData;
+            welcomeMessage.style.display = 'none';
+            planManagerContainer.style.display = 'block';
+            companyNameHeader.textContent = `Gestionando: ${companyData.nombre}`;
+            
+            showTab('plan');
+        };
+
+        const showTab = (tabName) => {
+            Object.values(contents).forEach(c => c.style.display = 'none');
+            Object.values(tabs).forEach(t => t.classList.remove('active'));
+
+            contents[tabName].style.display = 'block';
+            tabs[tabName].classList.add('active');
+
+            if (selectedCompany) {
+                if (tabName === 'plan') renderContentPlan(selectedCompany);
+                if (tabName === 'contact') renderContentContact(selectedCompany);
+                if (tabName === 'history') renderContentHistory(selectedCompany);
+            }
+        };
+
+        tabs.plan.addEventListener('click', () => showTab('plan'));
+        tabs.contact.addEventListener('click', () => showTab('contact'));
+        tabs.history.addEventListener('click', () => showTab('history'));
+
+
+        // --- RENDERIZADO DE CONTENIDOS POR PESTAÑA ---
+
+        const renderContentPlan = (company) => {
+            const planOptions = GLOBAL_PLANES_CATALOG.map(plan => 
+                `<option value="${plan.clave_producto}" ${plan.clave_producto === company.plan.clave_producto ? 'selected' : ''}>
+                    ${plan.label} (${plan.clave_producto})
+                </option>`
+            ).join('');
+
+            const defaultExpirationDate = new Date();
+            defaultExpirationDate.setDate(defaultExpirationDate.getDate() + 30);
+            const formattedDefaultExpirationDate = defaultExpirationDate.toISOString().split('T')[0];
+            
+            const expirationDateValue = company.plan.fecha_vencimiento && company.plan.fecha_vencimiento !== "N/A"
+                                        ? company.plan.fecha_vencimiento
+                                        : formattedDefaultExpirationDate;
+
+            contents.plan.innerHTML = `
+                <div class="current-plan-info">
+                    <strong>Plan Actual: ${company.plan.nombre_plan}</strong><br>
+                    <span>ID de la Compañía: <code>${company.id}</code></span><br>
+                    <span>Fecha de Creación: ${company.created || 'N/A'}</span><br>
+                    <span>Clave de Producto: <code>${company.plan.clave_producto}</code></span><br>
+                    <span>Estado: ${company.plan.estado} | Vencimiento: ${company.plan.fecha_vencimiento}</span><br>
+                    <span>Permisos Activos: ${company.plan.permisos.join(', ')}</span>
+                </div>
+
+                <h3>Modificar Suscripción</h3>
+                <form id="planUpdateForm">
+                    <div class="form-group">
+                        <label for="newPlanKey">Seleccionar Nuevo Plan (Clave de Producto):</label>
+                        <select id="newPlanKey" required>
+                            ${planOptions.length > 0 ? planOptions : '<option value="" disabled selected>No hay planes cargados en el catálogo</option>'}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="newExpirationDate">Nueva Fecha de Vencimiento:</label>
+                        <input type="date" id="newExpirationDate" required value="${expirationDateValue}">
+                    </div>
+                    <div class="form-group">
+                        <label for="notes">Notas del Administrador (Motivo del cambio):</label>
+                        <textarea id="notes" placeholder="Ej: Upgrade por promoción Q4, Downgrade solicitado."></textarea>
+                    </div>
+                    <button type="submit">💾 Guardar y Aplicar Plan</button>
+                </form>
+            `;
+            
+            if (GLOBAL_PLANES_CATALOG.length > 0) {
+                 document.getElementById('planUpdateForm').addEventListener('submit', handleSavePlan);
+            }
+        };
+
+        const renderContentContact = (company) => {
+            contents.contact.innerHTML = `
+                <h3>Datos de la Compañía</h3>
+                <div style="border: 1px solid var(--border-color); padding: 1.5rem; border-radius: 4px; background-color: var(--bg-light); line-height: 1.6;">
+                    <p style="margin:0 0 10px 0;"><strong>Nombre de la Compañía:</strong> ${company.nombre || 'N/A'}</p>
+                    <p style="margin:0 0 10px 0;"><strong>Razón Social:</strong> ${company.razon_social || 'N/A'}</p>
+                    <p style="margin:0 0 10px 0;"><strong>Teléfono:</strong> ${company.telefono || 'N/A'}</p>
+                    <p style="margin:0 0 10px 0;"><strong>Email Principal (Personal):</strong> ${company.email || 'N/A'}</p>
+                    <p style="margin:0;"><strong>Dirección:</strong> ${company.address || 'N/A'}</p>
+                </div>
+                <button type="button" id="editContactBtn" style="background-color: var(--success-color); color: white; border: none; padding: 1rem; margin-top: 1.5rem; border-radius: 4px; font-size: 1.1em; cursor: pointer; width: 100%; transition: background-color 0.3s;">✏️ Editar Información</button>
+            `;
+
+            document.getElementById('editContactBtn').addEventListener('click', () => {
+                renderEditContactForm(company);
+            });
+        };
+
+        const renderEditContactForm = (company) => {
+            contents.contact.innerHTML = `
+                <h3>Editar Datos de la Compañía</h3>
+                <form id="contactInfoForm">
+                    <div class="form-group">
+                        <label for="companyName">Nombre de la Compañía:</label>
+                        <input type="text" id="companyName" required value="${company.nombre || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label for="razonSocial">Razón Social:</label>
+                        <input type="text" id="razonSocial" value="${company.razon_social || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label for="companyPhone">Teléfono:</label>
+                        <input type="text" id="companyPhone" value="${company.telefono || ''}" placeholder="Ej: +58 412 1234567">
+                    </div>
+                    <div class="form-group">
+                        <label for="companyEmail">Email Personal Principal (Administrador):</label>
+                        <input type="email" id="companyEmail" required value="${company.email || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label for="companyAddress">Dirección (Campo Adicional):</label>
+                        <textarea id="companyAddress">${company.address || ''}</textarea>
+                    </div>
+                    <button type="submit" style="background-color: var(--success-color); color: white; border: none; padding: 1rem; border-radius: 4px; font-size: 1.1em; cursor: pointer; width: 100%;">💾 Guardar Cambios</button>
+                    <button type="button" id="cancelEditBtn" style="background-color: var(--secondary-color); color: white; border: none; padding: 0.75rem; margin-top: 0.5rem; border-radius: 4px; font-size: 1em; cursor: pointer; width: 100%;">❌ Cancelar Edición</button>
+                </form>
+            `;
+
+            document.getElementById('contactInfoForm').addEventListener('submit', handleUpdateContactInfo);
+            document.getElementById('cancelEditBtn').addEventListener('click', () => renderContentContact(company)); 
+        };
+
+        const renderContentHistory = async (company) => {
+            contents.history.innerHTML = '<p>⏳ Cargando historial de cambios...</p>';
+            
+            const history = await fetchCompanyHistory(company.id);
+
+            if (history.length > 0) {
+                const historyItems = history.map(item => `
+                    <div class="history-item">
+                        <strong>${item.accion}</strong>
+                        <span>Realizado por: ${item.admin} el ${item.fecha}</span>
+                        ${item.notas ? `<span>Notas: ${item.notas}</span>` : ''}
+                    </div>
+                `).join('');
+
+                contents.history.innerHTML = `
+                    <h3>Registro de Eventos (${history.length} entradas)</h3>
+                    ${historyItems}
+                `;
+            } else {
+                contents.history.innerHTML = '<p>No hay registros de cambios de plan para esta compañía.</p>';
+            }
+        };
+
+        // --- MANEJADORES DE ENVÍO DE FORMULARIOS A FIRESTORE ---
+
+        const handleUpdateContactInfo = async (e) => {
+            e.preventDefault();
+
+            const companyName = document.getElementById('companyName').value.trim();
+            const razonSocial = document.getElementById('razonSocial').value.trim();
+            const companyPhone = document.getElementById('companyPhone').value.trim();
+            const companyEmail = document.getElementById('companyEmail').value.trim();
+            const companyAddress = document.getElementById('companyAddress').value.trim(); 
+            
+            const updatedData = {
+                name: companyName, 
+                razon_social: razonSocial,
+                telefono: companyPhone,
+                adminEmail: companyEmail, 
+                address: companyAddress, 
+                updatedAt: new Date(),
+            };
+            
+            try {
+                const companyRef = doc(db, "companies", selectedCompany.id); 
+                await updateDoc(companyRef, updatedData); 
+
+                showToast(`✅ Información básica de ${companyName} actualizada exitosamente.`);
+
+                selectedCompany.nombre = companyName;
+                selectedCompany.razon_social = razonSocial;
+                selectedCompany.telefono = companyPhone;
+                selectedCompany.email = companyEmail;
+                selectedCompany.address = companyAddress; 
+                
+                filterCompanies(); 
+                renderContentContact(selectedCompany); 
+
+            } catch (error) {
+                console.error("Error al actualizar info:", error);
+                alert(`⚠️ Error al guardar los cambios en la base de datos.`);
+            }
+        };
+
+        const handleSavePlan = async (e) => {
+            e.preventDefault();
+
+            const newPlanKey = document.getElementById('newPlanKey').value;
+            const newExpirationDate = document.getElementById('newExpirationDate').value;
+            const notes = document.getElementById('notes').value;
+            
+            const selectedPlanData = GLOBAL_PLANES_CATALOG.find(p => p.clave_producto === newPlanKey);
+            const today = new Date().toLocaleDateString("es-ES", {
+                year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+            });
+
+            const newPlanObject = {
+                clave_producto: selectedPlanData.clave_producto,
+                nombre_plan: selectedPlanData.label,
+                precio: selectedPlanData.precio,
+                permisos: selectedPlanData.permisos,
+                fecha_vencimiento: newExpirationDate, 
+                estado: 'ACTIVO' 
+            };
+            
+            const historyEntry = {
+                fecha: today,
+                accion: `Cambio de plan a ${newPlanObject.nombre_plan} (Vencimiento: ${newExpirationDate})`,
+                admin: "Admin_Logged", 
+                notas: notes,
+                createdAt: new Date(), 
+                plan_anterior: selectedCompany.plan.clave_producto,
+                plan_nuevo: newPlanObject.clave_producto
+            };
+            
+            try {
+                const companyRef = doc(db, "companies", selectedCompany.id);
+                await updateDoc(companyRef, { plan: newPlanObject });
+                
+                const historyColRef = collection(db, "companies", selectedCompany.id, "plan_history");
+                await addDoc(historyColRef, historyEntry);
+
+                showToast(`✅ Plan actualizado a ${newPlanObject.nombre_plan} para ${selectedCompany.nombre}.`);
+
+                selectedCompany.plan = newPlanObject;
+                showTab('plan'); 
+                filterCompanies();
+
+            } catch (error) {
+                console.error("Error al actualizar plan:", error);
+                alert(`⚠️ Error al guardar los cambios en la base de datos.`);
+            }
+        };
+        
+        // --- INICIO DE LA APLICACIÓN ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            welcomeMessage.style.display = 'block';
+            await Promise.all([
+                fetchPlans(),
+                fetchCompanies()
+            ]);
+            // El mensaje de bienvenida inicial indica que busques en la lista
+            welcomeMessage.innerHTML = `<p>🔍 **Compañías cargadas.** Utiliza la barra de búsqueda lateral para seleccionar una.</p>`;
+        });
+
+    </script>
+</body>
+</html>

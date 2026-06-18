@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Planes y Precios - Nexus</title>
+    <style>
+        /* ====================
+           ESTILOS CSS AISLADOS (Gestión de Planes)
+           ==================== */
+        
+        :root {
+            --primary-color: #3b5998;
+            --secondary-color: #6c757d;
+            --accent-color: #00bcd4;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --bg-light: #f4f6f9;
+            --border-color: #dee2e6;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background-color: var(--bg-light);
+            color: #343a40;
+            padding: 2rem;
+        }
+
+        .main-panel {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* --- Toast Notification (Mensaje Flotante) --- */
+        #toastNotification {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: white;
+            color: var(--success-color);
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+            min-width: 300px;
+        }
+
+        #toastNotification.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-10px);
+        }
+
+        #toastIcon {
+            font-size: 1.5rem;
+            margin-right: 15px;
+            animation: pulse 1s infinite alternate;
+        }
+        
+        @keyframes pulse {
+            from { transform: scale(1); color: var(--success-color); }
+            to { transform: scale(1.1); color: #1e7e34; }
+        }
+
+        /* --- Plan Manager Styles --- */
+        .plan-manager-global h2 {
+            color: var(--primary-color);
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+            margin-top: 0;
+        }
+        
+        /* Estilos generales para formularios */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-group label {
+            display: block;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        .form-group input[type="date"], 
+        .form-group input[type="text"], 
+        .form-group input[type="number"], 
+        .form-group select, 
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        form button[type="submit"], #cancelPlanCreationBtn {
+            display: block;
+            width: 100%;
+            border: none;
+            padding: 1rem;
+            margin-top: 1rem;
+            border-radius: 4px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        form button[type="submit"] {
+            background-color: var(--success-color);
+            color: white;
+            margin-top: 2rem;
+        }
+        
+        #cancelPlanCreationBtn {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+
+        /* Estilos específicos para la tabla de planes */
+        #plansTableBody tr:nth-child(even) {
+            background-color: var(--bg-light);
+        }
+        #plansTable th, #plansTable td {
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            text-align: left;
+        }
+
+        /* Estilos para los permisos de checkbox */
+        .permissions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 10px;
+            background-color: var(--bg-light);
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .permission-item {
+            display: flex;
+            align-items: center;
+            padding: 5px;
+        }
+        .permission-item.max-number {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .permission-item.max-number-standalone {
+            border: 1px solid var(--border-color); 
+            padding: 10px; 
+            border-radius: 4px; 
+            background-color: white;
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+        }
+        .permission-item input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+            transform: scale(1.1);
+        }
+        .permission-item input[type="number"] {
+            width: 80px !important;
+            padding: 5px;
+            margin-top: 0; 
+            box-sizing: content-box;
+            flex-shrink: 0;
+        }
+        .permission-item label[for$="_MAX"] {
+            font-weight: 400; 
+            margin-bottom: 0; 
+            margin-left: 10px; 
+            width: 50px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-panel" id="mainPanel">
+        </div>
+
+    <div id="toastNotification" style="display: none;">
+        <span id="toastIcon">✅</span>
+        <span id="toastMessage"></span>
+    </div>
+
+    <script type="module">
+        // ====================================================================
+        // === CONFIGURACIÓN Y AUTENTICACIÓN REAL DE FIREBASE ===
+        // ====================================================================
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"; 
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyDN9mZ1n-OkC-Qz52eTCOy4yJH7M0U9zYI",
+            authDomain: "nexus-pos-75593.firebaseapp.com",
+            projectId: "nexus-pos-75593",
+            storageBucket: "nexus-pos-75593.firebasestorage.app",
+            messagingSenderId: "626840984883",
+            appId: "1:626840984883:web:08d56544ee28bc8e637246",
+            measurementId: "G-K1EQVJWJHG"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app); 
+
+        // --- 1. DATA, VARIABLES GLOBALES, CATÁLOGO DE PERMISOS Y TASAS ---
+        const LIMITED_PERMISSIONS = [
+            { id: 'MULTI_BRANCH', label: 'Multi-sucursal', type: 'max_number', max_id: 'MULTI_BRANCH_MAX' },
+            { id: 'CASHIERS', label: 'Usuarios Cajeros', type: 'max_number', max_id: 'CASHIERS_MAX' },
+        ];
+        
+        const CORE_PERMISSIONS = [
+            { id: 'POS_FULL', label: 'Punto de Venta (Completo)', type: 'checkbox' },
+            { id: 'STATS_ADV', label: 'Estadísticas Avanzadas', type: 'checkbox' },
+            { id: 'INVENTORY', label: 'Gestión de Inventario', type: 'checkbox' },
+            { id: 'CASH_ADMIN', label: 'Movimientos de caja admin', type: 'checkbox' },
+            { id: 'PACK_UNITS', label: 'Unidades de empaque', type: 'checkbox' },
+            { id: 'DATA_BACKUP', label: 'Respaldo de datos', type: 'checkbox' },
+            { id: 'BARCODE_GEN', label: 'Generador de códigos de barra', type: 'checkbox' },
+            { id: 'ECOMMERCE', label: 'Tienda online', type: 'checkbox' },
+            { id: 'INVENTORY_TRANSFER', label: 'Traspaso de inventario', type: 'checkbox' },
+        ];
+        
+        let GLOBAL_PLANES_CATALOG = [];
+        let exchangeRateUSD = null; 
+        const API_URL_TASAS = 'https://api.nexusposgobal.com:3002/api/tasas';
+
+        const mainPanel = document.getElementById('mainPanel');
+
+        // Función de utilidad para mostrar notificaciones flotantes
+        function showToast(message, isSuccess = true) {
+            const toast = document.getElementById('toastNotification');
+            const icon = document.getElementById('toastIcon');
+            const msg = document.getElementById('toastMessage');
+
+            msg.textContent = message;
+            if (isSuccess) {
+                icon.textContent = '✅';
+                toast.style.backgroundColor = '#e6ffed'; 
+                toast.style.color = 'var(--success-color)';
+            } else {
+                icon.textContent = '⚠️';
+                toast.style.backgroundColor = '#fff3cd'; 
+                toast.style.color = '#856404'; 
+            }
+
+            toast.style.display = 'flex';
+            setTimeout(() => { toast.classList.add('show'); }, 10); 
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => { toast.style.display = 'none'; }, 500); 
+            }, 4000);
+        }
+
+        async function fetchPlans() {
+            GLOBAL_PLANES_CATALOG = [];
+            try {
+                const plansCol = collection(db, "planes");
+                const planSnapshot = await getDocs(plansCol);
+
+                planSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    GLOBAL_PLANES_CATALOG.push({
+                        clave_producto: doc.id,
+                        label: data.label || "Nombre de Plan Desconocido",
+                        precio: data.precio || 0,
+                        permisos: data.permisos || []
+                    });
+                });
+                console.log(`Se cargaron ${GLOBAL_PLANES_CATALOG.length} planes desde Firestore.`);
+
+            } catch (error) {
+                console.error("Error al cargar los planes desde Firestore:", error);
+                 const planView = document.getElementById('planManagementView');
+                 if (planView) {
+                     planView.innerHTML = `<h2 style="color: var(--danger-color);">❌ Error de Conexión o Permisos</h2>
+                                            <p>No se pudieron cargar los planes. Verifique las Reglas de Seguridad de Firebase.</p>`;
+                 }
+            }
+        }
+
+        async function fetchExchangeRate() {
+            const ratesContainer = document.getElementById('exchangeRateDisplay');
+            if (ratesContainer) {
+                ratesContainer.innerHTML = 'Cargando tasas...';
+            }
+            
+            exchangeRateUSD = null;
+
+            try {
+                const response = await fetch(API_URL_TASAS);
+                if (!response.ok) throw new Error('Error al obtener las tasas del servidor.');
+                const data = await response.json();
+                
+                const usdRateString = data.rates.USD.replace(',', '.'); 
+                exchangeRateUSD = parseFloat(usdRateString);
+
+                if (ratesContainer) {
+                    const formattedRate = parseFloat(usdRateString).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+                    ratesContainer.innerHTML = `Tasa BCV USD: **${formattedRate} Bs**`;
+                }
+            } catch (error) {
+                console.error('Error al cargar la tasa de cambio:', error);
+                if (ratesContainer) {
+                    ratesContainer.innerHTML = `<span style="color: var(--danger-color); font-weight: 600;">Error al cargar la tasa.</span>`;
+                }
+                exchangeRateUSD = null;
+            }
+        }
+
+        function calculateBSPrice() {
+            const usdInput = document.getElementById('planPriceUSD');
+            const bsInput = document.getElementById('planPriceBS');
+            
+            if (usdInput && bsInput && exchangeRateUSD) {
+                const usdPrice = parseFloat(usdInput.value);
+                if (!isNaN(usdPrice) && usdPrice >= 0) {
+                    const bsPrice = usdPrice * exchangeRateUSD;
+                    bsInput.value = bsPrice.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); 
+                } else {
+                    bsInput.value = '';
+                }
+            } else if(bsInput) {
+                bsInput.value = 'Tasa no disponible';
+            }
+        }
+
+        function togglePlanView(showView) {
+            const listContainer = document.getElementById('planListView');
+            const formContainer = document.getElementById('planCreationView');
+
+            if (showView === 'list') {
+                listContainer.style.display = 'block';
+                formContainer.style.display = 'none';
+                renderPlanListView(); 
+            } else if (showView === 'create') {
+                listContainer.style.display = 'none';
+                formContainer.style.display = 'block';
+                formContainer.innerHTML = renderPlanCreationForm();
+                
+                document.getElementById('newPlanForm').addEventListener('submit', handleCreateNewPlan);
+                document.getElementById('cancelPlanCreationBtn').addEventListener('click', () => togglePlanView('list'));
+                document.getElementById('planPriceUSD').addEventListener('input', calculateBSPrice);
+                
+                fetchExchangeRate().then(() => { calculateBSPrice(); });
+            }
+        }
+
+        function renderPlanListView() {
+            const planListView = document.getElementById('planListView');
+            planListView.innerHTML = `
+                <p>Utiliza esta interfaz para crear nuevos planes de suscripción, editar precios, permisos y claves de producto.</p>
+                
+                <button id="addPlanBtn" style="padding: 10px 20px; background-color: var(--accent-color); color: white; border: none; border-radius: 4px; font-weight: 600; cursor: pointer;">
+                    ➕ Agregar Nuevo Plan
+                </button>
+                
+                <table id="plansTable" style="width: 100%; margin-top: 20px; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background-color: var(--bg-light);">
+                            <th style="padding: 10px; border: 1px solid var(--border-color); text-align: left;">Clave</th>
+                            <th style="padding: 10px; border: 1px solid var(--border-color); text-align: left;">Nombre</th>
+                            <th style="padding: 10px; border: 1px solid var(--border-color); text-align: left;">Precio ($)</th>
+                            <th style="padding: 10px; border: 1px solid var(--border-color); text-align: left;">Permisos</th>
+                            <th style="padding: 10px; border: 1px solid var(--border-color); text-align: center;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="plansTableBody">
+                        ${renderPlansTable()}
+                    </tbody>
+                </table>
+                ${GLOBAL_PLANES_CATALOG.length === 0 ? '<p style="margin-top: 20px; color: var(--danger-color);">⚠️ No se encontraron planes en la base de datos. ¡Crea el primero!</p>' : ''}
+            `;
+            
+            document.getElementById('addPlanBtn').addEventListener('click', () => togglePlanView('create'));
+        }
+
+        function renderPlansTable() {
+            if (GLOBAL_PLANES_CATALOG.length === 0) return '';
+            
+            return GLOBAL_PLANES_CATALOG.map(plan => `
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                    <td style="padding: 10px; border: 1px solid var(--border-color);">${plan.clave_producto}</td>
+                    <td style="padding: 10px; border: 1px solid var(--border-color);">${plan.label}</td>
+                    <td style="padding: 10px; border: 1px solid var(--border-color);">$${plan.precio.toFixed(2)}</td>
+                    <td style="padding: 10px; border: 1px solid var(--border-color); font-size: 0.85em;">${plan.permisos.join(', ')}</td>
+                    <td style="padding: 10px; border: 1px solid var(--border-color); text-align: center;">
+                        <button onclick="alert('Editar plan ${plan.clave_producto}')" style="background: var(--primary-color); color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 0.9em;">Editar</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderPlanCreationForm() {
+            const limitedPermissionsHtml = LIMITED_PERMISSIONS.map(p => `
+                <div class="permission-item max-number max-number-standalone">
+                    <input type="checkbox" id="perm-${p.id}" name="permisos" value="${p.id}" style="margin-right: 10px; transform: scale(1.1);">
+                    <label for="perm-${p.id}" style="margin-top:0.1rem; font-weight: 600; width: auto; flex-grow: 1;">${p.label}</label>
+                    <label for="${p.max_id}" style="font-weight: 400; margin-bottom: 0; margin-right: 5px;">Máx:</label>
+                    <input type="number" id="${p.max_id}" name="${p.max_id}" min="1" value="1" style="width: 80px; padding: 5px;">
+                </div>
+            `).join('');
+
+            const corePermissionsCheckboxes = CORE_PERMISSIONS.map(p => `
+                <div class="permission-item">
+                    <input type="checkbox" id="perm-${p.id}" name="permisos" value="${p.id}">
+                    <label for="perm-${p.id}" style="margin-top:0.1rem; font-weight: 400;">${p.label}</label>
+                </div>
+            `).join('');
+            
+            return `
+                <h3>Crear Nuevo Plan de Suscripción</h3>
+                <form id="newPlanForm">
+                    <div class="form-group">
+                        <label for="planKey">Clave de Producto (ID Único):</label>
+                        <input type="text" id="planKey" required 
+                               placeholder="Ej: PRO-ILIMITADO-2026. Debe ser único y sin espacios." 
+                               pattern="[-a-zA-Z0-9_]+" title="Solo letras, números, guiones y guiones bajos."
+                               style="text-transform: uppercase;">
+                        <small style="color: var(--secondary-color);">Este será el ID único en Firestore (Ej: PRO-2026).</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="planLabel">Nombre del Plan (Visible al Cliente):</label>
+                        <input type="text" id="planLabel" required placeholder="Ej: Plan Pro Ilimitado - Anual">
+                    </div>
+
+                    <div class="form-group" style="display: flex; gap: 20px;">
+                        <div style="flex-grow: 1;">
+                            <label for="planPriceUSD">Precio Mensual ($USD):</label>
+                            <input type="number" id="planPriceUSD" required min="0" step="0.01" placeholder="Ej: 150.00">
+                        </div>
+                        <div style="flex-grow: 1;">
+                            <label for="planPriceBS">Precio Mensual (BS):</label>
+                            <input type="text" id="planPriceBS" readonly style="background-color: #f8f9fa; color: var(--primary-color); font-weight: 700;">
+                            <small id="exchangeRateDisplay" style="display: block; margin-top: 5px; font-size: 0.8em; font-weight: 600;"></small>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 2rem;">
+                         <label style="color: var(--primary-color); margin-bottom: 1rem;">Permisos de Límite de Recursos:</label>
+                         ${limitedPermissionsHtml}
+                    </div>
+
+                    <div class="form-group">
+                        <label>Permisos de Módulos (Incluidos):</label>
+                        <div class="permissions-grid">
+                            ${corePermissionsCheckboxes}
+                        </div>
+                    </div>
+
+                    <button type="submit">💾 Guardar Nuevo Plan</button>
+                    <button type="button" id="cancelPlanCreationBtn">❌ Cancelar</button>
+                </form>
+            `;
+        }
+
+        async function handleCreateNewPlan(e) {
+            e.preventDefault();
+
+            const planKey = document.getElementById('planKey').value.toUpperCase().trim();
+            const planLabel = document.getElementById('planLabel').value.trim();
+            const planPriceUSD = parseFloat(document.getElementById('planPriceUSD').value);
+            
+            const multiBranchMax = document.getElementById('MULTI_BRANCH_MAX') ? parseInt(document.getElementById('MULTI_BRANCH_MAX').value) : 0;
+            const cashiersMax = document.getElementById('CASHIERS_MAX') ? parseInt(document.getElementById('CASHIERS_MAX').value) : 0;
+
+            const selectedPermissions = Array.from(document.querySelectorAll('#newPlanForm input[name="permisos"]:checked'))
+                                             .map(checkbox => checkbox.value);
+
+            if (planKey.length < 3) { alert("La Clave de Producto debe tener al menos 3 caracteres."); return; }
+            if (isNaN(planPriceUSD) || planPriceUSD < 0) { alert("El Precio en USD debe ser un número válido y positivo."); return; }
+            if (!exchangeRateUSD) { alert("No se pudo obtener la tasa de cambio del BCV. Intente recargar la vista."); return; }
+            if (GLOBAL_PLANES_CATALOG.some(p => p.clave_producto === planKey)) { alert(`Error: La clave de producto "${planKey}" ya existe. Use un identificador único.`); return; }
+
+            const precioBsCalculado = planPriceUSD * exchangeRateUSD;
+
+            const newPlanObject = {
+                label: planLabel,
+                precio: planPriceUSD,
+                precio_bs: parseFloat(precioBsCalculado.toFixed(2)),
+                tasa_usd_bcv: exchangeRateUSD,
+                permisos: selectedPermissions,
+                max_multi_branch: selectedPermissions.includes('MULTI_BRANCH') ? multiBranchMax : 0,
+                max_cashiers: selectedPermissions.includes('CASHIERS') ? cashiersMax : 0,
+                createdAt: new Date(), 
+            };
+
+            try {
+                const planRef = doc(db, "planes", planKey);
+                await setDoc(planRef, newPlanObject);
+
+                showToast(`✅ Plan "${planLabel}" (ID: ${planKey}) creado y guardado en Firestore.`);
+                
+                await fetchPlans();
+                togglePlanView('list');
+
+            } catch (error) {
+                console.error("Error al crear el nuevo plan en Firestore:", error);
+                alert(`⚠️ Error al guardar el plan. Revise la consola. Posiblemente se deba a: ${error.code === 'permission-denied' ? 'Falta de permisos en Reglas de Seguridad.' : 'Otro error de la base de datos.'}`);
+            }
+        }
+
+        async function showPlanView() {
+            mainPanel.innerHTML = '<div id="planManagementView" class="plan-manager-global"><h2>🏷️ Gestión del Catálogo de Planes</h2><p>⏳ Cargando planes...</p></div>';
+
+            await fetchPlans(); 
+
+            let planView = document.getElementById('planManagementView');
+            
+            if (planView.innerHTML.includes('Cargando planes...')) {
+                 planView.innerHTML = `
+                    <div class="plan-manager-global">
+                        <h2>🏷️ Gestión del Catálogo de Planes</h2>
+                        <div id="planListView"></div>
+                        <div id="planCreationView" style="display:none;"></div>
+                    </div>
+                 `;
+                togglePlanView('list');
+            } else if (GLOBAL_PLANES_CATALOG.length > 0) {
+                 togglePlanView('list');
+            }
+        }
+
+        // --- INICIALIZACIÓN ---
+        document.addEventListener('DOMContentLoaded', () => {
+            showPlanView();
+        });
+
+    </script>
+</body>
+</html>
