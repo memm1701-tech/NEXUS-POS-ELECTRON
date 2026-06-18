@@ -34,6 +34,7 @@ const axiosConfigBCV = {
 
 // 2. CARGA DE CONFIGURACIÓN
 let config = { isServer: false };
+let cajasEscuchando = [];
 if (fs.existsSync(configPath)) {
     try {
         config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -65,23 +66,84 @@ if (config.isServer) {
             ultimo_numero INTEGER DEFAULT 0
         );
 
-        -- 🔥 AQUÍ AGREGAMOS LAS TABLAS DE DEUDAS FALTANTES 🔥
         CREATE TABLE IF NOT EXISTS clientes_maestro (
             id TEXT PRIMARY KEY,
             nombre TEXT NOT NULL,
             saldo_deuda REAL DEFAULT 0
         );
 
-        CREATE TABLE IF NOT EXISTS cuentas_por_cobrar (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            cliente_id TEXT NOT NULL,
+
+    CREATE TABLE IF NOT EXISTS cuentas_por_cobrar (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cliente_id TEXT NOT NULL,
+        cliente_nombre TEXT,
+        monto_bs REAL DEFAULT 0,
+        monto_usd REAL DEFAULT 0,
+        factura_nro TEXT,
+        monto_pagado REAL DEFAULT 0,
+        fecha TEXT,
+        estado TEXT DEFAULT 'PENDIENTE'
+    );
+
+
+        CREATE TABLE IF NOT EXISTS facturas_borradores (
+            id TEXT PRIMARY KEY,
             cliente_nombre TEXT,
-            monto_bs REAL DEFAULT 0,
-            monto_usd REAL DEFAULT 0,
-            factura_nro TEXT,
-            fecha TEXT,
-            estado TEXT DEFAULT 'PENDIENTE'
+            cliente_id TEXT,
+            items TEXT,
+            subtotal REAL,
+            iva REAL,
+            total REAL,
+            metodos_pago TEXT,
+            fecha INTEGER,
+            usuario_id TEXT,
+            sucursal_id TEXT,
+            company_id TEXT
         );
+
+        CREATE TABLE IF NOT EXISTS cierres_caja_maestros (
+        id TEXT PRIMARY KEY,
+        fecha DATETIME,
+        company_id TEXT,
+        branch_id TEXT,
+        cashier_id TEXT,
+        total_ventas_bs REAL,
+        total_ventas_usd REAL,
+        total_gastos_bs REAL,
+        total_gastos_usd REAL,
+        total_ingresos_bs REAL,
+        total_diferencia_bs REAL,
+        total_diferencia_usd REAL,
+        detalle_pagos_json TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS ventas_locales (
+        id TEXT PRIMARY KEY,
+        company_id TEXT,
+        branch_id TEXT,
+        cashier_id TEXT,
+        numero_factura TEXT,
+        numero_control TEXT,
+        cliente_nombre TEXT,
+        cliente_rif TEXT,
+        monto_exento REAL DEFAULT 0,
+        base_imponible REAL DEFAULT 0,
+        monto_iva REAL DEFAULT 0,
+        monto_igtf REAL DEFAULT 0,
+        monto_total REAL DEFAULT 0,
+        tasa_bcv REAL DEFAULT 1,
+        metodo_pago TEXT,
+        datos_json TEXT,
+        estado_sync INTEGER DEFAULT 0,
+        fecha_emision DATETIME DEFAULT CURRENT_TIMESTAMP,
+        estado_cierre INTEGER DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS configuraciones_maestras (
+        clave TEXT PRIMARY KEY, 
+        valor TEXT
+    );
+
     `);
 
 
@@ -126,6 +188,35 @@ if (config.isServer) {
         }
     });
 
+    server.post('/api/maestro/configuracion', (req, res) => {
+    try {
+        const { clave, valor } = req.body;
+        const stmt = serverDb.prepare(`
+            INSERT INTO configuraciones_maestras (clave, valor) 
+            VALUES (?, ?) 
+            ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor
+        `);
+        stmt.run(clave, String(valor));
+        res.json({ exito: true });
+    } catch (error) {
+        console.error("❌ Error al guardar configuración maestra:", error.message);
+        res.status(500).json({ exito: false, error: error.message });
+    }
+});
+
+// 3. Ruta para LEER una configuración (Usada por las cajeras)
+server.get('/api/maestro/configuracion/:clave', (req, res) => {
+    try {
+        const { clave } = req.params;
+        const stmt = serverDb.prepare(`SELECT valor FROM configuraciones_maestras WHERE clave = ?`);
+        const resultado = stmt.get(clave);
+        res.json({ exito: true, valor: resultado ? resultado.valor : null });
+    } catch (error) {
+        console.error("❌ Error al leer configuración maestra:", error.message);
+        res.status(500).json({ exito: false, error: error.message });
+    }
+});
+
     // --- 2. ENDPOINT: SINCRONIZAR DESDE XEON (Nube a Maestro) ---
     server.post('/api/sincronizar-desde-xeon', (req, res) => {
         const productos = req.body; 
@@ -161,15 +252,25 @@ if (config.isServer) {
     });
 
     // server.js - Endpoint Maestro unificado
+    // server.js - Endpoint Maestro unificado
     server.post('/api/maestro/registrar-entrada', (req, res) => {
         const { items, sucursalId, companyId } = req.body; 
         
+        console.log(`\n📦 [API MAESTRO] --- NUEVA PETICIÓN DE ALTERACIÓN DE STOCK ---`);
+        console.log(`➡️ Sucursal Petición: ${sucursalId || 'No enviada'} | Empresa: ${companyId || 'No enviada'}`);
+
         try {
             const transaccion = serverDb.transaction((productos) => {
                 for (const item of productos) {
                     // Usamos la sucursalId que viene en el cuerpo de la petición
                     const sId = sucursalId || item.sucursalId;
                     const cId = companyId || item.companyId;
+
+                    // 🔥 LOG ESTRICTO PARA AUDITORÍA 🔥
+                    console.log(`🔹 Procesando Item ID: ${item.id}`);
+                    console.log(`   - Cantidad recibida (Para operar): ${item.cantidad}`);
+                    console.log(`   - Operación: ${item.operacion}`);
+                    console.log(`   - Sucursal destino: ${sId}`);
 
                     const sql = item.operacion === 'FIJAR' 
                         ? `INSERT INTO stock_maestro (producto_id, sucursal_id, company_id, cantidad_real, ultima_sincronizacion)
@@ -184,51 +285,97 @@ if (config.isServer) {
                         ultima_sincronizacion = CURRENT_TIMESTAMP`;
 
                     serverDb.prepare(sql).run(item.id, sId, cId, item.cantidad);
+                    console.log(`✅ Base de datos actualizada para: ${item.id}`);
                 }
             });
             transaccion(items);
+            console.log(`🏁 Transacción finalizada con éxito.\n`);
             res.json({ exito: true, mensaje: "Stock por sucursal actualizado." });
         } catch (e) {
+            console.error("❌ Error en servidor Maestro (registrar-entrada):", e.message);
             res.status(500).json({ exito: false, error: e.message });
         }
     });
 
     // --- 5. ENDPOINT: DESCONTAR STOCK GLOBAL (Ventas) ---
+    // --- 5. ENDPOINT: DESCONTAR STOCK GLOBAL (Ventas) ---
     server.post('/api/maestro/descontar-stock', (req, res) => {
-        const { items } = req.body;
+        const { items, sucursalId } = req.body; // Aseguramos capturar sucursalId si viene
+        
+        console.log(`\n🛒 [API MAESTRO] --- NUEVA PETICIÓN DE VENTA (DESCUENTO) ---`);
+        
         try {
             const transaccion = serverDb.transaction((productos) => {
+                // Validación previa
                 for (const item of productos) {
-                    const row = serverDb.prepare('SELECT cantidad_real FROM stock_maestro WHERE producto_id = ?').get(item.id);
+                    const sIdTarget = sucursalId || item.sucursalId;
+                    
+                    let row;
+                    if (sIdTarget) {
+                        row = serverDb.prepare('SELECT cantidad_real FROM stock_maestro WHERE producto_id = ? AND sucursal_id = ?').get(item.id, sIdTarget);
+                    } else {
+                        // Si no mandan sucursal, buscamos globalmente (Peligroso si hay varias sucursales)
+                        row = serverDb.prepare('SELECT cantidad_real FROM stock_maestro WHERE producto_id = ?').get(item.id);
+                    }
+
                     if (!row || row.cantidad_real < item.cantidad) {
-                        // Ahora usa el nombre si viene en la petición, si no, usa el ID
-                        throw new Error(`Stock insuficiente para: ${item.nombre || item.id}`);
+                        throw new Error(`Stock insuficiente para: ${item.nombre || item.id}. Actual: ${row ? row.cantidad_real : 0}, Solicitado: ${item.cantidad}`);
                     }
                 }
-                const stmt = serverDb.prepare('UPDATE stock_maestro SET cantidad_real = cantidad_real - ?, ultima_sincronizacion = CURRENT_TIMESTAMP WHERE producto_id = ?');
-                for (const item of productos) { stmt.run(item.cantidad, item.id); }
+                
+                // Descuento real
+                for (const item of productos) { 
+                    const sIdTarget = sucursalId || item.sucursalId;
+                    console.log(`📉 VENTA - DESCONTANDO: ${item.cantidad} unidades | ID: ${item.id}`);
+                    console.log(`   - Sucursal afectada: ${sIdTarget || 'TODAS LAS SUCURSALES (Advertencia)'}`);
+                    
+                    if (sIdTarget) {
+                        // 🔥 FIX: Actualiza SOLO en la sucursal donde se hizo la venta
+                        serverDb.prepare('UPDATE stock_maestro SET cantidad_real = cantidad_real - ?, ultima_sincronizacion = CURRENT_TIMESTAMP WHERE producto_id = ? AND sucursal_id = ?').run(item.cantidad, item.id, sIdTarget);
+                    } else {
+                        // Lógica anterior (puede causar descuento doble si el producto está en 2 sucursales)
+                        serverDb.prepare('UPDATE stock_maestro SET cantidad_real = cantidad_real - ?, ultima_sincronizacion = CURRENT_TIMESTAMP WHERE producto_id = ?').run(item.cantidad, item.id);
+                    }
+                }
             });
             transaccion(items);
+            console.log(`✅ [API MAESTRO] Descuento de stock por venta exitoso.\n`);
             res.json({ exito: true });
         } catch (e) { 
+            console.error("❌ [API MAESTRO] Error en descuento global:", e.message);
             res.status(400).json({ exito: false, mensaje: e.message }); 
         }
     });
 
-    // --- ENDPOINT: OBTENER STOCK MAESTRO (Para la tabla) ---
-    server.get('/api/maestro/stock', (req, res) => {
-        const { sucursalId, companyId } = req.query;
-        try {
-            const filas = serverDb.prepare(`
-                SELECT producto_id, cantidad_real 
-                FROM stock_maestro 
-                WHERE sucursal_id = ? AND company_id = ?
-            `).all(sucursalId, companyId);
-            res.json(filas);
-        } catch (e) {
-            res.status(500).json({ error: e.message });
+
+// server.js - BUSCA Y REEMPLAZA ESTE ENDPOINT
+server.get('/api/maestro/stock', (req, res) => {
+    const { sucursalId, companyId } = req.query;
+    try {
+        let query;
+        let params;
+
+        // Si se envía sucursal (usado en Entradas de Inventario)
+        if (sucursalId && sucursalId !== 'undefined' && sucursalId !== 'null') {
+            query = `SELECT producto_id, cantidad_real FROM stock_maestro WHERE sucursal_id = ? AND company_id = ?`;
+            params = [sucursalId, companyId];
+        } 
+        // SI NO SE ENVÍA SUCURSAL (Para Estadísticas Generales): Suma todo el stock de la empresa
+        else {
+            query = `SELECT producto_id, SUM(cantidad_real) as cantidad_real 
+                     FROM stock_maestro 
+                     WHERE company_id = ? 
+                     GROUP BY producto_id`;
+            params = [companyId];
         }
-    });
+
+        const filas = serverDb.prepare(query).all(...params);
+        res.json(filas);
+    } catch (e) {
+        console.error("❌ Error en stock maestro:", e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
 
     // server.js - Endpoint para recibir deudas de Laptops
     server.post('/api/maestro/registrar-deuda', (req, res) => {
@@ -265,13 +412,53 @@ if (config.isServer) {
         }
     });
 
-// server.js - Endpoint para que las Laptops consulten la deuda de un cliente
-server.get('/api/maestro/deuda-cliente/:rif', (req, res) => {
+
+server.get('/api/maestro/consultar-deuda/:rif', (req, res) => {
+    const rif = req.params.rif;
     try {
-        const row = serverDb.prepare('SELECT saldo_deuda FROM clientes_maestro WHERE id = ?').get(req.params.rif);
-        res.json({ exito: true, deuda: row ? row.saldo_deuda : 0 });
+        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        const tasaActual = config.tasa_bcv || 1;
+
+        // 🔥 AHORA TRAEMOS TODAS LAS FACTURAS (PAGADAS Y PENDIENTES)
+        const facturasHistorial = serverDb.prepare(`
+            SELECT 
+                factura_nro,
+                fecha,
+                monto_bs,  
+                monto_usd,
+                monto_pagado,
+                estado
+            FROM cuentas_por_cobrar 
+            WHERE cliente_id = ? 
+            ORDER BY fecha DESC -- Las más recientes arriba
+        `).all(rif);
+
+        if (facturasHistorial.length > 0) {
+            let saldo_total_usd = 0;
+            
+            facturasHistorial.forEach(f => {
+                const usdReal = (f.monto_usd && f.monto_usd > 0) ? f.monto_usd : parseFloat((f.monto_bs / tasaActual).toFixed(2));
+                f.monto_usd = usdReal; 
+                
+                // Solo sumamos al "Total Pendiente" lo que aún se debe
+                if (f.estado !== 'PAGADA') {
+                    saldo_total_usd += (usdReal - (f.monto_pagado || 0));
+                }
+            });
+            
+            const montoEnBs = saldo_total_usd * tasaActual;
+
+            res.json({ 
+                existe: true, 
+                monto_bs: montoEnBs, 
+                monto_deuda_usd: saldo_total_usd,
+                detalles: facturasHistorial 
+            });
+        } else {
+            res.json({ existe: false, monto_bs: 0, monto_deuda_usd: 0, detalles: [] });
+        }
     } catch (e) {
-        res.status(500).json({ exito: false, deuda: 0 });
+        res.status(500).json({ error: e.message });
     }
 });
 
@@ -298,37 +485,248 @@ server.get('/api/maestro/deuda-cliente/:rif', (req, res) => {
         }
     });
 
-// server.js - Endpoint para recibir abonos y restar deuda (Red)
-    server.post('/api/maestro/registrar-abono', (req, res) => {
-        const { cliente_id, monto_bs } = req.body;
-        
-        console.log(`\n📡 [API RED] Recibiendo ABONO de Laptop. Restando ${monto_bs} Bs al ID: ${cliente_id}`);
-        
-        try {
-            const transaccion = serverDb.transaction(() => {
-                // 1. Descontamos el saldo total del cliente
-                serverDb.prepare(`
-                    UPDATE clientes_maestro 
-                    SET saldo_deuda = MAX(0, saldo_deuda - ?) 
-                    WHERE id = ?
-                `).run(monto_bs, cliente_id);
-                
-                // 2. Cambiamos el estado de las facturas de 'PENDIENTE' a 'PAGADO' para limpiar su historial visible
-                serverDb.prepare(`
-                    UPDATE cuentas_por_cobrar 
-                    SET estado = 'PAGADO' 
-                    WHERE cliente_id = ? AND estado = 'PENDIENTE'
-                `).run(cliente_id);
-            });
+server.post('/api/maestro/registrar-abono', (req, res) => {
+    const { cliente_id, monto_bs, tasa } = req.body;
+    
+    console.log(`\n💳 [API MAESTRO] --- NUEVO PAGO DE DEUDA RECIBIDO ---`);
+    console.log(`   - Cliente ID: ${cliente_id}`);
+    console.log(`   - Monto abonado: Bs. ${monto_bs}`);
+    console.log(`   - Tasa recibida: ${tasa}`);
 
-            transaccion(); // Ejecutamos ambas órdenes juntas
-            console.log(`✅ [API RED] Deuda saldada y facturas actualizadas en nexus-local-server.db`);
-            res.json({ exito: true });
-        } catch (e) {
-            console.error(`❌ [API RED] Error al procesar abono:`, e.message);
-            res.status(500).json({ exito: false, mensaje: e.message });
+    try {
+        if (!tasa || tasa <= 0) {
+            console.log(`❌ ERROR: Tasa inválida recibida. Bloqueando pago para proteger los datos.`);
+            return res.json({ exito: false, mensaje: "Error crítico: El servidor no recibió la tasa de cambio válida." });
         }
+
+        const rate = parseFloat(tasa);
+        const abonoUSD = parseFloat((monto_bs / rate).toFixed(2));
+        
+        console.log(`   - 💵 Abono convertido a USD: $${abonoUSD}`);
+
+        if (abonoUSD <= 0) return res.json({ exito: false, mensaje: "Monto inválido." });
+
+        const deudas = serverDb.prepare(`
+            SELECT * FROM cuentas_por_cobrar 
+            WHERE cliente_id = ? AND estado = 'PENDIENTE'
+            ORDER BY fecha ASC
+        `).all(cliente_id);
+
+        if (deudas.length === 0) {
+            console.log(`   - ⚠️ El cliente no tiene deudas en estado PENDIENTE.`);
+            return res.json({ exito: false, mensaje: "Sin deudas." });
+        }
+
+        console.log(`   - 📋 Facturas pendientes encontradas: ${deudas.length}`);
+
+        const procesoCascada = serverDb.transaction((lista, montoAPagarUSD, montoAPagarBs) => {
+            const update = serverDb.prepare(`UPDATE cuentas_por_cobrar SET monto_pagado = ?, estado = ? WHERE id = ?`);
+            let saldoRestantePago = montoAPagarUSD;
+
+            for (let factura of lista) {
+                if (saldoRestantePago <= 0) break;
+
+                // 🔥 REPARACIÓN AL VUELO: Si la factura vieja está corrupta (0 USD), la reparamos usando sus Bs.
+                const originalUSD = (factura.monto_usd && factura.monto_usd > 0) 
+                    ? factura.monto_usd 
+                    : parseFloat((factura.monto_bs / rate).toFixed(2));
+
+                const yaPagadoUSD = factura.monto_pagado || 0;
+                const loQueFaltaUSD = parseFloat((originalUSD - yaPagadoUSD).toFixed(2));
+
+                console.log(`      > Evaluando Factura ${factura.factura_nro} | Debe: $${loQueFaltaUSD} | Saldo en mano: $${saldoRestantePago}`);
+
+                if (loQueFaltaUSD <= 0) {
+                    update.run(originalUSD, 'PAGADA', factura.id);
+                    continue;
+                }
+
+                if (saldoRestantePago >= loQueFaltaUSD) {
+                    console.log(`        ✅ Pagando COMPLETA la factura ${factura.factura_nro}.`);
+                    update.run(originalUSD, 'PAGADA', factura.id);
+                    saldoRestantePago = parseFloat((saldoRestantePago - loQueFaltaUSD).toFixed(2));
+                } else {
+                    const nuevoAcumuladoUSD = parseFloat((yaPagadoUSD + saldoRestantePago).toFixed(2));
+                    console.log(`        ⏳ Pago PARCIAL en factura ${factura.factura_nro}. Se abonó $${saldoRestantePago}. Acumulado total pagado: $${nuevoAcumuladoUSD}`);
+                    update.run(nuevoAcumuladoUSD, 'PENDIENTE', factura.id);
+                    saldoRestantePago = 0;
+                }
+            }
+
+            // Actualizar el historial global del cliente
+            serverDb.prepare(`
+                UPDATE clientes_maestro 
+                SET saldo_deuda = MAX(0, saldo_deuda - ?) 
+                WHERE id = ?
+            `).run(montoAPagarBs, cliente_id);
+        });
+
+        procesoCascada(deudas, abonoUSD, monto_bs);
+        console.log(`✅ [API MAESTRO] Cascada de pagos finalizada con éxito.\n`);
+        res.json({ exito: true, mensaje: "Abono aplicado correctamente." });
+
+    } catch (e) {
+        console.error("❌ Error en registrar-abono:", e.message);
+        res.status(500).json({ exito: false, error: e.message });
+    }
+});
+
+
+    server.post('/api/maestro/guardar-borrador', (req, res) => {
+    emitirPulsoBorrador();
+    const b = req.body;
+    try {
+        const stmt = serverDb.prepare(`
+            INSERT OR REPLACE INTO facturas_borradores 
+            (id, cliente_nombre, cliente_id, items, subtotal, iva, total, metodos_pago, fecha, usuario_id, sucursal_id, company_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        stmt.run(b.id, b.customerName, b.customerIdNumber, b.items, b.subtotal, b.iva, b.total, b.payments, b.createdAt, b.userId, b.branchId, b.companyId);
+        res.json({ exito: true, mensaje: "Borrador guardado en el Cerebro." });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 3. Endpoint: Obtener todos los borradores de la sucursal
+server.get('/api/maestro/obtener-borradores', (req, res) => {
+    const { sucursalId, companyId } = req.query;
+    try {
+        // Seleccionamos todos los campos de la tabla local
+        const rows = serverDb.prepare(`
+            SELECT * FROM facturas_borradores 
+            WHERE sucursal_id = ? AND company_id = ?
+            ORDER BY fecha DESC
+        `).all(sucursalId, companyId);
+        
+        // Parseamos los campos JSON para que el frontend los reciba como objetos
+        const facturas = rows.map(r => ({
+            ...r,
+            items: r.items ? JSON.parse(r.items) : [],
+            payments: r.metodos_pago ? JSON.parse(r.metodos_pago) : {}
+        }));
+        res.json(facturas);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 4. Endpoint: Eliminar Borrador
+server.delete('/api/maestro/eliminar-borrador/:id', (req, res) => {
+    emitirPulsoBorrador();
+    try {
+        serverDb.prepare('DELETE FROM facturas_borradores WHERE id = ?').run(req.params.id);
+        res.json({ exito: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+server.get('/api/maestro/borradores-stream', (req, res) => {
+    // Configuramos la respuesta como un flujo continuo (túnel abierto)
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    cajasEscuchando.push(res); // Registramos la computadora que se conectó
+
+    // Si la caja se apaga o cierra, la quitamos de la lista
+    req.on('close', () => {
+        cajasEscuchando = cajasEscuchando.filter(caja => caja !== res);
     });
+});
+
+// Endpoint para recibir cierres de las laptops de la red
+server.post('/api/maestro/registrar-cierre', (req, res) => {
+    const c = req.body;
+    console.log(`\n🏁 [API MAESTRO] Recibiendo Cierre Z de Caja: ${c.cashierId} | Sucursal: ${c.branchId}`);
+
+    try {
+        const stmt = serverDb.prepare(`
+            INSERT INTO cierres_caja_maestros (
+                id, fecha, company_id, branch_id, cashier_id,
+                total_ventas_bs, total_ventas_usd, total_gastos_bs,
+                total_gastos_usd, total_ingresos_bs, total_diferencia_bs,
+                total_diferencia_usd, detalle_pagos_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        stmt.run(
+            c.id,
+            c.fecha,
+            c.companyId,
+            c.branchId,
+            c.cashierId,
+            c.totalSalesBs,
+            c.totalSalesDollars,
+            c.totalExpensesBs,
+            c.totalExpensesDollars,
+            c.totalIncomes,
+            c.totalDifferenceBs,
+            c.totalDifferenceDollars,
+            c.paymentsConciliation
+        );
+
+        console.log(`✅ Cierre ${c.id} guardado en Servidor Maestro.`);
+        res.json({ exito: true });
+    } catch (e) {
+        console.error("❌ Error guardando cierre en Maestro:", e.message);
+        res.status(500).json({ exito: false, error: e.message });
+    }
+});
+
+server.post('/api/maestro/registrar-venta', (req, res) => {
+    const v = req.body;
+    console.log(`\n🛒 [API MAESTRO] Recibiendo Venta: ${v.numero_factura} de Sucursal: ${v.branch_id}`);
+
+    try {
+        const stmt = serverDb.prepare(`
+            INSERT INTO ventas_locales (
+                id, company_id, branch_id, cashier_id, numero_factura, 
+                numero_control, cliente_nombre, cliente_rif, monto_exento, 
+                base_imponible, monto_iva, monto_igtf, monto_total, 
+                tasa_bcv, metodo_pago, datos_json, estado_sync, estado_cierre
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0)
+        `);
+
+        stmt.run(
+            v.id, v.company_id, v.branch_id, v.cashier_id, v.numero_factura,
+            v.numero_control, v.cliente_nombre, v.cliente_rif, v.monto_exento,
+            v.base_imponible, v.monto_iva, v.monto_igtf, v.monto_total,
+            v.tasa_bcv, v.metodo_pago, v.datos_json
+        );
+
+        res.json({ exito: true });
+    } catch (e) {
+        console.error("❌ Error guardando venta en Maestro:", e.message);
+        res.status(500).json({ exito: false, error: e.message });
+    }
+});
+
+server.get('/api/maestro/ventas/:branchId/:companyId', (req, res) => {
+    try {
+        const { branchId, companyId } = req.params;
+        console.log(`📡 Consultando historial de ventas para la sucursal: ${branchId}`);
+
+        // Buscamos todas las ventas de esta sucursal en la tabla central 'ventas_locales'
+        // (Ordenadas de la más nueva a la más vieja)
+        const stmt = serverDb.prepare(`
+            SELECT * FROM ventas_locales 
+            WHERE branch_id = ? AND company_id = ?
+            ORDER BY id DESC
+        `);
+        
+        const ventas = stmt.all(branchId, companyId);
+        
+        // Entregamos las ventas al frontend
+        res.json(ventas);
+        
+    } catch (error) {
+        console.error("❌ Error al consultar las ventas en el Maestro:", error.message);
+        res.status(500).json({ exito: false, error: error.message });
+    }
+});
 
 server.listen(PORT, '0.0.0.0', () => {
         console.log(`\n👑 [NEXUS MASTER] Cerebro Maestro inicializado.`);
@@ -338,4 +736,10 @@ server.listen(PORT, '0.0.0.0', () => {
 
 } else {
     console.log("💻 [NEXUS NODO] Esta máquina está configurada como CLIENTE. Servidor Maestro desactivado.");
+}
+
+function emitirPulsoBorrador() {
+    cajasEscuchando.forEach(caja => {
+        caja.write(`data: CAMBIO_DETECTADO\n\n`);
+    });
 }

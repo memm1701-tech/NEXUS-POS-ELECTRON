@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Estadísticas Globales Nexus</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --primary-blue: #0284c7;
@@ -12,6 +13,8 @@
             --danger-red: #dc2626;
             --indigo-profit: #4f46e5;
             --gray-bg: #f3f4f6;
+            --purple-accent: #8b5cf6;
+            --teal-accent: #14b8a6;
         }
 
         /* Reset y Base */
@@ -33,11 +36,11 @@
         }
         
         /* Dashboard Principal */
-        .stats-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; }
+        .stats-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
         .stats-header h1 { font-size: 1.75rem; color: #1f2937; margin: 0; font-weight: 700; }
         .stats-header p { color: #6b7280; margin-top: 8px; }
 
-        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 32px;}
         .kpi-card { 
             background-color: #ffffff; border-radius: 12px; padding: 18px; display: flex; align-items: center; 
             border: 1px solid #f3f4f6; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: all 0.2s;
@@ -49,12 +52,34 @@
         .kpi-icon-wrapper { width: 44px; height: 44px; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-right: 12px; flex-shrink: 0; }
         .kpi-title { font-size: 0.7rem; color: #6b7280; margin: 0; font-weight: 600; text-transform: uppercase; letter-spacing: 0.025em; }
         .kpi-value { font-size: 1.2rem; font-weight: 700; color: #111827; margin: 0; }
+        .kpi-subtext { font-size: 0.75rem; color: #9ca3af; margin-top: 4px; }
         
         .icon-blue { background-color: #e0f2fe; color: var(--primary-blue); }
         .icon-yellow { background-color: #fef3c7; color: var(--warning-yellow); }
         .icon-green { background-color: #d1fae5; color: var(--success-green); }
         .icon-red { background-color: #fee2e2; color: var(--danger-red); }
         .icon-indigo { background-color: #e0e7ff; color: var(--indigo-profit); }
+        .icon-purple { background-color: #ede9fe; color: var(--purple-accent); }
+        .icon-teal { background-color: #ccfbf1; color: var(--teal-accent); }
+
+        /* Estilos del Gráfico */
+        .chart-section {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #f3f4f6;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 32px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .chart-container-inner {
+            position: relative;
+            height: 300px;
+            width: 100%;
+            max-width: 500px;
+        }
 
         /* --- VISTA DE DETALLES --- */
         #view-details { 
@@ -149,6 +174,7 @@
 <body>
 
     <div id="view-dashboard" class="stats-container">
+        
         <div class="stats-header">
             <div>
                 <h1>Resumen de Inventario (Nivel Empresa)</h1>
@@ -182,6 +208,52 @@
                 <div class="kpi-content"><p class="kpi-title">Bajo Stock ▾</p><h3 class="kpi-value" id="kpi-stock-critico">...</h3></div>
             </div>
         </div>
+
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
+
+        <div class="stats-header">
+            <div>
+                <h1>Flujo de Caja y Pagos (Mes Actual)</h1>
+                <p>Métricas consolidadas de todos los cierres procesados este mes.</p>
+            </div>
+        </div>
+
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon-wrapper icon-green"><span class="material-icons">payments</span></div>
+                <div class="kpi-content">
+                    <p class="kpi-title">Total Divisas Recibidas</p>
+                    <h3 class="kpi-value" id="kpi-total-divisas">...</h3>
+                    <p class="kpi-subtext">Suma de Efectivo $, Zinli, etc.</p>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon-wrapper icon-purple"><span class="material-icons">pie_chart</span></div>
+                <div class="kpi-content">
+                    <p class="kpi-title">Adopción de Divisas</p>
+                    <h3 class="kpi-value" id="kpi-porcentaje-divisas">...</h3>
+                    <p class="kpi-subtext">% respecto al ingreso total</p>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon-wrapper icon-red"><span class="material-icons">gavel</span></div>
+                <div class="kpi-content">
+                    <p class="kpi-title">Fugas de Caja (Descuadres)</p>
+                    <h3 class="kpi-value" id="kpi-fugas-caja">...</h3>
+                    <p class="kpi-subtext">Acumulado mensual en USD</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-section">
+            <h2 style="font-size: 1.1rem; color: #374151; margin-bottom: 20px; font-weight: 700;">Distribución de Ingresos por Método de Pago</h2>
+            <div class="chart-container-inner">
+                <canvas id="metodosPagoChart"></canvas>
+            </div>
+        </div>
+
     </div>
 
     <div id="view-details">
@@ -231,7 +303,9 @@
     </div>
 
 <script>
+    console.log("🚀 [NEXUS DEBUG] Script de generales.html inyectado y ejecutándose.");
     (function() {
+        // --- LÓGICA DE INVENTARIO INTACTA ---
         let datosCargados = {
             productos: [],
             mapaStock: {},
@@ -318,6 +392,169 @@
             document.getElementById('view-details').style.display = 'none';
         };
 
+        function mapearMetodoPago(key) {
+            const k = key.toLowerCase();
+            // Bolívares
+            if (k === 'cash-bs') return { nombre: 'Efectivo (Bs)', esBs: true };
+            if (k === 'debit-card-bs') return { nombre: 'Punto Débito (Bs)', esBs: true };
+            if (k === 'mobile-payment-bs') return { nombre: 'Pago Móvil (Bs)', esBs: true };
+            if (k === 'biopago-bs') return { nombre: 'Biopago (Bs)', esBs: true };
+            if (k === 'transfer-bs') return { nombre: 'Transferencia (Bs)', esBs: true };
+            if (k === 'deposit-bs') return { nombre: 'Depósito (Bs)', esBs: true };
+            if (k === 'credit-bs') return { nombre: 'Crédito (Bs)', esBs: true };
+            if (k === 'credit-card-bs') return { nombre: 'TDC (Bs)', esBs: true };
+            
+            // Divisas
+            if (k === 'dollars') return { nombre: 'Efectivo ($)', esBs: false };
+            if (k === 'zinli-dollars') return { nombre: 'Zinli ($)', esBs: false };
+            
+            // Fallback dinámico (por si agregas un método nuevo en el futuro)
+            if (k.includes('bs')) return { nombre: `Otro Bs (${k})`, esBs: true };
+            return { nombre: `Otra Divisa (${k})`, esBs: false };
+        }
+
+        async function procesarCierresMes(companyId, servidorIP) {
+            console.log(`📡 [NEXUS DEBUG] Iniciando petición a: http://${servidorIP}:3000/api/maestro/estadisticas/pagos-mes?companyId=${companyId}`);
+            
+            try {
+                const res = await fetch(`http://${servidorIP}:3000/api/maestro/estadisticas/pagos-mes?companyId=${companyId}`);
+                
+                if(!res.ok) {
+                    console.error("❌ [NEXUS DEBUG] Error en la respuesta de red:", res.status);
+                    throw new Error("Fallo en endpoint pagos-mes");
+                }
+
+                const cierres = await res.json();
+                console.log("📦 [NEXUS DEBUG] Cierres recibidos del servidor:", cierres);
+
+                if (cierres.length === 0) {
+                    console.warn("⚠️ [NEXUS DEBUG] El servidor devolvió 0 cierres para este mes. Verifica las fechas en server.js");
+                }
+
+                let acumuladoVentasUsdCol = 0;
+                let acumuladoVentasBsCol = 0;
+                let totalFugasUsd = 0;
+                let sumatoriasMetodos = {};
+
+                cierres.forEach((c, index) => {
+                    const cierreID = c.id || c.cierre_ID || c.ID || "ID_DESCONOCIDO";
+                    const vUsd = parseFloat(c.total_ventas_usd || 0);
+                    const vBs = parseFloat(c.total_ventas_bs || 0);
+                    console.log(`✅ [ROW ${index}] ID: ${cierreID} | Ventas USD: ${vUsd} | Ventas BS: ${vBs}`);
+                    console.log(`Row[${index}] -> ID: ${c.id} | Ventas USD: ${vUsd} | Ventas BS: ${vBs}`);
+
+                    acumuladoVentasUsdCol += vUsd;
+                    acumuladoVentasBsCol += vBs;
+                    totalFugasUsd += parseFloat(c.total_diferencia_usd || 0) + (parseFloat(c.total_diferencia_bs || 0) / datosCargados.tasaBCV);
+
+                    // Procesamiento del JSON para el gráfico
+                    let pagos = {};
+                    try { 
+                        pagos = typeof c.detalle_pagos_json === 'string' ? JSON.parse(c.detalle_pagos_json) : (c.detalle_pagos_json || {}); 
+                    } catch(e) {
+                        console.error(`❌ [NEXUS DEBUG] Error parseando detalle_pagos_json en ID: ${c.id}`, e);
+                    }
+
+                    for (const [key, val] of Object.entries(pagos)) {
+                        const monto = parseFloat(val.registered || 0);
+                        if (monto === 0) continue; 
+
+                        const infoMetodo = mapearMetodoPago(key);
+                        let montoEnUsd = monto;
+                        
+                        if (infoMetodo.esBs && datosCargados.tasaBCV > 0) {
+                            montoEnUsd = monto / datosCargados.tasaBCV;
+                        }
+
+                        if (!sumatoriasMetodos[infoMetodo.nombre]) sumatoriasMetodos[infoMetodo.nombre] = 0;
+                        sumatoriasMetodos[infoMetodo.nombre] += montoEnUsd;
+                    }
+                });
+
+                console.log("📊 [NEXUS DEBUG] Totales Finales calculados:");
+                console.log("- Acumulado USD:", acumuladoVentasUsdCol);
+                console.log("- Acumulado BS (sin convertir):", acumuladoVentasBsCol);
+                console.log("- Tasa BCV usada:", datosCargados.tasaBCV);
+
+                // --- ACTUALIZACIÓN DE INTERFAZ ---
+                document.getElementById('kpi-total-divisas').textContent = format.format(acumuladoVentasUsdCol);
+
+                const ventasBsConvertidas = acumuladoVentasBsCol / datosCargados.tasaBCV;
+                const totalNegocioUsd = acumuladoVentasUsdCol + ventasBsConvertidas;
+                const porcentajeDivisas = totalNegocioUsd > 0 ? (acumuladoVentasUsdCol / totalNegocioUsd) * 100 : 0;
+                
+                document.getElementById('kpi-porcentaje-divisas').textContent = `${porcentajeDivisas.toFixed(1)}%`;
+
+                const elFugas = document.getElementById('kpi-fugas-caja');
+                elFugas.textContent = format.format(totalFugasUsd);
+                elFugas.style.color = totalFugasUsd < 0 ? 'var(--danger-red)' : 'var(--success-green)';
+
+                renderizarGraficoPagos(sumatoriasMetodos);
+
+            } catch(e) {
+                console.error("❌ [NEXUS DEBUG] Error crítico en procesarCierresMes:", e);
+                document.getElementById('kpi-total-divisas').textContent = 'Error';
+            }
+        }
+
+        function renderizarGraficoPagos(datos) {
+            const ctx = document.getElementById('metodosPagoChart').getContext('2d');
+            
+            const labels = [];
+            const data = [];
+            // Ampliamos la paleta de colores para soportar muchos métodos de pago
+            const colors = [
+                '#3b82f6', '#10b981', '#14b8a6', '#f59e0b', '#8b5cf6', 
+                '#ef4444', '#ec4899', '#f97316', '#06b6d4', '#64748b'
+            ];
+            const activeColors = [];
+
+            let colorIndex = 0;
+            Object.keys(datos).forEach((key) => {
+                // Hay casos donde sumatoriasMetodos puede quedar negativo si hubo más notas de crédito que ventas en el mes.
+                // Chart.js no grafica bien negativos en un circular, por lo que solo metemos valores positivos.
+                if (datos[key] > 0) {
+                    labels.push(key);
+                    data.push(datos[key].toFixed(2));
+                    activeColors.push(colors[colorIndex % colors.length]);
+                    colorIndex++;
+                }
+            });
+
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: activeColors,
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) { label += ': '; }
+                                    if (context.parsed !== null) {
+                                        label += new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' }).format(context.parsed);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- INICIALIZACIÓN GENERAL ---
         (async () => {
             try {
                 const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
@@ -325,11 +562,14 @@
 
                 const sesion = await api.obtenerSesionLocal();
                 const companyId = sesion?.companyId;
-                const servidorIP = localStorage.getItem('serverIP') || '192.168.0.111';
+                
+                // Forzamos el uso exclusivo de localhost por ley
+                const servidorIP = 'localhost';
 
                 const tasaSistema = await api.obtenerConfiguracion('TASA_BCV');
                 datosCargados.tasaBCV = parseFloat(tasaSistema) || 1;
 
+                // Llamadas paralelas para optimizar tiempos
                 const [productos, resStock] = await Promise.all([
                     api.obtenerProductosLocal(companyId),
                     fetch(`http://${servidorIP}:3000/api/maestro/stock?companyId=${companyId}`).then(r => r.json())
@@ -373,6 +613,9 @@
                 const elGanancia = document.getElementById('kpi-ganancia-bruta');
                 elGanancia.textContent = format.format(ganancia);
                 elGanancia.style.color = ganancia >= 0 ? 'var(--indigo-profit)' : 'var(--danger-red)';
+
+                // Lammamos a la nueva función asíncrona de pagos
+                await procesarCierresMes(companyId, servidorIP);
 
             } catch (err) { console.error("Error Nexus:", err.message); }
         })();

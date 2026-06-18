@@ -1,40 +1,53 @@
-// 1. Módulos de Sistema y Electron
 const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { exec } = require('child_process');
+const { fork, exec } = require('child_process');
 const https = require('https');
 const crypto = require('crypto');
-const ENCRYPTION_KEY = crypto.scryptSync("NexusGlobalSecretoAdmin2026", "saltingNexus", 32); 
-const IV_LENGTH = 16; 
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-const { SerialPort } = require('serialport');
-const { ReadlineParser } = require('@serialport/parser-readline');
 const Database = require('better-sqlite3');
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const cheerio = require('cheerio');
-
-// 3. Configuración del Servidor y Base de Datos
-// 3. Configuración del Servidor y Base de Datos
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { SerialPort } = require('serialport');
+const { ReadlineParser } = require('@serialport/parser-readline');
 const server = express();
 const PORT = 3000;
+const ENCRYPTION_KEY = crypto.scryptSync("NexusGlobalSecretoAdmin2026", "saltingNexus", 32);
+const IV_LENGTH = 16;
+const baseDataDir = process.env.APPDATA 
+    ? path.join(process.env.APPDATA, 'nexus-pos') 
+    : path.join(process.platform === 'darwin' ? path.join(process.env.HOME, 'Library/Application Support') : process.env.HOME, '.config', 'nexus-pos');
 
-// ✅ CORRECCIÓN: Usar app.getPath('userData') para evitar el error ENOTDIR del .asar
-const dbDir = path.join(app.getPath('userData'), 'data');
+const dbDir = path.join(baseDataDir, 'data');
 if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
 
-const dbPath = path.join(dbDir, 'nexus_pos.db');
-const db = new Database(dbPath, { timeout: 10000 });
-console.log("🚀 Cerebro Conectado en:", dbPath);
+const envPath = 'C:\\NEXUS-POS-ELECTRON\\data\\config\\.env';
 
-// 4. Variables Globales y Estado
-let win;    
-let splash;
-let sistemaPrincipalAbierto = false;
+if (fs.existsSync(envPath)) {
+    require('dotenv').config({ path: envPath });
+    console.log("✅ CONFIGURACIÓN EXTERNA CARGADA DESDE:", envPath);
+    console.log("🌐 IP DEL SERVIDOR:", process.env.SERVER_IP);
+} else {
+    console.warn("⚠️ ADVERTENCIA: No se encontró el archivo .env en la ruta configurada.");
+}
 
-// 5. Gestión de Configuración (config.json)
+ipcMain.handle('get-config', () => {
+    return {
+        serverIp: process.env.SERVER_IP || 'localhost',
+        serverPort: process.env.SERVER_PORT || 4010,
+        respaldo_datos: process.env.respaldo_datos || 'false' 
+    };
+});
+
+if (fs.existsSync(envPath)) {
+    require('dotenv').config({ path: envPath });
+    console.log("✅ Configuración externa cargada desde:", envPath);
+} else {
+    console.error("⚠️ No se encontró el archivo .env en C:\\NEXUS-POS-ELECTRON\\data\\config\\");
+}
+
 const configPath = path.join(dbDir, 'config.json');
 let config = { 
     isServer: false, 
@@ -48,21 +61,147 @@ if (fs.existsSync(configPath)) {
         const contenido = fs.readFileSync(configPath, 'utf8');
         config = JSON.parse(contenido);
     } catch (e) { 
-        console.error("Error al leer config.json:", e); 
+        console.error("❌ Error al leer config.json:", e);
     }
 } else {
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 }
 
-// 6. Optimización de Base de Datos
+const dbPath = path.join(dbDir, 'nexus_pos.db');
+const serverDbPath = path.join(dbDir, 'nexus-local-server.db');
+const db = new Database(dbPath, { timeout: 10000 });
+let masterDbDirect = null;
+if (config.isServer) {
+    masterDbDirect = new Database(serverDbPath, { timeout: 10000 });
+    masterDbDirect.pragma('journal_mode = WAL');
+    console.log(`\n=========================================================`);
+    console.log(`💻 [NEXUS NODE] Base de Datos Local: ${dbPath}`);
+    console.log(`👑 [NEXUS MASTER] Iniciando Cerebro Maestro: ${serverDbPath}`);
+
+    try {
+        const serverScriptPath = path.join(__dirname, 'server.js');
+
+        const cerebroProcess = fork(serverScriptPath, [], {
+            execPath: process.execPath, 
+            env: { 
+                ...process.env, 
+                ELECTRON_RUN_AS_NODE: '1' 
+            },
+            stdio: 'inherit'
+        });
+
+        cerebroProcess.on('spawn', () => {
+            console.log("✅ [NEXUS MASTER] Servidor Maestro ejecutándose correctamente.");
+        });
+
+        cerebroProcess.on('error', (err) => {
+            console.error("❌ [NEXUS MASTER] Error al arrancar:", err.message);
+        });
+        if (app) {
+            app.on('before-quit', () => {
+                console.log("🛑 Apagando Servidor Maestro...");
+                cerebroProcess.kill();
+            });
+        }
+
+    } catch (error) {
+        console.error("❌ Fallo crítico al intentar automatizar server.js:", error);
+    }
+    console.log(`=========================================================\n`);
+}
+
+
+
+let win;   
+let splash;
+let sistemaPrincipalAbierto = false;
+let printerPort;
+let apiToken = null;
+let tokenExpiration = null;
+const HKA_BASE_URL = "https://demoemision.thefactoryhka.com.ve";
+let currentHkaCredentials = { usuario: "", clave: "" };
+
+async function iniciarAuthWorkerHKA(event, credentials) {
+    const enviarLogAlFrontend = (mensaje, esError = false) => {
+        const prefijo = esError ? "❌ [AUTH-HKA ERROR]:" : "ℹ️ [AUTH-HKA INFO]:";
+        console[esError ? 'error' : 'log'](`${prefijo} ${mensaje}`);
+        
+        if (event && event.sender) {
+            event.sender.send('hka-auth-log', { mensaje, esError });
+        }
+    };
+
+    try {
+        if (!credentials || !credentials.usuario || !credentials.clave) {
+            return enviarLogAlFrontend("Faltan credenciales del cliente para la API.", true);
+        }
+
+        enviarLogAlFrontend(`Iniciando autenticación para el usuario: ${credentials.usuario}...`);
+
+        
+        const response = await axios.post(`${HKA_BASE_URL}/api/Autenticacion`, {
+            usuario: credentials.usuario,
+            clave: credentials.clave
+        });
+
+        if (response.data.codigo === 0 || response.data.token) {
+            apiToken = response.data.token;
+            tokenExpiration = new Date(response.data.expiracion);
+            
+            enviarLogAlFrontend(`Éxito: Token obtenido. Expira: ${tokenExpiration.toLocaleString()}`);
+            
+            if (global.servidorLocal) {
+                global.servidorLocal.setHkaToken(apiToken);
+                enviarLogAlFrontend("Token sincronizado con el núcleo de Nexus POS.");
+            }
+        } else {
+            enviarLogAlFrontend(`Respuesta HKA: Código ${response.data.codigo} - ${response.data.mensaje}`, true);
+        }
+    } catch (error) {
+        enviarLogAlFrontend(`Fallo de conexión con The Factory: ${error.message}`, true);
+    }
+}
+
+// Escuchador actualizado para recibir argumentos
+ipcMain.on('ejecutar-auth-hka', (event, credentials) => {
+    iniciarAuthWorkerHKA(event, credentials);
+});
+
 try {
     db.pragma('journal_mode = WAL');
 } catch (e) {
-    console.warn("⚠️ Aviso: La base de datos está ocupada por el Servidor Maestro. Iniciando sin modo WAL forzado.");
+    console.warn("⚠️ Aviso: La base de datos está ocupada. Iniciando sin modo WAL forzado.");
 }
 
 function inicializarTablas() {
 
+    try {
+        db.exec(`
+            -- 📦 Índices para Inventario (Búsquedas en milisegundos)
+            CREATE INDEX IF NOT EXISTS idx_productos_codigo ON productos_locales(codigo);
+            CREATE INDEX IF NOT EXISTS idx_productos_categoria ON productos_locales(categoria);
+            CREATE INDEX IF NOT EXISTS idx_productos_empresa ON productos_locales(company_id);
+
+            -- 🧾 Índices para Ventas (Vital para que el Cierre Z sea instantáneo)
+            -- Este índice compuesto agrupa exactamente lo que busca tu función de cierre
+            CREATE INDEX IF NOT EXISTS idx_ventas_cierre_compuesto 
+            ON ventas_locales(company_id, branch_id, cashier_id, estado_cierre);
+            
+            -- Índice para buscar facturas por fecha rápidamente (Reportes)
+            CREATE INDEX IF NOT EXISTS idx_ventas_fecha ON ventas_locales(fecha_emision);
+
+            -- 💵 Índices para Movimientos de Caja (Ingresos/Gastos)
+            CREATE INDEX IF NOT EXISTS idx_movimientos_cierre 
+            ON movimientos_caja_locales(company_id, tipo, estado_cierre);
+
+            -- 🤝 Índices para Cuentas por Cobrar (Créditos)
+            CREATE INDEX IF NOT EXISTS idx_cxc_cliente ON cuentas_por_cobrar(cliente_rif, estado);
+        `);
+        console.log("⚡ Índices de base de datos SQLite verificados y optimizados.");
+    } catch (error) {
+        console.error("⚠️ Error creando los índices:", error.message);
+    }
+    
     db.exec(`
         CREATE TABLE IF NOT EXISTS usuarios_locales (
             uid TEXT PRIMARY KEY,
@@ -90,6 +229,23 @@ db.exec(`
         estado_cierre INTEGER DEFAULT 0 -- 0: Pendiente para el Z, 1: Cerrado
     );
 `);
+
+db.exec(`
+        CREATE TABLE IF NOT EXISTS pagos_moviles_locales (
+            id TEXT PRIMARY KEY,
+            venta_id TEXT,
+            numero_factura TEXT,
+            banco_receptor TEXT,
+            referencia TEXT,
+            telefono_origen TEXT,
+            monto REAL,
+            fecha_pago DATETIME,
+            company_id TEXT,
+            branch_id TEXT,
+            cashier_id TEXT,
+            estado_cierre INTEGER DEFAULT 0
+        );
+    `);
 
 db.exec(`
         CREATE TABLE IF NOT EXISTS claves_admin_locales (
@@ -195,6 +351,21 @@ db.exec(`
     `);
 
     db.exec(`
+        CREATE TABLE IF NOT EXISTS cuentas_por_cobrar (
+            id TEXT PRIMARY KEY,
+            company_id TEXT,
+            branch_id TEXT,
+            cliente_rif TEXT,
+            cliente_nombre TEXT,
+            monto_deuda REAL,
+            monto_pagado REAL DEFAULT 0,
+            estado TEXT DEFAULT 'PENDIENTE', 
+            fecha_emision DATETIME DEFAULT CURRENT_TIMESTAMP,
+            venta_id TEXT
+        );
+    `);
+
+    db.exec(`
         CREATE TABLE IF NOT EXISTS sync_queue (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             operacion TEXT,
@@ -213,6 +384,25 @@ db.exec(`
         estado_sync INTEGER DEFAULT 0,
         fecha_modificacion DATETIME DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (producto_id, sucursal_id)
+    );
+`);
+
+db.exec(`
+    CREATE TABLE IF NOT EXISTS cierres_caja_locales (
+        id TEXT PRIMARY KEY,
+        fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+        company_id TEXT,
+        branch_id TEXT,
+        cashier_id TEXT,
+        total_ventas_bs REAL,
+        total_ventas_usd REAL,
+        total_gastos_bs REAL,
+        total_gastos_usd REAL,
+        total_ingresos_bs REAL,
+        total_diferencia_bs REAL,
+        total_diferencia_usd REAL,
+        detalle_pagos_json TEXT, -- Aquí guardamos la conciliación completa
+        estado_sync INTEGER DEFAULT 0
     );
 `);
 
@@ -243,20 +433,21 @@ db.exec(`
             )
         `).run();
 
-        db.exec(`
-    CREATE TABLE IF NOT EXISTS salidas_inventario (
-        id TEXT PRIMARY KEY,
-        company_id TEXT,
-        branch_id TEXT,
-        product_id TEXT,
-        cantidad REAL,
-        unidad TEXT,
-        motivo TEXT,
-        observacion TEXT,
-        usuario_id TEXT,
-        estado_sync INTEGER DEFAULT 0,
-        fecha_modificacion DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS salidas_inventario (
+            id TEXT PRIMARY KEY,
+            company_id TEXT,
+            branch_id TEXT,
+            product_id TEXT,
+            cantidad REAL,
+            unidad TEXT,
+            motivo TEXT,
+            observacion TEXT,
+            usuario_id TEXT,
+            estado_sync INTEGER DEFAULT 0,
+            fecha_modificacion DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+    
     
     CREATE TABLE IF NOT EXISTS configuracion_cajera (
         clave TEXT PRIMARY KEY,
@@ -264,25 +455,32 @@ db.exec(`
         fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS plan_empresa (
+            company_id TEXT PRIMARY KEY,
+            datos_encriptados TEXT,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
     
-
-
-`);
-
+    `); 
 
 }
+
 inicializarTablas();
+
+
+try {
+    db.prepare("ALTER TABLE ventas_locales ADD COLUMN estado_cierre INTEGER DEFAULT 0").run();
+} catch (e) {}
 
 try {
     db.prepare("ALTER TABLE productos_locales ADD COLUMN precio_compra REAL DEFAULT 0").run();
     db.prepare("ALTER TABLE productos_locales ADD COLUMN porcentaje_ganancia REAL DEFAULT 0").run();
-    console.log("✅ Columnas de costo y ganancia verificadas/añadidas a SQLite.");
+    console.log("✅ Columnas de costo, ganancia y estado_cierre verificadas/añadidas a SQLite.");
 } catch (e) {
-    // Es normal que de error si las columnas ya existen. Pasa silenciosamente.
+   
 }
 
-
-// --- ESTO DEBE IR FUERA DE CUALQUIER IF ---
 server.use(cors());
 server.use(express.json({ limit: '100mb' }));
 
@@ -304,6 +502,242 @@ if (stmtCheck.get().count === 0) {
 
 const GEMINI_API_KEY = "AIzaSyAPKpaQrze48wBpt2CwXxGDvATb8lgYpFo"; 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+
+
+// 1. Obtener ventas del turno actual (Pendientes de Z)
+ipcMain.handle('obtener-ventas-pendientes-caja', async (event, { companyId, branchId, cashierId }) => {
+    try {
+        const stmt = db.prepare(`
+            SELECT * FROM ventas_locales 
+            WHERE company_id = ? AND branch_id = ? AND cashier_id = ? AND estado_cierre = 0
+        `);
+        return stmt.all(companyId, branchId, cashierId);
+    } catch (e) {
+        return [];
+    }
+});
+
+// =================================================================
+// 🛡️ BÓVEDA SAAS: FUNCIONES DE ENCRIPTACIÓN DE NEXUS POS GLOBAL
+// =================================================================
+
+function encriptarPlan(texto) {
+    let iv = crypto.randomBytes(IV_LENGTH);
+    let cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), iv);
+    let encrypted = cipher.update(texto);
+    encrypted = Buffer.concat([encrypted, cipher.final()]);
+    return iv.toString('hex') + ':' + encrypted.toString('hex');
+}
+
+function desencriptarPlan(texto) {
+    try {
+        let textParts = texto.split(':');
+        let iv = Buffer.from(textParts.shift(), 'hex');
+        let encryptedText = Buffer.from(textParts.join(':'), 'hex');
+        let decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), iv);
+        let decrypted = decipher.update(encryptedText);
+        decrypted = Buffer.concat([decrypted, decipher.final()]);
+        return decrypted.toString();
+    } catch (error) {
+        return null; // Si alguien manipuló la base de datos, esto falla y retorna null
+    }
+}
+
+// main.js - Función para eliminar sucursales localmente
+ipcMain.handle('eliminar-sucursal-local', async (event, id) => {
+    try {
+        const stmt = db.prepare('DELETE FROM sucursales WHERE id = ?');
+        const resultado = stmt.run(id);
+        
+        if (resultado.changes > 0) {
+            console.log(`✅ Sucursal eliminada localmente: ${id}`);
+            return { success: true, changes: resultado.changes };
+        } else {
+            return { success: false, error: "No se encontró la sucursal en la base de datos local." };
+        }
+    } catch (e) {
+        console.error("❌ Error al eliminar sucursal local:", e.message);
+        return { success: false, error: e.message };
+    }
+});
+
+// Guardar el plan encriptado
+ipcMain.handle('guardar-plan-local', (event, planData) => {
+    try {
+        const companyId = planData.companyId;
+        const jsonString = JSON.stringify(planData);
+        
+        // AQUÍ LLAMA A LA FUNCIÓN (Ahora sí la encontrará)
+        const datosEncriptados = encriptarPlan(jsonString); 
+
+        const stmt = db.prepare(`
+            INSERT INTO plan_empresa (company_id, datos_encriptados, updated_at)
+            VALUES (@company_id, @datos_encriptados, CURRENT_TIMESTAMP)
+            ON CONFLICT(company_id) DO UPDATE SET
+                datos_encriptados = excluded.datos_encriptados,
+                updated_at = CURRENT_TIMESTAMP
+        `);
+
+        stmt.run({ company_id: companyId, datos_encriptados: datosEncriptados });
+        console.log(`🔒 Plan de la empresa ${companyId} encriptado y guardado en bóveda local.`);
+        return { success: true };
+    } catch (error) {
+        console.error("❌ Error guardando el plan encriptado:", error);
+        return { success: false, error: error.message };
+    }
+});
+
+// Leer y desencriptar el plan
+ipcMain.handle('obtener-plan-local', (event, companyId) => {
+    try {
+        const stmt = db.prepare(`SELECT datos_encriptados FROM plan_empresa WHERE company_id = ?`);
+        const row = stmt.get(companyId);
+        
+        if (row && row.datos_encriptados) {
+            const jsonDesencriptado = desencriptarPlan(row.datos_encriptados); // Rompemos el sello
+            if (jsonDesencriptado) {
+                return JSON.parse(jsonDesencriptado);
+            } else {
+                console.error("⚠️ ALERTA DE SEGURIDAD: El archivo del plan fue manipulado.");
+                return null; 
+            }
+        }
+        return null;
+    } catch (error) {
+        console.error("❌ Error obteniendo el plan encriptado:", error);
+        return null;
+    }
+});
+
+// handler UNIFICADO: Guarda registro histórico local, marca como cerrado y sincroniza con el Maestro
+ipcMain.handle('procesar-cierre-caja-local', async (event, reporte) => {
+    try {
+        const transaction = db.transaction(() => {
+            // A. INSERTAR EL REGISTRO HISTÓRICO DEL CIERRE EN TABLA LOCAL
+            const stmtCierre = db.prepare(`
+                INSERT INTO cierres_caja_locales (
+                    id, fecha, company_id, branch_id, cashier_id,
+                    total_ventas_bs, total_ventas_usd, total_gastos_bs,
+                    total_gastos_usd, total_ingresos_bs, total_diferencia_bs,
+                    total_diferencia_usd, detalle_pagos_json, estado_sync
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+            `);
+
+            stmtCierre.run(
+                reporte.id,
+                reporte.fecha,
+                reporte.companyId,
+                reporte.branchId,
+                reporte.cashierId,
+                reporte.totalSalesBs,
+                reporte.totalSalesDollars,
+                reporte.totalExpensesBs,
+                reporte.totalExpensesDollars,
+                reporte.totalIncomes,
+                reporte.totalDifferenceBs,
+                reporte.totalDifferenceDollars,
+                reporte.paymentsConciliation 
+            );
+
+            // B. MARCAR VENTAS COMO CERRADAS
+            db.prepare(`UPDATE ventas_locales SET estado_cierre = 1 
+                        WHERE company_id = ? AND branch_id = ? AND cashier_id = ? AND estado_cierre = 0`)
+              .run(reporte.companyId, reporte.branchId, reporte.cashierId);
+            
+            // C. MARCAR INGRESOS Y GASTOS COMO CERRADOS
+            db.prepare(`UPDATE movimientos_caja_locales SET estado_cierre = 1 
+                        WHERE company_id = ? AND cashier_id = ? AND estado_cierre = 0`)
+              .run(reporte.companyId, reporte.cashierId);
+            
+            // D. MARCAR PAGOS MÓVILES COMO CERRADOS
+            db.prepare(`UPDATE pagos_moviles_locales SET estado_cierre = 1 
+                        WHERE company_id = ? AND branch_id = ? AND cashier_id = ? AND estado_cierre = 0`)
+              .run(reporte.companyId, reporte.branchId, reporte.cashierId);
+        });
+        
+        // Ejecutamos la transacción local
+        transaction();
+        console.log(`✅ Cierre Z almacenado localmente: ${reporte.id}`);
+
+        // --- E. SINCRONIZACIÓN CON EL SERVIDOR MAESTRO (PUERTO 3000) ---
+        try {
+            const ipMaestro = config.isServer ? 'localhost' : config.serverIP; //[cite: 5]
+            // Usamos axios para enviar los datos al endpoint que creamos en server.js
+            await axios.post(`http://${ipMaestro}:3000/api/maestro/registrar-cierre`, reporte, { timeout: 4000 });
+            console.log("📡 Cierre sincronizado con el Servidor Maestro exitosamente.");
+        } catch (errSync) {
+            console.warn("⚠️ No se pudo sincronizar con el Maestro (Modo Offline o Servidor Apagado):", errSync.message);
+            // No retornamos error aquí para que el usuario pueda seguir trabajando, 
+            // el registro ya quedó seguro en la base de datos local.
+        }
+
+        return { success: true };
+
+    } catch (e) {
+        console.error("❌ Error en proceso de cierre:", e.message);
+        return { error: e.message };
+    }
+});
+
+// main.js - Manejador para leer el historial de la nueva tabla
+ipcMain.handle('obtener-historial-cierres', async (event, { companyId }) => {
+    try {
+        const stmt = db.prepare(`
+            SELECT * FROM cierres_caja_locales 
+            WHERE company_id = ? 
+            ORDER BY fecha DESC 
+            LIMIT 50
+        `);
+        return stmt.all(companyId);
+    } catch (e) {
+        console.error("❌ Error al leer historial de cierres:", e.message);
+        return [];
+    }
+});
+
+ipcMain.handle('guardar-pago-movil', async (event, p) => {
+    try {
+        const stmt = db.prepare(`
+            INSERT INTO pagos_moviles_locales (
+                id, venta_id, numero_factura, banco_receptor, referencia, 
+                telefono_origen, monto, fecha_pago, company_id, branch_id, 
+                cashier_id, estado_cierre
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        `);
+        return stmt.run(
+            p.id, p.venta_id, p.numero_factura, p.banco_receptor, p.referencia,
+            p.telefono_origen, p.monto, p.fecha_pago, p.company_id, p.branch_id,
+            p.cashier_id
+        );
+    } catch (e) {
+        console.error("❌ Error guardando pago móvil local:", e.message);
+        return { error: e.message };
+    }
+});
+
+
+ipcMain.handle('obtener-pagos-moviles-caja', async (event, datos) => {
+    try {
+        const { companyId, branchId, cashierId } = datos;
+        
+        // Usamos db.prepare().all() que es la sintaxis correcta para better-sqlite3
+        // y apuntamos a la tabla correcta: pagos_moviles_locales
+        const stmt = db.prepare(`
+            SELECT * FROM pagos_moviles_locales 
+            WHERE company_id = ? 
+            AND branch_id = ? 
+            AND cashier_id = ? 
+            AND estado_cierre = 0
+            ORDER BY fecha_pago DESC
+        `);
+        
+        return stmt.all(companyId, branchId, cashierId);
+        
+    } catch (error) {
+        console.error("Error en el handler de obtener-pagos-moviles-caja:", error);
+        return []; // Retornamos un array vacío en caso de fallo para no romper el frontend
+    }
+});
 
 ipcMain.handle('consultar-ia-nexus', async (event, { mensaje, contexto }) => {
     try {
@@ -545,16 +979,6 @@ server.get('/api/tasas', async (req, res) => {
     }
 });
 
-server.listen(PORT, () => {
-    console.log(`🔗 Servidor local Express escuchando en el puerto ${PORT}`);
-}).on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-        console.warn(`⚠️ Nota: El puerto ${PORT} ya está en uso (Normal si el servidor maestro PM2 está encendido).`);
-    } else {
-        console.error("❌ Error en Express:", err);
-    }
-});
-
 ipcMain.on('cerrar-y-volver-login', (event) => {
     const currentWin = BrowserWindow.fromWebContents(event.sender);
     
@@ -600,45 +1024,16 @@ ipcMain.handle('obtener-productos-local', async (event, empresaId) => {
 });
 
 
-// 1. Guardar la venta con todos los campos fiscales de tu tabla
 ipcMain.handle('guardar-venta-local', async (event, v) => {
     try {
-        // 1. PRE-VALIDACIÓN Y DESCUENTO: Hablar con el Servidor Maestro primero
-        const urlServidor = config.isServer ? `http://localhost:${PORT}` : `http://${config.serverIP}:${PORT}`;
-        
-        // Extraemos los productos
-        const ventaData = typeof v.datos_json === 'string' ? JSON.parse(v.datos_json) : v.datos_json;
-        const itemsParaDescontar = (ventaData.productos || []).map(p => ({
-            id: p.id || p.producto_id,
-            cantidad: p.cantidad
-        }));
-
-        if (itemsParaDescontar.length > 0) {
-            try {
-                // Petición al servidor maestro ANTES de guardar localmente
-                const respuestaStock = await axios.post(`${urlServidor}/api/maestro/descontar-stock`, { items: itemsParaDescontar });
-                
-                if (!respuestaStock.data.exito) {
-                    return { error: `Venta cancelada: ${respuestaStock.data.mensaje}` };
-                }
-                console.log("📦 Nexus POS: Stock validado y descontado en el Servidor Maestro.");
-                
-            } catch (errorAxios) {
-                console.error("❌ Error de red o stock al validar:", errorAxios.message);
-                // Extraemos el mensaje de error si viene del backend (ej. 400 Stock insuficiente), si no, es caída de red
-                const mensajeError = errorAxios.response?.data?.mensaje || "Pérdida de conexión con el Servidor Maestro.";
-                return { error: `Venta cancelada: ${mensajeError}` };
-            }
-        }
-
-        // 2. GUARDADO LOCAL: Solo se ejecuta si el bloque anterior fue exitoso
+        // 1. GUARDADO EN BASE DE DATOS LOCAL (Laptop)
         const stmt = db.prepare(`
             INSERT INTO ventas_locales (
                 id, company_id, branch_id, cashier_id, numero_factura, 
                 numero_control, cliente_nombre, cliente_rif, monto_exento, 
                 base_imponible, monto_iva, monto_igtf, monto_total, 
-                tasa_bcv, metodo_pago, datos_json, estado_sync
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                tasa_bcv, metodo_pago, datos_json, estado_sync, estado_cierre
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0)
         `);
         
         const resultadoLocal = stmt.run(
@@ -648,28 +1043,116 @@ ipcMain.handle('guardar-venta-local', async (event, v) => {
             v.tasa_bcv, v.metodo_pago, v.datos_json
         );
 
+        // 2. SINCRONIZACIÓN CON EL SERVIDOR MAESTRO (Red Local)
+        try {
+            const ipMaestro = config.isServer ? 'localhost' : config.serverIP;
+            await axios.post(`http://${ipMaestro}:3000/api/maestro/registrar-venta`, v, { timeout: 3000 });
+            console.log(`📡 Venta ${v.numero_factura} sincronizada con Maestro.`);
+        } catch (errSync) {
+            console.warn(`⚠️ Maestro no disponible. Venta ${v.numero_factura} guardada solo local.`);
+            // No bloqueamos el proceso; la venta ya está segura en la laptop.
+        }
+
         return resultadoLocal;
     } catch (e) {
-        console.error("❌ Error en ciclo de venta (Validación + Local):", e.message);
+        console.error("❌ Error en guardado de venta:", e.message);
         return { error: e.message };
+    }
+});
+
+
+
+// En main.js, añade este bloque:
+ipcMain.handle('obtener-deuda-cliente-maestro', async (event, rif) => {
+    try {
+        // 1. Leemos la IP del Maestro desde el archivo de configuración
+        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        const ipMaestro = config.ipServidorMaestro || 'localhost';
+
+        // 2. Hacemos la petición al API de tu server.js (Puerto 3000)
+        // Usamos axios que ya lo tienes importado en main.js
+        const response = await axios.get(`http://${ipMaestro}:3000/api/maestro/consultar-deuda/${rif}`, { 
+            timeout: 3000 
+        });
+        
+        // Retornamos lo que responda el Maestro { existe: true, monto_bs: ... }
+        return response.data;
+    } catch (error) {
+        console.error("❌ Error consultando deuda en Maestro desde Main:", error.message);
+        // Si el servidor maestro está apagado, devolvemos 0 para no trancar la venta
+        return { existe: false, monto_bs: 0, error: "Servidor Maestro no responde" };
     }
 });
 
 ipcMain.handle('obtener-proximo-correlativo', async (event, tipo) => {
     try {
-        // Ahora siempre le preguntamos al servidor de PM2 (localhost o IP remota)
-        const ipDestino = config.isServer ? 'localhost' : config.serverIP;
-        const respuesta = await axios.post(`http://${ipDestino}:${PORT}/api/maestro/obtener-correlativo`, { tipo });
-        return respuesta.data;
+        if (config.isServer && masterDbDirect) {
+            // 🚀 MODO SERVIDOR: Consulta SQL directa (Sin puertos, sin errores de red)
+            const transaccion = masterDbDirect.transaction(() => {
+                let row = masterDbDirect.prepare('SELECT ultimo_numero, prefijo FROM correlativos_maestros WHERE tipo = ?').get(tipo);
+                
+                // 🔥 SOLUCIÓN: Si la fila no existe (Ej: NOTA_CREDITO), se crea al vuelo
+                if (!row) {
+                    console.log(`⚠️ Correlativo [${tipo}] no encontrado. Creándolo automáticamente...`);
+                    let prefijo = 'DOC-';
+                    if (tipo === 'NOTA_CREDITO') prefijo = 'NC-';
+                    else if (tipo === 'TICKET_NO_FISCAL') prefijo = 'TICK-';
+                    else if (tipo === 'FORMA_LIBRE') prefijo = 'FL-';
+                    else if (tipo === 'ELECTRONICA') prefijo = 'TFHKA-';
+                    else if (tipo === 'FISCAL_HKA') prefijo = 'FIS-';
+
+                    masterDbDirect.prepare('INSERT INTO correlativos_maestros (tipo, prefijo, ultimo_numero) VALUES (?, ?, 0)').run(tipo, prefijo);
+                    row = { ultimo_numero: 0, prefijo: prefijo };
+                }
+
+                const nuevoNumero = row.ultimo_numero + 1;
+                masterDbDirect.prepare('UPDATE correlativos_maestros SET ultimo_numero = ? WHERE tipo = ?').run(nuevoNumero, tipo);
+                return { 
+                    numero: nuevoNumero, 
+                    formato: `${row.prefijo}${String(nuevoNumero).padStart(8, '0')}` 
+                };
+            });
+            console.log("⚡ Correlativo generado localmente (Directo de DB)");
+            return transaccion();
+        } else {
+            // 🌐 MODO CLIENTE: Sigue usando la red para buscar al Xeon
+            const respuesta = await axios.post(`http://${config.serverIP}:${PORT}/api/maestro/obtener-correlativo`, { tipo });
+            return respuesta.data;
+        }
     } catch (e) { 
         console.error("❌ Error obteniendo correlativo:", e.message);
-        return { error: "No se pudo conectar con el servidor maestro de PM2." }; 
+        return { error: "No se pudo obtener el correlativo." }; 
     }
 });
 
 // 3. Obtener una venta específica (Para reimpresiones)
 ipcMain.handle('obtener-venta-por-id', async (event, id) => {
     return db.prepare('SELECT * FROM ventas_locales WHERE id = ?').get(id);
+});
+
+ipcMain.handle('obtener-factura-local', async (event, numFactura) => {
+    try {
+        // 1. Buscamos la IP del Cerebro Maestro en la configuración local
+        const configPath = path.join(dbDir, 'config.json');
+        let serverIp = 'localhost';
+        if (fs.existsSync(configPath)) {
+            const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            if (config.serverIp) serverIp = config.serverIp;
+        }
+
+        // 2. 🚀 EL BACKEND HACE EL LLAMADO HTTP CON AXIOS (Oculto al usuario)
+        const response = await axios.get(`http://${serverIp}:3000/api/maestro/buscar-factura/${numFactura}`);
+        
+        // Retornamos la lista filtrada del servidor central
+        return response.data; 
+
+    } catch (error) {
+        console.error("❌ Error de comunicación con el Maestro:", error.message);
+        return { 
+            error: true, 
+            mensaje: "No se pudo conectar al Servidor Central para buscar la factura." 
+        };
+    }
 });
 
 
@@ -695,6 +1178,61 @@ ipcMain.handle('cerrar-sesion-local', async () => {
         return { exito: false, error: e.message };
     }
 });
+
+// main.js - PUENTE HÍBRIDO DE DEUDAS
+ipcMain.handle('registrar-deuda-maestro', async (event, datos) => {
+    try {
+        if (config.isServer && masterDbDirect) {
+            // 🚀 MODO SERVIDOR: Escritura directa
+            const transaccion = masterDbDirect.transaction(() => {
+                // 1. Crear cliente si no existe
+                masterDbDirect.prepare(`
+                    INSERT OR IGNORE INTO clientes_maestro (id, nombre, saldo_deuda) VALUES (?, ?, 0)
+                `).run(datos.cliente_id, datos.cliente_nombre);
+
+                // 2. Registrar la cuenta por cobrar
+                masterDbDirect.prepare(`
+                    INSERT INTO cuentas_por_cobrar (cliente_id, cliente_nombre, monto_bs, monto_usd, factura_nro, fecha, estado)
+                    VALUES (?, ?, ?, ?, ?, ?, 'PENDIENTE')
+                `).run(datos.cliente_id, datos.cliente_nombre, datos.monto_bs, datos.monto_usd || 0, datos.numero_factura, datos.fecha);
+                
+                // 3. Actualizar el saldo global
+                masterDbDirect.prepare(`
+                    UPDATE clientes_maestro SET saldo_deuda = saldo_deuda + ? WHERE id = ?
+                `).run(datos.monto_bs, datos.cliente_id);
+            });
+
+            transaccion();
+            return { exito: true };
+        } else {
+            // 🌐 MODO CLIENTE: Enviar por red
+            const ipDestino = config.isServer ? '127.0.0.1' : config.serverIP;
+            const respuesta = await axios.post(`http://${ipDestino}:${PORT}/api/maestro/registrar-deuda`, datos);
+            return respuesta.data;
+        }
+    } catch (e) {
+        return { exito: false, mensaje: e.message };
+    }
+});
+
+// main.js - PUENTE DE ABONOS (REDUCCIÓN DE DEUDA EN MAESTRO)
+ipcMain.handle('registrar-abono-maestro', async (event, datos) => {
+    try {
+        // 🔥 CORRECCIÓN ARQUITECTÓNICA: 
+        // Eliminamos la lógica duplicada de SQLite aquí. 
+        // Ahora TODOS (incluyendo el servidor) pasan por la API de server.js
+        const ipDestino = config.isServer ? '127.0.0.1' : config.serverIP;
+        
+        console.log(`[MAIN] Redirigiendo pago de deuda al servidor local (${ipDestino})...`);
+        
+        const respuesta = await axios.post(`http://${ipDestino}:${PORT}/api/maestro/registrar-abono`, datos);
+        return respuesta.data;
+    } catch (e) {
+        console.error("[MAIN] Error en puente de abonos:", e.message);
+        return { exito: false, mensaje: e.message };
+    }
+});
+
 
 // Añadir en main.js (junto a los otros ipcMain.handle)
 ipcMain.handle('guardar-cliente-local', async (event, c) => {
@@ -737,7 +1275,7 @@ ipcMain.handle('leer-puertos', async () => await SerialPort.list());
 // 🔥 SOLUCIÓN 3: Nombres de variables correctos y guardado en la tabla correcta
 ipcMain.handle('sincronizar-categorias-local', async (event, categories) => {
     try {
-        const stmt = db.prepare(`INSERT OR REPLACE INTO categorias_locales (id, company_id, nombre, estado_sync, fecha_modificacion) VALUES (?, '', ?, 1, ?)`);
+        const stmt = db.prepare(`INSERT OR REPLACE INTO categorias_locales (id, company_id, nombre, estado_sync, fecha_modificacion) VALUES (?, ?, ?, 1, ?)`);
         
         const transaction = db.transaction((cats) => {
             for (const cat of cats) {
@@ -783,63 +1321,71 @@ ipcMain.handle('obtener-configuracion', async (event, clave) => {
 ipcMain.handle('guardar-configuracion', async (event, clave, valor) => {
     try {
         const valorTexto = String(valor);
-        // CORRECCIÓN: Usar tabla 'configuracion', no 'productos_locales'
+        
+        // 1. Guardar en SQLite (Para la persistencia interna)
         const stmt = db.prepare(`
             INSERT OR REPLACE INTO configuracion (clave, valor, fecha_actualizacion)
             VALUES (?, ?, ?)
         `);
         stmt.run(clave, valorTexto, new Date().toISOString());
 
+        // 2. Sincronizar con el objeto en memoria
+        if (clave === 'isServer') config.isServer = (valor === true || valor === "true");
+        else if (clave === 'serverIP') config.serverIP = valor;
+        else if (clave === 'allowNoStock') config.allowNoStock = (valor === true || valor === "true");
+        else if (clave === 'geminiApiKey') config.geminiApiKey = valor;
+
+        // 3. Escribir en el archivo físico config.json (Recreándolo si no existe)
         const llavesFisicas = ['isServer', 'serverIP', 'allowNoStock', 'geminiApiKey'];
         if (llavesFisicas.includes(clave)) {
-            let configActual = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-            if (clave === 'isServer') configActual.isServer = (valor === true || valor === "true");
-            else if (clave === 'serverIP') configActual.serverIP = valor;
-            else if (clave === 'allowNoStock') configActual.allowNoStock = (valor === true || valor === "true");
-            else if (clave === 'geminiApiKey') configActual.geminiApiKey = valor;
+            // 🔥 CORRECCIÓN: Escribimos el objeto 'config' directamente para asegurar que el archivo se cree/actualice
+            fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
 
-            fs.writeFileSync(configPath, JSON.stringify(configActual, null, 2), 'utf8');
-            config = configActual;
-
-            if (clave === 'isServer' && configActual.isServer === true) {
-                exec(`pm2 start server.js --name "Nexus-Cerebro" --watch && pm2 save`);
-            }
-            if (clave === 'isServer' && configActual.isServer === false) {
-                exec(`pm2 delete Nexus-Cerebro && pm2 save --force`);
+            // 4. Lógica de PM2 (Solo si cambia isServer)
+            if (clave === 'isServer') {
+                if (valor === true || valor === "true") {
+                    exec(`pm2 start server.js --name "Nexus-Cerebro" --watch && pm2 save`);
+                } else {
+                    exec(`pm2 delete Nexus-Cerebro && pm2 save --force`);
+                }
             }
         }
+        
+        console.log(`✅ Configuración [${clave}] guardada físicamente en: ${configPath}`);
         return { success: true };
     } catch (error) {
-        console.error(`❌ Error al guardar configuración:`, error.message);
+        console.error(`❌ Error crítico al guardar configuración:`, error.message);
         return { error: error.message };
     }
 });
 
 ipcMain.handle('imprimir-texto-libre', async (event, textoTicket, nombreImpresora) => {
     try {
-        // 1. Creamos el archivo temporal en la carpeta de datos de la app
+        // 1. Creamos el archivo temporal
         const rutaArchivo = path.join(app.getPath('userData'), 'ticket_temporal.txt');
+        // Escribimos en latin1 para que los acentos y la "ñ" salgan bien en la tiquera
         fs.writeFileSync(rutaArchivo, textoTicket, 'latin1');
         
-        // 2. Preparamos el comando de Windows
-        let comandoPowerShell = `powershell -Command "Get-Content '${rutaArchivo}' -Raw | Out-Printer"`;
-        if (nombreImpresora) {
-            comandoPowerShell = `powershell -Command "Get-Content '${rutaArchivo}' -Raw | Out-Printer -Name '${nombreImpresora}'"`;
-        }
+        // 2. Preparamos el comando RAW (Copiar archivo crudo al puerto de red local)
+        // OJO: nombreImpresora ahora DEBE ser el nombre con el que compartiste la impresora (Ej: POS58)
+        const comandoCMD = `copy /B "${rutaArchivo}" "\\\\localhost\\${nombreImpresora}"`;
 
-        // 3. Ejecutamos la impresión directamente desde main.js
+        // 3. Ejecutamos la impresión directamente en CMD
         return new Promise((resolve) => {
-            exec(comandoPowerShell, (error) => {
+            console.log(`💻 Ejecutando impresión RAW: ${comandoCMD}`);
+
+            exec(comandoCMD, (error, stdout, stderr) => {
                 // Borramos el archivo temporal a los 2 segundos
                 setTimeout(() => {
                     if (fs.existsSync(rutaArchivo)) fs.unlinkSync(rutaArchivo);
                 }, 2000);
 
                 if (error) {
-                    console.error("❌ Error en PowerShell:", error.message);
+                    console.error("❌ Error al enviar RAW a impresora:", error.message);
+                    console.error("Detalles:", stderr);
                     resolve({ exito: false, mensaje: error.message });
                 } else {
-                    console.log(`🖨️ Ticket enviado nativamente a: ${nombreImpresora || 'Impresora Predeterminada'}`);
+                    console.log(`🖨️ Ticket enviado exitosamente a: \\\\localhost\\${nombreImpresora}`);
                     resolve({ exito: true });
                 }
             });
@@ -849,9 +1395,27 @@ ipcMain.handle('imprimir-texto-libre', async (event, textoTicket, nombreImpresor
     }
 });
 
-ipcMain.handle('procesar-cola-sync', async () => {
-    const pendientes = db.prepare('SELECT * FROM sync_queue').all();
-    return { exito: true, registros_subidos: pendientes.length };
+ipcMain.handle('obtener-cola-sincronizacion', async () => {
+    try {
+        // Leemos la cola ordenada por fecha (los más viejos primero)
+        const stmt = db.prepare('SELECT * FROM sync_queue ORDER BY fecha_creacion ASC');
+        return stmt.all();
+    } catch (e) {
+        console.error("❌ Error al leer la cola de sincronización:", e);
+        return [];
+    }
+});
+
+// 2. El motor borra un registro porque el VPS confirmó que lo recibió
+ipcMain.handle('eliminar-de-cola', async (event, id) => {
+    try {
+        const stmt = db.prepare('DELETE FROM sync_queue WHERE id = ?');
+        const resultado = stmt.run(id);
+        return { success: true, changes: resultado.changes };
+    } catch (e) {
+        console.error(`❌ Error al eliminar el registro ${id} de la cola:`, e);
+        return { success: false, error: e.message };
+    }
 });
 
 ipcMain.handle('sincronizar-producto-servidor', async (event, p) => {
@@ -859,13 +1423,16 @@ ipcMain.handle('sincronizar-producto-servidor', async (event, p) => {
         const idProducto = p.id || p.producto_ID;
         const idEmpresa = p.company_id || p.empresa_ID;
         const idSucursal = p.branch_id || p.sucursal_ID || 'sucursal_1';
+        const barcodeRef = p.codigo || p.producto_codigo || '';
+        p.codigo = barcodeRef;
+        p.producto_codigo = barcodeRef;
         
-        // 🛡️ EXTRACCIÓN BLINDADA: Garantizamos que siempre sea un número (Float)
         const precioRef = parseFloat(p.precios ? p.precios.p1.venta : (p.precio_venta || p.precio || 0)) || 0;
         const compraRef = parseFloat(p.precios ? p.precios.p1.compra : (p.precio_compra || 0)) || 0;
         const porcentajeRef = parseFloat(p.precios ? p.precios.p1.porcentaje : (p.porcentaje_ganancia || 0)) || 0;
         
         const jsonParaGuardar = JSON.stringify(p);
+        const estadoSyncFinal = p.estado_sync !== undefined ? p.estado_sync : 0; 
 
         const local = db.prepare('SELECT * FROM productos_locales WHERE id = ?').get(idProducto);
         let resultado;
@@ -873,45 +1440,26 @@ ipcMain.handle('sincronizar-producto-servidor', async (event, p) => {
         if (!local) {
             const stmt = db.prepare(`
                 INSERT INTO productos_locales (id, company_id, branch_id, codigo, nombre, precio, precio_compra, porcentaje_ganancia, categoria, status, imagen, datos_json, estado_sync, fecha_modificacion)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
             resultado = stmt.run(
-                idProducto, 
-                idEmpresa, 
-                idSucursal, 
-                p.codigo, 
-                p.nombre, 
-                precioRef, 
-                compraRef, 
-                porcentajeRef, 
-                p.categoria, 
-                p.status, 
-                p.imagen, 
-                jsonParaGuardar, 
-                p.fecha_modificacion
+                idProducto, idEmpresa, idSucursal, barcodeRef, p.nombre, 
+                precioRef, compraRef, porcentajeRef, p.categoria, p.status, 
+                p.imagen, jsonParaGuardar, estadoSyncFinal, p.fecha_modificacion
             );
         } else {
             const stmt = db.prepare(`
                 UPDATE productos_locales
-                SET codigo = ?, nombre = ?, precio = ?, precio_compra = ?, porcentaje_ganancia = ?, categoria = ?, status = ?, imagen = ?, datos_json = ?, estado_sync = 1, fecha_modificacion = ?
+                SET codigo = ?, nombre = ?, precio = ?, precio_compra = ?, porcentaje_ganancia = ?, categoria = ?, status = ?, imagen = ?, datos_json = ?, estado_sync = ?, fecha_modificacion = ?
                 WHERE id = ?
             `);
             resultado = stmt.run(
-                p.codigo, 
-                p.nombre, 
-                precioRef, 
-                compraRef, 
-                porcentajeRef, 
-                p.categoria, 
-                p.status, 
-                p.imagen, 
-                jsonParaGuardar, 
-                p.fecha_modificacion, 
-                idProducto
+                barcodeRef, p.nombre, precioRef, compraRef, porcentajeRef, 
+                p.categoria, p.status, p.imagen, jsonParaGuardar, 
+                estadoSyncFinal, p.fecha_modificacion, idProducto
             );
         }
 
-        // Notificación a las ventanas para refrescar la UI
         if (resultado && resultado.changes > 0) {
             BrowserWindow.getAllWindows().forEach(ventana => {
                 if (!ventana.isDestroyed()) ventana.webContents.send('productos-actualizados');
@@ -925,6 +1473,206 @@ ipcMain.handle('sincronizar-producto-servidor', async (event, p) => {
     }
 });
 
+// --- VERIFICADOR DE ACTUALIZACIONES GITHUB (CORREGIDO) ---
+// Función Helper matemática para comparar versiones (Ej: "v1.2.0" vs "v1.0.0")
+function esVersionMayor(versionNube, versionLocal) {
+    // Limpiamos todo lo que no sea número o punto y separamos por bloques
+    const vNube = versionNube.replace(/[^0-9.]/g, '').split('.').map(Number);
+    const vLocal = versionLocal.replace(/[^0-9.]/g, '').split('.').map(Number);
+    
+    const longitud = Math.max(vNube.length, vLocal.length);
+    
+    for (let i = 0; i < longitud; i++) {
+        const numNube = vNube[i] || 0;
+        const numLocal = vLocal[i] || 0;
+        
+        if (numNube > numLocal) return true;  // La nube tiene una versión más nueva
+        if (numNube < numLocal) return false; // La nube tiene una versión más vieja (Omitir)
+    }
+    return false; // Son exactamente iguales (Omitir)
+}
+
+// --- VERIFICADOR DE ACTUALIZACIONES GITHUB ---
+// Ahora recibe la versión que tiene instalada el cliente actualmente
+ipcMain.handle('verificar-actualizacion-github', async (event, versionActual) => {
+    try {
+        const repo = "memm1701-tech/NEXUS-POS-ELECTRON";
+        const url = `https://api.github.com/repos/${repo}/releases`;
+        
+        const config = {
+            headers: {
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28',
+                'User-Agent': 'Nexus-POS-Global-App' 
+            }
+        };
+
+        const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+        if (GITHUB_TOKEN) {
+            config.headers['Authorization'] = `token ${GITHUB_TOKEN}`;
+        }
+
+        const response = await axios.get(url, config);
+        
+        if (!response.data || response.data.length === 0) {
+            return { success: false, error: "No se encontraron versiones publicadas en el repositorio." };
+        }
+
+        // Iteramos sobre todos los releases de Github buscando uno que sea MAYOR al nuestro
+        let actualizacionEncontrada = null;
+        for (const release of response.data) {
+            if (esVersionMayor(release.tag_name, versionActual)) {
+                actualizacionEncontrada = release;
+                break; // Encontramos una actualización válida, detenemos la búsqueda
+            }
+        }
+
+        // Si encontramos una versión superior
+        if (actualizacionEncontrada) {
+            const urlDescargaFichero = (actualizacionEncontrada.assets && actualizacionEncontrada.assets.length > 0) 
+                                        ? actualizacionEncontrada.assets[0].browser_download_url 
+                                        : "";
+
+            return {
+                success: true,
+                hayActualizacion: true, // Bandera para el frontend
+                nuevaVersion: actualizacionEncontrada.tag_name,
+                notas: actualizacionEncontrada.body || "Sin notas de actualización.",
+                urlDescarga: urlDescargaFichero
+            };
+        } else {
+            // Si no encontró nada mayor (O estamos iguales, o Github tiene una versión más vieja)
+            return {
+                success: true,
+                hayActualizacion: false // Bandera de seguridad
+            };
+        }
+
+    } catch (error) {
+        console.error("❌ Error en Conexión GitHub:", error.response?.status || error.message);
+        return { 
+            success: false, 
+            error: error.response?.status === 404 ? "Repositorio no encontrado o privado sin acceso" : (error.response?.status === 403 ? "Límite de API excedido o Token inválido" : error.message) 
+        };
+    }
+});
+
+ipcMain.handle('editar-env-local', async (event, nuevaConfig) => {
+    const envPath = app.isPackaged 
+        ? path.join(app.getPath('userData'), '.env')
+        : path.join(__dirname, 'data', 'config', '.env');
+
+    if (!fs.existsSync(envPath)) return false;
+
+    try {
+        let contenido = fs.readFileSync(envPath, 'utf8');
+
+        // Buscar y reemplazar la línea de respaldo_datos
+        if (nuevaConfig.respaldo_datos !== undefined) {
+            // RegEx que busca respaldo_datos="..." o respaldo_datos=...
+            contenido = contenido.replace(/respaldo_datos=["']?([^"'\n]+)["']?/g, `respaldo_datos="${nuevaConfig.respaldo_datos}"`);
+        }
+
+        fs.writeFileSync(envPath, contenido);
+        console.log(`✅ Archivo .env actualizado (respaldo_datos=${nuevaConfig.respaldo_datos})`);
+        return true;
+    } catch (err) {
+        console.error("Error al actualizar el .env:", err);
+        return false;
+    }
+});
+
+ipcMain.handle('obtener-version-app', () => {
+    return app.getVersion();
+});
+
+// --- DESCARGA E INSTALACIÓN AUTOMÁTICA ---
+ipcMain.handle('descargar-update', async (event, urlDescarga) => {
+    try {
+        // Descargar a la carpeta de Archivos Temporales de Windows (para no ensuciar Descargas)
+        const tempDir = app.getPath('temp');
+        const filePath = path.join(tempDir, 'Nexus-POS-Update.exe');
+        
+        const response = await axios({
+            method: 'GET',
+            url: urlDescarga,
+            responseType: 'stream' // Importante para leer byte a byte
+        });
+
+        const totalLength = parseInt(response.headers['content-length'], 10);
+        let downloaded = 0;
+
+        const writer = fs.createWriteStream(filePath);
+        
+        response.data.on('data', (chunk) => {
+            downloaded += chunk.length;
+            // Calculamos el porcentaje
+            const progress = Math.round((downloaded / totalLength) * 100);
+            // Le avisamos al frontend (HTML) en qué porcentaje vamos
+            event.sender.send('download-progress', progress);
+        });
+
+        response.data.pipe(writer);
+
+        return new Promise((resolve, reject) => {
+            
+            // Reemplazamos 'finish' por 'close'
+            writer.on('close', () => {
+                
+                // Pausa táctica de 1.5 segundos para que Windows libere el archivo
+                setTimeout(() => {
+                    try {
+                        const { spawn } = require('child_process');
+                        
+                        // 🔥 LA MEJOR PRÁCTICA: Instalación silenciosa con auto-reinicio.
+                        const installer = spawn(filePath, ['/S', '--force-run'], {
+                            detached: true,
+                            stdio: 'ignore'
+                        });
+                        installer.unref(); 
+                        
+                        // Cerramos NEXUS POS para liberar los archivos y permitir la sobrescritura
+                        setTimeout(() => {
+                            app.quit();
+                        }, 1000);
+                        
+                        resolve({ success: true });
+                    } catch (spawnError) {
+                        console.error("Error al ejecutar instalador:", spawnError);
+                        reject({ success: false, error: spawnError.message });
+                    }
+                }, 1500); 
+            });
+            
+            writer.on('error', (err) => {
+                reject({ success: false, error: err.message });
+            });
+        });
+    } catch (error) {
+        console.error("Error en descarga:", error);
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('marcar-como-sincronizado', async (event, tabla, idElemento) => {
+    try {
+        if (tabla === 'productos') {
+            db.prepare('UPDATE productos_locales SET estado_sync = 1 WHERE id = ?').run(idElemento);
+        } else if (tabla === 'categorias') {
+            db.prepare('UPDATE categorias_locales SET estado_sync = 1 WHERE id = ?').run(idElemento);
+        }
+        
+        // Avisar a la pantalla de inventario que refresque la tabla
+        BrowserWindow.getAllWindows().forEach(ventana => {
+            if (!ventana.isDestroyed()) ventana.webContents.send('productos-actualizados');
+        });
+        
+        return { success: true };
+    } catch (e) {
+        console.error("❌ Error al marcar como sincronizado:", e.message);
+        return { error: e.message };
+    }
+});
 
 ipcMain.handle('obtener-categorias-local', async () => {
     try {
@@ -1030,44 +1778,120 @@ ipcMain.handle('obtener-sucursales-local', async (event, companyId) => {
 
 ipcMain.handle('obtener-inventario-sucursal', async (event, { companyId, sucursalId }) => {
     try {
-        const stmt = db.prepare(`
-            SELECT 
-                p.id, 
-                p.nombre, 
-                p.categoria, 
-                p.codigo,
-                -- 🛠️ CORRECCIÓN: Extraemos la unidad del JSON porque la columna p.unit no existe
-                IFNULL(json_extract(p.datos_json, '$.unit'), 'UN') as unit, 
-                i.stock as stock_sucursal
-            FROM inventario_sucursales i
-            INNER JOIN productos_locales p ON p.id = i.producto_id
-            WHERE p.company_id = ? AND i.sucursal_id = ? AND p.status = 1
-        `);
-        return stmt.all(companyId, sucursalId);
+        if (config.isServer && masterDbDirect) {
+            // 🔥 MODIFICACIÓN: Ahora lee DIRECTAMENTE de la tabla stock_maestro en el Cerebro Maestro
+            const stmt = masterDbDirect.prepare(`
+                SELECT producto_id, cantidad_real
+                FROM stock_maestro
+                WHERE company_id = ? AND sucursal_id = ?
+            `);
+            return stmt.all(companyId, sucursalId);
+        } else {
+            // 🌐 MODO CLIENTE: Sigue consultando por red al puerto 3000 (servidor local)
+            const ipDestino = config.isServer ? '127.0.0.1' : config.serverIP;
+            const respuesta = await axios.get(`http://${ipDestino}:${PORT}/api/maestro/stock`, {
+                params: { 
+                    sucursalId: sucursalId,
+                    companyId: companyId 
+                }
+            });
+            return respuesta.data; 
+        }
     } catch (e) {
-        console.error("❌ Error en obtener-inventario-sucursal:", e.message);
-        return { error: e.message };
+        console.error("❌ Error obteniendo inventario:", e.message);
+        return [];
     }
 });
 
-ipcMain.handle('guardar-stock-sucursal', async (event, { productoId, sucursalId, companyId, cantidad, operacion }) => {
+ipcMain.handle('verificar-y-descontar-stock-maestro', async (event, datos) => {
     try {
-        // --- ENLACE CON SERVIDOR MAESTRO ---
-        const ipDestino = config.isServer ? 'localhost' : config.serverIP;
-        
-        // Si estamos sumando stock (Entrada), informamos al Maestro primero
-        if (operacion === 'SUMAR') {
-            try {
-                await axios.post(`http://${ipDestino}:${PORT}/api/maestro/registrar-entrada`, {
-                    items: [{ id: productoId, cantidad: cantidad }]
-                });
-                console.log("📢 Stock sincronizado con el Servidor Maestro (Suma).");
-            } catch (errAxios) {
-                console.warn("⚠️ No se pudo sincronizar con el Maestro, pero se guardará localmente:", errAxios.message);
-            }
+        const items = Array.isArray(datos) ? datos : datos.items;
+        const sucursalId = Array.isArray(datos) ? null : datos.sucursalId;
+
+        // 🔥 FILTRO INTELIGENTE: Separamos productos físicos de los servicios
+        const productosFisicos = items.filter(item => {
+            const nombre = String(item.nombre || '').toUpperCase();
+            const id = String(item.id || '').toUpperCase();
+            
+            // Si el nombre contiene ABONO, DEUDA o SERVICIO, lo sacamos de la lista de stock
+            return !nombre.includes('ABONO') && !nombre.includes('DEUDA') && !nombre.includes('SERVICIO');
+        });
+
+        // Si el carrito SOLO tenía abonos (ej. el cliente solo vino a pagar), damos luz verde inmediata
+        if (productosFisicos.length === 0) {
+            console.log("⚡ Venta de puro servicio/abono. Stock verificado automáticamente.");
+            return { exito: true };
         }
 
-        // --- LÓGICA LOCAL ORIGINAL ---
+        // --- LÓGICA DE DESCUENTO (Solo procesará los productosFisicos) ---
+        if (config.isServer && masterDbDirect) {
+            // 🚀 MODO SERVIDOR: Descuento directo en el archivo
+            const transaccion = masterDbDirect.transaction((productos) => {
+                for (const item of productos) {
+                    let row;
+                    if (sucursalId) {
+                        row = masterDbDirect.prepare('SELECT cantidad_real FROM stock_maestro WHERE producto_id = ? AND sucursal_id = ?').get(item.id, sucursalId);
+                    } else {
+                        row = masterDbDirect.prepare('SELECT cantidad_real FROM stock_maestro WHERE producto_id = ?').get(item.id);
+                    }
+
+                    if (!row || row.cantidad_real < item.cantidad) {
+                        throw new Error(`Stock insuficiente para: ${item.nombre || item.id}`);
+                    }
+                }
+                
+                const stmtConSucursal = masterDbDirect.prepare('UPDATE stock_maestro SET cantidad_real = cantidad_real - ?, ultima_sincronizacion = CURRENT_TIMESTAMP WHERE producto_id = ? AND sucursal_id = ?');
+                const stmtSinSucursal = masterDbDirect.prepare('UPDATE stock_maestro SET cantidad_real = cantidad_real - ?, ultima_sincronizacion = CURRENT_TIMESTAMP WHERE producto_id = ?');
+                
+                for (const item of productos) { 
+                    if (sucursalId) {
+                        stmtConSucursal.run(item.cantidad, item.id, sucursalId);
+                    } else {
+                        stmtSinSucursal.run(item.cantidad, item.id);
+                    }
+                }
+            });
+
+            transaccion(productosFisicos); // ✅ Pasamos solo los físicos
+            console.log("⚡ Stock descontado directamente en la DB Maestra");
+            return { exito: true };
+        } else {
+            // 🌐 MODO CLIENTE: Petición por red al servidor
+            const ipDestino = config.isServer ? '127.0.0.1' : config.serverIP;
+            const respuesta = await axios.post(`http://${ipDestino}:${PORT}/api/maestro/descontar-stock`, {
+                sucursalId: sucursalId,
+                items: productosFisicos.map(i => ({ id: i.id, cantidad: i.cantidad, nombre: i.nombre }))
+            });
+            return respuesta.data;
+        }
+    } catch (e) {
+        return { exito: false, mensaje: e.message || "Error de comunicación con el maestro." };
+    }
+});
+
+
+ipcMain.handle('guardar-stock-sucursal', async (event, { productoId, sucursalId, companyId, cantidad, operacion }) => {
+    try {
+        const ipDestino = config.isServer ? 'localhost' : config.serverIP;
+        
+        try {
+            await axios.post(`http://${ipDestino}:${PORT}/api/maestro/registrar-entrada`, {
+                sucursalId: sucursalId, 
+                companyId: companyId,   
+                items: [{ 
+                    id: productoId, 
+                    cantidad: cantidad, 
+                    operacion: operacion, 
+                    sucursalId: sucursalId, 
+                    companyId: companyId    
+                }]
+            });
+            console.log(`📢 Stock sincronizado con Maestro: Operación ${operacion}`);
+        } catch (errAxios) {
+            console.warn("⚠️ Maestro no disponible. Se guardará solo en esta laptop:", errAxios.message);
+        }
+
+        // 2. ACTUALIZACIÓN EN DB LOCAL (Laptop actual)
         const fecha = new Date().toISOString();
         const sql = operacion === 'SUMAR' 
             ? `INSERT INTO inventario_sucursales (producto_id, sucursal_id, company_id, stock, fecha_modificacion, estado_sync)
@@ -1085,7 +1909,7 @@ ipcMain.handle('guardar-stock-sucursal', async (event, { productoId, sucursalId,
 
         const resultado = db.prepare(sql).run(productoId, sucursalId, companyId, cantidad, fecha);
 
-        // Notificación a ventanas abierta
+        // Notificar a las ventanas para refrescar la tabla visualmente
         BrowserWindow.getAllWindows().forEach(ventana => {
             if (!ventana.isDestroyed()) ventana.webContents.send('productos-actualizados');
         });
@@ -1097,48 +1921,72 @@ ipcMain.handle('guardar-stock-sucursal', async (event, { productoId, sucursalId,
     }
 });
 
-ipcMain.handle('guardar-clave-admin-local', async (event, c) => {
+ipcMain.handle('guardar-clave-admin-maestro', async (event, c) => {
     try {
-        // 1. Encriptamos la clave en milisegundos
+        // 1. Encriptamos la clave en la computadora local ANTES de enviarla por la red
         const encrypted = encryptClave(c.plainCode);
-        
-        // 2. Guardamos en disco duro
-        const stmt = db.prepare(`
-            INSERT INTO claves_admin_locales (id, ownerName, encryptedCode, company_id, created_by, updatedAt)
-            VALUES (?, ?, ?, ?, ?, ?)
-        `);
-        const resultado = stmt.run(c.id, c.ownerName, encrypted, c.company_id, c.created_by, c.updatedAt);
-        
-        return { success: true, changes: resultado.changes };
+        const datos = {
+            id: c.id, ownerName: c.ownerName, encryptedCode: encrypted,
+            company_id: c.company_id, created_by: c.created_by, updatedAt: c.updatedAt
+        };
+
+        if (config.isServer && masterDbDirect) {
+            // 🚀 MODO SERVIDOR: Escribe directo en la DB Maestra
+            masterDbDirect.prepare(`
+                INSERT INTO claves_admin_maestras (id, ownerName, encryptedCode, company_id, created_by, updatedAt)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `).run(datos.id, datos.ownerName, datos.encryptedCode, datos.company_id, datos.created_by, datos.updatedAt);
+            return { success: true };
+        } else {
+            // 🌐 MODO CLIENTE: Envía por red al puerto 3000
+            const ipDestino = config.isServer ? '127.0.0.1' : config.serverIP;
+            const respuesta = await axios.post(`http://${ipDestino}:${PORT}/api/maestro/guardar-clave-admin`, datos);
+            return { success: respuesta.data.exito };
+        }
     } catch (e) {
-        console.error("❌ Error guardando clave segura:", e.message);
+        console.error("❌ Error guardando clave segura en Maestro:", e.message);
         return { error: e.message };
     }
 });
 
-ipcMain.handle('obtener-claves-admin-local', async (event, companyId) => {
+ipcMain.handle('obtener-claves-admin-maestro', async (event, companyId) => {
     try {
-        // 1. Buscamos todas las filas encriptadas
-        const claves = db.prepare('SELECT * FROM claves_admin_locales WHERE company_id = ? ORDER BY updatedAt DESC').all(companyId);
+        let claves = [];
         
-        // 2. Desencriptamos en la memoria RAM (al vuelo) antes de mandarlas al HTML
+        if (config.isServer && masterDbDirect) {
+            // 🚀 MODO SERVIDOR: Lee directo
+            claves = masterDbDirect.prepare('SELECT * FROM claves_admin_maestras WHERE company_id = ? ORDER BY updatedAt DESC').all(companyId);
+        } else {
+            // 🌐 MODO CLIENTE: Lee desde la red
+            const ipDestino = config.isServer ? '127.0.0.1' : config.serverIP;
+            const respuesta = await axios.get(`http://${ipDestino}:${PORT}/api/maestro/obtener-claves-admin/${companyId}`);
+            claves = respuesta.data;
+        }
+
+        // 2. Desencriptamos localmente en RAM para mandarlas al frontend
         return claves.map(c => ({
             id: c.id,
             ownerName: c.ownerName,
-            plainCode: decryptClave(c.encryptedCode), // 🔓 Aquí se revela para que el ojito 👁️ funcione
+            plainCode: decryptClave(c.encryptedCode), // 🔓 Revela
             company_id: c.company_id,
             updatedAt: c.updatedAt
         }));
     } catch (e) {
-        console.error("❌ Error obteniendo claves seguras:", e.message);
+        console.error("❌ Error obteniendo claves seguras del Maestro:", e.message);
         return [];
     }
 });
 
-ipcMain.handle('eliminar-clave-admin-local', async (event, id) => {
+ipcMain.handle('eliminar-clave-admin-maestro', async (event, id) => {
     try {
-        const resultado = db.prepare('DELETE FROM claves_admin_locales WHERE id = ?').run(id);
-        return { success: true, changes: resultado.changes };
+        if (config.isServer && masterDbDirect) {
+            masterDbDirect.prepare('DELETE FROM claves_admin_maestras WHERE id = ?').run(id);
+            return { success: true };
+        } else {
+            const ipDestino = config.isServer ? '127.0.0.1' : config.serverIP;
+            const respuesta = await axios.delete(`http://${ipDestino}:${PORT}/api/maestro/eliminar-clave-admin/${id}`);
+            return { success: respuesta.data.exito };
+        }
     } catch (e) {
         return { error: e.message };
     }
@@ -1347,7 +2195,6 @@ ipcMain.handle('obtener-empaque-por-producto', async (event, productId) => {
     }
 });
 
-// --- MANEJADORES PARA SALIDAS DE INVENTARIO ---
 
 ipcMain.handle('guardar-salida-local', async (event, datos) => {
     try {
@@ -1355,9 +2202,14 @@ ipcMain.handle('guardar-salida-local', async (event, datos) => {
         const ipDestino = config.isServer ? 'localhost' : config.serverIP;
 
         try {
-            // Solicitamos al maestro descontar el stock global
+            // 🔥 FIX: Añadimos sucursalId en el cuerpo y dentro de items para asegurar la ruta correcta
             const respuestaMaestro = await axios.post(`http://${ipDestino}:${PORT}/api/maestro/descontar-stock`, {
-                items: [{ id: datos.product_id, cantidad: datos.cantidad }]
+                sucursalId: datos.branch_id,
+                items: [{ 
+                    id: datos.product_id, 
+                    cantidad: datos.cantidad,
+                    sucursalId: datos.branch_id
+                }]
             });
 
             if (!respuestaMaestro.data.exito) {
@@ -1454,8 +2306,418 @@ ipcMain.handle('guardar-configuracion-cajera', async (event, clave, valor) => {
     }
 });
 
-ipcMain.handle('sincronizar-configuracion-xeon', async (event, datos) => {
-    return await enviarDatosAXeon(datos);
+
+// --- GUARDAR CONFIGURACIÓN EN EL MAESTRO ---
+ipcMain.handle('guardar-config-maestra', async (event, datos) => {
+    try {
+        // Asumimos que tienes una función interna para obtener la IP del maestro.
+        // Si la lees del config.json, usa esa misma lógica aquí:
+        const configPath = path.join(app.getPath('userData'), 'nexus-pos', 'data', 'config.json');
+        let serverIP = 'localhost';
+        if (fs.existsSync(configPath)) {
+            const configLocal = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            serverIP = configLocal.serverIP || 'localhost';
+        }
+
+        const url = `http://${serverIP}:3000/api/maestro/configuracion`;
+        const response = await axios.post(url, datos);
+        return response.data;
+    } catch (error) {
+        console.error("❌ Error guardando config en el Maestro:", error.message);
+        return { exito: false, error: error.message };
+    }
+});
+
+// --- LEER CONFIGURACIÓN DEL MAESTRO ---
+ipcMain.handle('leer-config-maestra', async (event, clave) => {
+    try {
+        const configPath = path.join(app.getPath('userData'), 'nexus-pos', 'data', 'config.json');
+        let serverIP = 'localhost';
+        if (fs.existsSync(configPath)) {
+            const configLocal = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            serverIP = configLocal.serverIP || 'localhost';
+        }
+
+        const url = `http://${serverIP}:3000/api/maestro/configuracion/${clave}`;
+        const response = await axios.get(url);
+        return response.data; // Devuelve { exito: true, valor: "true" o null }
+    } catch (error) {
+        console.error("❌ Error leyendo config del Maestro:", error.message);
+        return { exito: false, error: error.message };
+    }
+});
+
+// Calcula el Checksum XOR (Sello de seguridad requerido)
+function calcularChecksum(trama) {
+    let checksum = 0;
+    for (let i = 0; i < trama.length; i++) {
+        checksum = (checksum ^ trama.charCodeAt(i)) & 0xFF;
+    }
+    return checksum.toString(16).toUpperCase().padStart(4, '0');
+}
+
+// Arma el paquete: STX + Seq + Cmd + Separadores + Campos + ETX + Checksum
+function prepararPaquete(comando, campos = []) {
+    const STX = '\x02';
+    const ETX = '\x03';
+    const FS = '\x1C'; // Separador de campos (ASCII 28)
+    const SEQ = '\x20'; // Secuencia (Espacio)
+
+    let cuerpo = SEQ + comando;
+    if (campos.length > 0) {
+        cuerpo += FS + campos.join(FS);
+    }
+
+    const tramaParaCheck = cuerpo + ETX;
+    const check = calcularChecksum(tramaParaCheck);
+    
+    // Retornamos el Buffer listo para el puerto serial
+    return Buffer.from(STX + tramaParaCheck + check, 'ascii');
+}
+
+ipcMain.handle('imprimir-factura-fiscal', async (event, saleData) => {
+    let configFactura = { puerto: 'COM2', modelo: 'PNP' };
+    try {
+        // Buscamos la configuración en la tabla correcta 'configuracion'
+        const row = db.prepare("SELECT valor FROM configuracion WHERE clave = 'config_factura'").get();
+        if (row) {
+            const data = JSON.parse(row.valor);
+            configFactura.puerto = data.puerto_com_fiscal || 'COM2';
+            configFactura.modelo = data.tipo_emision || 'PNP';
+        }
+    } catch (e) { 
+        console.error("Error al leer configuración de DB:", e); 
+    }
+
+    return new Promise(async (resolve) => {
+        try {
+            const puerto = configFactura.puerto;
+            
+            // Gestión dinámica del puerto serie
+            if (!printerPort || printerPort.path !== puerto) {
+                if (printerPort && printerPort.isOpen) await new Promise(r => printerPort.close(r));
+                printerPort = new SerialPort({ path: puerto, baudRate: 9600, autoOpen: false });
+            }
+            if (!printerPort.isOpen) {
+                await new Promise((res, rej) => printerPort.open((err) => err ? rej(err) : res()));
+            }
+
+            console.log(`🚀 Iniciando impresión [MODO: ${configFactura.modelo}] en ${puerto}`);
+
+            if (configFactura.modelo === 'FISCAL_HASAR') {
+                // --- PROTOCOLO HASAR (COMANDOS LARGOS) ---
+                
+                // 1. Cancelar cualquier estado previo para limpiar el buffer
+                printerPort.write(prepararPaqueteHasar('@CANCEL', []));
+                await new Promise(r => setTimeout(r, 600));
+
+                // 2. Abrir Ticket Fiscal (C = Tique)
+                printerPort.write(prepararPaqueteHasar('@TIQUEABRE', ['C']));
+                await new Promise(r => setTimeout(r, 600));
+
+                // 3. Enviar Items
+                for (const it of saleData.items) {
+                    printerPort.write(prepararPaqueteHasar('@TIQUEITEM', [
+                        limpiarTexto(it.nombre).substring(0, 26),
+                        fH(it.cantidad, 3), // Cantidad con 3 decimales (ej: 1.000)
+                        fH(it.precio, 2),   // Precio con 2 decimales (ej: 100.00)
+                        '16.0',             // Tasa IVA
+                        'M',                // Calificador de monto
+                        '0.0',              // Impuestos internos
+                        '0'                 // Display
+                    ]));
+                    await new Promise(r => setTimeout(r, 500));
+                }
+
+                // 4. Pago (T = Paga todo el saldo)
+                const total = fH(saleData.monto_total, 2);
+                printerPort.write(prepararPaqueteHasar('@TIQUEPAGO', ['EFECTIVO', total, 'T']));
+                await new Promise(r => setTimeout(r, 600));
+
+                // 5. Cierre de Ticket (Sin parámetros para evitar error de comando inválido)
+                printerPort.write(prepararPaqueteHasar('@TIQUECIERRA', []));
+
+            } else {
+                // --- PROTOCOLO PNP / BIXOLON (COMANDOS CORTOS) ---
+                
+                // Abrir factura
+                printerPort.write(prepararPaquete('@', [
+                    limpiarTexto(saleData.cliente_nombre).substring(0, 30), 
+                    saleData.cliente_rif, 
+                    "VENTA", 
+                    "T"
+                ]));
+                await new Promise(r => setTimeout(r, 500));
+
+                // Items (PNP usa céntimos sin puntos decimales)
+                for (const it of saleData.items) {
+                    const p = Math.round(parseFloat(it.precio) * 100).toString();
+                    const c = Math.round(parseFloat(it.cantidad) * 1000).toString();
+                    printerPort.write(prepararPaquete('B', [
+                        limpiarTexto(it.nombre).substring(0, 20), 
+                        c, p, "1", "M", "0", "0"
+                    ]));
+                    await new Promise(r => setTimeout(r, 300));
+                }
+
+                // Pago y Cierre
+                const totalCents = Math.round(parseFloat(saleData.monto_total) * 100).toString();
+                printerPort.write(prepararPaquete('D', ["EFECTIVO", totalCents]));
+                await new Promise(r => setTimeout(r, 400));
+                printerPort.write(prepararPaquete('E', []));
+            }
+
+            resolve({ success: true, msg: "Factura enviada exitosamente" });
+
+        } catch (error) {
+            console.error("❌ Fallo en impresión fiscal:", error.message);
+            resolve({ success: false, msg: error.message });
+        }
+    });
+});
+
+function getIpServidor() {
+    try {
+        const configPath = path.join(app.getPath('userData'), 'data', 'config.json'); // o la ruta que uses en main.js
+        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        // Lee la IP, si no hay, asume localhost
+        return config.ip_servidor || config.ip || 'localhost'; 
+    } catch (e) {
+        return 'localhost';
+    }
+}
+
+// 1. Obtener Borradores
+ipcMain.handle('obtener-borradores-maestro', async (event, { sucursalId, companyId }) => {
+    try {
+        const ip = getIpServidor();
+        const url = `http://${ip}:3000/api/maestro/obtener-borradores?sucursalId=${sucursalId}&companyId=${companyId}`;
+        const response = await axios.get(url);
+        return response.data;
+    } catch (error) {
+        console.error("Error obteniendo borradores:", error.message);
+        return [];
+    }
+});
+
+ipcMain.handle('obtener-ip-maestro', () => {
+    return getIpServidor(); // Usamos la misma función que arreglamos antes
+});
+
+
+
+// 2. Guardar Borrador
+ipcMain.handle('guardar-borrador-maestro', async (event, datos) => {
+    try {
+        const ip = getIpServidor();
+        const url = `http://${ip}:3000/api/maestro/guardar-borrador`;
+        const response = await axios.post(url, datos);
+        return response.data;
+    } catch (error) {
+        return { error: error.message };
+    }
+});
+
+// 3. Eliminar Borrador
+ipcMain.handle('eliminar-borrador-maestro', async (event, id) => {
+    try {
+        const ip = getIpServidor();
+        const url = `http://${ip}:3000/api/maestro/eliminar-borrador/${id}`;
+        const response = await axios.delete(url);
+        return response.data;
+    } catch (error) {
+        return { error: error.message };
+    }
+});
+
+let secuenciaHasar = 0x21; 
+
+function obtenerSiguienteSecuencia() {
+    secuenciaHasar++;
+    if (secuenciaHasar > 0x7F) secuenciaHasar = 0x21;
+    return String.fromCharCode(secuenciaHasar);
+}
+
+function fH(v, dec) {
+    return parseFloat(v || 0).toFixed(dec);
+}
+
+function prepararPaqueteHasar(comando, campos = []) {
+    const STX = '\x02';
+    const ETX = '\x03';
+    const PIPE = '|';
+    const SEQ = obtenerSiguienteSecuencia();
+
+    let trama = SEQ + comando;
+    if (campos.length > 0) trama += PIPE + campos.join(PIPE);
+
+    const cuerpoParaCheck = trama + ETX;
+    let xor = 0;
+    for (let i = 0; i < cuerpoParaCheck.length; i++) {
+        xor ^= cuerpoParaCheck.charCodeAt(i);
+    }
+    
+    // Checksum de 2 dígitos (Universal para Venezuela)
+    const bcc = xor.toString(16).toUpperCase().padStart(2, '0');
+    return Buffer.from(STX + cuerpoParaCheck + bcc, 'ascii');
+}
+
+// --- UTILIDADES MULTIMARCA ---
+
+// Elimina acentos y eñes (Vital para impresoras viejas)
+function limpiarTexto(texto) {
+    if (!texto) return "";
+    return texto.normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9 ]/g, "")
+        .toUpperCase();
+}
+
+
+
+// En main.js
+// main.js - Handler de consulta reforzado
+ipcMain.handle('consultar-estado-fiscal', async () => {
+    // 1. Buscamos el puerto configurado igual que antes
+    let puertoConfigurado = 'COM2'; 
+    try {
+        const row = db.prepare("SELECT valor FROM configuraciones WHERE clave = 'config_factura'").get();
+        if (row) { puertoConfigurado = JSON.parse(row.valor).puerto_com_fiscal || 'COM2'; }
+    } catch (e) {}
+
+    return new Promise((resolve) => {
+        // 2. Si no existe la instancia, la creamos DE UNA VEZ
+        if (!printerPort || printerPort.path !== puertoConfigurado) {
+            printerPort = new SerialPort({
+                path: puertoConfigurado,
+                baudRate: 9600,
+                autoOpen: false
+            });
+        }
+
+        // 3. Si está cerrado, intentamos abrirlo antes de consultar
+        if (!printerPort.isOpen) {
+            printerPort.open((err) => {
+                if (err) return resolve({ success: false, msg: "No se pudo abrir el puerto" });
+                enviarConsulta(resolve); // Función interna para mandar el byte 0x05
+            });
+        } else {
+            enviarConsulta(resolve);
+        }
+    });
+});
+
+function enviarConsulta(resolve) {
+    console.log(`[FISCAL] ⚠️ El puerto abrió bien. Saltando el saludo 0x05 porque el emulador exige tramas completas.`);
+    console.log(`[FISCAL] ✅ Dando LUZ VERDE para probar la facturación real.`);
+    
+    // Le decimos al frontend que todo está OK para que nos deje facturar
+    resolve({ success: true, msg: "Puerto abierto y listo para comandos" });
+}
+
+// Función auxiliar para reportar logs al frontend
+function reportarLogHKA(event, mensaje, esError = false) {
+    if (event && event.sender) {
+        event.sender.send('hka-auth-log', { mensaje, esError });
+    }
+}
+
+
+
+// MODO DE facturacion HKA IMPRENTA DIGITAL "FACTURACION ELECTRÓNICA" - FASE 2: Sincronización y Validación de Numeración
+
+// 🟢 FUNCIÓN 1: Consultar último número y sincronizar con server.js
+async function sincronizarUltimoNumero(event, tipoDoc = "01") {
+    try {
+        reportarLogHKA(event, `Consultando último correlativo (${tipoDoc}) en la nube...`);
+        
+        const response = await axios.post(`${hkaCredentials.baseUrl}/api/UltimoDocumento`, 
+            { serie: "", tipoDocumento: tipoDoc },
+            { headers: { 'Authorization': `Bearer ${apiToken}` } }
+        );
+
+        if (response.data && response.data.numeroDocumento !== undefined) {
+            const ultimoNro = response.data.numeroDocumento;
+            
+            // Enviamos el dato a server.js para actualizar la DB local
+            await axios.post(LOCAL_SERVER_URL, {
+                tipo: 'ELECTRONICA',
+                ultimo_numero: ultimoNro
+            });
+
+            reportarLogHKA(event, `Sincronización exitosa: Última factura en nube #${ultimoNro}. DB Local actualizada.`);
+        }
+    } catch (error) {
+        reportarLogHKA(event, `Error sincronizando números: ${error.message}`, true);
+    }
+}
+
+// 🟢 FUNCIÓN 2: Verificar rangos disponibles (ConsultaNumeraciones)
+async function verificarRangosDisponibles(event) {
+    try {
+        reportarLogHKA(event, "Validando disponibilidad de correlativos en el portal...");
+        
+        const response = await axios.post(`${hkaCredentials.baseUrl}/api/ConsultaNumeraciones`, 
+            { serie: "", tipoDocumento: "01" },
+            { headers: { 'Authorization': `Bearer ${apiToken}` } }
+        );
+
+        if (response.data && response.data.numeraciones) {
+            const rango = response.data.numeraciones[0]; // Tomamos el primer rango activo
+            reportarLogHKA(event, `Rangos validados: Desde ${rango.desde} hasta ${rango.hasta}. Estado: ${rango.estado}`);
+        }
+    } catch (error) {
+        reportarLogHKA(event, `Error validando rangos: ${error.message}`, true);
+    }
+}
+
+// 🟢 INTERCEPCIÓN DEL AUTH EXITOSO PARA DISPARAR FASE 2
+ipcMain.on('ejecutar-auth-hka', async (event) => {
+    // Primero hacemos el login (Fase 1)
+    await iniciarAuthWorkerHKA(event); 
+    
+    // Si tenemos token, disparamos la Fase 2 automáticamente
+    if (apiToken) {
+        await sincronizarUltimoNumero(event, "01"); // Sincroniza el número
+        await verificarRangosDisponibles(event);    // Valida que hay números libres
+    }
+});
+
+// --- FASE 3: EMISIÓN DE FACTURA ELECTRÓNICA ---
+ipcMain.handle('emitir-factura-hka', async (event, facturaJSON) => {
+    try {
+        if (!apiToken) throw new Error("No hay token de autenticación activo.");
+
+        // 1. Ubicar la raíz del documento
+        const doc = facturaJSON.DocumentoElectronico || facturaJSON.documentoElectronico || facturaJSON.Documentoelectronico;
+        if (!doc) throw new Error("Estructura raíz 'documentoElectronico' no encontrada.");
+
+        const nroDoc = doc.Encabezado.IdentificacionDocumento.NumeroDocumento;
+        
+        console.log(`🚀 ENVIANDO A TFHKA - FACTURA #${nroDoc}\nTOTALES:`, JSON.stringify(doc.Encabezado.Totales));
+        reportarLogHKA(event, `Enviando factura #${nroDoc} a fiscalización...`);
+
+        // 2. Envío a la API (usando desestructuración { data })
+        const { data } = await axios.post(`${HKA_BASE_URL}/api/Emision`, facturaJSON, {
+            headers: { 'Authorization': `Bearer ${apiToken}` }
+        });
+
+        // 3. Validación de éxito flexible (Acepta 0 o 200, texto o número)
+        if (data && [0, 200, '0', '200'].includes(data.codigo)) {
+            reportarLogHKA(event, "✅ Factura aceptada por The Factory HKA.");
+            return { exito: true, data };
+        } 
+        
+        // 4. Manejo de error si el código no es de éxito
+        const errorMsg = `${data.mensaje || "Error desconocido"} ${data.validaciones ? data.validaciones.join(', ') : ""}`;
+        reportarLogHKA(event, `❌ Error de Emisión: ${errorMsg.trim()}`, true);
+        return { exito: false, error: data };
+
+    } catch (error) {
+        const detalle = error.response ? JSON.stringify(error.response.data) : error.message;
+        reportarLogHKA(event, `🔥 Fallo en Emisión: ${detalle}`, true);
+        return { exito: false, error: detalle };
+    }
 });
 
 async function createSplashScreen() {

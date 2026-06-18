@@ -195,16 +195,9 @@
                     <option value="">Cargando sucursales...</option>
                 </select>
             </div>
-            
-            <div>
-                <label for="cashier-select">Seleccionar Cajera:</label>
-                <select id="cashier-select" onchange="window.clearClosureHistory(); window.checkSearchButtonState();" disabled>
-                    <option value="">Selecciona una cajera...</option>
-                </select>
             </div>
-        </div>
 
-        <button id="search-closures-btn" class="w-full bg-blue-500 text-white font-bold py-3 px-6 rounded-md hover:bg-blue-600 transition-colors mt-4 mb-6 disabled:opacity-60 disabled:cursor-not-allowed" onclick="window.renderClosureHistory()" disabled>
+        <button id="search-closures-btn" class="w-full bg-blue-500 text-white font-bold py-3 px-6 rounded-md hover:bg-blue-600 transition-colors mt-4 mb-6" onclick="window.loadClosureHistory()">
             Buscar Todos los Cierres
         </button>
 
@@ -267,8 +260,8 @@
         let selectedClosureMap = {};
 
         // --- Referencias al DOM ---
+        // --- Referencias al DOM actualizadas ---
         const branchSelect = document.getElementById('branch-select');
-        const cashierSelect = document.getElementById('cashier-select');
         const historyBody = document.getElementById('closure-history-body');
         const searchButton = document.getElementById('search-closures-btn'); 
         const dateFromInput = document.getElementById('date-from');
@@ -276,9 +269,51 @@
         const messageBox = document.getElementById('message-box');
         const logStatus = document.getElementById('log-status');
 
+// *******************************************************************
+        // ********************* INICIALIZACIÓN (NEXUS) **********************
         // *******************************************************************
-        // ********************* FUNCIONES DE UTILIDAD ***********************
-        // *******************************************************************
+        
+        async function inicializarApp() {
+            console.log("⚡ Ejecutando inicializarApp() en Historial de Cierres...");
+            try {
+                const sesion = await window.nexusAPI.obtenerSesionLocal();
+                if (sesion) {
+                    userId = sesion.uid;
+                    userCompanyId = sesion.companyId;
+                    userBranchId = sesion.branchId; 
+                    userRole = sesion.role;
+                    
+                    if (userCompanyId) {
+                        await loadBranches(userCompanyId, userBranchId);
+                    }
+                } else {
+                    showMessage("Error: No se encontró una sesión activa.", "error");
+                    if(logStatus) logStatus.textContent = "Error de sesión local.";
+                }
+            } catch (error) {
+                console.error("Fallo de arranque Nexus:", error);
+                if(logStatus) logStatus.textContent = "Fallo de conexión con BD local.";
+            }
+        }
+
+        // --- MANEJO DEL CICLO DE VIDA SPA ---
+        console.log("🚀 [INICIO] El script de historial_de_cierres.html se ha inyectado y está ejecutándose.");
+        
+        // Si el documento está cargando (Página inicial normal)
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', inicializarApp);
+        } else {
+            // Si el DOM ya cargó (Inyectado vía SPA / innerHTML) se fuerza a arrancar de inmediato.
+            inicializarApp();
+        }
+        
+        // --- ASIGNACIÓN DE EVENTOS SEGUROS ---
+        if (branchSelect) {
+            branchSelect.addEventListener('change', () => {
+                closuresCache = []; 
+                window.fetchClosureData();
+            });
+        }
 
         function showMessage(text, type = 'success') {
             messageBox.textContent = text;
@@ -292,16 +327,9 @@
             setTimeout(() => messageBox.classList.add('hidden'), 5000);
         }
         
-        window.clearClosureHistory = function(resetCashier = true) {
+        window.clearClosureHistory = function() {
             historyBody.innerHTML = '<tr><td colspan="4" class="text-center p-4">Presiona "Buscar Todos los Cierres" para aplicar los filtros.</td></tr>';
             window.hideClosureDetails(); 
-            window.checkSearchButtonState();
-        }
-        
-        window.checkSearchButtonState = function() {
-            const cashierId = cashierSelect.value;
-            const branchId = branchSelect.value;
-            searchButton.disabled = (!branchId || !cashierId);
         }
         
         function formatCurrency(amount, symbol) {
@@ -311,7 +339,7 @@
         function formatTimestampLocal(dateString) {
             if (!dateString) return 'N/A';
             const date = new Date(dateString);
-            if(isNaN(date)) return dateString; // Fallback si el formato no es parseable
+            if(isNaN(date)) return dateString; 
 
             const day = date.getDate().toString().padStart(2, '0');
             const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -330,7 +358,6 @@
             document.getElementById('closure-date-display').textContent = 'No Seleccionado';
             contentDiv.innerHTML = '<p class="text-gray-500 text-center mt-6 text-sm">Seleccione una fila de la tabla para ver los detalles del cierre aquí.</p>';
             
-            // Limpia selección de fila
             document.querySelectorAll('.closure-row').forEach(row => row.classList.remove('bg-blue-50'));
         }
 
@@ -359,7 +386,6 @@
             const closure = selectedClosureMap[docId];
             if (!closure) return;
 
-            // Limpiar estilos de otras filas y añadir clase de seleccionado
             document.querySelectorAll('.closure-row').forEach(row => row.classList.remove('bg-blue-50'));
             const selectedRow = document.getElementById(`closure-row-${docId}`);
             if(selectedRow) selectedRow.classList.add('bg-blue-50');
@@ -375,12 +401,13 @@
             htmlContent += `<p><strong>Cajero:</strong> ${cashierName}</p>`;
             htmlContent += `<p><strong>Fecha y Hora:</strong> ${formattedDateFromTable}</p>`;
             
-            // Parsear paymentsConciliation si viene como string desde SQLite
+            // Adaptación de lectura para la columna detalle_pagos_json proveniente del servidor maestro
             let conciliation = {};
-            if (typeof closure.paymentsConciliation === 'string') {
-                try { conciliation = JSON.parse(closure.paymentsConciliation); } catch(e){}
-            } else if (typeof closure.paymentsConciliation === 'object') {
-                conciliation = closure.paymentsConciliation;
+            const datosConciliacion = closure.detalle_pagos_json || closure.paymentsConciliation;
+            if (typeof datosConciliacion === 'string') {
+                try { conciliation = JSON.parse(datosConciliacion); } catch(e){}
+            } else if (typeof datosConciliacion === 'object') {
+                conciliation = datosConciliacion;
             }
 
             if (conciliation && Object.keys(conciliation).length > 0) {
@@ -406,8 +433,9 @@
                 });
             }
             
-            const totalSalesDollars = closure.totalSalesDollars || closure.total_divisa || 0;
-            const totalSalesBs = closure.totalSalesBs || closure.total_bs || 0;
+            // Adaptación estricta para leer las columnas de cierres_caja_maestros de server.js
+            const totalSalesDollars = closure.total_ventas_usd || closure.totalSalesDollars || 0;
+            const totalSalesBs = closure.total_ventas_bs || closure.totalSalesBs || 0;
 
             htmlContent += '<hr class="my-4 border-gray-200">';
             htmlContent += '<h3>Totales de Venta Registrada y Diferencias</h3>';
@@ -422,22 +450,24 @@
 
             contentDiv.innerHTML = htmlContent;
 
-            // Scroll en móvil para ver el detalle
             if (window.innerWidth < 768) {
                 document.getElementById('closure-details-modal').scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         }
 
         // *******************************************************************
-        // ********************* CARGA DE DATOS (SQLITE) *********************
+        // ********************* CARGA DE DATOS (MAESTRO) ********************
         // *******************************************************************
 
         async function loadBranches(companyId, currentBranchId) {
+            console.log("📡 Cargando sucursales desde la Base de Datos Local...");
             try {
-                const sucursales = await window.nexusAPI.obtenerSucursalesLocales();
+                const sucursales = await window.nexusAPI.obtenerSucursalesLocal(companyId); 
+                
+                if (!branchSelect) return;
                 branchSelect.innerHTML = '<option value="" disabled selected>Selecciona la sucursal...</option>';
                 
-                const sucursalesEmpresa = sucursales.filter(s => s.company_id === companyId || s.empresa_ID === companyId);
+                const sucursalesEmpresa = Array.isArray(sucursales) ? sucursales.filter(s => s.company_id === companyId || s.empresa_ID === companyId) : [];
 
                 sucursalesEmpresa.forEach(branch => {
                     const option = document.createElement('option');
@@ -448,60 +478,70 @@
                 
                 if (currentBranchId) {
                     branchSelect.value = currentBranchId;
-                    await window.loadClosuresForBranch();
+                    await window.fetchClosureData();
                 }
             } catch (error) {
-                console.error("Error loading branches:", error);
+                console.error("❌ Error cargando sucursales:", error);
                 showMessage("Error al cargar las sucursales locales.", "error");
             }
         }
 
-        window.loadClosuresForBranch = async function() {
-            const branchId = branchSelect.value;
+        window.fetchClosureData = async function() {
+            const branchId = branchSelect ? branchSelect.value : null;
             
-            cashierSelect.innerHTML = '<option value="">Cargando cajeras...</option>';
-            cashierSelect.disabled = true; 
-            searchButton.disabled = true;
-            window.clearClosureHistory(); 
+            if (!branchId) {
+                if(historyBody) historyBody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-gray-500">Seleccione una sucursal.</td></tr>`;
+                return;
+            }
 
-            if (!branchId) return;
-            
+            if(historyBody) historyBody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-gray-500">Sincronizando con el Servidor Maestro (Puerto 3000)...</td></tr>`;
+
             try {
-                // Nota: Asegúrate de que este endpoint exista en tu preload/API local.
-                // Si usas otro nombre (ej. obtenerHistorialCierresLocales), cámbialo aquí.
-                const allClosures = await window.nexusAPI.obtenerCierresLocales({ 
-                    companyId: userCompanyId, 
-                    branchId: branchId 
-                });
-
-                closuresCache = allClosures || [];
-                
-                if (closuresCache.length === 0) {
-                    cashierSelect.innerHTML = '<option value="">No hay cierres en esta sucursal</option>';
-                } else {
-                    // Extraer cajeras únicas del caché local
-                    const cajerasUnicas = [...new Set(closuresCache.map(c => c.cashier_id || c.cashierId || c.userId))].filter(Boolean);
-                    
-                    cashierSelect.innerHTML = '<option value="TODAS" selected>Todas las cajeras</option>';
-                    cajerasUnicas.forEach(c => {
-                        cashierSelect.innerHTML += `<option value="${c}">${c}</option>`;
-                    });
-                    
-                    cashierSelect.disabled = false;
+                let ipMaestro;
+                try {
+                    ipMaestro = await window.nexusAPI.obtenerIpMaestro();
+                } catch (e) {
+                    console.warn("⚠️ No se pudo obtener IP, usando localhost.");
+                    ipMaestro = 'localhost';
                 }
+
+                const urlServidorMaestro = `http://${ipMaestro}:3000/api/maestro/cierres/${branchId}/${userCompanyId}`;
+                console.log("📡 Buscando cierres en:", urlServidorMaestro);
                 
-                window.checkSearchButtonState(); 
+                const response = await fetch(urlServidorMaestro);
+
+                if (!response.ok) {
+                    throw new Error(`Error HTTP del servidor: ${response.status}`);
+                }
+
+                const dataRecibida = await response.json();
+                console.log("📦 Cierres recibidos del maestro:", dataRecibida);
+                
+                closuresCache = Array.isArray(dataRecibida) ? dataRecibida : (dataRecibida.cierres || dataRecibida.data || []);
+
+                if (!closuresCache || closuresCache.length === 0) {
+                    if(historyBody) historyBody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-gray-500">No hay cierres registrados en el Servidor Maestro para esta sucursal.</td></tr>`;
+                    return;
+                }
+
+                window.renderClosureHistory();
 
             } catch (error) {
-                console.error("Error al cargar los cierres locales:", error);
-                showMessage("Error al cargar datos locales desde la base de datos.", "error");
-                cashierSelect.innerHTML = '<option value="">Error al cargar</option>';
+                console.error("❌ Error al cargar el historial desde el Servidor Maestro:", error);
+                if(historyBody) historyBody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-red-500">Error conectando al Servidor Maestro: Verifica que el endpoint exista en server.js. (${error.message})</td></tr>`;
             }
         }
 
+        window.loadClosureHistory = function() {
+            if (closuresCache.length === 0) {
+                window.fetchClosureData();
+            } else {
+                window.renderClosureHistory();
+            }
+        };
+
         window.renderClosureHistory = function() {
             const branchId = branchSelect.value;
-            const cashierId = cashierSelect.value; 
             const dateFromValue = dateFromInput.value;
             const dateToValue = dateToInput.value;
 
@@ -516,16 +556,11 @@
             
             let cierresMostrar = closuresCache;
 
-            // Filtro por Cajera
-            if (cashierId && cashierId !== 'TODAS' && cashierId !== "") {
-                cierresMostrar = cierresMostrar.filter(c => (c.cashier_id || c.cashierId || c.userId) === cashierId);
-            }
-
             // Filtros de fecha
             if (dateFromValue) {
                 const dateFrom = new Date(dateFromValue).getTime();
                 cierresMostrar = cierresMostrar.filter(c => {
-                    const cDate = new Date(c.timestamp || c.fecha_cierre || c.createdAt).getTime();
+                    const cDate = new Date(c.fecha || c.timestamp || c.createdAt).getTime();
                     return cDate >= dateFrom;
                 });
             }
@@ -535,15 +570,15 @@
                 dateTo.setHours(23, 59, 59, 999);
                 const dateToMs = dateTo.getTime();
                 cierresMostrar = cierresMostrar.filter(c => {
-                    const cDate = new Date(c.timestamp || c.fecha_cierre || c.createdAt).getTime();
+                    const cDate = new Date(c.fecha || c.timestamp || c.createdAt).getTime();
                     return cDate <= dateToMs;
                 });
             }
             
             // Ordenar descendente (más recientes primero)
             cierresMostrar.sort((a, b) => {
-                const dateA = new Date(a.timestamp || a.fecha_cierre || a.createdAt).getTime();
-                const dateB = new Date(b.timestamp || b.fecha_cierre || b.createdAt).getTime();
+                const dateA = new Date(a.fecha || a.timestamp || a.createdAt).getTime();
+                const dateB = new Date(b.fecha || b.timestamp || b.createdAt).getTime();
                 return dateB - dateA;
             });
 
@@ -558,14 +593,14 @@
                 const docId = closure.id || closure.cierre_ID || 'N/A';
                 selectedClosureMap[docId] = closure; 
                 
-                const timestampVal = closure.timestamp || closure.fecha_cierre || closure.createdAt;
+                const timestampVal = closure.fecha || closure.timestamp || closure.createdAt;
                 const dateString = formatTimestampLocal(timestampVal);
                 
-                const totalDollars = (closure.totalSalesDollars || closure.total_divisa || 0).toFixed(2);
-                const totalBs = (closure.totalSalesBs || closure.total_bs || 0).toFixed(2);
+                const totalDollars = (closure.total_ventas_usd || closure.totalSalesDollars || 0).toFixed(2);
+                const totalBs = (closure.total_ventas_bs || closure.totalSalesBs || 0).toFixed(2);
                 
-                const diffDollars = (closure.totalDifferenceDollars || closure.diferencia_usd || 0).toFixed(2);
-                const diffBs = (closure.totalDifferenceBs || closure.diferencia_bs || 0).toFixed(2);
+                const diffDollars = (closure.total_diferencia_usd || closure.totalDifferenceDollars || 0).toFixed(2);
+                const diffBs = (closure.total_diferencia_bs || closure.totalDifferenceBs || 0).toFixed(2);
                 const differenceText = `$(${diffDollars}) Bs(${diffBs})`;
 
                 const diffDollarsDisplay = formatCurrency(diffDollars, '$');
@@ -584,36 +619,6 @@
 
             historyBody.innerHTML = tableHTML;
         }
-
-        // *******************************************************************
-        // ********************* INICIALIZACIÓN (NEXUS) **********************
-        // *******************************************************************
-        
-        async function inicializarApp() {
-            try {
-                const sesion = await window.nexusAPI.obtenerSesionLocal();
-                if (sesion) {
-                    userId = sesion.uid;
-                    userCompanyId = sesion.companyId;
-                    userBranchId = sesion.branchId; 
-                    userRole = sesion.role;
-                    
-                    if (userCompanyId) {
-                        await loadBranches(userCompanyId, userBranchId);
-                    }
-                } else {
-                    showMessage("Error: No se encontró una sesión activa.", "error");
-                    logStatus.textContent = "Error de sesión local.";
-                }
-            } catch (error) {
-                console.error("Fallo de arranque Nexus:", error);
-                logStatus.textContent = "Fallo de conexión con BD local.";
-            }
-        }
-
-        // Eventos
-        document.addEventListener('DOMContentLoaded', inicializarApp);
-        branchSelect.addEventListener('change', window.loadClosuresForBranch);
 
     </script>
 </body>

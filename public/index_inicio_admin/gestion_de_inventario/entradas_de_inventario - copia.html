@@ -646,26 +646,138 @@
         }
     }
 
-    async function cargarInventarioSucursal() {
-        if (!idSucursalSeleccionada) return;
+window.cargarInventarioSucursal = async function() {
+    if (!idSucursalSeleccionada) return;
 
-        try {
-            console.log(`📂 [NEXUS] Consultando stock para sucursal: ${idSucursalSeleccionada}`);
-            
-            // Llamada al IPC definido en main.js
-            const inventario = await window.nexusAPI.obtenerInventarioSucursal({
-                companyId: idEmpresa,
-                sucursalId: idSucursalSeleccionada
-            });
+    try {
+        console.log(`🌐 [NEXUS] Consultando stock al Cerebro Maestro...`);
+        
+        // 1. Obtenemos el catálogo local completo
+        const todosLosProductos = await window.nexusAPI.obtenerProductosLocal(); 
+        
+        // --- 🔥 CORRECCIÓN: El campo exacto en tu base de datos es company_id 🔥 ---
+        const productosBase = todosLosProductos.filter(p => p.company_id === idEmpresa);
+        
+        // --- 🔥 SOLUCIÓN FETCH: Obtenemos la IP real directamente a través del puente ---
+        const servidorIP = await window.nexusAPI.obtenerIpMaestro() || '127.0.0.1';
+        const URL_BASE = `http://${servidorIP}:3000`;
 
-            if (inventario && !inventario.error) {
-                datosInventarioActual = inventario;
-                renderizarTablaInventario(datosInventarioActual);
-            }
-        } catch (error) {
-            console.error("❌ Error al cargar inventario sucursal:", error);
+        // 2. Pedir stock al servidor
+        const params = new URLSearchParams({
+            sucursalId: idSucursalSeleccionada,
+            companyId: idEmpresa
+        });
+
+        const respuesta = await fetch(`${URL_BASE}/api/maestro/stock?${params.toString()}`);
+        
+        if (!respuesta.ok) {
+            const errorData = await respuesta.json();
+            throw new Error(errorData.error || "Error interno del servidor Maestro");
         }
+        
+        const stockCentral = await respuesta.json();
+
+        // 3. Cruzamos los datos
+        const inventarioFinal = productosBase.map(prod => {
+            const servidorData = stockCentral.find(s => s.producto_id === prod.id);
+            return {
+                ...prod,
+                stock_sucursal: servidorData ? servidorData.cantidad_real : 0 
+            };
+        });
+
+        datosInventarioActual = inventarioFinal;
+        window.renderizarTablaInventario(datosInventarioActual);
+        console.log(`✅ Tabla cargada: ${productosBase.length} productos mostrados para la empresa.`);
+        
+    } catch (error) {
+        console.error("❌ Error en carga centralizada:", error);
+        mostrarAlerta(`Error al conectar con el servidor: Verifica la IP o tu conexión.`, "error");
     }
+}
+
+    // --- 4.5 Renderizar Tabla de Inventario ---
+    window.renderizarTablaInventario = function(lista) {
+    cuerpoTablaInventario.innerHTML = '';
+
+    if (lista.length === 0) {
+        cuerpoTablaInventario.innerHTML = `<tr><td colspan="5" class="placeholder-message">No hay productos vinculados.</td></tr>`;
+        return;
+    }
+
+    lista.forEach(item => {
+        const fila = document.createElement('tr');
+        // stock_sucursal es el alias que definimos en el LEFT JOIN del main.js
+        const stock = item.stock_sucursal || 0;
+        
+        // --- TRADUCCIÓN EN TIEMPO REAL ---
+        // Buscamos el nombre en el mapa; si no se encuentra, mostramos el ID o "General" como respaldo
+        const nombreCategoria = mapaCategorias[item.categoria] || item.categoria || "General";
+
+        fila.innerHTML = `
+            <td class="font-medium text-gray-900">${item.nombre}</td>
+            <td class="text-gray-600">${nombreCategoria}</td> 
+            <td class="text-center">${item.unit || 'UN'}</td>
+            <td class="text-center font-bold text-blue-600">${stock}</td>
+            <td>
+                <div class="action-buttons">
+                    <button class="edit-stock-btn" onclick="prepararEdicionStock('${item.id}', '${item.nombre}', ${stock})">EDITAR</button>
+                </div>
+            </td>
+        `;
+        cuerpoTablaInventario.appendChild(fila);
+    });
+}
+    // --- 4.6 Registrar Entrada de Mercancía (Versión con Depuración) ---
+async function cargarInventarioSucursal() {
+    if (!idSucursalSeleccionada) return;
+
+    try {
+        console.log(`🌐 [NEXUS] Consultando stock al Cerebro Maestro...`);
+        
+        // 1. Obtenemos el catálogo local completo
+        const todosLosProductos = await window.nexusAPI.obtenerProductosLocal(); 
+        
+        // --- 🔥 CORRECCIÓN: El campo exacto en tu base de datos es company_id 🔥 ---
+        const productosBase = todosLosProductos.filter(p => p.company_id === idEmpresa);
+        
+        // --- 🔥 SOLUCIÓN FETCH: Obtenemos la IP real directamente a través del puente ---
+        const servidorIP = await window.nexusAPI.obtenerIpMaestro() || '127.0.0.1';
+        const URL_BASE = `http://${servidorIP}:3000`;
+
+        // 2. Pedir stock al servidor
+        const params = new URLSearchParams({
+            sucursalId: idSucursalSeleccionada,
+            companyId: idEmpresa
+        });
+
+        const respuesta = await fetch(`${URL_BASE}/api/maestro/stock?${params.toString()}`);
+        
+        if (!respuesta.ok) {
+            const errorData = await respuesta.json();
+            throw new Error(errorData.error || "Error interno del servidor Maestro");
+        }
+        
+        const stockCentral = await respuesta.json();
+
+        // 3. Cruzamos los datos
+        const inventarioFinal = productosBase.map(prod => {
+            const servidorData = stockCentral.find(s => s.producto_id === prod.id);
+            return {
+                ...prod,
+                stock_sucursal: servidorData ? servidorData.cantidad_real : 0 
+            };
+        });
+
+        datosInventarioActual = inventarioFinal;
+        renderizarTablaInventario(datosInventarioActual);
+        console.log(`✅ Tabla cargada: ${productosBase.length} productos mostrados para la empresa.`);
+        
+    } catch (error) {
+        console.error("❌ Error en carga centralizada:", error);
+        mostrarAlerta(`Error al conectar con el servidor: Verifica la IP o tu conexión.`, "error");
+    }
+}
 
     // --- 4.5 Renderizar Tabla de Inventario ---
     function renderizarTablaInventario(lista) {
@@ -701,49 +813,59 @@
     }
 
     // --- 4.6 Registrar Entrada de Mercancía (Versión con Depuración) ---
-    async function registrarEntradaStock() {
+window.registrarEntradaStock = async function() {
     const cantidadInput = parseFloat(entradaCantidad.value);
 
-    if (!idSucursalSeleccionada || !idProductoSeleccionado || isNaN(cantidadInput)) {
-        mostrarAlerta("Complete todos los campos correctamente.", "warning");
+    if (!idProductoSeleccionado || isNaN(cantidadInput)) {
+        mostrarAlerta("Seleccione producto y cantidad.", "warning");
         return;
     }
 
     const cantidadFinal = modoEdicion ? cantidadInput : (cantidadInput * factorEmpaqueSeleccionado);
     const tipoOperacion = modoEdicion ? 'FIJAR' : 'SUMAR';
+    
+    // --- 🔥 SOLUCIÓN FETCH: Obtenemos la IP real directamente a través del puente ---
+    const servidorIP = await window.nexusAPI.obtenerIpMaestro() || '127.0.0.1';
+    const URL_BASE = `http://${servidorIP}:3000`;
 
     try {
         botonRegistrar.disabled = true;
-        botonRegistrar.textContent = "Procesando...";
+        botonRegistrar.textContent = "Sincronizando...";
 
-        // LLAMADA ÚNICA: El main.js se encarga de guardar local y enviar al maestro
-        const resultado = await window.nexusAPI.guardarStockSucursal({
-            productoId: idProductoSeleccionado,
-            sucursalId: idSucursalSeleccionada,
-            companyId: idEmpresa,
-            cantidad: cantidadFinal,
-            operacion: tipoOperacion 
+        // Enviamos el paquete completo como espera tu transaccion en server.js
+        const respuesta = await fetch(`${URL_BASE}/api/maestro/registrar-entrada`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sucursalId: idSucursalSeleccionada,
+                companyId: idEmpresa,
+                items: [{
+                    id: idProductoSeleccionado,
+                    cantidad: cantidadFinal,
+                    operacion: tipoOperacion 
+                }]
+            })
         });
 
-        if (resultado && resultado.success) {
-            mostrarAlerta(modoEdicion ? "✅ Stock corregido." : "✅ Entrada registrada.", "success");
-            
-            // Resetear interfaz
-            modoEdicion = false;
-            botonRegistrar.textContent = "Registrar Entrada de Inventario";
-            botonRegistrar.classList.replace('bg-amber-500', 'bg-blue-600');
+        const resultado = await respuesta.json();
 
+        if (resultado && resultado.exito) {
+            mostrarAlerta("✅ Stock sincronizado con el Maestro.", "success");
             limpiarFormularioEntrada();
-            await cargarInventarioSucursal(); 
+            await window.cargarInventarioSucursal(); 
         } else {
-            throw new Error(resultado.error);
+            throw new Error(resultado.error || "Fallo al guardar");
         }
     } catch (error) {
-        mostrarAlerta("Error: " + error.message, "error");
+        mostrarAlerta("Error Crítico al registrar: Revise conexión al servidor.", "error");
     } finally {
         botonRegistrar.disabled = false;
+        modoEdicion = false;
+        botonRegistrar.textContent = "Registrar Entrada de Inventario";
+        botonRegistrar.classList.replace('bg-amber-500', 'bg-blue-600');
     }
 }
+
 
     function limpiarFormularioEntrada() {
         entradaBusquedaProducto.value = '';
@@ -919,12 +1041,13 @@
 
     // Filtro de búsqueda de la tabla (inventario actual)
     entradaBusquedaInventario.addEventListener('input', (e) => {
-        const termino = e.target.value.toLowerCase();
-        const filtrados = datosInventarioActual.filter(i => 
-            i.nombre.toLowerCase().includes(termino) || (i.codigo && i.codigo.includes(termino))
-        );
-        renderizarTablaInventario(filtrados);
-    });
+    const termino = e.target.value.toLowerCase();
+    const filtrados = datosInventarioActual.filter(i => 
+        i.nombre.toLowerCase().includes(termino) || (i.codigo && i.codigo.includes(termino))
+    );
+    // Cambia la siguiente línea de: renderizarTablaInventario(filtrados); a:
+    window.renderizarTablaInventario(filtrados);
+});
 
 
     // --- 7. Ejecución Inicial ---

@@ -722,38 +722,35 @@ async function inicializarLocal() {
 }
 
     // === 2. LEER TASA DE SQLITE ===
-async function obtenerTasaGuardada() {
-    try {
-        // Pedimos el historial real a la base de datos
-        const historial = await window.nexusAPI.obtenerHistorialTasas(); 
-        
-        // Si hay datos en el historial, tomamos el primero (que es el de hoy)
-        if (historial && historial.length > 0) {
-            const ultimaTasa = historial[0]; 
+// === 2. LEER TASA DE SQLITE ===
+    async function obtenerTasaGuardada() {
+        try {
+            // 🔥 CORRECCIÓN CLAVE: Leer la tasa directamente de la configuración del sistema (La que usa Facturación)
+            const tasaSistema = await window.nexusAPI.obtenerConfiguracion('TASA_BCV'); 
             
-            // Usamos TUS variables originales respetando los 8 decimales
-            currentCompanyRateSpan.textContent = parseFloat(ultimaTasa.valor).toFixed(8);
+            if (tasaSistema) {
+                // Mostrar la tasa real que está guardada en SQLite
+                currentCompanyRateSpan.textContent = parseFloat(tasaSistema).toFixed(8);
+                
+                // Actualizar el texto de la fecha a hoy
+                const fechaFormateada = new Date().toLocaleDateString('es-VE');
+                companyRateTimestampSpan.textContent = "Sincronizada (" + fechaFormateada + ")";
+                
+            } else {
+                currentCompanyRateSpan.textContent = '0.00000000';
+                companyRateTimestampSpan.textContent = 'No registrada';
+            }
+        } catch (error) {
+            console.error("Error al obtener tasa guardada:", error);
             
-            // Convertimos la fecha ISO a un formato más legible
-            const fechaFormateada = new Date(ultimaTasa.fecha + 'T00:00:00').toLocaleDateString('es-VE');
-            companyRateTimestampSpan.textContent = fechaFormateada;
-            
-        } else {
-            currentCompanyRateSpan.textContent = '0.00000000';
-            companyRateTimestampSpan.textContent = 'No registrada';
-        }
-    } catch (error) {
-        console.error("Error al obtener tasa guardada:", error);
-        
-        // Verificamos que las variables existan antes de poner "Error" para evitar el TypeError
-        if (typeof currentCompanyRateSpan !== 'undefined' && currentCompanyRateSpan) {
-            currentCompanyRateSpan.textContent = 'Error';
-        }
-        if (typeof companyRateTimestampSpan !== 'undefined' && companyRateTimestampSpan) {
-            companyRateTimestampSpan.textContent = 'Error';
+            if (typeof currentCompanyRateSpan !== 'undefined' && currentCompanyRateSpan) {
+                currentCompanyRateSpan.textContent = 'Error';
+            }
+            if (typeof companyRateTimestampSpan !== 'undefined' && companyRateTimestampSpan) {
+                companyRateTimestampSpan.textContent = 'Error';
+            }
         }
     }
-}
 
 function renderUSDVesChart(currentRate, historialReal = []) {
     const ctx = document.getElementById('usdVesChart');
@@ -872,7 +869,7 @@ async function getExchangeRates() {
     
     if (!ratesContainer || !lastUpdateSpan) return;
     
-    const API_URL = 'http://localhost:3000/api/tasas';
+    const API_URL = 'https://scarping.nexusposgobal.com/api/tasas';
     
     const currencyNames = {
         'USD': 'Dólar Estadounidense', 'EUR': 'Euro', 'CNY': 'Yuan Chino',
@@ -880,12 +877,18 @@ async function getExchangeRates() {
     };
 
     try {
-        ratesContainer.innerHTML = '<div class="text-blue-500" style="padding: 10px;">Conectando con el Cerebro Nexus...</div>';
+        ratesContainer.innerHTML = '<div class="text-blue-500" style="padding: 10px;">Conectando con el Servidor Xeon...</div>';
         
         const response = await fetch(API_URL);
-        if (!response.ok) throw new Error('El servidor local no respondió correctamente.');
+        if (!response.ok) throw new Error('Los servidores de nexusposglobal no respondieron correctamente.');
         
         const data = await response.json();
+        
+        // Validación de seguridad por si el scraping falla temporalmente
+        if (!data.success || !data.rates) {
+            throw new Error('No se recibieron los datos de las tasas del BCV.');
+        }
+        
         const currentRates = data.rates;
         
         let tableHTML = `
@@ -897,6 +900,7 @@ async function getExchangeRates() {
         let usdRateValue = null;
 
         for (const currency in currentRates) {
+            // Procesa tanto si el Xeon envía texto como si envía números
             const rawValue = currentRates[currency].toString().trim().replace(',', '.');
             const currentRate = parseFloat(rawValue);
             
@@ -940,14 +944,19 @@ async function getExchangeRates() {
             }
         }
 
-        lastUpdateSpan.textContent = new Date().toLocaleString();
+        // Si el Xeon nos manda la hora exacta del scraping, la usamos, si no, la local
+        const fechaMostrar = data.fecha_scraping 
+            ? new Date(data.fecha_scraping).toLocaleString() 
+            : new Date().toLocaleString();
+            
+        lastUpdateSpan.textContent = fechaMostrar;
 
     } catch (error) {
         console.error('❌ Error de conexión:', error);
         ratesContainer.innerHTML = `
             <div style="color: #dc2626; text-align: center; padding: 20px; border: 1px dashed #dc2626; border-radius: 8px;">
                 <strong>Error de Conexión</strong><br>
-                No se pudo contactar con el Cerebro Nexus.<br>
+                No se pudo contactar con los servidores del BCV.<br>
                 <small>${error.message}</small>
             </div>`;
         lastUpdateSpan.textContent = 'Error de enlace';
@@ -955,29 +964,31 @@ async function getExchangeRates() {
 }
 
     // === 5. GUARDAR LA NUEVA TASA EN SQLITE Y EN EL SERVIDOR XEON ===
-    updateForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        clearFeedback(); 
+// === 5. GUARDAR LA NUEVA TASA EN SQLITE Y EN EL SERVIDOR XEON ===
+updateForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearFeedback(); 
 
-        const newRate = updatedRateInput.value;
-        if (!newRate || isNaN(newRate)) {
-            showFeedback(errorMessage);
-            setTimeout(() => { hideFeedback(errorMessage); }, 5000);
-            return;
-        }
+    const newRate = updatedRateInput.value;
+    if (!newRate || isNaN(newRate)) {
+        showFeedback(errorMessage);
+        setTimeout(() => { hideFeedback(errorMessage); }, 5000);
+        return;
+    }
 
-        try {
-            const tasaParsed = parseFloat(newRate);
+    try {
+        const tasaParsed = parseFloat(newRate);
+        
+        // 🟢 LLAMADA A ELECTRON/SQLITE (Cerebro Local)
+        const resultado = await window.nexusAPI.guardarTasaBCV(tasaParsed);
+        
+        if(resultado.success) {
             
-            // 🟢 LLAMADA A ELECTRON/SQLITE (Cerebro Local)
-            const resultado = await window.nexusAPI.guardarTasaBCV(tasaParsed);
-            
-            if(resultado.success) {
-                
-                // 🟢 LLAMADA AL SERVIDOR XEON (Puerto 3004)
-                if (navigator.onLine && companyId) {
-                    try {
-                        const xeonResponse = await fetch('http://192.168.0.113:3004/api/companias/tasa_de_cambio', {
+            // 🟢 LLAMADA AL SERVIDOR XEON (Sincronización Global vía Cloudflare)
+            if (navigator.onLine && companyId) {
+                try {
+                    // Se usa el dominio scarping.nexusposgobal.com que apunta internamente al puerto 3003
+                    const xeonResponse = await fetch('https://scarping.nexusposgobal.com/api/companias/tasa_de_cambio', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -989,29 +1000,35 @@ async function getExchangeRates() {
                         })
                     });
 
-                        if (!xeonResponse.ok) {
-                            console.warn("⚠️ La tasa se guardó en SQLite, pero el Xeon respondió con error:", xeonResponse.status);
-                        } else {
-                            console.log("✅ Tasa sincronizada con éxito en el puerto 3004.");
-                        }
-                    } catch (netError) {
-                        console.warn("⚠️ Sin conexión con el Xeon en el puerto 3004.", netError);
+                    if (!xeonResponse.ok) {
+                        // AJUSTE: Mensaje descriptivo sin puertos obsoletos
+                        console.warn("⚠️ Guardado local OK, pero el Servidor Xeon (Cloudflare) respondió con error:", xeonResponse.status);
+                    } else {
+                        // AJUSTE: Confirmación de sincronización global
+                        console.log("✅ Tasa sincronizada con éxito en el Servidor Xeon Global.");
                     }
+                } catch (netError) {
+                    // AJUSTE: Error de red a través del túnel
+                    console.warn("⚠️ Sin conexión con el Servidor Xeon a través del túnel scarping.", netError);
                 }
-
-                updatedRateInput.value = ''; 
-                showFeedback(successMessage);
-                setTimeout(() => { hideFeedback(successMessage); }, 50000);
-                obtenerTasaGuardada(); // Refrescar vista
-            } else {
-                throw new Error("Error interno de SQLite");
             }
-        } catch (error) {
-            console.error("Error al guardar la tasa:", error);
-            showFeedback(errorMessage);
-            setTimeout(() => { hideFeedback(errorMessage); }, 5000);
+
+            updatedRateInput.value = ''; 
+            showFeedback(successMessage);
+            
+            // CORRECCIÓN: Cambiado de 50000 (50 seg) a 5000 (5 seg) para que el mensaje no se quede pegado
+            setTimeout(() => { hideFeedback(successMessage); }, 5000);
+            
+            obtenerTasaGuardada(); // Refrescar vista
+        } else {
+            throw new Error("Error interno de SQLite");
         }
-    });
+    } catch (error) {
+        console.error("Error al guardar la tasa:", error);
+        showFeedback(errorMessage);
+        setTimeout(() => { hideFeedback(errorMessage); }, 5000);
+    }
+});
 
     // === 6. LÓGICA DEL MODAL DE COPIADO ===
     copyRateButton.addEventListener('click', () => {

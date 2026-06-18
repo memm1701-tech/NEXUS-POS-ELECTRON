@@ -248,6 +248,24 @@
 
         <div class="space-y-4 text-left p-4 border border-blue-200 bg-white rounded-md shadow-sm">
     <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+        <i class="fas fa-link mr-2 text-blue-600"></i> URL de la Tienda
+    </h2>
+    <p class="text-xs text-gray-500 mb-2">Copia y comparte este enlace con tus clientes para que accedan directamente a tu catálogo digital.</p>
+    
+    <div class="flex items-center bg-gray-100 border border-gray-300 rounded-full p-1 pl-4 shadow-inner">
+        <input type="text" id="storeUrlDisplay" readonly 
+               class="bg-transparent border-none w-full text-blue-700 font-medium focus:ring-0 cursor-default text-sm" 
+               value="Cargando URL...">
+        
+        <button id="copyUrlBtn" title="Copiar enlace" 
+                class="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-2 ml-2 transition-colors duration-200 flex items-center justify-center">
+            <span class="material-icons text-sm">content_copy</span>
+        </button>
+    </div>
+</div>
+
+        <div class="space-y-4 text-left p-4 border border-blue-200 bg-white rounded-md shadow-sm">
+    <h2 class="text-lg font-semibold text-gray-800 flex items-center">
         <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
         Gestión de Vitrina Digital y Ofertas
     </h2>
@@ -319,13 +337,12 @@
     const DEFAULT_STORE_NAME = 'Mi Tienda Online';
     const DEFAULT_RATE_METHOD = 'RateDB';
     const DEFAULT_MANUAL_RATE = 0.00;
-
-    // --- 2. VARIABLES DE ESTADO ---
-    let companyId = null; 
     let allProductsForVitrina = [];
     let vitrinaConfig = {};
-    // --- VARIABLES GLOBALES NUEVAS ---
-    // --- 3. REFERENCIAS DOM ---
+    let SERVER_URL = null;         // <-- NUEVA
+    let respaldoActivo = false;    // <-- NUEVA
+    let companyId = null;
+
     const saveConfigBtn = document.getElementById('saveConfigBtn');
     const messageBox = document.getElementById('messageBox');
     const storeNameInput = document.getElementById('storeNameInput');
@@ -358,6 +375,37 @@
             reader.onerror = error => reject(error);
             reader.readAsDataURL(file); 
         });
+    }
+
+    async function setupStoreUrl() {
+        const storeUrlInput = document.getElementById('storeUrlDisplay');
+        const copyBtn = document.getElementById('copyUrlBtn');
+
+        if (companyId) {
+            // Armamos la URL usando tu subdominio de tienda
+            const finalStoreUrl = `https://tienda.nexusposgobal.com/?company=${companyId}`;
+            storeUrlInput.value = finalStoreUrl;
+
+            copyBtn.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(finalStoreUrl);
+                    
+                    // Efecto visual rápido de éxito
+                    const originalIcon = copyBtn.innerHTML;
+                    copyBtn.innerHTML = '<span class="material-icons text-sm">done</span>';
+                    copyBtn.classList.replace('bg-blue-600', 'bg-green-600');
+                    
+                    setTimeout(() => {
+                        copyBtn.innerHTML = originalIcon;
+                        copyBtn.classList.replace('bg-green-600', 'bg-blue-600');
+                    }, 2000);
+
+                    if(typeof showMessage === 'function') showMessage("¡URL copiada al portapapeles!", "green");
+                } catch (err) {
+                    console.error('Error al copiar:', err);
+                }
+            });
+        }
     }
     
     async function handleLogoFileChange(file) {
@@ -401,21 +449,46 @@
         manualExchangeRateInput.value = cleanedValue;
     }
 
-    // --- 5. LÓGICA DE PERSISTENCIA (SQLITE LOCAL) ---
-    async function inicializar() {
+   // --- 5. LÓGICA DE PERSISTENCIA (SQLITE LOCAL) ---
+   async function inicializar() {
         try {
-            const sesion = await window.nexusAPI.obtenerSesionLocal();
+            const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+
+            // 🔥 NUEVO: Leer IP, puerto y plan desde el .env
+            if (api && api.obtenerConfigServer) {
+                const config = await api.obtenerConfigServer();
+                
+                // 1. Validación robusta (Copiada de inventario.html)
+                respaldoActivo = config.respaldo_datos === 'true' || config.respaldo_datos === true || config.respaldoActivo === 'true' || config.respaldoActivo === true;
+                
+                if (respaldoActivo) {
+                    // 2. Fallbacks para IP y Puerto en mayúsculas o minúsculas
+                    SERVER_URL = `http://${config.serverIp || config.SERVER_IP}:${config.serverPort || config.SERVER_PORT}`;
+                    console.log("🌟 Plan Premium: Conectado a VPS en", SERVER_URL);
+                } else {
+                    SERVER_URL = null;
+                    console.log("🏠 Plan Básico: Guardado local exclusivo (Respaldo inactivo).");
+                }
+            }
+
+            const sesion = await api.obtenerSesionLocal();
             companyId = (sesion && sesion.companyId) ? sesion.companyId : 'NEXUS-LOCAL';
             
-            // 🔥 Limpieza: Llamar una sola vez a cada función
+            // Cargar datos
             await loadTiendaConfig(); 
             await loadVitrinaProducts();
+            
+            // 🔥 AQUÍ EJECUTAMOS LA FUNCIÓN PARA ARMAR LA URL 🔥
+            setupStoreUrl(); 
             
         } catch (error) { 
             console.error("Error al arrancar:", error); 
             companyId = 'NEXUS-LOCAL';
             await loadTiendaConfig();
             await loadVitrinaProducts();
+            
+            // 🔥 TAMBIÉN LA EJECUTAMOS AQUÍ POR SI HAY UN ERROR PERO SE CARGA EL MODO LOCAL 🔥
+            setupStoreUrl(); 
         }
     }
 
@@ -554,65 +627,88 @@ window.updateVitrinaData = updateVitrinaData;
     }
 
     async function saveConfiguration() {
-    try {
-        if (!companyId) companyId = 'NEXUS-LOCAL';
-        
-        saveConfigBtn.disabled = true;
-        saveConfigBtn.textContent = "Guardando y Sincronizando...";
+        try {
+            if (!companyId) companyId = 'NEXUS-LOCAL';
+            
+            saveConfigBtn.disabled = true;
+            saveConfigBtn.textContent = "Guardando...";
 
-        // 1. Recolección de datos de identidad y moneda
-        const tiendaData = {
-            ultimoCambio: new Date().toISOString(),
-            companyId: companyId, 
-            storeName: storeNameInput?.value?.trim() || DEFAULT_STORE_NAME,
-            whatsappNumber: whatsappNumberInput?.value?.trim() || DEFAULT_WHATSAPP,
-            logoUrl: logoUrlInput?.value?.trim() || '',
-            deliveryEnabled: deliveryEnabledToggle?.checked || false,
-            currencyCode: currencySelect?.value || DEFAULT_CURRENCY_CODE,
-            exchangeRateMethod: exchangeRateMethodSelect?.value || DEFAULT_RATE_METHOD,
-            manualExchangeRate: parseFloat(manualExchangeRateInput?.value) || 0,
-        };
+            const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
 
-        // 2. Guardado en la Base de Datos Local (SQLite)
-        // Guardamos la configuración de identidad y la de vitrina/ofertas por separado
-        await window.nexusAPI.guardarConfiguracionCajera('config_tienda_online', tiendaData);
-        await window.nexusAPI.guardarConfiguracionCajera('config_vitrina_digital', vitrinaConfig);
+            // 1. Recolección de datos
+            const tiendaData = {
+                ultimoCambio: new Date().toISOString(),
+                companyId: companyId, 
+                storeName: storeNameInput?.value?.trim() || DEFAULT_STORE_NAME,
+                whatsappNumber: whatsappNumberInput?.value?.trim() || DEFAULT_WHATSAPP,
+                logoUrl: logoUrlInput?.value?.trim() || '',
+                deliveryEnabled: deliveryEnabledToggle?.checked || false,
+                currencyCode: currencySelect?.value || DEFAULT_CURRENCY_CODE,
+                exchangeRateMethod: exchangeRateMethodSelect?.value || DEFAULT_RATE_METHOD,
+                manualExchangeRate: parseFloat(manualExchangeRateInput?.value) || 0,
+            };
 
-        // 3. Sincronización con el Servidor Xeon (MongoDB)
-        // PASO A: Sincronizamos la Identidad de la Tienda
-        const syncIdentidad = await window.nexusAPI.sincronizarConfiguracionXeon({
-            companyId: companyId,
-            tipo_configuracion: 'config_tienda_online',
-            payload: tiendaData
-        });
+            // 2. Guardado en Base de Datos Local (Siempre se ejecuta)
+            await api.guardarConfiguracionCajera('config_tienda_online', tiendaData);
+            await api.guardarConfiguracionCajera('config_vitrina_digital', vitrinaConfig);
 
-        // PASO B: Sincronizamos la Vitrina y Ofertas
-        const syncVitrina = await window.nexusAPI.sincronizarConfiguracionXeon({
-            companyId: companyId,
-            tipo_configuracion: 'config_vitrina_digital',
-            payload: vitrinaConfig
-        });
-        
-        // Verificamos que ambas sincronizaciones hayan tenido éxito en la nube
-        if (syncIdentidad.success && syncVitrina.success) {
-            showMessage("✅ Configuración e Identidad sincronizadas en la nube con éxito.", 'green');
-        } else {
-            // Si el servidor Xeon no responde, notificamos que el respaldo local sí funcionó
-            console.warn("⚠️ Fallo parcial o total de sincronización nube:", { 
-                identidad: syncIdentidad.error, 
-                vitrina: syncVitrina.error 
-            });
-            showMessage("✅ Guardado localmente (Servidor Xeon fuera de línea).", 'blue');
+            // 3. Preparar los paquetes para enviar
+            const payloadIdentidad = {
+                companyId: companyId,
+                tipo_configuracion: 'config_tienda_online',
+                payload: tiendaData
+            };
+
+            const payloadVitrina = {
+                companyId: companyId,
+                tipo_configuracion: 'config_vitrina_digital',
+                payload: vitrinaConfig
+            };
+
+            // 🔥 4. LÓGICA DEL MOTOR UNIVERSAL (VPS + COLA OFFLINE)
+            if (navigator.onLine && respaldoActivo && SERVER_URL) {
+                try {
+                    saveConfigBtn.textContent = "Sincronizando con VPS...";
+                    
+                    // Enviar Identidad
+                    const res1 = await fetch(`${SERVER_URL}/api/maestro/configuracion_tienda/sincronizar`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payloadIdentidad)
+                    });
+                    
+                    // Enviar Vitrina
+                    const res2 = await fetch(`${SERVER_URL}/api/maestro/configuracion_tienda/sincronizar`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payloadVitrina)
+                    });
+
+                    if (res1.ok && res2.ok) {
+                        showMessage("✅ Configuración e Identidad sincronizadas en el VPS con éxito.", 'green');
+                    } else {
+                        throw new Error("El VPS rechazó la conexión");
+                    }
+                } catch (err) {
+                    console.warn("⚠️ Servidor VPS fuera de línea, encolando respaldo...", err);
+                    await api.encolarSincronizacion({ operacion: 'UPSERT', tabla: 'configuracion_tienda', datos: payloadIdentidad });
+                    await api.encolarSincronizacion({ operacion: 'UPSERT', tabla: 'configuracion_tienda', datos: payloadVitrina });
+                    showMessage("✅ Guardado localmente (Sincronización pendiente).", 'blue');
+                }
+            } else if (respaldoActivo) {
+                // Sin internet, pero con plan premium: Encolar directo
+                await api.encolarSincronizacion({ operacion: 'UPSERT', tabla: 'configuracion_tienda', datos: payloadIdentidad });
+                await api.encolarSincronizacion({ operacion: 'UPSERT', tabla: 'configuracion_tienda', datos: payloadVitrina });
+                showMessage("✅ Guardado localmente (Offline). Se subirá al tener red.", 'blue');
+            } else {
+                // Plan básico: Solo guardar local
+                showMessage("✅ Guardado localmente.", 'green');
+            }
+
+        } catch (error) {
+            console.error("Fallo crítico en guardado:", error);
+            showMessage(`❌ Error al guardar: ${error.message}`, 'red');
+        } finally {
+            saveConfigBtn.disabled = false;
+            saveConfigBtn.textContent = "Guardar Configuración de Tienda";
         }
-
-    } catch (error) {
-        console.error("Fallo crítico en guardado:", error);
-        showMessage(`❌ Error al guardar: ${error.message}`, 'red');
-    } finally {
-        saveConfigBtn.disabled = false;
-        saveConfigBtn.textContent = "Guardar Configuración de Tienda";
     }
-}
 
 
     // --- 6. EVENT LISTENERS Y ARRANQUE DIRECTO ---

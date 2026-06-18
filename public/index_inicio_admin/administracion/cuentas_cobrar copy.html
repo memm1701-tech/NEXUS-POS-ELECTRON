@@ -1,0 +1,514 @@
+<div class="w-full min-h-screen p-4 md:p-6 bg-gray-50 flex flex-col">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 flex items-center">
+                <i class="material-icons mr-2 text-blue-600">request_quote</i>
+                Cuentas por Cobrar
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">Gestión y control de deudas de clientes</p>
+        </div>
+        <button onclick="cargarDatosCuentasCobrar()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 p-2 rounded-full transition-colors flex items-center justify-center shadow-sm" title="Actualizar datos">
+            <i class="material-icons text-xl">refresh</i>
+        </button>
+    </div>
+
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row gap-4 w-full">
+        <div class="flex-1">
+            <label class="block text-[15px] font-semibold text-gray-500 mb-1 flex items-center gap-1">
+                Buscar Cliente o Factura
+                
+                <div class="group relative flex items-center cursor-help ml-1">
+                    <i class="material-icons text-[18px] text-blue-400 hover:text-blue-600 transition-colors">info</i>
+                    
+                    <div class="absolute bottom-full left-0 mb-2 hidden group-hover:block w-72 p-3 bg-gray-800 text-white text-xs rounded-lg shadow-lg z-50 font-normal leading-relaxed">
+                        Para analizar el estado de cuenta de un cliente en particular, ingresa su <strong>Nombre completo</strong> o <strong>Cédula/RIF</strong>. Las tarjetas de cálculo superiores y la tabla se actualizarán mostrando exclusivamente los totales de ese usuario.
+                        <div class="absolute top-full left-2 border-4 border-transparent border-t-gray-800"></div>
+                    </div>
+                </div>
+            </label>
+            <div class="relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                    <i class="material-icons text-gray-400">search</i>
+                </span>
+                <input type="text" id="buscador-cuentas" placeholder="Nombre, Cédula/RIF o N° de Comprobante..." 
+                    class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm">
+            </div>
+        </div>
+
+        <div class="w-full md:w-48">
+            <label class="block text-[15px] font-semibold text-gray-500 mb-1">Estado de Deuda</label>
+            <select id="filtro-estado" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm">
+                <option value="TODOS">Todos los estados</option>
+                <option value="PENDIENTE">Pendientes</option>
+                <option value="PAGADA">Pagadas</option>
+            </select>
+        </div>
+
+        <div class="flex gap-2 w-full md:w-auto">
+            <div>
+                <label class="block text-[15px] font-semibold text-gray-500 mb-1">Desde</label>
+                <input type="date" id="filtro-fecha-inicio" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm">
+            </div>
+            <div>
+                <label class="block text-[15px] font-semibold text-gray-500 mb-1">Hasta</label>
+                <input type="date" id="filtro-fecha-fin" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm">
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 w-full" id="tarjetas-resumen">
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-blue-500">
+            <p class="text-sm text-gray-500 font-medium">Total Cuentas por Cobrar</p>
+            <h3 class="text-2xl font-bold text-gray-800" id="resumen-total">0.00 $</h3>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-yellow-400">
+            <p class="text-sm text-gray-500 font-medium">Total Pendiente</p>
+            <h3 class="text-2xl font-bold text-gray-800" id="resumen-pendiente">0.00 $</h3>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-green-500">
+            <p class="text-sm text-gray-500 font-medium">Total Cobrado (Abonos)</p>
+            <h3 class="text-2xl font-bold text-gray-800" id="resumen-cobrado">0.00 $</h3>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex-1 flex flex-col w-full">
+        <div class="flex-1 overflow-auto">
+            <table class="w-full text-sm text-left relative">
+                <thead class="text-xs text-gray-600 uppercase bg-gray-100 sticky top-0 z-10 shadow-sm">
+                    <tr>
+                        <th class="px-4 py-3">ID / Fecha</th>
+                        <th class="px-4 py-3">Cliente</th>
+                        <th class="px-4 py-3">Comprobante</th>
+                        <th class="px-4 py-3 text-right">Monto Total</th>
+                        <th class="px-4 py-3 text-right">Abonado</th>
+                        <th class="px-4 py-3 text-right">Restante</th>
+                        <th class="px-4 py-3 text-center">Estado</th>
+                        <th class="px-4 py-3 text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-cuentas-body" class="divide-y divide-gray-100">
+                    <tr>
+                        <td colspan="8" class="px-4 py-8 text-center text-gray-500">
+                            <div class="spinner inline-block"></div>
+                            <p class="mt-2">Cargando cuentas por cobrar...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="bg-gray-50 px-4 py-3 border-t border-gray-100 flex items-center justify-between sm:px-6 w-full">
+            <span class="text-sm text-gray-700" id="contador-registros">Mostrando 0 registros</span>
+        </div>
+    </div>
+</div>
+
+<div id="modal-detalles-venta" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex justify-center items-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
+        <div class="bg-blue-600 p-4 flex justify-between items-center">
+            <h3 class="text-white font-bold text-lg flex items-center">
+                <i class="material-icons mr-2">receipt_long</i>
+                Detalles del Comprobante
+            </h3>
+            <button onclick="cerrarModalDetalles()" class="text-blue-100 hover:text-white transition-colors">
+                <i class="material-icons text-xl">close</i>
+            </button>
+        </div>
+        <div id="modal-detalles-content" class="p-5 flex-1 overflow-y-auto">
+            </div>
+        <div class="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+            <button onclick="cerrarModalDetalles()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors">
+                Cerrar
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. CORRECCIÓN SPA: Cambiamos 'let' y 'const' por 'var' a nivel global 
+    // para evitar el error "has already been declared" al recargar el módulo.
+    var cuentasData = []; 
+    var ventasCache = null; 
+    var userCompanyId = null;
+    var userBranchId = null;
+
+    var tbody = document.getElementById('tabla-cuentas-body');
+    var inputBuscador = document.getElementById('buscador-cuentas');
+    var selectEstado = document.getElementById('filtro-estado');
+    var inputFechaInicio = document.getElementById('filtro-fecha-inicio');
+    var inputFechaFin = document.getElementById('filtro-fecha-fin');
+
+    // Inicialización de la vista
+    async function initCuentasCobrar() {
+        try {
+            if (window.nexusAPI) {
+                const sesion = await window.nexusAPI.obtenerSesionLocal();
+                if (sesion) {
+                    userCompanyId = sesion.companyId;
+                    userBranchId = sesion.branchId;
+                }
+            }
+        } catch (error) {
+            console.warn("No se pudo obtener la sesión activa:", error);
+        }
+
+        await cargarDatosCuentasCobrar();
+        configurarEventosFiltros();
+    }
+
+   async function cargarDatosCuentasCobrar() {
+        try {
+            tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-8 text-center text-gray-500"><div class="spinner inline-block"></div><p class="mt-2">Cargando cuentas por cobrar...</p></td></tr>`;
+            
+            const esLocal = window.location.hostname === 'localhost' || window.location.protocol === 'file:';
+            const localServerUrl = esLocal ? 'http://localhost:3000' : `http://${window.location.hostname}:3000`;
+                
+            const response = await fetch(`${localServerUrl}/api/cuentas_por_cobrar`);
+            
+            if (!response.ok) throw new Error('Error al obtener datos');
+            
+            const rawData = await response.json();
+            
+            // 2. CORRECCIÓN BUSCADOR: Guardamos la data YA FORMATEADA en nuestra variable global 'cuentasData'
+            // Así el buscador filtrará sobre las variables correctas (cliente, documento, etc.)
+            cuentasData = rawData.map(item => ({
+                id: item.id,
+                documento: item.cliente_rif || item.cliente_id, 
+                cliente: item.cliente_nombre || item.cliente,
+                monto_bs: item.monto_bs || item.monto_deuda || 0,
+                monto_usd: item.monto_usd || 0,
+                comprobante: item.numero_factura || item.factura_nro || item.comprobante,
+                abono: item.monto_pagado || item.abono || 0,
+                fecha: item.fecha_emision || item.fecha || item.createdAt,
+                estado: item.estado
+            }));
+            
+            renderizarTabla(cuentasData);
+            
+        } catch (error) {
+            console.error("Error al cargar cuentas por cobrar:", error);
+            tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-8 text-center text-red-500"><i class="material-icons block text-4xl mb-2">error_outline</i>Error de conexión con el Cerebro Maestro Local.</td></tr>`;
+        }
+    }
+
+    function renderizarTabla(datos) {
+        tbody.innerHTML = '';
+        
+        let totalGeneral = 0;
+        let totalPendiente = 0;
+        let totalAbonado = 0;
+
+        if (datos.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">No se encontraron registros.</td></tr>`;
+            actualizarTarjetas(0,0,0);
+            document.getElementById('contador-registros').textContent = `Mostrando 0 registros`;
+            return;
+        }
+
+        datos.forEach(item => {
+            const montoUsd = parseFloat(item.monto_usd || 0);
+            const abonado = parseFloat(item.abono || 0);
+            const restante = Math.max(0, montoUsd - abonado);
+            
+            totalGeneral += montoUsd;
+            totalAbonado += abonado;
+            if (item.estado === 'PENDIENTE') {
+                totalPendiente += restante;
+            }
+
+            const fechaObj = new Date(item.fecha);
+            const fechaFormateada = fechaObj.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const horaFormateada = fechaObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+
+            let badgeClass = '';
+            if (item.estado === 'PAGADA') badgeClass = 'bg-green-100 text-green-800 border-green-200';
+            else if (item.estado === 'PENDIENTE') badgeClass = 'bg-yellow-100 text-yellow-800 border-yellow-200';
+            else badgeClass = 'bg-gray-100 text-gray-800 border-gray-200';
+
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-blue-50 transition-colors group";
+            tr.innerHTML = `
+                <td class="px-4 py-3 whitespace-nowrap">
+                    <div class="font-semibold text-gray-700">#${item.id}</div>
+                    <div class="text-xs text-gray-500">${fechaFormateada} ${horaFormateada}</div>
+                </td>
+                <td class="px-4 py-3">
+                    <div class="font-semibold text-gray-800">${item.cliente || 'Desconocido'}</div>
+                    <div class="text-xs text-gray-500">${item.documento || 'S/N'}</div>
+                </td>
+                <td class="px-4 py-3">
+                    <span class="font-mono text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded">${item.comprobante || 'N/A'}</span>
+                </td>
+                <td class="px-4 py-3 text-right font-medium text-gray-800">
+                    $${montoUsd.toFixed(2)}
+                </td>
+                <td class="px-4 py-3 text-right font-medium text-green-600">
+                    $${abonado.toFixed(2)}
+                </td>
+                <td class="px-4 py-3 text-right font-bold ${restante > 0 ? 'text-red-500' : 'text-gray-500'}">
+                    $${restante.toFixed(2)}
+                </td>
+                <td class="px-4 py-3 text-center">
+                    <span class="px-2.5 py-1 text-xs font-semibold rounded-full border ${badgeClass}">
+                        ${item.estado}
+                    </span>
+                </td>
+                <td class="px-4 py-3 text-center">
+                    <button onclick="abrirModalDetalles('${item.comprobante}', '${(item.cliente || '').replace(/'/g, "\\'")}')" class="text-gray-400 hover:text-blue-600 transition-colors p-1" title="Ver Detalles">
+                        <i class="material-icons text-xl">visibility</i>
+                    </button>
+                    ${item.estado === 'PENDIENTE' ? `
+                    <button class="text-gray-400 hover:text-green-600 transition-colors p-1 ml-1" title="Registrar Pago">
+                        <i class="material-icons text-xl">payments</i>
+                    </button>
+                    ` : ''}
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        actualizarTarjetas(totalGeneral, totalPendiente, totalAbonado);
+        document.getElementById('contador-registros').textContent = `Mostrando ${datos.length} registros`;
+    }
+
+    function actualizarTarjetas(total, pendiente, abonado) {
+        document.getElementById('resumen-total').textContent = `$${total.toFixed(2)}`;
+        document.getElementById('resumen-pendiente').textContent = `$${pendiente.toFixed(2)}`;
+        document.getElementById('resumen-cobrado').textContent = `$${abonado.toFixed(2)}`;
+    }
+
+    function aplicarFiltros() {
+        const busqueda = inputBuscador.value.toLowerCase().trim();
+        const estado = selectEstado.value;
+        const fechaInicio = inputFechaInicio.value ? new Date(inputFechaInicio.value + 'T00:00:00') : null;
+        const fechaFin = inputFechaFin.value ? new Date(inputFechaFin.value + 'T23:59:59') : null;
+
+        const datosFiltrados = cuentasData.filter(item => {
+            const coincideTexto = !busqueda || 
+                (item.cliente && item.cliente.toLowerCase().includes(busqueda)) || 
+                (item.documento && item.documento.toLowerCase().includes(busqueda)) || 
+                (item.comprobante && item.comprobante.toLowerCase().includes(busqueda));
+
+            const coincideEstado = estado === 'TODOS' || item.estado === estado;
+
+            const fechaItem = new Date(item.fecha);
+            const coincideFechaInicio = !fechaInicio || fechaItem >= fechaInicio;
+            const coincideFechaFin = !fechaFin || fechaItem <= fechaFin;
+
+            return coincideTexto && coincideEstado && coincideFechaInicio && coincideFechaFin;
+        });
+
+        renderizarTabla(datosFiltrados);
+    }
+
+    function configurarEventosFiltros() {
+        inputBuscador.addEventListener('input', aplicarFiltros);
+        selectEstado.addEventListener('change', aplicarFiltros);
+        inputFechaInicio.addEventListener('change', aplicarFiltros);
+        inputFechaFin.addEventListener('change', aplicarFiltros);
+    }
+
+    async function abrirModalDetalles(comprobante, clienteNombre) {
+        const modal = document.getElementById('modal-detalles-venta');
+        const modalContent = document.getElementById('modal-detalles-content');
+        
+        modal.classList.remove('hidden');
+        modalContent.innerHTML = `<div class="flex flex-col items-center justify-center py-10"><div class="spinner inline-block mb-3 border-blue-500"></div><p class="text-gray-500 text-sm">Buscando comprobante maestro...</p></div>`;
+
+        const modalContainer = modal.querySelector('.rounded-2xl');
+        if (modalContainer) {
+            modalContainer.classList.remove('max-w-md');
+            modalContainer.classList.add('max-w-4xl');
+        }
+
+        try {
+            let venta = null;
+
+            if (window.nexusAPI && window.nexusAPI.obtenerFacturaLocal) {
+                const response = await window.nexusAPI.obtenerFacturaLocal(comprobante);
+
+                if (response && response.error) {
+                    throw new Error(response.mensaje || "Error al buscar en el servidor maestro.");
+                }
+
+                if (response && response.data && response.data.length > 0) {
+                    venta = response.data[0];
+
+                    const coincidenciaExacta = response.data.find(v => 
+                        v.numero_factura === comprobante && 
+                        (v.cliente_nombre || '').toLowerCase().includes((clienteNombre || '').toLowerCase())
+                    );
+
+                    if (coincidenciaExacta) {
+                        venta = coincidenciaExacta;
+                    }
+                }
+            } else {
+                throw new Error("La API del sistema (nexusAPI) no está disponible.");
+            }
+
+            if (!venta) {
+                modalContent.innerHTML = `<p class="text-red-500 text-center py-6">No se encontró información detallada para el comprobante <strong>${comprobante}</strong> en el Servidor Maestro.</p>`;
+                return;
+            }
+
+            renderizarContenidoVenta(venta);
+
+        } catch (error) {
+            console.error("Error cargando detalles:", error);
+            modalContent.innerHTML = `<p class="text-red-500 text-center py-6">Ocurrió un error al buscar los detalles de la factura.<br><span class="text-xs text-gray-500">${error.message}</span></p>`;
+        }
+    }
+
+    function renderizarContenidoVenta(venta) {
+        const modalContent = document.getElementById('modal-detalles-content');
+
+        let fecha = new Date();
+        if (venta.fecha_emision) fecha = new Date(venta.fecha_emision);
+        else if (venta.createdAt) fecha = new Date(venta.createdAt);
+        const fechaStr = fecha.toLocaleString('es-VE');
+
+        const totalBs = parseFloat(venta.monto_total || 0);
+        const tasaBcv = parseFloat(venta.tasa_bcv || 1);
+        const totalUsd = totalBs / (tasaBcv > 0 ? tasaBcv : 1);
+
+        let metodosPagoHtml = '';
+        try {
+            const pagos = JSON.parse(venta.metodo_pago || '{}');
+            const paymentLabels = {
+                'efectivo': 'Efectivo (Bs)', 'pagomovil': 'Pago Móvil', 'debito': 'Débito', 
+                'biopago': 'Biopago', 'dolar': 'Efectivo ($)', 'transferencia': 'Transferencia',
+                'deposito': 'Depósito', 'credito': 'A Crédito', 'tarjetacredito': 'T. Crédito'
+            };
+
+            for (const [key, amount] of Object.entries(pagos)) {
+                const val = parseFloat(amount);
+                if (!isNaN(val) && val > 0 && !key.startsWith('vuelto_')) {
+                    const isDollar = key === 'dolar';
+                    const symbol = isDollar ? '$' : 'Bs';
+                    const colorClass = isDollar ? 'text-green-600 font-bold' : 'text-gray-700';
+                    metodosPagoHtml += `
+                        <div class="flex justify-between items-center py-1 border-b border-gray-100 last:border-0">
+                            <span class="text-gray-500 text-sm">${paymentLabels[key] || key}</span>
+                            <span class="text-sm ${colorClass}">${symbol} ${val.toFixed(2)}</span>
+                        </div>
+                    `;
+                }
+            }
+        } catch (e) {
+            console.error("Error parseando métodos de pago", e);
+        }
+
+        if (!metodosPagoHtml) metodosPagoHtml = '<p class="text-sm text-gray-400 italic">Sin pagos registrados</p>';
+
+        let itemsArray = [];
+        try {
+            const datosJson = JSON.parse(venta.datos_json || '{}');
+            itemsArray = datosJson.productos || [];
+        } catch (e) {
+            console.error("Error parseando datos_json para extraer productos", e);
+        }
+
+        let productosHtml = '';
+        if (itemsArray.length > 0) {
+            itemsArray.forEach(item => {
+                const nombreItem = item.nombre || item.name || 'Producto N/A';
+                const cantItem = item.cantidad || item.quantity || 0;
+                const precioItem = item.precio || item.price || 0;
+                const subtotalItem = item.subtotal || (cantItem * precioItem);
+                
+                productosHtml += `
+                    <div class="inline-block w-full mb-2 p-2 bg-gray-50 border border-gray-100 rounded-lg break-inside-avoid shadow-sm">
+                        <div class="font-medium text-gray-800 text-xs truncate" title="${nombreItem}">${nombreItem}</div>
+                        <div class="flex justify-between text-[11px] text-gray-500 mt-0.5">
+                            <span>Cant: ${cantItem} ${item.unit || 'UN'} x Bs ${parseFloat(precioItem).toFixed(2)}</span>
+                            <span class="font-semibold text-gray-700">Bs ${parseFloat(subtotalItem).toFixed(2)}</span>
+                        </div>
+                    </div>
+                `;
+            });
+        } else {
+            productosHtml = '<p class="text-xs text-gray-400 italic py-3 text-center col-span-full">No hay detalles de productos disponibles.</p>';
+        }
+
+        modalContent.innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                
+                <div class="flex flex-col gap-4">
+                    <div class="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <div>
+                            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">N° Factura</p>
+                            <p class="text-sm font-bold text-blue-600">${venta.numero_factura || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">Fecha de Emisión</p>
+                            <p class="text-sm font-medium text-gray-800">${fechaStr}</p>
+                        </div>
+                        <div class="col-span-2 pt-2 border-t border-gray-200">
+                            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">Cliente</p>
+                            <p class="text-sm font-semibold text-gray-800">${venta.cliente_nombre || 'Desconocido'} <span class="font-normal text-gray-500 ml-1">(${venta.cliente_rif || 'S/ID'})</span></p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-bold text-gray-800 uppercase tracking-wider mb-2 flex items-center">
+                            <i class="material-icons text-[16px] text-gray-400 mr-1">analytics</i> Desglose de Factura
+                        </h4>
+                        <div class="bg-white border border-gray-200 rounded-lg p-3">
+                            <div class="grid grid-cols-1 gap-1.5 text-sm">
+                                <div class="flex justify-between"><span class="text-gray-500">Monto Exento:</span> <span class="font-medium text-gray-700">Bs ${parseFloat(venta.monto_exento || 0).toFixed(2)}</span></div>
+                                <div class="flex justify-between"><span class="text-gray-500">Base Imponible:</span> <span class="font-medium text-gray-700">Bs ${parseFloat(venta.base_imponible || 0).toFixed(2)}</span></div>
+                                <div class="flex justify-between"><span class="text-gray-500">IVA (16%):</span> <span class="font-medium text-gray-700">Bs ${parseFloat(venta.monto_iva || 0).toFixed(2)}</span></div>
+                                <div class="flex justify-between"><span class="text-gray-500">IGTF (3%):</span> <span class="font-medium text-gray-700">Bs ${parseFloat(venta.monto_igtf || 0).toFixed(2)}</span></div>
+                            </div>
+                            
+                            <div class="mt-2.5 pt-2.5 border-t border-gray-200">
+                                <div class="flex justify-between items-center mb-0.5">
+                                    <span class="font-bold text-gray-800">Total Facturado (Bs):</span>
+                                    <span class="font-bold text-red-600 text-base">Bs ${totalBs.toFixed(2)}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="font-bold text-gray-800">Equivalente (USD):</span>
+                                    <span class="font-bold text-green-600 text-base">$ ${totalUsd.toFixed(2)}</span>
+                                </div>
+                                <p class="text-right text-[10px] text-gray-400 mt-0.5">Tasa BCV Aplicada: Bs ${tasaBcv.toFixed(2)}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-bold text-gray-800 uppercase tracking-wider mb-2 flex items-center">
+                            <i class="material-icons text-[16px] text-gray-400 mr-1">account_balance_wallet</i> Pagos Realizados
+                        </h4>
+                        <div class="bg-white border border-gray-200 rounded-lg px-3 py-1">
+                            ${metodosPagoHtml}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col h-full">
+                    <h4 class="text-xs font-bold text-gray-800 uppercase tracking-wider mb-2 flex items-center">
+                        <i class="material-icons text-[16px] text-gray-400 mr-1">inventory_2</i> Productos Comprados (${itemsArray.length})
+                    </h4>
+                    <div class="bg-white border border-gray-200 rounded-xl p-3 h-full max-h-[420px] overflow-y-auto columns-1 sm:columns-2 gap-3 block">
+                        ${productosHtml}
+                    </div>
+                </div>
+
+            </div>
+        `;
+    }
+
+    function cerrarModalDetalles() {
+        const modal = document.getElementById('modal-detalles-venta');
+        modal.classList.add('hidden');
+
+        const modalContainer = modal.querySelector('.rounded-2xl');
+        if (modalContainer) {
+            modalContainer.classList.remove('max-w-4xl');
+            modalContainer.classList.add('max-w-md');
+        }
+    }
+
+    // Arrancamos el módulo al cargar la página en el div dinámico
+    initCuentasCobrar();
+</script>

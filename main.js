@@ -21,8 +21,38 @@ const baseDataDir = process.env.APPDATA
     : path.join(process.platform === 'darwin' ? path.join(process.env.HOME, 'Library/Application Support') : process.env.HOME, '.config', 'nexus-pos');
 
 const dbDir = path.join(baseDataDir, 'data');
+const configDir = path.join(baseDataDir, 'config'); 
 
 if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
+if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
+
+const envPath = path.join(configDir, '.env');
+
+// --- NUEVA LÓGICA: Auto-crear archivo si no existe ---
+if (!fs.existsSync(envPath)) {
+    const contenidoInicial = 
+`SERVER_IP=68.168.218.147
+SERVER_PORT=4010
+respaldo_datos=false
+NEXUS_PLAN=SIN_PLAN`;
+
+    fs.writeFileSync(envPath, contenidoInicial, 'utf8');
+    console.log("🆕 ARCHIVO .ENV CREADO AUTOMÁTICAMENTE EN:", envPath);
+}
+
+// Cargar las variables de entorno (ahora estamos seguros de que el archivo siempre existe)
+require('dotenv').config({ path: envPath });
+console.log("✅ CONFIGURACIÓN EXTERNA CARGADA DESDE:", envPath);
+console.log("🌐 IP DEL SERVIDOR:", process.env.SERVER_IP || 'No configurada (Modo Local Aisado)');
+
+// Puente para el Frontend
+ipcMain.handle('get-config', () => {
+    return {
+        serverIp: process.env.SERVER_IP || '',
+        serverPort: process.env.SERVER_PORT || 4010,
+        respaldo_datos: process.env.respaldo_datos === 'true' 
+    };
+});
 
 const configPath = path.join(dbDir, 'config.json');
 let config = { 
@@ -87,6 +117,7 @@ if (config.isServer) {
 }
 
 
+
 let win;   
 let splash;
 let sistemaPrincipalAbierto = false;
@@ -95,6 +126,10 @@ let apiToken = null;
 let tokenExpiration = null;
 const HKA_BASE_URL = "https://demoemision.thefactoryhka.com.ve";
 let currentHkaCredentials = { usuario: "", clave: "" };
+let basculaPort = null;
+let taraOffset = 0.0;
+let ultimoPesoBruto = 0.0;
+let senderBasculaActivo = null;
 
 async function iniciarAuthWorkerHKA(event, credentials) {
     const enviarLogAlFrontend = (mensaje, esError = false) => {
@@ -206,6 +241,23 @@ db.exec(`
 `);
 
 db.exec(`
+        CREATE TABLE IF NOT EXISTS pagos_moviles_locales (
+            id TEXT PRIMARY KEY,
+            venta_id TEXT,
+            numero_factura TEXT,
+            banco_receptor TEXT,
+            referencia TEXT,
+            telefono_origen TEXT,
+            monto REAL,
+            fecha_pago DATETIME,
+            company_id TEXT,
+            branch_id TEXT,
+            cashier_id TEXT,
+            estado_cierre INTEGER DEFAULT 0
+        );
+    `);
+
+db.exec(`
         CREATE TABLE IF NOT EXISTS claves_admin_locales (
             id TEXT PRIMARY KEY,
             ownerName TEXT,
@@ -219,14 +271,14 @@ db.exec(`
     db.exec(`
     CREATE TABLE IF NOT EXISTS productos_locales (
         id TEXT PRIMARY KEY,
-        company_id TEXT, 
-        branch_id TEXT,  
+        company_id TEXT,
+        branch_id TEXT,
         codigo TEXT,
         nombre TEXT,
         precio REAL,
-        precio_compra REAL, -- COLUMNA AÑADIDA
-        porcentaje_ganancia REAL,
-        categoria TEXT, 
+        precio_compra REAL DEFAULT 0,
+        porcentaje_ganancia REAL DEFAULT 0,
+        categoria TEXT,
         status INTEGER,
         imagen TEXT,
         datos_json TEXT,
@@ -263,6 +315,7 @@ db.exec(`
         telefono TEXT,
         correo TEXT,
         datos_json TEXT,
+        es_contribuyente_especial INTEGER DEFAULT 0,
         estado_sync INTEGER DEFAULT 0,
         fecha_modificacion DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -298,14 +351,22 @@ db.exec(`
             monto_exento REAL DEFAULT 0,
             base_imponible REAL DEFAULT 0,
             monto_iva REAL DEFAULT 0,
+            total_iva REAL DEFAULT 0,
             monto_igtf REAL DEFAULT 0,
             monto_total REAL DEFAULT 0,
             tasa_bcv REAL DEFAULT 1,
             metodo_pago TEXT,
             datos_json TEXT,
             estado_sync INTEGER DEFAULT 0,
-            fecha_emision DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
+            fecha_emision DATETIME DEFAULT CURRENT_TIMESTAMP,
+            estado_cierre INTEGER DEFAULT 0,
+            es_nota_credito INTEGER DEFAULT 0,
+            es_nota_debito INTEGER DEFAULT 0,
+            factura_afectada TEXT,
+            monto_factura_afectada REAL,
+            fecha_factura_afectada TEXT,
+            comprobante_retencion_id TEXT DEFAULT NULL
+        );
     `);
 
     db.exec(`
@@ -346,6 +407,25 @@ db.exec(`
 `);
 
 db.exec(`
+    CREATE TABLE IF NOT EXISTS cierres_caja_locales (
+        id TEXT PRIMARY KEY,
+        fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+        company_id TEXT,
+        branch_id TEXT,
+        cashier_id TEXT,
+        total_ventas_bs REAL,
+        total_ventas_usd REAL,
+        total_gastos_bs REAL,
+        total_gastos_usd REAL,
+        total_ingresos_bs REAL,
+        total_diferencia_bs REAL,
+        total_diferencia_usd REAL,
+        detalle_pagos_json TEXT, -- Aquí guardamos la conciliación completa
+        estado_sync INTEGER DEFAULT 0
+    );
+`);
+
+db.exec(`
     CREATE TABLE IF NOT EXISTS unidades_empaque (
         id TEXT PRIMARY KEY,
         company_id TEXT,
@@ -355,6 +435,15 @@ db.exec(`
         factor_cantidad REAL, -- Ej: 24.0
         estado_sync INTEGER DEFAULT 0,
         fecha_modificacion DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+`);
+
+db.exec(`
+    CREATE TABLE IF NOT EXISTS comprobantes_retencion (
+        id TEXT PRIMARY KEY,
+        datos_json TEXT NOT NULL,
+        fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
+        estatus TEXT DEFAULT 'EMITIDO'
     );
 `);
 
@@ -372,20 +461,20 @@ db.exec(`
             )
         `).run();
 
-db.exec(`
-    CREATE TABLE IF NOT EXISTS salidas_inventario (
-        id TEXT PRIMARY KEY,
-        company_id TEXT,
-        branch_id TEXT,
-        product_id TEXT,
-        cantidad REAL,
-        unidad TEXT,
-        motivo TEXT,
-        observacion TEXT,
-        usuario_id TEXT,
-        estado_sync INTEGER DEFAULT 0,
-        fecha_modificacion DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS salidas_inventario (
+            id TEXT PRIMARY KEY,
+            company_id TEXT,
+            branch_id TEXT,
+            product_id TEXT,
+            cantidad REAL,
+            unidad TEXT,
+            motivo TEXT,
+            observacion TEXT,
+            usuario_id TEXT,
+            estado_sync INTEGER DEFAULT 0,
+            fecha_modificacion DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
     
     
     CREATE TABLE IF NOT EXISTS configuracion_cajera (
@@ -393,24 +482,129 @@ db.exec(`
         valor TEXT,
         fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS plan_empresa (
+            company_id TEXT PRIMARY KEY,
+            datos_encriptados TEXT,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+
+    CREATE TABLE IF NOT EXISTS auditoria_administrador (
+        id TEXT PRIMARY KEY,
+        company_id TEXT,
+        branch_id TEXT,
+        cashier_id TEXT,
+        admin_name TEXT,
+        accion TEXT,
+        detalles TEXT,
+        estado_sync INTEGER DEFAULT 0,
+        fecha DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
     `); 
 
 }
 
 inicializarTablas();
 
+ipcMain.handle('guardar-guia-despacho-maestro', async (event, datos) => {
+    try {
+        // Asegurarnos de que la tabla exista (por si acaso no la has creado en la inicialización de tu DB)
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS guias_despacho (
+                id TEXT PRIMARY KEY,
+                company_id TEXT,
+                branch_id TEXT,
+                cashier_id TEXT,
+                numero_guia TEXT,
+                numero_control TEXT,
+                cliente_nombre TEXT,
+                cliente_rif TEXT,
+                factura_asociada TEXT,
+                datos_json TEXT,
+                fecha DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
 
-try {
-    db.prepare("ALTER TABLE ventas_locales ADD COLUMN estado_cierre INTEGER DEFAULT 0").run();
-} catch (e) {}
+        // Preparar la inserción de los datos usando better-sqlite3
+        const stmt = db.prepare(`
+            INSERT INTO guias_despacho (
+                id, company_id, branch_id, cashier_id, numero_guia, 
+                numero_control, cliente_nombre, cliente_rif, 
+                factura_asociada, datos_json
+            ) VALUES (
+                @id, @company_id, @branch_id, @cashier_id, @numero_guia, 
+                @numero_control, @cliente_nombre, @cliente_rif, 
+                @factura_asociada, @datos_json
+            )
+        `);
 
-try {
-    db.prepare("ALTER TABLE productos_locales ADD COLUMN precio_compra REAL DEFAULT 0").run();
-    db.prepare("ALTER TABLE productos_locales ADD COLUMN porcentaje_ganancia REAL DEFAULT 0").run();
-    console.log("✅ Columnas de costo, ganancia y estado_cierre verificadas/añadidas a SQLite.");
-} catch (e) {
-   
-}
+        // Ejecutar la inserción
+        stmt.run({
+            id: datos.id,
+            company_id: datos.company_id,
+            branch_id: datos.branch_id,
+            cashier_id: datos.cashier_id,
+            numero_guia: datos.numero_guia,
+            numero_control: datos.numero_control,
+            cliente_nombre: datos.cliente_nombre,
+            cliente_rif: datos.cliente_rif,
+            factura_asociada: datos.factura_asociada || null,
+            datos_json: datos.datos_json
+        });
+
+        console.log(`✅ [NEXUS MASTER] Guía de Despacho guardada localmente: ${datos.numero_guia}`);
+        
+        return { exito: true, id: datos.id, numero_guia: datos.numero_guia };
+
+    } catch (error) {
+        console.error("❌ [ERROR] Falló al guardar la Guía de Despacho en SQLite:", error);
+        return { exito: false, error: error.message };
+    }
+});
+
+ipcMain.handle('guardar-auditoria-admin', async (event, datos) => {
+    try {
+        const stmt = db.prepare(`
+            INSERT INTO auditoria_administrador (
+                id, company_id, branch_id, cashier_id, 
+                admin_name, accion, detalles, estado_sync, fecha
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
+        `);
+        
+        const resultado = stmt.run(
+            datos.id || `AUDIT-${Date.now()}`,
+            datos.company_id,
+            datos.branch_id,
+            datos.cashier_id,
+            datos.admin_name || 'Desconocido',
+            datos.accion,
+            datos.detalles || 'Sin detalles',
+            datos.fecha || new Date().toISOString()
+        );
+
+        console.log(`🛡️ Auditoría registrada: [${datos.accion}] autorizada por ${datos.admin_name || 'Admin'}`);
+        return { success: true, changes: resultado.changes };
+    } catch (e) {
+        console.error("❌ Error al guardar auditoría de administrador:", e.message);
+        return { success: false, error: e.message };
+    }
+});
+
+ipcMain.handle('obtener-auditoria-admin', async (event, companyId) => {
+    try {
+        const stmt = db.prepare(`
+            SELECT * FROM auditoria_administrador 
+            WHERE company_id = ? 
+            ORDER BY fecha DESC 
+            LIMIT 200
+        `);
+        return stmt.all(companyId);
+    } catch (e) {
+        console.error("❌ Error leyendo logs de auditoría en SQLite:", e.message);
+        return [];
+    }
+});
 
 server.use(cors());
 server.use(express.json({ limit: '100mb' }));
@@ -448,23 +642,295 @@ ipcMain.handle('obtener-ventas-pendientes-caja', async (event, { companyId, bran
     }
 });
 
-// 2. Procesar el Cierre (Guarda el Z y marca todo como cerrado)
-ipcMain.handle('procesar-cierre-caja-local', async (event, reporte) => {
+
+
+function encriptarPlan(texto) {
+    let iv = crypto.randomBytes(IV_LENGTH);
+    let cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), iv);
+    let encrypted = cipher.update(texto);
+    encrypted = Buffer.concat([encrypted, cipher.final()]);
+    return iv.toString('hex') + ':' + encrypted.toString('hex');
+}
+
+function desencriptarPlan(texto) {
     try {
-        const transaction = db.transaction(() => {
-            // A. Aquí deberías crear un INSERT para una tabla nueva llamada 'cierres_caja' (opcional para tu historial general)
-            
-            // B. Marcar ventas como cerradas
-            db.prepare(`UPDATE ventas_locales SET estado_cierre = 1 WHERE company_id = ? AND branch_id = ? AND cashier_id = ? AND estado_cierre = 0`).run(reporte.companyId, reporte.branchId, reporte.cashierId);
-            
-            // C. Marcar Ingresos y Gastos como cerrados
-            db.prepare(`UPDATE movimientos_caja_locales SET estado_cierre = 1 WHERE company_id = ? AND branch_id = ? AND cashier_id = ? AND estado_cierre = 0`).run(reporte.companyId, reporte.branchId, reporte.cashierId);
-        });
+        let textParts = texto.split(':');
+        let iv = Buffer.from(textParts.shift(), 'hex');
+        let encryptedText = Buffer.from(textParts.join(':'), 'hex');
+        let decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), iv);
+        let decrypted = decipher.update(encryptedText);
+        decrypted = Buffer.concat([decrypted, decipher.final()]);
+        return decrypted.toString();
+    } catch (error) {
+        return null; // Si alguien manipuló la base de datos, esto falla y retorna null
+    }
+}
+
+
+
+ipcMain.handle('obtener-facturas-pendientes-retencion', async (event, { rif }) => {
+    try {
+        let rifBusqueda = rif.trim().toUpperCase();
+        if (!rifBusqueda.startsWith('V-') && !rifBusqueda.startsWith('J-') && !rifBusqueda.startsWith('G-')) {
+            rifBusqueda = 'V-' + rifBusqueda;
+        }
+        const stmt = db.prepare(`
+            SELECT * FROM ventas_locales 
+            WHERE (
+                cliente_rif = ? 
+                OR json_extract(datos_json, '$.cliente.rif') = ?
+            )
+            AND es_nota_credito = 0 
+            AND (comprobante_retencion_id IS NULL OR comprobante_retencion_id = '')
+            ORDER BY fecha_emision DESC
+        `);
         
+        const resultados = stmt.all(rifBusqueda, rifBusqueda);
+        
+        console.log(`🔍 [DEBUG] RIF buscado: ${rifBusqueda}`);
+        console.log(`🔍 [DEBUG] Facturas encontradas: ${resultados.length}`);
+        
+        if (resultados.length > 0) {
+            console.log(`✅ Primera factura encontrada ID: ${resultados[0].id}`);
+        }
+
+        return resultados;
+    } catch (e) {
+        console.error("❌ Error profundo obteniendo facturas:", e.message);
+        return [];
+    }
+});
+
+ipcMain.handle('registrar-retencion-iva', async (event, { datosRetencion, listaFacturasIds, retencionId }) => {
+    try {
+        console.log("🛠 Registrando retención:", retencionId);
+        console.log("📑 Facturas a actualizar:", listaFacturasIds); // <--- ESTO ES CLAVE
+
+        if (!listaFacturasIds || listaFacturasIds.length === 0) {
+            console.warn("⚠️ Advertencia: listaFacturasIds está vacío, no se actualizarán facturas.");
+        }
+
+        const transaction = db.transaction(() => {
+            // A. Insertar comprobante
+            const stmtInsert = db.prepare(`
+                INSERT INTO comprobantes_retencion (id, datos_json) VALUES (?, ?)
+            `);
+            stmtInsert.run(retencionId, JSON.stringify(datosRetencion));
+
+            // B. Actualizar facturas
+            const stmtUpdate = db.prepare(`
+                UPDATE ventas_locales 
+                SET comprobante_retencion_id = ? 
+                WHERE id = ?
+            `);
+            
+            for (const idVenta of listaFacturasIds) {
+                const info = stmtUpdate.run(retencionId, idVenta);
+                console.log(`✅ Factura ${idVenta} actualizada. Cambios: ${info.changes}`);
+            }
+        });
+
         transaction();
         return { success: true };
     } catch (e) {
+        console.error("❌ ERROR EN TRANSACCIÓN DE RETENCIÓN:", e);
+        return { success: false, error: e.message };
+    }
+});
+
+// main.js - Función para eliminar sucursales localmente
+ipcMain.handle('eliminar-sucursal-local', async (event, id) => {
+    try {
+        const stmt = db.prepare('DELETE FROM sucursales WHERE id = ?');
+        const resultado = stmt.run(id);
+        
+        if (resultado.changes > 0) {
+            console.log(`✅ Sucursal eliminada localmente: ${id}`);
+            return { success: true, changes: resultado.changes };
+        } else {
+            return { success: false, error: "No se encontró la sucursal en la base de datos local." };
+        }
+    } catch (e) {
+        console.error("❌ Error al eliminar sucursal local:", e.message);
+        return { success: false, error: e.message };
+    }
+});
+
+// Guardar el plan encriptado
+ipcMain.handle('guardar-plan-local', (event, planData) => {
+    try {
+        const companyId = planData.companyId;
+        const jsonString = JSON.stringify(planData);
+        
+        // AQUÍ LLAMA A LA FUNCIÓN (Ahora sí la encontrará)
+        const datosEncriptados = encriptarPlan(jsonString); 
+
+        const stmt = db.prepare(`
+            INSERT INTO plan_empresa (company_id, datos_encriptados, updated_at)
+            VALUES (@company_id, @datos_encriptados, CURRENT_TIMESTAMP)
+            ON CONFLICT(company_id) DO UPDATE SET
+                datos_encriptados = excluded.datos_encriptados,
+                updated_at = CURRENT_TIMESTAMP
+        `);
+
+        stmt.run({ company_id: companyId, datos_encriptados: datosEncriptados });
+        console.log(`🔒 Plan de la empresa ${companyId} encriptado y guardado en bóveda local.`);
+        return { success: true };
+    } catch (error) {
+        console.error("❌ Error guardando el plan encriptado:", error);
+        return { success: false, error: error.message };
+    }
+});
+
+// Leer y desencriptar el plan
+ipcMain.handle('obtener-plan-local', (event, companyId) => {
+    try {
+        const stmt = db.prepare(`SELECT datos_encriptados FROM plan_empresa WHERE company_id = ?`);
+        const row = stmt.get(companyId);
+        
+        if (row && row.datos_encriptados) {
+            const jsonDesencriptado = desencriptarPlan(row.datos_encriptados); // Rompemos el sello
+            if (jsonDesencriptado) {
+                return JSON.parse(jsonDesencriptado);
+            } else {
+                console.error("⚠️ ALERTA DE SEGURIDAD: El archivo del plan fue manipulado.");
+                return null; 
+            }
+        }
+        return null;
+    } catch (error) {
+        console.error("❌ Error obteniendo el plan encriptado:", error);
+        return null;
+    }
+});
+
+// handler UNIFICADO: Guarda registro histórico local, marca como cerrado y sincroniza con el Maestro
+ipcMain.handle('procesar-cierre-caja-local', async (event, reporte) => {
+    try {
+        const transaction = db.transaction(() => {
+            // A. INSERTAR EL REGISTRO HISTÓRICO DEL CIERRE EN TABLA LOCAL
+            const stmtCierre = db.prepare(`
+                INSERT INTO cierres_caja_locales (
+                    id, fecha, company_id, branch_id, cashier_id,
+                    total_ventas_bs, total_ventas_usd, total_gastos_bs,
+                    total_gastos_usd, total_ingresos_bs, total_diferencia_bs,
+                    total_diferencia_usd, detalle_pagos_json, estado_sync
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+            `);
+
+            stmtCierre.run(
+                reporte.id,
+                reporte.fecha,
+                reporte.companyId,
+                reporte.branchId,
+                reporte.cashierId,
+                reporte.totalSalesBs,
+                reporte.totalSalesDollars,
+                reporte.totalExpensesBs,
+                reporte.totalExpensesDollars,
+                reporte.totalIncomes,
+                reporte.totalDifferenceBs,
+                reporte.totalDifferenceDollars,
+                reporte.paymentsConciliation 
+            );
+
+            // B. MARCAR VENTAS COMO CERRADAS
+            db.prepare(`UPDATE ventas_locales SET estado_cierre = 1 
+                        WHERE company_id = ? AND branch_id = ? AND cashier_id = ? AND estado_cierre = 0`)
+              .run(reporte.companyId, reporte.branchId, reporte.cashierId);
+            
+            // C. MARCAR INGRESOS Y GASTOS COMO CERRADOS
+            db.prepare(`UPDATE movimientos_caja_locales SET estado_cierre = 1 
+                        WHERE company_id = ? AND cashier_id = ? AND estado_cierre = 0`)
+              .run(reporte.companyId, reporte.cashierId);
+            
+            // D. MARCAR PAGOS MÓVILES COMO CERRADOS
+            db.prepare(`UPDATE pagos_moviles_locales SET estado_cierre = 1 
+                        WHERE company_id = ? AND branch_id = ? AND cashier_id = ? AND estado_cierre = 0`)
+              .run(reporte.companyId, reporte.branchId, reporte.cashierId);
+        });
+        
+        // Ejecutamos la transacción local
+        transaction();
+        console.log(`✅ Cierre Z almacenado localmente: ${reporte.id}`);
+
+        // --- E. SINCRONIZACIÓN CON EL SERVIDOR MAESTRO (PUERTO 3000) ---
+        try {
+            const ipMaestro = config.isServer ? 'localhost' : config.serverIP; //[cite: 5]
+            // Usamos axios para enviar los datos al endpoint que creamos en server.js
+            await axios.post(`http://${ipMaestro}:3000/api/maestro/registrar-cierre`, reporte, { timeout: 4000 });
+            console.log("📡 Cierre sincronizado con el Servidor Maestro exitosamente.");
+        } catch (errSync) {
+            console.warn("⚠️ No se pudo sincronizar con el Maestro (Modo Offline o Servidor Apagado):", errSync.message);
+            // No retornamos error aquí para que el usuario pueda seguir trabajando, 
+            // el registro ya quedó seguro en la base de datos local.
+        }
+
+        return { success: true };
+
+    } catch (e) {
+        console.error("❌ Error en proceso de cierre:", e.message);
         return { error: e.message };
+    }
+});
+
+// main.js - Manejador para leer el historial de la nueva tabla
+ipcMain.handle('obtener-historial-cierres', async (event, { companyId }) => {
+    try {
+        const stmt = db.prepare(`
+            SELECT * FROM cierres_caja_locales 
+            WHERE company_id = ? 
+            ORDER BY fecha DESC 
+            LIMIT 50
+        `);
+        return stmt.all(companyId);
+    } catch (e) {
+        console.error("❌ Error al leer historial de cierres:", e.message);
+        return [];
+    }
+});
+
+ipcMain.handle('guardar-pago-movil', async (event, p) => {
+    try {
+        const stmt = db.prepare(`
+            INSERT INTO pagos_moviles_locales (
+                id, venta_id, numero_factura, banco_receptor, referencia, 
+                telefono_origen, monto, fecha_pago, company_id, branch_id, 
+                cashier_id, estado_cierre
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        `);
+        return stmt.run(
+            p.id, p.venta_id, p.numero_factura, p.banco_receptor, p.referencia,
+            p.telefono_origen, p.monto, p.fecha_pago, p.company_id, p.branch_id,
+            p.cashier_id
+        );
+    } catch (e) {
+        console.error("❌ Error guardando pago móvil local:", e.message);
+        return { error: e.message };
+    }
+});
+
+
+ipcMain.handle('obtener-pagos-moviles-caja', async (event, datos) => {
+    try {
+        const { companyId, branchId, cashierId } = datos;
+        
+        // Usamos db.prepare().all() que es la sintaxis correcta para better-sqlite3
+        // y apuntamos a la tabla correcta: pagos_moviles_locales
+        const stmt = db.prepare(`
+            SELECT * FROM pagos_moviles_locales 
+            WHERE company_id = ? 
+            AND branch_id = ? 
+            AND cashier_id = ? 
+            AND estado_cierre = 0
+            ORDER BY fecha_pago DESC
+        `);
+        
+        return stmt.all(companyId, branchId, cashierId);
+        
+    } catch (error) {
+        console.error("Error en el handler de obtener-pagos-moviles-caja:", error);
+        return []; // Retornamos un array vacío en caso de fallo para no romper el frontend
     }
 });
 
@@ -526,6 +992,19 @@ ipcMain.handle('obtener-movimientos-caja', async (event, { tipo, companyId }) =>
     }
 });
 
+ipcMain.handle('validar-saldo-nc', async (event, nroFactura) => {
+    try {
+        // 🔥 CORRECCIÓN: La tabla real se llama ventas_locales
+        const stmt = db.prepare("SELECT SUM(monto_total) as devuelto FROM ventas_locales WHERE es_nota_credito = 1 AND factura_afectada = ?");
+        const row = stmt.get(nroFactura);
+        
+        return { exito: true, totalDevuelto: row.devuelto || 0 };
+    } catch (error) {
+        console.error("Error al validar saldo histórico NC:", error);
+        return { exito: false, error: error.message };
+    }
+});
+
 ipcMain.handle('obtener-historial-tasas', async () => {
     try {
         return db.prepare(`
@@ -540,34 +1019,72 @@ ipcMain.handle('obtener-historial-tasas', async () => {
     }
 });
 
-// --- MANEJO DE BALANZA PROFESIONAL ---
-let puertoActivo = null; // Variable global para controlar la conexión única
 
-ipcMain.on('iniciar-puerto-balanza', (event, puertoCOM) => {
-    // 1. Si ya hay un puerto abierto, lo cerramos antes de abrir el nuevo
-    if (puertoActivo && puertoActivo.isOpen) {
-        console.log(`🔄 Cerrando puerto anterior para abrir ${puertoCOM}`);
-        puertoActivo.close();
+let puertoActivo = null; 
+
+ipcMain.on('tarear-bascula', () => {
+    taraOffset = ultimoPesoBruto; 
+    console.log(`⚖️ Báscula Tareada (Software). Nuevo Offset: ${taraOffset}`);
+});
+
+ipcMain.on('iniciar-puerto-bascula', (event, puertoCOM) => {
+    // 1. SIEMPRE actualizamos a quién le vamos a enviar la data (la nueva ventana)
+    senderBasculaActivo = event.sender;
+
+    // 🛡️ PROTECCIÓN ANTI-PUERTOS ZOMBIES
+    if (basculaPort) {
+        if (basculaPort.path === puertoCOM && basculaPort.isOpen) {
+            console.log(`⚖️ El puerto ${puertoCOM} ya está abierto. Redirigiendo datos a la nueva ventana...`);
+            return; // Cortamos aquí, pero como actualizamos senderBasculaActivo, ahora sí funcionará
+        } else {
+            console.log(`⚖️ Cerrando puerto viejo para abrir uno nuevo...`);
+            basculaPort.close();
+        }
     }
 
     try {
-        puertoActivo = new SerialPort({ path: puertoCOM, baudRate: 9600 });
-        const parser = puertoActivo.pipe(new ReadlineParser({ delimiter: '\n' }));
+        basculaPort = new SerialPort({
+            path: puertoCOM,
+            baudRate: 9600, 
+            autoOpen: true
+        });
+
+
+        const parser = basculaPort.pipe(new ReadlineParser({ delimiter: '\n' }));
+
+        basculaPort.on('open', () => {
+            console.log(`✅ Puerto de báscula abierto de forma segura: ${puertoCOM}`);
+            taraOffset = 0.0; 
+        });
 
         parser.on('data', (data) => {
-            // Enviamos el peso al HTML (evento 'peso-desde-balanza')
-            if (!event.sender.isDestroyed()) {
-                event.sender.send('peso-desde-balanza', data.trim());
+            const rawStr = data.toString().trim();
+            const rawWeight = parseFloat(rawStr);
+
+            if (!isNaN(rawWeight)) {
+                ultimoPesoBruto = rawWeight;
+                
+                let pesoNeto = rawWeight - taraOffset;
+                
+                if (pesoNeto < 0) pesoNeto = 0; 
+
+                if (senderBasculaActivo && !senderBasculaActivo.isDestroyed()) {
+                    senderBasculaActivo.send('peso-recibido', pesoNeto.toFixed(3));
+                }
             }
         });
 
-        puertoActivo.on('error', (err) => {
-            console.error('❌ Error físico en Puerto Serie:', err.message);
+        basculaPort.on('error', (err) => {
+            console.error('❌ Error crítico en puerto COM:', err.message);
         });
 
-        console.log(`✅ Conectado directamente a la Balanza en: ${puertoCOM}`);
-    } catch (e) {
-        console.error("❌ No se pudo abrir el puerto serie:", e.message);
+        basculaPort.on('close', () => {
+            console.log('🔌 Puerto COM cerrado correctamente.');
+            basculaPort = null;
+        });
+
+    } catch (error) {
+        console.error("❌ Error al inicializar báscula:", error);
     }
 });
 
@@ -604,10 +1121,12 @@ ipcMain.on('abrir-ventana-principal', (event, ruta) => {
     win = new BrowserWindow({
         width: 1280,
         height: 800,
+        minWidth: 1024,  // Impide que se reduzca a menos de 1024px de ancho
+        minHeight: 768, // Impide que se reduzca a menos de 768px de alto
         frame: true,         // DEVUELVE EL MARCO DE WINDOWS
         resizable: true,     // PERMITE CAMBIAR TAMAÑO
         maximizable: true,   // PERMITE MAXIMIZAR
-        icon: path.join(__dirname, 'assets/logo_nexus_sin_fondo.png'),
+        icon: path.join(__dirname, 'assets/icono_redondeado.ico'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: false,
@@ -752,52 +1271,60 @@ ipcMain.handle('obtener-productos-local', async (event, empresaId) => {
     }
 });
 
-
-// 1. Guardar la venta con todos los campos fiscales de tu tabla
 ipcMain.handle('guardar-venta-local', async (event, v) => {
     try {
-        // Se eliminó la validación/descuento de stock en el Servidor Maestro (Axios)
-        // para limitar la operación exclusivamente al guardado en la colección local.
-
         const stmt = db.prepare(`
             INSERT INTO ventas_locales (
                 id, company_id, branch_id, cashier_id, numero_factura, 
                 numero_control, cliente_nombre, cliente_rif, monto_exento, 
                 base_imponible, monto_iva, monto_igtf, monto_total, 
-                tasa_bcv, metodo_pago, datos_json, estado_sync
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                tasa_bcv, metodo_pago, datos_json, estado_sync, estado_cierre,
+                es_nota_credito, es_nota_debito, factura_afectada, monto_factura_afectada, fecha_factura_afectada
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?)
         `);
         
         const resultadoLocal = stmt.run(
             v.id, v.company_id, v.branch_id, v.cashier_id, v.numero_factura,
             v.numero_control, v.cliente_nombre, v.cliente_rif, v.monto_exento,
             v.base_imponible, v.monto_iva, v.monto_igtf, v.monto_total,
-            v.tasa_bcv, v.metodo_pago, v.datos_json
+            v.tasa_bcv, v.metodo_pago, v.datos_json,
+            v.es_nota_credito || 0,
+            v.es_nota_debito || 0,
+            v.factura_afectada || null,
+            v.monto_factura_afectada || null,
+            v.fecha_factura_afectada || null
         );
 
-        // 🔥 SE ELIMINARON LOS BLOQUES DE DEUDAS. LA BD LOCAL YA NO SABE DE DEUDAS.
+        // 2. SINCRONIZACIÓN CON EL SERVIDOR MAESTRO (Red Local)
+        try {
+            const ipMaestro = config.isServer ? 'localhost' : config.serverIP;
+            await axios.post(`http://${ipMaestro}:3000/api/maestro/registrar-venta`, v, { timeout: 3000 });
+            console.log(`📡 Venta ${v.numero_factura} sincronizada con Maestro.`);
+        } catch (errSync) {
+            console.warn(`⚠️ Maestro no disponible. Venta ${v.numero_factura} guardada solo local.`);
+        }
 
-        console.log(`📂 Venta ${v.id} almacenada directamente en SQLite local.`);
         return resultadoLocal;
     } catch (e) {
-        console.error("❌ Error en guardado local directo:", e.message);
+        console.error("❌ Error en guardado de venta:", e.message);
         return { error: e.message };
     }
 });
 
-ipcMain.handle('obtener-deuda-cliente', async (event, rif) => {
-    console.log(`🔍 [LOG DB] Buscando deuda para el RIF: ${rif}`);
+
+ipcMain.handle('obtener-deuda-cliente-maestro', async (event, rif) => {
     try {
-        const deudas = db.prepare(`
-            SELECT * FROM cuentas_por_cobrar 
-            WHERE cliente_rif = ? AND (monto_deuda - monto_pagado) > 0
-        `).all(rif);
+        const configLocal = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        const ipMaestro = configLocal.isServer ? 'localhost' : (configLocal.serverIP || 'localhost');
+
+        const response = await axios.get(`http://${ipMaestro}:3000/api/maestro/consultar-deuda/${rif}`, { 
+            timeout: 3000 
+        });
         
-        console.log(`✅ [LOG DB] Deudas encontradas para ${rif}: ${deudas.length} registros.`);
-        return deudas;
+        return response.data;
     } catch (error) {
-        console.error(`❌ [LOG DB] Error al consultar deuda:`, error.message);
-        return [];
+        console.error("❌ Error consultando deuda en Maestro desde Main:", error.message);
+        return { existe: false, monto_bs: 0, error: "Servidor Maestro no responde" };
     }
 });
 
@@ -806,8 +1333,24 @@ ipcMain.handle('obtener-proximo-correlativo', async (event, tipo) => {
         if (config.isServer && masterDbDirect) {
             // 🚀 MODO SERVIDOR: Consulta SQL directa (Sin puertos, sin errores de red)
             const transaccion = masterDbDirect.transaction(() => {
-                const row = masterDbDirect.prepare('SELECT ultimo_numero, prefijo FROM correlativos_maestros WHERE tipo = ?').get(tipo);
-                const nuevoNumero = (row ? row.ultimo_numero : 0) + 1;
+                let row = masterDbDirect.prepare('SELECT ultimo_numero, prefijo FROM correlativos_maestros WHERE tipo = ?').get(tipo);
+                
+                // 🔥 SOLUCIÓN: Si la fila no existe (Ej: NOTA_CREDITO), se crea al vuelo
+                if (!row) {
+                    console.log(`⚠️ Correlativo [${tipo}] no encontrado. Creándolo automáticamente...`);
+                    let prefijo = 'DOC-';
+                    if (tipo === 'NOTA_CREDITO') prefijo = 'NC-';
+                    else if (tipo === 'NOTA_DEBITO') prefijo = 'ND-'; // <--- LÍNEA NUEVA AÑADIDA
+                    else if (tipo === 'TICKET_NO_FISCAL') prefijo = 'TICK-';
+                    else if (tipo === 'FORMA_LIBRE') prefijo = 'FL-';
+                    else if (tipo === 'ELECTRONICA') prefijo = 'TFHKA-';
+                    else if (tipo === 'FISCAL_HKA') prefijo = 'FIS-';
+
+                    masterDbDirect.prepare('INSERT INTO correlativos_maestros (tipo, prefijo, ultimo_numero) VALUES (?, ?, 0)').run(tipo, prefijo);
+                    row = { ultimo_numero: 0, prefijo: prefijo };
+                }
+
+                const nuevoNumero = row.ultimo_numero + 1;
                 masterDbDirect.prepare('UPDATE correlativos_maestros SET ultimo_numero = ? WHERE tipo = ?').run(nuevoNumero, tipo);
                 return { 
                     numero: nuevoNumero, 
@@ -830,6 +1373,25 @@ ipcMain.handle('obtener-proximo-correlativo', async (event, tipo) => {
 // 3. Obtener una venta específica (Para reimpresiones)
 ipcMain.handle('obtener-venta-por-id', async (event, id) => {
     return db.prepare('SELECT * FROM ventas_locales WHERE id = ?').get(id);
+});
+
+ipcMain.handle('obtener-factura-local', async (event, numFactura) => {
+    try {
+        let serverIp = 'localhost';
+        if (fs.existsSync(configPath)) {
+            const configLocal = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            serverIp = configLocal.isServer ? 'localhost' : (configLocal.serverIP || 'localhost');
+        }
+        const response = await axios.get(`http://${serverIp}:3000/api/maestro/buscar-factura/${numFactura}`);
+        return response.data; 
+
+    } catch (error) {
+        console.error("❌ Error de comunicación con el Maestro:", error.message);
+        return { 
+            error: true, 
+            mensaje: "No se pudo conectar al Servidor Central para buscar la factura." 
+        };
+    }
 });
 
 
@@ -856,15 +1418,14 @@ ipcMain.handle('cerrar-sesion-local', async () => {
     }
 });
 
-// main.js - PUENTE HÍBRIDO DE DEUDAS
 ipcMain.handle('registrar-deuda-maestro', async (event, datos) => {
     try {
         if (config.isServer && masterDbDirect) {
             // 🚀 MODO SERVIDOR: Escritura directa
             const transaccion = masterDbDirect.transaction(() => {
-                // 1. Crear cliente si no existe
+                // 1. Crear cliente si no existe (CAMBIO A RIF)
                 masterDbDirect.prepare(`
-                    INSERT OR IGNORE INTO clientes_maestro (id, nombre, saldo_deuda) VALUES (?, ?, 0)
+                    INSERT OR IGNORE INTO clientes_maestro (rif, nombre, saldo_deuda) VALUES (?, ?, 0)
                 `).run(datos.cliente_id, datos.cliente_nombre);
 
                 // 2. Registrar la cuenta por cobrar
@@ -873,9 +1434,9 @@ ipcMain.handle('registrar-deuda-maestro', async (event, datos) => {
                     VALUES (?, ?, ?, ?, ?, ?, 'PENDIENTE')
                 `).run(datos.cliente_id, datos.cliente_nombre, datos.monto_bs, datos.monto_usd || 0, datos.numero_factura, datos.fecha);
                 
-                // 3. Actualizar el saldo global
+                // 3. Actualizar el saldo global (CAMBIO A RIF)
                 masterDbDirect.prepare(`
-                    UPDATE clientes_maestro SET saldo_deuda = saldo_deuda + ? WHERE id = ?
+                    UPDATE clientes_maestro SET saldo_deuda = saldo_deuda + ? WHERE rif = ?
                 `).run(datos.monto_bs, datos.cliente_id);
             });
 
@@ -895,47 +1456,88 @@ ipcMain.handle('registrar-deuda-maestro', async (event, datos) => {
 // main.js - PUENTE DE ABONOS (REDUCCIÓN DE DEUDA EN MAESTRO)
 ipcMain.handle('registrar-abono-maestro', async (event, datos) => {
     try {
-        if (config.isServer && masterDbDirect) {
-            const transaccion = masterDbDirect.transaction(() => {
-                // 1. Restar saldo global
-                masterDbDirect.prepare(`UPDATE clientes_maestro SET saldo_deuda = MAX(0, saldo_deuda - ?) WHERE id = ?`).run(datos.monto_bs, datos.cliente_id);
-                // 2. Limpiar facturas pendientes
-                masterDbDirect.prepare(`UPDATE cuentas_por_cobrar SET estado = 'PAGADO' WHERE cliente_id = ? AND estado = 'PENDIENTE'`).run(datos.cliente_id);
-            });
-            
-            transaccion();
-            console.log(`📉 [MODO SERVIDOR] Deuda reducida y facturas saldadas directamente en DB Maestra para: ${datos.cliente_id}`);
-            return { exito: true };
-        } else {
-            const ipDestino = config.isServer ? '127.0.0.1' : config.serverIP;
-            const respuesta = await axios.post(`http://${ipDestino}:${PORT}/api/maestro/registrar-abono`, datos);
-            return respuesta.data;
-        }
+        // 🔥 CORRECCIÓN ARQUITECTÓNICA: 
+        // Eliminamos la lógica duplicada de SQLite aquí. 
+        // Ahora TODOS (incluyendo el servidor) pasan por la API de server.js
+        const ipDestino = config.isServer ? '127.0.0.1' : config.serverIP;
+        
+        console.log(`[MAIN] Redirigiendo pago de deuda al servidor local (${ipDestino})...`);
+        
+        const respuesta = await axios.post(`http://${ipDestino}:${PORT}/api/maestro/registrar-abono`, datos);
+        return respuesta.data;
     } catch (e) {
+        console.error("[MAIN] Error en puente de abonos:", e.message);
         return { exito: false, mensaje: e.message };
     }
 });
 
 
-// Añadir en main.js (junto a los otros ipcMain.handle)
-ipcMain.handle('guardar-cliente-local', async (event, c) => {
+ipcMain.handle('guardar-cliente-local', async (event, cliente) => {
     try {
-        const stmt = db.prepare(`
-            INSERT OR REPLACE INTO clientes_locales (rif, company_id, nombre, direccion, telefono, correo, datos_json, estado_sync, fecha_modificacion)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
-        `);
-        return stmt.run(c.rif, c.company_id, c.nombre, c.direccion, c.telefono, c.correo, JSON.stringify(c), new Date().toISOString());
-    } catch (e) {
-        console.error("❌ Error guardando cliente:", e);
-        return { error: e.message };
+        if (config.isServer && masterDbDirect) {
+            // 🚀 MODO SERVIDOR: Escribe directamente en el maestro
+            const stmt = masterDbDirect.prepare(`
+                INSERT INTO clientes_maestro (rif, company_id, nombre, direccion, telefono, correo, es_contribuyente_especial, saldo_deuda)
+                VALUES (@rif, @company_id, @nombre, @direccion, @telefono, @correo, @es_contribuyente_especial, 0)
+                ON CONFLICT(rif) DO UPDATE SET 
+                nombre = excluded.nombre,
+                direccion = excluded.direccion,
+                telefono = excluded.telefono,
+                correo = excluded.correo,
+                es_contribuyente_especial = excluded.es_contribuyente_especial,
+                company_id = excluded.company_id
+            `);
+
+            stmt.run({
+                rif: cliente.rif,
+                nombre: cliente.nombre,
+                direccion: cliente.direccion || 'No especificada',
+                telefono: cliente.telefono || '',
+                correo: cliente.correo || '',
+                es_contribuyente_especial: cliente.es_contribuyente_especial ? 1 : 0,
+                company_id: cliente.company_id || null
+            });
+
+            return { success: true };
+        } else {
+            // 🌐 MODO CLIENTE: Envía por red al Servidor Maestro
+            const ipDestino = config.isServer ? '127.0.0.1' : config.serverIP;
+            const respuesta = await axios.post(`http://${ipDestino}:${PORT}/api/maestro/guardar-cliente`, cliente);
+            return respuesta.data;
+        }
+    } catch (error) {
+        console.error("Error guardando cliente centralizado:", error);
+        return { success: false, error: error.message };
     }
 });
 
 ipcMain.handle('obtener-clientes-local', async () => {
     try {
-        return db.prepare('SELECT * FROM clientes_locales ORDER BY nombre ASC').all();
+        if (config.isServer && masterDbDirect) {
+            return masterDbDirect.prepare('SELECT * FROM clientes_maestro ORDER BY nombre ASC').all();
+        } else {
+            const ipDestino = config.isServer ? '127.0.0.1' : config.serverIP;
+            const respuesta = await axios.get(`http://${ipDestino}:${PORT}/api/maestro/obtener-clientes`);
+            return respuesta.data;
+        }
     } catch (e) {
+        console.error("Error al obtener clientes centralizados:", e);
         return [];
+    }
+});
+
+ipcMain.handle('eliminar-cliente-local', async (event, rif) => {
+    try {
+        if (config.isServer && masterDbDirect) {
+            masterDbDirect.prepare('DELETE FROM clientes_maestro WHERE rif = ?').run(rif);
+            return { success: true };
+        } else {
+            const ipDestino = config.isServer ? '127.0.0.1' : config.serverIP;
+            const respuesta = await axios.delete(`http://${ipDestino}:${PORT}/api/maestro/eliminar-cliente/${rif}`);
+            return respuesta.data;
+        }
+    } catch (e) { 
+        return { error: e.message }; 
     }
 });
 
@@ -955,23 +1557,29 @@ ipcMain.handle('obtener-sesion-local', async () => {
 
 ipcMain.handle('leer-puertos', async () => await SerialPort.list());
 
-// 🔥 SOLUCIÓN 3: Nombres de variables correctos y guardado en la tabla correcta
-ipcMain.handle('sincronizar-categorias-local', async (event, categories) => {
+ipcMain.handle('sincronizar-categorias-local', async (event, categoriasArray) => {
     try {
-        const stmt = db.prepare(`INSERT OR REPLACE INTO categorias_locales (id, company_id, nombre, estado_sync, fecha_modificacion) VALUES (?, ?, ?, 1, ?)`);
-        
-        const transaction = db.transaction((cats) => {
-            for (const cat of cats) {
-                const nombre = cat.nombre || cat.name || 'Sin nombre';
-                stmt.run(cat.id, nombre, new Date().toISOString());
+        const stmt = db.prepare(`
+            INSERT INTO categorias (id, nombre) 
+            VALUES (@id, @nombre)
+            ON CONFLICT(id) DO UPDATE SET 
+            nombre = excluded.nombre
+        `);
+
+        const transaccion = db.transaction((categorias) => {
+            for (const cat of categorias) {
+                stmt.run({
+                    id: cat.categoria_id || cat.id, 
+                    nombre: cat.nombre || 'Sin Categoría'
+                });
             }
         });
 
-        transaction(categories);
+        transaccion(categoriasArray);
         return { success: true };
-    } catch (e) {
-        console.error("Error sincronizando categorías:", e);
-        return { error: e.message };
+    } catch (error) {
+        console.error("❌ Error en sincronizar-categorias-local (main.js):", error.message);
+        return { success: false, error: error.message };
     }
 });
 
@@ -1078,9 +1686,27 @@ ipcMain.handle('imprimir-texto-libre', async (event, textoTicket, nombreImpresor
     }
 });
 
-ipcMain.handle('procesar-cola-sync', async () => {
-    const pendientes = db.prepare('SELECT * FROM sync_queue').all();
-    return { exito: true, registros_subidos: pendientes.length };
+ipcMain.handle('obtener-cola-sincronizacion', async () => {
+    try {
+        // Leemos la cola ordenada por fecha (los más viejos primero)
+        const stmt = db.prepare('SELECT * FROM sync_queue ORDER BY fecha_creacion ASC');
+        return stmt.all();
+    } catch (e) {
+        console.error("❌ Error al leer la cola de sincronización:", e);
+        return [];
+    }
+});
+
+// 2. El motor borra un registro porque el VPS confirmó que lo recibió
+ipcMain.handle('eliminar-de-cola', async (event, id) => {
+    try {
+        const stmt = db.prepare('DELETE FROM sync_queue WHERE id = ?');
+        const resultado = stmt.run(id);
+        return { success: true, changes: resultado.changes };
+    } catch (e) {
+        console.error(`❌ Error al eliminar el registro ${id} de la cola:`, e);
+        return { success: false, error: e.message };
+    }
 });
 
 ipcMain.handle('sincronizar-producto-servidor', async (event, p) => {
@@ -1088,13 +1714,16 @@ ipcMain.handle('sincronizar-producto-servidor', async (event, p) => {
         const idProducto = p.id || p.producto_ID;
         const idEmpresa = p.company_id || p.empresa_ID;
         const idSucursal = p.branch_id || p.sucursal_ID || 'sucursal_1';
+        const barcodeRef = p.codigo || p.producto_codigo || '';
+        p.codigo = barcodeRef;
+        p.producto_codigo = barcodeRef;
         
-        // 🛡️ EXTRACCIÓN BLINDADA: Garantizamos que siempre sea un número (Float)
         const precioRef = parseFloat(p.precios ? p.precios.p1.venta : (p.precio_venta || p.precio || 0)) || 0;
         const compraRef = parseFloat(p.precios ? p.precios.p1.compra : (p.precio_compra || 0)) || 0;
         const porcentajeRef = parseFloat(p.precios ? p.precios.p1.porcentaje : (p.porcentaje_ganancia || 0)) || 0;
         
         const jsonParaGuardar = JSON.stringify(p);
+        const estadoSyncFinal = p.estado_sync !== undefined ? p.estado_sync : 0; 
 
         const local = db.prepare('SELECT * FROM productos_locales WHERE id = ?').get(idProducto);
         let resultado;
@@ -1102,45 +1731,26 @@ ipcMain.handle('sincronizar-producto-servidor', async (event, p) => {
         if (!local) {
             const stmt = db.prepare(`
                 INSERT INTO productos_locales (id, company_id, branch_id, codigo, nombre, precio, precio_compra, porcentaje_ganancia, categoria, status, imagen, datos_json, estado_sync, fecha_modificacion)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
             resultado = stmt.run(
-                idProducto, 
-                idEmpresa, 
-                idSucursal, 
-                p.codigo, 
-                p.nombre, 
-                precioRef, 
-                compraRef, 
-                porcentajeRef, 
-                p.categoria, 
-                p.status, 
-                p.imagen, 
-                jsonParaGuardar, 
-                p.fecha_modificacion
+                idProducto, idEmpresa, idSucursal, barcodeRef, p.nombre, 
+                precioRef, compraRef, porcentajeRef, p.categoria, p.status, 
+                p.imagen, jsonParaGuardar, estadoSyncFinal, p.fecha_modificacion
             );
         } else {
             const stmt = db.prepare(`
                 UPDATE productos_locales
-                SET codigo = ?, nombre = ?, precio = ?, precio_compra = ?, porcentaje_ganancia = ?, categoria = ?, status = ?, imagen = ?, datos_json = ?, estado_sync = 1, fecha_modificacion = ?
+                SET codigo = ?, nombre = ?, precio = ?, precio_compra = ?, porcentaje_ganancia = ?, categoria = ?, status = ?, imagen = ?, datos_json = ?, estado_sync = ?, fecha_modificacion = ?
                 WHERE id = ?
             `);
             resultado = stmt.run(
-                p.codigo, 
-                p.nombre, 
-                precioRef, 
-                compraRef, 
-                porcentajeRef, 
-                p.categoria, 
-                p.status, 
-                p.imagen, 
-                jsonParaGuardar, 
-                p.fecha_modificacion, 
-                idProducto
+                barcodeRef, p.nombre, precioRef, compraRef, porcentajeRef, 
+                p.categoria, p.status, p.imagen, jsonParaGuardar, 
+                estadoSyncFinal, p.fecha_modificacion, idProducto
             );
         }
 
-        // Notificación a las ventanas para refrescar la UI
         if (resultado && resultado.changes > 0) {
             BrowserWindow.getAllWindows().forEach(ventana => {
                 if (!ventana.isDestroyed()) ventana.webContents.send('productos-actualizados');
@@ -1154,6 +1764,208 @@ ipcMain.handle('sincronizar-producto-servidor', async (event, p) => {
     }
 });
 
+// --- VERIFICADOR DE ACTUALIZACIONES GITHUB (CORREGIDO) ---
+// Función Helper matemática para comparar versiones (Ej: "v1.2.0" vs "v1.0.0")
+function esVersionMayor(versionNube, versionLocal) {
+    // Limpiamos todo lo que no sea número o punto y separamos por bloques
+    const vNube = versionNube.replace(/[^0-9.]/g, '').split('.').map(Number);
+    const vLocal = versionLocal.replace(/[^0-9.]/g, '').split('.').map(Number);
+    
+    const longitud = Math.max(vNube.length, vLocal.length);
+    
+    for (let i = 0; i < longitud; i++) {
+        const numNube = vNube[i] || 0;
+        const numLocal = vLocal[i] || 0;
+        
+        if (numNube > numLocal) return true;  // La nube tiene una versión más nueva
+        if (numNube < numLocal) return false; // La nube tiene una versión más vieja (Omitir)
+    }
+    return false; // Son exactamente iguales (Omitir)
+}
+
+// --- VERIFICADOR DE ACTUALIZACIONES GITHUB ---
+// Ahora recibe la versión que tiene instalada el cliente actualmente
+ipcMain.handle('verificar-actualizacion-github', async (event, versionActual) => {
+    try {
+        const repo = "memm1701-tech/NEXUS-POS-ELECTRON";
+        const url = `https://api.github.com/repos/${repo}/releases`;
+        
+        const config = {
+            headers: {
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28',
+                'User-Agent': 'Nexus-POS-Global-App' 
+            }
+        };
+
+        const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+        if (GITHUB_TOKEN) {
+            config.headers['Authorization'] = `token ${GITHUB_TOKEN}`;
+        }
+
+        const response = await axios.get(url, config);
+        
+        if (!response.data || response.data.length === 0) {
+            return { success: false, error: "No se encontraron versiones publicadas en el repositorio." };
+        }
+
+        // Iteramos sobre todos los releases de Github buscando uno que sea MAYOR al nuestro
+        let actualizacionEncontrada = null;
+        for (const release of response.data) {
+            if (esVersionMayor(release.tag_name, versionActual)) {
+                actualizacionEncontrada = release;
+                break; // Encontramos una actualización válida, detenemos la búsqueda
+            }
+        }
+
+        // Si encontramos una versión superior
+        if (actualizacionEncontrada) {
+            const urlDescargaFichero = (actualizacionEncontrada.assets && actualizacionEncontrada.assets.length > 0) 
+                                        ? actualizacionEncontrada.assets[0].browser_download_url 
+                                        : "";
+
+            return {
+                success: true,
+                hayActualizacion: true, // Bandera para el frontend
+                nuevaVersion: actualizacionEncontrada.tag_name,
+                notas: actualizacionEncontrada.body || "Sin notas de actualización.",
+                urlDescarga: urlDescargaFichero
+            };
+        } else {
+            // Si no encontró nada mayor (O estamos iguales, o Github tiene una versión más vieja)
+            return {
+                success: true,
+                hayActualizacion: false // Bandera de seguridad
+            };
+        }
+
+    } catch (error) {
+        console.error("❌ Error en Conexión GitHub:", error.response?.status || error.message);
+        return { 
+            success: false, 
+            error: error.response?.status === 404 ? "Repositorio no encontrado o privado sin acceso" : (error.response?.status === 403 ? "Límite de API excedido o Token inválido" : error.message) 
+        };
+    }
+});
+
+ipcMain.handle('editar-env-local', async (event, nuevaConfig) => {
+    // USAMOS LA MISMA LÓGICA DE RUTA DINÁMICA QUE EN LA LECTURA
+    const baseDataDir = process.env.APPDATA 
+        ? path.join(process.env.APPDATA, 'nexus-pos') 
+        : path.join(process.platform === 'darwin' ? path.join(process.env.HOME, 'Library/Application Support') : process.env.HOME, '.config', 'nexus-pos');
+    
+    const envPath = path.join(baseDataDir, 'config', '.env'); // <--- Apunta a la carpeta config
+
+    if (!fs.existsSync(envPath)) return false;
+
+    try {
+        let contenido = fs.readFileSync(envPath, 'utf8');
+
+        if (nuevaConfig.respaldo_datos !== undefined) {
+            // Reemplaza el valor de respaldo_datos (soporta con o sin comillas)
+            contenido = contenido.replace(/respaldo_datos=["']?([^"'\n]+)["']?/g, `respaldo_datos=${nuevaConfig.respaldo_datos}`);
+        }
+
+        fs.writeFileSync(envPath, contenido);
+        console.log(`✅ Archivo .env físicamente actualizado en: ${envPath}`);
+        return true;
+    } catch (err) {
+        console.error("Error al actualizar el .env:", err);
+        return false;
+    }
+});
+
+ipcMain.handle('obtener-version-app', () => {
+    return app.getVersion();
+});
+
+// --- DESCARGA E INSTALACIÓN AUTOMÁTICA ---
+ipcMain.handle('descargar-update', async (event, urlDescarga) => {
+    try {
+        // Descargar a la carpeta de Archivos Temporales de Windows (para no ensuciar Descargas)
+        const tempDir = app.getPath('temp');
+        const filePath = path.join(tempDir, 'Nexus-POS-Update.exe');
+        
+        const response = await axios({
+            method: 'GET',
+            url: urlDescarga,
+            responseType: 'stream' // Importante para leer byte a byte
+        });
+
+        const totalLength = parseInt(response.headers['content-length'], 10);
+        let downloaded = 0;
+
+        const writer = fs.createWriteStream(filePath);
+        
+        response.data.on('data', (chunk) => {
+            downloaded += chunk.length;
+            // Calculamos el porcentaje
+            const progress = Math.round((downloaded / totalLength) * 100);
+            // Le avisamos al frontend (HTML) en qué porcentaje vamos
+            event.sender.send('download-progress', progress);
+        });
+
+        response.data.pipe(writer);
+
+        return new Promise((resolve, reject) => {
+            
+            // Reemplazamos 'finish' por 'close'
+            writer.on('close', () => {
+                
+                // Pausa táctica de 1.5 segundos para que Windows libere el archivo
+                setTimeout(() => {
+                    try {
+                        const { spawn } = require('child_process');
+                        
+                        // 🔥 LA MEJOR PRÁCTICA: Instalación silenciosa con auto-reinicio.
+                        const installer = spawn(filePath, ['/S', '--force-run'], {
+                            detached: true,
+                            stdio: 'ignore'
+                        });
+                        installer.unref(); 
+                        
+                        // Cerramos NEXUS POS para liberar los archivos y permitir la sobrescritura
+                        setTimeout(() => {
+                            app.quit();
+                        }, 1000);
+                        
+                        resolve({ success: true });
+                    } catch (spawnError) {
+                        console.error("Error al ejecutar instalador:", spawnError);
+                        reject({ success: false, error: spawnError.message });
+                    }
+                }, 1500); 
+            });
+            
+            writer.on('error', (err) => {
+                reject({ success: false, error: err.message });
+            });
+        });
+    } catch (error) {
+        console.error("Error en descarga:", error);
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('marcar-como-sincronizado', async (event, tabla, idElemento) => {
+    try {
+        if (tabla === 'productos') {
+            db.prepare('UPDATE productos_locales SET estado_sync = 1 WHERE id = ?').run(idElemento);
+        } else if (tabla === 'categorias') {
+            db.prepare('UPDATE categorias_locales SET estado_sync = 1 WHERE id = ?').run(idElemento);
+        }
+        
+        // Avisar a la pantalla de inventario que refresque la tabla
+        BrowserWindow.getAllWindows().forEach(ventana => {
+            if (!ventana.isDestroyed()) ventana.webContents.send('productos-actualizados');
+        });
+        
+        return { success: true };
+    } catch (e) {
+        console.error("❌ Error al marcar como sincronizado:", e.message);
+        return { error: e.message };
+    }
+});
 
 ipcMain.handle('obtener-categorias-local', async () => {
     try {
@@ -1259,33 +2071,44 @@ ipcMain.handle('obtener-sucursales-local', async (event, companyId) => {
 
 ipcMain.handle('obtener-inventario-sucursal', async (event, { companyId, sucursalId }) => {
     try {
-        // Si soy el servidor, leo mi propio SQLite. 
-        // Si soy el cliente, le pregunto al Master por red.
-        if (config.isServer) {
-            const stmt = db.prepare(`
-                SELECT p.id, p.nombre, p.categoria, p.codigo,
-                IFNULL(json_extract(p.datos_json, '$.unit'), 'UN') as unit, 
-                i.stock as stock_sucursal
-                FROM inventario_sucursales i
-                INNER JOIN productos_locales p ON p.id = i.producto_id
-                WHERE p.company_id = ? AND i.sucursal_id = ? AND p.status = 1
+        if (config.isServer && masterDbDirect) {
+            // 🔥 MODO SERVIDOR: Lee directo del Cerebro
+            const stmt = masterDbDirect.prepare(`
+                SELECT producto_id, cantidad_real
+                FROM stock_maestro
+                WHERE company_id = ? AND sucursal_id = ?
             `);
             return stmt.all(companyId, sucursalId);
         } else {
-            // 🔗 PC 2: Pide los datos al Master por el túnel de red
-            const respuesta = await axios.get(`http://${config.serverIP}:${PORT}/api/maestro/stock`);
+            // 🌐 MODO CLIENTE: Intenta consultar por red al puerto 3000
+            const ipDestino = config.isServer ? '127.0.0.1' : config.serverIP;
+            const respuesta = await axios.get(`http://${ipDestino}:${PORT}/api/maestro/stock`, {
+                params: { sucursalId: sucursalId, companyId: companyId }
+            });
             return respuesta.data; 
         }
     } catch (e) {
-        console.error("❌ Error obteniendo inventario:", e.message);
-        return [];
+        console.warn("⚠️ Puerto 3000 bloqueado o Maestro offline. Leyendo stock desde respaldo local SQLite...");
+        // 🛡️ FALLBACK: Si falla (por Expo o red), lee directamente de la base de datos local
+        try {
+            const stmt = db.prepare(`
+                SELECT producto_id, stock as cantidad_real
+                FROM inventario_sucursales
+                WHERE company_id = ? AND sucursal_id = ?
+            `);
+            return stmt.all(companyId, sucursalId);
+        } catch (errorLocal) {
+            console.error("❌ Error profundo leyendo inventario local:", errorLocal.message);
+            return [];
+        }
     }
 });
 
-// main.js - Puente para comunicación con el Maestro durante la venta
-// main.js - PUENTE DE STOCK CON FILTRO PARA SERVICIOS/ABONOS
-ipcMain.handle('verificar-y-descontar-stock-maestro', async (event, items) => {
+ipcMain.handle('verificar-y-descontar-stock-maestro', async (event, datos) => {
     try {
+        const items = Array.isArray(datos) ? datos : datos.items;
+        const sucursalId = Array.isArray(datos) ? null : datos.sucursalId;
+
         // 🔥 FILTRO INTELIGENTE: Separamos productos físicos de los servicios
         const productosFisicos = items.filter(item => {
             const nombre = String(item.nombre || '').toUpperCase();
@@ -1306,13 +2129,28 @@ ipcMain.handle('verificar-y-descontar-stock-maestro', async (event, items) => {
             // 🚀 MODO SERVIDOR: Descuento directo en el archivo
             const transaccion = masterDbDirect.transaction((productos) => {
                 for (const item of productos) {
-                    const row = masterDbDirect.prepare('SELECT cantidad_real FROM stock_maestro WHERE producto_id = ?').get(item.id);
+                    let row;
+                    if (sucursalId) {
+                        row = masterDbDirect.prepare('SELECT cantidad_real FROM stock_maestro WHERE producto_id = ? AND sucursal_id = ?').get(item.id, sucursalId);
+                    } else {
+                        row = masterDbDirect.prepare('SELECT cantidad_real FROM stock_maestro WHERE producto_id = ?').get(item.id);
+                    }
+
                     if (!row || row.cantidad_real < item.cantidad) {
                         throw new Error(`Stock insuficiente para: ${item.nombre || item.id}`);
                     }
                 }
-                const stmt = masterDbDirect.prepare('UPDATE stock_maestro SET cantidad_real = cantidad_real - ?, ultima_sincronizacion = CURRENT_TIMESTAMP WHERE producto_id = ?');
-                for (const item of productos) { stmt.run(item.cantidad, item.id); }
+                
+                const stmtConSucursal = masterDbDirect.prepare('UPDATE stock_maestro SET cantidad_real = cantidad_real - ?, ultima_sincronizacion = CURRENT_TIMESTAMP WHERE producto_id = ? AND sucursal_id = ?');
+                const stmtSinSucursal = masterDbDirect.prepare('UPDATE stock_maestro SET cantidad_real = cantidad_real - ?, ultima_sincronizacion = CURRENT_TIMESTAMP WHERE producto_id = ?');
+                
+                for (const item of productos) { 
+                    if (sucursalId) {
+                        stmtConSucursal.run(item.cantidad, item.id, sucursalId);
+                    } else {
+                        stmtSinSucursal.run(item.cantidad, item.id);
+                    }
+                }
             });
 
             transaccion(productosFisicos); // ✅ Pasamos solo los físicos
@@ -1322,7 +2160,7 @@ ipcMain.handle('verificar-y-descontar-stock-maestro', async (event, items) => {
             // 🌐 MODO CLIENTE: Petición por red al servidor
             const ipDestino = config.isServer ? '127.0.0.1' : config.serverIP;
             const respuesta = await axios.post(`http://${ipDestino}:${PORT}/api/maestro/descontar-stock`, {
-                // ✅ Enviamos solo los físicos y añadimos el nombre para que el servidor dé un error más claro
+                sucursalId: sucursalId,
                 items: productosFisicos.map(i => ({ id: i.id, cantidad: i.cantidad, nombre: i.nombre }))
             });
             return respuesta.data;
@@ -1332,98 +2170,115 @@ ipcMain.handle('verificar-y-descontar-stock-maestro', async (event, items) => {
     }
 });
 
-// main.js - CORRECCIÓN DE SINCRONIZACIÓN MAESTRA
+
 ipcMain.handle('guardar-stock-sucursal', async (event, { productoId, sucursalId, companyId, cantidad, operacion }) => {
     try {
-        const ipDestino = config.isServer ? 'localhost' : config.serverIP;
-        
-        // 1. SINCRONIZACIÓN CON MAESTRO (Xeon Local)
-        // Eliminamos el IF para que tanto SUMAR como FIJAR se reporten al servidor central
-        try {
-            await axios.post(`http://${ipDestino}:${PORT}/api/maestro/registrar-entrada`, {
-                items: [{ 
-                    id: productoId, 
-                    cantidad: cantidad, 
-                    operacion: operacion // <--- CRUCIAL: Enviamos la bandera para que el Maestro sepa qué hacer
-                }]
+        if (config.isServer && masterDbDirect) {
+            // 🔥 SOLUCIÓN: Escribimos directamente en el Cerebro Maestro (stock_maestro) saltándonos el puerto 3000
+            const sql = operacion === 'FIJAR' 
+                ? `INSERT INTO stock_maestro (producto_id, sucursal_id, company_id, cantidad_real, ultima_sincronizacion)
+                   VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                   ON CONFLICT(producto_id, sucursal_id) DO UPDATE SET
+                   cantidad_real = excluded.cantidad_real,
+                   ultima_sincronizacion = CURRENT_TIMESTAMP`
+                : `INSERT INTO stock_maestro (producto_id, sucursal_id, company_id, cantidad_real, ultima_sincronizacion)
+                   VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                   ON CONFLICT(producto_id, sucursal_id) DO UPDATE SET
+                   cantidad_real = stock_maestro.cantidad_real + excluded.cantidad_real,
+                   ultima_sincronizacion = CURRENT_TIMESTAMP`;
+
+            const resultado = masterDbDirect.prepare(sql).run(productoId, sucursalId, companyId, cantidad);
+
+            // Notificar a las ventanas para refrescar la tabla visualmente
+            BrowserWindow.getAllWindows().forEach(ventana => {
+                if (!ventana.isDestroyed()) ventana.webContents.send('productos-actualizados');
             });
-            console.log(`📢 Stock sincronizado con Maestro: Operación ${operacion}`);
-        } catch (errAxios) {
-            console.warn("⚠️ Maestro no disponible. Se guardará solo en esta laptop:", errAxios.message);
+
+            console.log(`📢 Stock Maestro actualizado vía IPC local: Operación ${operacion}`);
+            return { success: true, changes: resultado.changes }; 
+            
+        } else {
+            // Lógica para cuando es una Laptop secundaria (Cliente) comunicándose por red
+            const ipDestino = config.serverIP;
+            const respuesta = await axios.post(`http://${ipDestino}:${PORT}/api/maestro/registrar-entrada`, {
+                sucursalId: sucursalId, 
+                companyId: companyId,   
+                items: [{ id: productoId, cantidad: cantidad, operacion: operacion, sucursalId: sucursalId, companyId: companyId }]
+            });
+            return { success: true, changes: 1 };
         }
-
-        // 2. ACTUALIZACIÓN EN DB LOCAL (Laptop actual)
-        const fecha = new Date().toISOString();
-        const sql = operacion === 'SUMAR' 
-            ? `INSERT INTO inventario_sucursales (producto_id, sucursal_id, company_id, stock, fecha_modificacion, estado_sync)
-               VALUES (?, ?, ?, ?, ?, 0)
-               ON CONFLICT(producto_id, sucursal_id) DO UPDATE SET
-               stock = stock + excluded.stock, 
-               fecha_modificacion = excluded.fecha_modificacion,
-               estado_sync = 0`
-            : `INSERT INTO inventario_sucursales (producto_id, sucursal_id, company_id, stock, fecha_modificacion, estado_sync)
-               VALUES (?, ?, ?, ?, ?, 0)
-               ON CONFLICT(producto_id, sucursal_id) DO UPDATE SET
-               stock = excluded.stock, 
-               fecha_modificacion = excluded.fecha_modificacion,
-               estado_sync = 0`;
-
-        const resultado = db.prepare(sql).run(productoId, sucursalId, companyId, cantidad, fecha);
-
-        // Notificar a las ventanas para refrescar la tabla visualmente
-        BrowserWindow.getAllWindows().forEach(ventana => {
-            if (!ventana.isDestroyed()) ventana.webContents.send('productos-actualizados');
-        });
-
-        return { success: true, changes: resultado.changes }; 
     } catch (e) {
         console.error("❌ Error en guardar-stock-sucursal:", e.message);
         return { success: false, error: e.message };
     }
 });
 
-ipcMain.handle('guardar-clave-admin-local', async (event, c) => {
+ipcMain.handle('guardar-clave-admin-maestro', async (event, c) => {
     try {
-        // 1. Encriptamos la clave en milisegundos
+        // 1. Encriptamos la clave en la computadora local ANTES de enviarla por la red
         const encrypted = encryptClave(c.plainCode);
-        
-        // 2. Guardamos en disco duro
-        const stmt = db.prepare(`
-            INSERT INTO claves_admin_locales (id, ownerName, encryptedCode, company_id, created_by, updatedAt)
-            VALUES (?, ?, ?, ?, ?, ?)
-        `);
-        const resultado = stmt.run(c.id, c.ownerName, encrypted, c.company_id, c.created_by, c.updatedAt);
-        
-        return { success: true, changes: resultado.changes };
+        const datos = {
+            id: c.id, ownerName: c.ownerName, encryptedCode: encrypted,
+            company_id: c.company_id, created_by: c.created_by, updatedAt: c.updatedAt
+        };
+
+        if (config.isServer && masterDbDirect) {
+            // 🚀 MODO SERVIDOR: Escribe directo en la DB Maestra
+            masterDbDirect.prepare(`
+                INSERT INTO claves_admin_maestras (id, ownerName, encryptedCode, company_id, created_by, updatedAt)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `).run(datos.id, datos.ownerName, datos.encryptedCode, datos.company_id, datos.created_by, datos.updatedAt);
+            return { success: true };
+        } else {
+            // 🌐 MODO CLIENTE: Envía por red al puerto 3000
+            const ipDestino = config.isServer ? '127.0.0.1' : config.serverIP;
+            const respuesta = await axios.post(`http://${ipDestino}:${PORT}/api/maestro/guardar-clave-admin`, datos);
+            return { success: respuesta.data.exito };
+        }
     } catch (e) {
-        console.error("❌ Error guardando clave segura:", e.message);
+        console.error("❌ Error guardando clave segura en Maestro:", e.message);
         return { error: e.message };
     }
 });
 
-ipcMain.handle('obtener-claves-admin-local', async (event, companyId) => {
+ipcMain.handle('obtener-claves-admin-maestro', async (event, companyId) => {
     try {
-        // 1. Buscamos todas las filas encriptadas
-        const claves = db.prepare('SELECT * FROM claves_admin_locales WHERE company_id = ? ORDER BY updatedAt DESC').all(companyId);
+        let claves = [];
         
-        // 2. Desencriptamos en la memoria RAM (al vuelo) antes de mandarlas al HTML
+        if (config.isServer && masterDbDirect) {
+            // 🚀 MODO SERVIDOR: Lee directo
+            claves = masterDbDirect.prepare('SELECT * FROM claves_admin_maestras WHERE company_id = ? ORDER BY updatedAt DESC').all(companyId);
+        } else {
+            // 🌐 MODO CLIENTE: Lee desde la red
+            const ipDestino = config.isServer ? '127.0.0.1' : config.serverIP;
+            const respuesta = await axios.get(`http://${ipDestino}:${PORT}/api/maestro/obtener-claves-admin/${companyId}`);
+            claves = respuesta.data;
+        }
+
+        // 2. Desencriptamos localmente en RAM para mandarlas al frontend
         return claves.map(c => ({
             id: c.id,
             ownerName: c.ownerName,
-            plainCode: decryptClave(c.encryptedCode), // 🔓 Aquí se revela para que el ojito 👁️ funcione
+            plainCode: decryptClave(c.encryptedCode), // 🔓 Revela
             company_id: c.company_id,
             updatedAt: c.updatedAt
         }));
     } catch (e) {
-        console.error("❌ Error obteniendo claves seguras:", e.message);
+        console.error("❌ Error obteniendo claves seguras del Maestro:", e.message);
         return [];
     }
 });
 
-ipcMain.handle('eliminar-clave-admin-local', async (event, id) => {
+ipcMain.handle('eliminar-clave-admin-maestro', async (event, id) => {
     try {
-        const resultado = db.prepare('DELETE FROM claves_admin_locales WHERE id = ?').run(id);
-        return { success: true, changes: resultado.changes };
+        if (config.isServer && masterDbDirect) {
+            masterDbDirect.prepare('DELETE FROM claves_admin_maestras WHERE id = ?').run(id);
+            return { success: true };
+        } else {
+            const ipDestino = config.isServer ? '127.0.0.1' : config.serverIP;
+            const respuesta = await axios.delete(`http://${ipDestino}:${PORT}/api/maestro/eliminar-clave-admin/${id}`);
+            return { success: respuesta.data.exito };
+        }
     } catch (e) {
         return { error: e.message };
     }
@@ -1548,11 +2403,12 @@ ipcMain.on('apagar-sistema', () => {
     app.quit();
 });
 
-ipcMain.handle('eliminar-cliente-local', async (event, rif) => {
-    try {
-        return db.prepare('DELETE FROM clientes_locales WHERE rif = ?').run(rif);
-    } catch (e) { return { error: e.message }; }
+ipcMain.handle('reiniciar-aplicacion', () => {
+    console.log("🔄 Reiniciando Nexus POS Global para aplicar nueva configuración de Plan...");
+    app.relaunch();
+    app.quit();
 });
+
 
 
 ipcMain.handle('obtener-unidades-empaque-local', async (event, companyId) => {
@@ -1632,7 +2488,6 @@ ipcMain.handle('obtener-empaque-por-producto', async (event, productId) => {
     }
 });
 
-// --- MANEJADORES PARA SALIDAS DE INVENTARIO ---
 
 ipcMain.handle('guardar-salida-local', async (event, datos) => {
     try {
@@ -1640,9 +2495,14 @@ ipcMain.handle('guardar-salida-local', async (event, datos) => {
         const ipDestino = config.isServer ? 'localhost' : config.serverIP;
 
         try {
-            // Solicitamos al maestro descontar el stock global
+            // 🔥 FIX: Añadimos sucursalId en el cuerpo y dentro de items para asegurar la ruta correcta
             const respuestaMaestro = await axios.post(`http://${ipDestino}:${PORT}/api/maestro/descontar-stock`, {
-                items: [{ id: datos.product_id, cantidad: datos.cantidad }]
+                sucursalId: datos.branch_id,
+                items: [{ 
+                    id: datos.product_id, 
+                    cantidad: datos.cantidad,
+                    sucursalId: datos.branch_id
+                }]
             });
 
             if (!respuestaMaestro.data.exito) {
@@ -1739,11 +2599,44 @@ ipcMain.handle('guardar-configuracion-cajera', async (event, clave, valor) => {
     }
 });
 
-ipcMain.handle('sincronizar-configuracion-xeon', async (event, datos) => {
-    return await enviarDatosAXeon(datos);
+
+
+ipcMain.handle('guardar-config-maestra', async (event, datos) => {
+    try {
+        let serverIpDestino = 'localhost';
+        if (fs.existsSync(configPath)) {
+            const configLocal = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            serverIpDestino = configLocal.isServer ? 'localhost' : (configLocal.serverIP || 'localhost');
+        }
+
+        const url = `http://${serverIpDestino}:3000/api/maestro/configuracion`;
+        const response = await axios.post(url, datos);
+        return response.data;
+    } catch (error) {
+        console.error("❌ Error guardando config en el Maestro:", error.message);
+        return { exito: false, error: error.message };
+    }
 });
 
-// Calcula el Checksum XOR (Sello de seguridad requerido)
+
+ipcMain.handle('leer-config-maestra', async (event, clave) => {
+    try {
+        let serverIpDestino = 'localhost';
+        if (fs.existsSync(configPath)) {
+            const configLocal = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            serverIpDestino = configLocal.isServer ? 'localhost' : (configLocal.serverIP || 'localhost');
+        }
+
+        const url = `http://${serverIpDestino}:3000/api/maestro/configuracion/${clave}`;
+        const response = await axios.get(url);
+        return response.data; 
+    } catch (error) {
+        console.error("❌ Error leyendo config del Maestro:", error.message);
+        return { exito: false, error: error.message };
+    }
+});
+
+
 function calcularChecksum(trama) {
     let checksum = 0;
     for (let i = 0; i < trama.length; i++) {
@@ -1870,6 +2763,58 @@ ipcMain.handle('imprimir-factura-fiscal', async (event, saleData) => {
             resolve({ success: false, msg: error.message });
         }
     });
+});
+
+function getIpServidor() {
+    try {
+        const configLocal = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        return configLocal.isServer ? 'localhost' : (configLocal.serverIP || 'localhost'); 
+    } catch (e) {
+        return 'localhost';
+    }
+}
+
+// 1. Obtener Borradores
+ipcMain.handle('obtener-borradores-maestro', async (event, { sucursalId, companyId }) => {
+    try {
+        const ip = getIpServidor();
+        const url = `http://${ip}:3000/api/maestro/obtener-borradores?sucursalId=${sucursalId}&companyId=${companyId}`;
+        const response = await axios.get(url);
+        return response.data;
+    } catch (error) {
+        console.error("Error obteniendo borradores:", error.message);
+        return [];
+    }
+});
+
+ipcMain.handle('obtener-ip-maestro', () => {
+    return getIpServidor(); // Usamos la misma función que arreglamos antes
+});
+
+
+
+// 2. Guardar Borrador
+ipcMain.handle('guardar-borrador-maestro', async (event, datos) => {
+    try {
+        const ip = getIpServidor();
+        const url = `http://${ip}:3000/api/maestro/guardar-borrador`;
+        const response = await axios.post(url, datos);
+        return response.data;
+    } catch (error) {
+        return { error: error.message };
+    }
+});
+
+// 3. Eliminar Borrador
+ipcMain.handle('eliminar-borrador-maestro', async (event, id) => {
+    try {
+        const ip = getIpServidor();
+        const url = `http://${ip}:3000/api/maestro/eliminar-borrador/${id}`;
+        const response = await axios.delete(url);
+        return response.data;
+    } catch (error) {
+        return { error: error.message };
+    }
 });
 
 let secuenciaHasar = 0x21; 
@@ -2028,51 +2973,48 @@ ipcMain.on('ejecutar-auth-hka', async (event) => {
 // --- FASE 3: EMISIÓN DE FACTURA ELECTRÓNICA ---
 ipcMain.handle('emitir-factura-hka', async (event, facturaJSON) => {
     try {
-        if (!apiToken) {
-            throw new Error("No hay un token de autenticación activo.");
-        }
+        if (!apiToken) throw new Error("No hay token de autenticación activo.");
 
-        // 1. Buscamos la raíz de forma flexible (mayúsculas o minúsculas)
-        const doc = facturaJSON.DocumentoElectronico || facturaJSON.documentoElectronico || facturaJSON.Documentoelectronico;
+        // 1. Ubicar la raíz del documento
+        const doc = facturaJSON.DocumentoElectronico || facturaJSON.documentoElectronico;
+        if (!doc) throw new Error("Estructura raíz 'DocumentoElectronico' no encontrada en el JSON.");
 
-        if (!doc) {
-            console.error("❌ ERROR: Estructura raíz no encontrada", facturaJSON);
-            throw new Error("El JSON no tiene una raíz válida (documentoElectronico).");
-        }
+        const nroDoc = doc.Encabezado.IdentificacionDocumento.NumeroDocumento;
+        
+        // CORRECCIÓN: Usamos TotalesRetencion
+        console.log(`🚀 ENVIANDO A TFHKA - FACTURA #${nroDoc}`);
+        console.log("📦 payload completo:", JSON.stringify(facturaJSON, null, 2)); 
+        
+        reportarLogHKA(event, `Enviando factura #${nroDoc} a fiscalización...`);
 
-        // 2. Extraemos datos para el log (Buscamos Totales dentro de Encabezado)
-        const numeroDoc = doc.Encabezado.IdentificacionDocumento.NumeroDocumento;
-        const totalesParaLog = doc.Encabezado.Totales;
-
-        console.log("-----------------------------------------");
-        console.log("🚀 ENVIANDO A TFHKA - FACTURA #" + numeroDoc);
-        console.log("UBICACIÓN: Encabezado.Totales");
-        console.log("OBJETO TOTALES:", JSON.stringify(totalesParaLog, null, 2));
-        console.log("-----------------------------------------");
-
-        reportarLogHKA(event, `Enviando factura #${numeroDoc} a fiscalización...`);
-
-        // 3. Envío directo a la API
+        // 2. Envío a la API
         const response = await axios.post(`${HKA_BASE_URL}/api/Emision`, facturaJSON, {
-            headers: { 
-                'Authorization': `Bearer ${apiToken}`,
-                'Content-Type': 'application/json'
-            }
+            headers: { 'Authorization': `Bearer ${apiToken}`, 'Content-Type': 'application/json' }
         });
 
-        if (response.data && response.data.codigo === 0) {
+        const data = response.data; // Axios guarda la respuesta en .data
+
+        // 3. Validación
+        if (data && [0, 200, '0', '200'].includes(data.codigo)) {
             reportarLogHKA(event, "✅ Factura aceptada por The Factory HKA.");
-            return { exito: true, data: response.data };
-        } else {
-            const errorMsg = response.data.mensaje || "Error desconocido";
-            const validaciones = response.data.validaciones ? ` - ${response.data.validaciones.join(', ')}` : "";
-            reportarLogHKA(event, `❌ Error de Emisión: ${errorMsg}${validaciones}`, true);
-            return { exito: false, error: response.data };
-        }
+            return { exito: true, data };
+        } 
+        
+        // 4. Manejo de errores de negocio (HKA devolvió algo pero no fue éxito)
+        const errorMsg = `${data.mensaje || "Error desconocido"}`;
+        console.error("❌ HKA rechazó la factura:", data);
+        reportarLogHKA(event, `❌ Error de Emisión HKA: ${errorMsg}`, true);
+        return { exito: false, error: errorMsg };
 
     } catch (error) {
-        const detalle = error.response ? JSON.stringify(error.response.data) : error.message;
-        reportarLogHKA(event, `🔥 Fallo de red/sistema en Emisión: ${detalle}`, true);
+        // Axios lanza error si el status code no es 2xx
+        let detalle = error.message;
+        if (error.response) {
+            detalle = JSON.stringify(error.response.data);
+            console.error("❌ Respuesta completa de HKA:", error.response.data);
+        }
+        
+        reportarLogHKA(event, `🔥 Fallo de conexión HKA: ${detalle}`, true);
         return { exito: false, error: detalle };
     }
 });
@@ -2082,7 +3024,7 @@ async function createSplashScreen() {
         width: 800, // Ajusta al tamaño de tu video
         height: 500, 
         transparent: true, 
-        icon: path.join(__dirname, 'assets/logo_nexus_sin_fondo.png'),
+        icon: path.join(__dirname, 'assets/icono_redondeado.ico'),
         frame: false, 
         alwaysOnTop: true,
         resizable: false,
@@ -2164,7 +3106,9 @@ async function createWindow() {
     await asegurarHistorialInicial();
     await rellenarHuecosHistorial();
 
-    //Menu.setApplicationMenu(null);
+    if (app.isPackaged) {
+        Menu.setApplicationMenu(null);
+    }
 
     win = new BrowserWindow({
         width: 1000,
@@ -2173,7 +3117,7 @@ async function createWindow() {
         resizable: false,
         maximizable: false,
         show: false, 
-        icon: path.join(__dirname, 'assets/logo_nexus_sin_fondo.png'),
+        icon: path.join(__dirname, 'assets/icono_redondeado.ico'),
         backgroundColor: '#2e2c29',
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),

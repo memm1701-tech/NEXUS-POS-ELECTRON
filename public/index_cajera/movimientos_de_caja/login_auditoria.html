@@ -121,7 +121,7 @@
             });
         }
 
-        // --- 3. LÓGICA CRÍTICA DE AUTENTICACIÓN (SQLITE) ---
+
         async function checkAdminCode() {
             if (!companyId) { 
                 showCustomAlert('Error: El ID de la empresa no está cargado.', 'warning'); 
@@ -139,8 +139,8 @@
                 btnSubmit.textContent = 'Verificando...';
                 if(keyIcon) keyIcon.style.color = '#F59E0B'; // Ámbar (Verificando)
 
-                // 1. Obtenemos todas las claves desencriptadas desde SQLite (Reutilizando la función del Main)
-                const clavesGuardadas = await window.nexusAPI.obtenerClavesAdminLocal(companyId);
+                // 1. Obtenemos todas las claves desencriptadas desde el Servidor Maestro
+                const clavesGuardadas = await window.nexusAPI.obtenerClavesAdminMaestro(companyId);
                 
                 // 2. Buscamos si la clave ingresada coincide con alguna clave válida
                 const esClaveValida = clavesGuardadas.some(clave => clave.plainCode === inputCode);
@@ -155,7 +155,7 @@
                     
                     // Redirección
                     setTimeout(() => {
-                        window.location.href = `index_cajera/punto-de-venta/cierre_de_caja.html`;
+                        window.location.href = `index_cajera/movimientos_de_caja/auditoria.html`;
                     }, 1000); 
                     
                 } else {
@@ -173,8 +173,8 @@
                 }
                 
             } catch (e) {
-                console.error("Error al verificar clave local: ", e);
-                showCustomAlert("Error de comunicación con la base de datos SQLite.", 'error'); 
+                console.error("Error al verificar clave en el Servidor Maestro: ", e);
+                showCustomAlert("Error de comunicación con el Servidor Central.", 'error'); 
                 btnSubmit.disabled = false;
                 btnSubmit.textContent = 'Desbloquear Funcionalidad';
                 if(keyIcon) keyIcon.style.color = '#DC2626'; 

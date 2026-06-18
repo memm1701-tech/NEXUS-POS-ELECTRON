@@ -1,7 +1,7 @@
 {
-  "name": "nexus-pos",
-  "version": "1.0.0",
-  "description": "Sistema de Facturación Nexus Pos Global",
+  "name": "nexus-pos-global",
+  "version": "1.3.7",
+  "description": "Sistema de Facturacion Nexus Pos Global",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -10,7 +10,7 @@
     "rebuild": "electron-rebuild -f -w better-sqlite3"
   },
   "keywords": [],
-  "author": "Moisés Mariño",
+  "author": "Nexus Company C.A",
   "license": "ISC",
   "type": "commonjs",
   "build": {
@@ -21,7 +21,7 @@
       "output": "dist"
     },
     "win": {
-      "icon": "assets/logo_nexus_sin_fondo.png",
+      "icon": "assets/icono_redondeado.ico",
       "target": [
         "nsis"
       ]
@@ -30,12 +30,16 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "shortcutName": "Nexus POS Global",
-      "createDesktopShortcut": true
+      "createDesktopShortcut": true,
+      "installerIcon": "assets/icono_redondeado.ico",
+      "uninstallerIcon": "assets/icono_redondeado.ico"
     },
     "files": [
       "**/*",
       "!data/*",
-      "!dist/*"
+      "!dist/*",
+      "!web-nexus/*",
+      "!.git/**/*"
     ],
     "asar": true,
     "npmRebuild": true
@@ -53,6 +57,8 @@
     "@fontsource/roboto": "^5.2.10",
     "@fortawesome/fontawesome-free": "^7.2.0",
     "@google/generative-ai": "^0.24.1",
+    "@gsap/react": "^2.1.2",
+    "@react-three/postprocessing": "^3.0.4",
     "@serialport/bindings-cpp": "^13.0.1",
     "@tailwindcss/vite": "^4.2.2",
     "axios": "^1.13.6",
@@ -69,6 +75,7 @@
     "express": "^5.2.1",
     "firebase": "^12.9.0",
     "fraction.js": "^5.3.4",
+    "gsap": "^3.15.0",
     "helmet": "^8.1.0",
     "material-icons": "^1.13.14",
     "nanoid": "^3.3.11",

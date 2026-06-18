@@ -337,6 +337,8 @@
         cart: []
     };
 
+    const API_BASE_URL = "https://tienda.nexusposgobal.com/api";
+
     const tiendaConfig = {
         whatsappNumber: "584120000000",
         storeName: "Tu Tienda Online",
@@ -380,165 +382,153 @@
             return null; 
         }
     
-    async function fetchBcvRate() {
+    async function fetchBcvRate(companyId) {
+        if (!companyId) return 1;
         try {
-            // Cambiamos la URL externa fallida por tu propio servicio de Scraping de Nexus
-            const response = await fetch('https://scarping.nexusposgobal.com/api/tasas');
-            if (!response.ok) throw new Error("Error obteniendo tasa desde el Servidor Nexus");
+            // 🔥 AHORA SÍ: Consulta la tasa directamente a tu PostgreSQL
+            const response = await fetch(`${API_BASE_URL}/maestro/tasa/${companyId}`);
+            if (!response.ok) return 1;
             
             const data = await response.json();
+            const usdRate = parseFloat(data.tasa);
             
-            // Verificamos que la respuesta sea exitosa y contenga la tasa USD
-            if (data.success && data.rates && data.rates.USD) {
-                // Procesamos el valor: Convertimos a string, cambiamos comas por puntos y pasamos a número
-                const rawValue = data.rates.USD.toString().trim().replace(',', '.');
-                const usdRate = parseFloat(rawValue);
-                
-                if (isNaN(usdRate)) {
-                    console.warn("⚠️ El valor de tasa recibido no es un número válido.");
-                    return 1;
-                }
+            if (isNaN(usdRate) || usdRate <= 0) return 1;
 
-                console.log("✅ Tasa BCV obtenida con éxito desde Nexus:", usdRate);
-                return usdRate;
-            }
-            
-            return 1; // Respaldo si no hay datos
+            console.log("✅ Tasa BCV recuperada desde PostgreSQL:", usdRate);
+            return usdRate;
         } catch (error) {
-            console.error("❌ Error al cargar tasa desde tu infraestructura Nexus:", error);
-            // Retorno de respaldo para evitar que los precios queden en cero o den error
+            console.error("❌ Error al cargar tasa desde la BD:", error);
             return 1;
         }
     }
 
 
     async function loadTiendaConfig(companyId) {
-    if (!companyId) return;
+        if (!companyId) return;
 
-    const URL_IDENTIDAD = `https://configuracioncajera.nexusposgobal.com/api/xeon/configuracion/${companyId}`;
-    const URL_VITRINA = `https://configuracioncajera.nexusposgobal.com/api/xeon/configuracion/${companyId}/config_vitrina_digital`;
+        // 🔥 CORRECCIÓN VITAL: Ahora buscamos 'config_tienda_online' tal como lo guarda configuracion.html
+        const URL_IDENTIDAD = `${API_BASE_URL}/maestro/configuracion_tienda/${companyId}/config_tienda_online`;
+        const URL_VITRINA = `${API_BASE_URL}/maestro/configuracion_tienda/${companyId}/config_vitrina_digital`;
 
-    try {
-        // Ejecutamos ambas peticiones en paralelo para mayor velocidad
-        const [resIdentidad, resVitrina] = await Promise.all([
-            fetch(URL_IDENTIDAD),
-            fetch(URL_VITRINA)
-        ]);
+        try {
+            const [resIdentidad, resVitrina] = await Promise.all([
+                fetch(URL_IDENTIDAD),
+                fetch(URL_VITRINA)
+            ]);
 
-        if (resIdentidad.ok) {
-            const data = await resIdentidad.json();
-            tiendaConfig.storeName = data.storeName || "Nexus Shop";
-            tiendaConfig.whatsappNumber = data.whatsappNumber || "584120000000";
-            tiendaConfig.logoUrl = data.logoUrl || null;
-            tiendaConfig.currencyCode = data.currencyCode || 'BS';
-            tiendaConfig.deliveryEnabled = data.deliveryEnabled !== undefined ? data.deliveryEnabled : true;
-            tiendaConfig.exchangeRateMethod = data.exchangeRateMethod || 'RateDB';
-            tiendaConfig.manualExchangeRate = parseFloat(data.manualExchangeRate) || 0;
+            if (resIdentidad.ok) {
+                const responseJson = await resIdentidad.json();
+                
+                // 🔥 CORRECCIÓN: Tu backend devuelve la info dentro de la propiedad "data"
+                let data = responseJson.data || {};
+                if (typeof data === 'string') {
+                    try { data = JSON.parse(data); } catch(e){}
+                }
 
-            document.title = `${tiendaConfig.storeName} - Tienda Online`;
+                tiendaConfig.storeName = data.storeName || "Nexus Shop";
+                tiendaConfig.whatsappNumber = data.whatsappNumber || "584120000000";
+                tiendaConfig.logoUrl = data.logoUrl || null;
+                tiendaConfig.currencyCode = data.currencyCode || 'BS';
+                tiendaConfig.deliveryEnabled = data.deliveryEnabled !== undefined ? data.deliveryEnabled : true;
+                tiendaConfig.exchangeRateMethod = data.exchangeRateMethod || 'RateDB';
+                tiendaConfig.manualExchangeRate = parseFloat(data.manualExchangeRate) || 0;
 
-            if (tiendaConfig.exchangeRateMethod === 'RateDB') {
-                tiendaConfig.bcvRate = await fetchBcvRate();
-            } else {
-                tiendaConfig.bcvRate = tiendaConfig.manualExchangeRate || 1;
+                document.title = `${tiendaConfig.storeName} - Tienda Online`;
+
+                if (tiendaConfig.exchangeRateMethod === 'RateDB') {
+                    tiendaConfig.bcvRate = await fetchBcvRate(companyId);
+                } else {
+                    tiendaConfig.bcvRate = tiendaConfig.manualExchangeRate || 1;
+                }
+                currentDisplayCurrency = (tiendaConfig.currencyCode === 'USD') ? 'USD' : 'BS';
+                console.log("✅ Identidad de la tienda cargada desde PostgreSQL.");
             }
 
-            currentDisplayCurrency = (tiendaConfig.currencyCode === 'USD') ? 'USD' : 'BS';
+            if (resVitrina.ok) {
+                const responseJson = await resVitrina.json();
+                let vitrinaData = responseJson.data || {};
+                if (typeof vitrinaData === 'string') {
+                    try { vitrinaData = JSON.parse(vitrinaData); } catch(e){}
+                }
+                tiendaConfig.vitrina = vitrinaData;
+                console.log("🎯 Configuración de vitrina cargada desde PostgreSQL.");
+            }
+        } catch (error) {
+            console.error("⚠️ Fallo al recuperar configuración desde Maestro:", error);
         }
-
-        if (resVitrina.ok) {
-            const vitrinaData = await resVitrina.json();
-            // Guardamos las reglas de visibilidad y precios especiales
-            tiendaConfig.vitrina = vitrinaData || {};
-            console.log("🎯 Reglas de vitrina y ofertas cargadas con éxito.");
-        }
-
-    } catch (error) {
-        console.error("⚠️ Fallo al recuperar configuración desde Xeon:", error);
     }
-}
 
 async function loadStoreData(companyId) {
         currentCompanyId = companyId;
-
-        // Capturamos el elemento de carga que ya tienes en el HTML
         const loader = document.getElementById('loading-overlay');
 
         if (!companyId) {
-            document.getElementById('category-title').textContent = 'Error: ID de Empresa no encontrado.';
-            // Ocultamos el loader si no hay ID para mostrar el mensaje de error
             if (loader) loader.classList.add('hidden');
-            renderProducts([]); 
             return;
         }
 
-        document.getElementById('category-title').textContent = 'Sincronizando productos...';
-        
-        // --- URLS DE TUS SUBDOMINIOS XEON ---
-        const URL_CATEGORIAS = `https://categorias.nexusposgobal.com/api/categorias/${companyId}`;
-        const URL_PRODUCTOS = `https://productos.nexusposgobal.com/api/productos/${companyId}`;
+        // 🔥 CORRECCIÓN: Eliminamos URLs viejas y apuntamos al router 'maestro'
+        const URL_CATEGORIAS = `${API_BASE_URL}/maestro/categorias/${companyId}`;
+        const URL_PRODUCTOS = `${API_BASE_URL}/maestro/inventario/${companyId}`;
 
         try {
-            // 1. CARGAR CATEGORÍAS
-            const resCat = await fetch(URL_CATEGORIAS);
-            const categoriasServer = resCat.ok ? await resCat.json() : [];
-            
+            const [resCat, resProd] = await Promise.all([
+                fetch(URL_CATEGORIAS),
+                fetch(URL_PRODUCTOS)
+            ]);
+
+            if (!resProd.ok) throw new Error("Error en servidor de productos");
+
+            // 1. Procesar Categorías
+            const categoriasServer = await resCat.json();
             storeData.categories = [{ id: 'all', name: 'Todos los Productos', title: 'Todos los Productos' }];
-            
             categoriasServer.forEach(cat => {
                 storeData.categories.push({ 
-                    id: cat.id || cat.categoria_ID, 
-                    name: cat.nombre || 'Sin Nombre', 
+                    id: cat.categoria_id, 
+                    name: cat.nombre, 
                     title: cat.nombre 
                 });
             });
 
-            // 2. CARGAR PRODUCTOS
-            const resProd = await fetch(URL_PRODUCTOS);
-            if (!resProd.ok) throw new Error("Servidor de productos fuera de línea.");
-            
+            // 2. Procesar Productos
             const productosServer = await resProd.json();
             storeData.products = [];
+
+            const placeholder = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22400%22%20height%3D%22300%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23eee%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%20font-size%3D%2220%22%20fill%3D%22%23aaa%22%3ESin%20Imagen%3C%2Ftext%3E%3C%2Fsvg%3E';
 
             productosServer.forEach(p => {
                 if (p.status === 0) return;
 
-                const productPrice = parseFloat(p.precio_venta || p.precio || 0);
-                const categoryName = storeData.categories.find(c => c.id === p.categoria)?.name || 'Sin Categoría';
-                const alicuotaStr = String(p.tipo_alicuota || p.iva || "0"); // Captura el texto
-                const alicuotaNum = parseInt(alicuotaStr); // Crea el número para cálculos
-                const alicuota = String(p.tipo_alicuota || p.iva || "0");
-                const taxDisplay = taxLabels[alicuota] || "E (Exento) - 0%";
+                let datos = {};
+                if (p.datos_json) {
+                    try {
+                        datos = typeof p.datos_json === 'string' ? JSON.parse(p.datos_json) : p.datos_json;
+                    } catch (e) { console.warn("Error en JSON", e); }
+                }
+
+                const catId = p.categoria_id || 'Sin Cat.';
+                const categoryName = storeData.categories.find(c => c.id === catId)?.name || 'Sin Categoría';
 
                 storeData.products.push({
-                    id: p.id || p.producto_ID,
-                    name: p.nombre || 'Producto sin nombre',
-                    categoryId: p.categoria || 'Sin Cat.', 
-                    price: productPrice, 
-                    imageUrl: p.imagen || 'https://placehold.co/400x300/f0f0f0/AAAAAA?text=Sin+Imagen',
+                    id: p.producto_id || p.id,
+                    name: p.nombre || datos.nombre || 'Producto',
+                    categoryId: catId, 
+                    price: parseFloat(p.precio_venta || datos.precio_venta || 0), 
+                    imageUrl: datos.imagen || p.imagen || placeholder,
                     collection: categoryName,
-                    unit: p.unit || 'UN',
-                    code: p.codigo || 'S/C',
-                    tax: taxDisplay,
-                    taxRate: alicuotaNum,
-                    currency: p.moneda || p.currency || 'USD' // <--- CAPTURAMOS LA MONEDA DE ORIGEN
+                    unit: datos.unit || p.unit || 'UN',
+                    code: p.codigo || datos.codigo || 'S/C',
+                    taxRate: parseInt(p.iva_porcentaje || 0),
+                    currency: datos.moneda || 'USD'
                 });
             });
             
-            console.log(`✅ Datos cargados desde Xeon: ${storeData.products.length} productos.`);
-            
-            // 🚀 DESAPARECE EL MENSAJE: La data ya está lista para mostrarse
             if (loader) loader.classList.add('hidden');
-            
             switchCategory('all'); 
 
         } catch (error) {
-            console.error("❌ Error al cargar datos desde Xeon:", error);
-            document.getElementById('category-title').textContent = 'Error de conexión con el servidor central.';
-            
-            // 🚀 DESAPARECE EL LOADER: Incluso en error, para que el usuario vea el mensaje de fallo
+            console.error("❌ Error en carga de tienda:", error);
             if (loader) loader.classList.add('hidden');
-            
             renderProducts([]);
         }
     }

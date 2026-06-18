@@ -39,6 +39,13 @@
             </label>
         </div>
 
+        <div class="p-4 border-b border-gray-200 text-left">
+            <label for="config-validar-eliminar" class="flex items-center justify-between text-gray-700 font-medium cursor-pointer">
+                <span class="text-lg">Validar clave antes de eliminar un producto del carrito</span>
+                <input type="checkbox" id="config-validar-eliminar" class="h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+            </label>
+        </div>
+
         <div class="space-y-4 text-left p-6 border border-gray-200 bg-gray-50 rounded-md">
             <div class="flex items-center justify-between mb-2 border-b pb-4">
                 <div>
@@ -73,8 +80,10 @@
                 </select>
             </div>
 
-            <div id="section_electronica" style="display: none; border: 1px solid #00bcff; padding: 20px; border-radius: 8px; margin-top: 15px; background-color: #f0f9ff;">
-                <h3 class="text-md font-bold mb-4" style="color: #00bcff;"><i class="fas fa-key mr-2"></i>Credenciales API The Factory HKA</h3>
+           <div id="section_electronica" style="display: none; border: 1px solid #00bcff; padding: 20px; border-radius: 8px; margin-top: 15px; background-color: #f0f9ff;">
+                <h3 class="text-md font-bold mb-4 flex items-center" style="color: #00bcff;">
+                    <span class="material-icons mr-2">vpn_key</span>Credenciales API The Factory HKA
+                </h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="space-y-2">
                         <label class="block text-sm font-medium text-gray-700">Token Usuario:</label>
@@ -85,6 +94,25 @@
                         <input type="password" id="configTokenPassword" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2.5 border" placeholder="Password API">
                     </div>
                 </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+                    <div class="space-y-2">
+                        <label for="hkaSucursal" class="block text-sm font-medium text-gray-700">Sucursal HKA (Ej: 0001):</label>
+                        <input type="text" id="hkaSucursal" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2.5 border" placeholder="0001">
+                    </div>
+                    <div class="space-y-2">
+                        <label for="hkaSerie" class="block text-sm font-medium text-gray-700">Serie HKA (EN MAYUSCULAS):</label>
+                        <input type="text" id="hkaSerie" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2.5 border" placeholder="NP">
+                    </div>
+                    <div class="space-y-2">
+                        <label for="hkaMoneda" class="block text-sm font-medium text-gray-700">Moneda Fiscal:</label>
+                        <select id="hkaMoneda" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2.5 border">
+                            <option value="VES">VES (Bolívares)</option>
+                            <option value="USD">USD (Dólares)</option>
+                        </select>
+                    </div>
+                </div>
+
             </div>
 
             <div id="config-puerto-serial" class="space-y-2">
@@ -114,6 +142,19 @@
                 </div>
             </div>
         </div>
+
+        <div class="space-y-4 text-left p-6 border border-gray-200 bg-gray-50 rounded-md mb-6 border-l-4 border-green-600">
+            <div class="mb-2">
+                <h2 class="text-lg font-semibold text-gray-800 flex items-center">Productos Automáticos (Nueva Venta)</h2>
+                <p class="text-sm text-gray-500">Seleccione los productos (ej. Bolsas) que se añadirán automáticamente al carrito al iniciar una factura vacía.</p>
+            </div>
+            <div class="relative">
+                <input type="text" id="auto-product-search" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-3 border focus:ring-green-500 focus:border-green-500" placeholder="Escriba para buscar un producto...">
+                <div id="auto-autocomplete-results" class="absolute z-[100] w-full bg-white border border-gray-200 shadow-xl rounded-md mt-1 hidden max-h-60 overflow-y-auto"></div>
+            </div>
+            <div id="auto-products-list" class="mt-4 space-y-2">
+                </div>
+        </div>
         
         <div class="pt-4 pb-10">
             <button id="saveConfigBtn" class="w-full md:w-auto md:min-w-[300px] mx-auto block bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-lg shadow-lg transition duration-300 ease-in-out text-lg">
@@ -129,6 +170,8 @@
     let companyId = null;
     let branchId = null; 
     let cashierId = null; 
+    window.allProductsConfig = [];
+    window.autoProductsSelected = [];
 
     const saveConfigBtn = document.getElementById('saveConfigBtn');
     const messageBox = document.getElementById('messageBox');
@@ -150,6 +193,7 @@
     // Checkboxes
     const enableScaleCheckbox = document.getElementById('config-enable-scale'); 
     const multicurrencyCheckbox = document.getElementById('config-multicurrency');
+    const validarEliminarCheckbox = document.getElementById('config-validar-eliminar'); // NUEVO
 
     function showMessage(message, color) {
         if (!messageBox) return;
@@ -234,18 +278,24 @@
                     if (tipoEmisionSelect && savedTipoEmision) {
                         tipoEmisionSelect.value = savedTipoEmision;
                         
-                        // 🟢 NUEVO: Lógica de inicialización visual automática
                         const sectionElectronica = document.getElementById('section_electronica');
                         if (sectionElectronica) {
                             sectionElectronica.style.display = (savedTipoEmision === 'ELECTRONICA') ? 'block' : 'none';
                         }
                     }
 
-                    // 🟢 CARGA DE CAMPOS (Tus líneas intactas)
                     const tokenUserInput = document.getElementById('configTokenUsuario');
                     const tokenPassInput = document.getElementById('configTokenPassword');
                     if (tokenUserInput) tokenUserInput.value = data.token_usuario || '';
                     if (tokenPassInput) tokenPassInput.value = data.token_password || '';
+
+                    // 🟢 NUEVA CARGA DE CAMPOS HKA FISCAL
+                    const hkaSucursalInput = document.getElementById('hkaSucursal');
+                    const hkaSerieInput = document.getElementById('hkaSerie');
+                    const hkaMonedaInput = document.getElementById('hkaMoneda');
+                    if (hkaSucursalInput) hkaSucursalInput.value = data.hka_sucursal || '0001';
+                    if (hkaSerieInput) hkaSerieInput.value = data.hka_serie || '';
+                    if (hkaMonedaInput) hkaMonedaInput.value = data.hka_moneda || 'VES';
                 
                 // Cargar Impresora si sigue instalada en Windows
                 if (savedPrinter && impresorasValidas.includes(savedPrinter)) {
@@ -267,6 +317,7 @@
                 }
                 
                 if (multicurrencyCheckbox) multicurrencyCheckbox.checked = (enableMulticurrency === true);
+                if (validarEliminarCheckbox) validarEliminarCheckbox.checked = (data.validarEliminarProducto === true); // NUEVO
                 
                 facturaLoaded = true;
             } else {
@@ -283,7 +334,6 @@
                 const data = JSON.parse(basculaDataRaw);
                 const savedPort = data.puertoCOM;
                 
-                // Cargar Puerto COM si sigue conectado físicamente
                 if (savedPort && puertosCOMValidos.includes(savedPort)) {
                     scaleVpsUrl.value = savedPort;
                 }
@@ -315,14 +365,22 @@
                 branchId = sesion.branchId; 
                 cashierId = sesion.uid; 
 
-                // Ejecutamos ambas lecturas en paralelo
-                showMessage("Escaneando hardware del sistema...", 'blue');
+                showMessage("Escaneando hardware e inventario...", 'blue');
+                // NUEVO: Traer inventario para poder buscar los productos
+                window.allProductsConfig = await window.nexusAPI.obtenerProductosLocal(companyId) || [];
+
                 const [puertos, impresoras] = await Promise.all([
                     getPuertosCOM(),
                     getImpresorasOS()
                 ]);
 
                 await loadAllConfigs(puertos, impresoras); 
+                iniciarBuscadorAutoProductos(); // Inicializar el buscador de bolsas
+                const autoProdsRaw = await window.nexusAPI.obtenerConfiguracion('config_auto_productos');
+            if (autoProdsRaw) {
+                window.autoProductsSelected = JSON.parse(autoProdsRaw);
+                window.renderAutoProducts();
+            }
             } else {
                 userId = null;
                 companyId = null;
@@ -338,42 +396,56 @@
     verificarAutenticacionLocal();
 
     async function saveFacturaConfiguration() {
-     const selectedPrinter = printerSelect.value;
-     const selectedPrinterSize = printerSizeSelect ? printerSizeSelect.value : '58';
-     const enableMulticurrencyState = multicurrencyCheckbox ? multicurrencyCheckbox.checked : false;
-     const tipoEmisionState = document.getElementById('tipo-emision-select').value;
-     const tokenUser = document.getElementById('configTokenUsuario').value.trim();
-     const tokenPass = document.getElementById('configTokenPassword').value.trim();
-     const puertoCom = document.getElementById('configPuertoCOM').value || 'COM2';
-     const facturaData = {
-         ultimoCambio: new Date().toISOString(),
-         configuracionEjemplo: {
-             iva: 0.16, 
-             moneda: 'Bs',
-             prefijoFactura: 'FAC'
-         },
-         impresoraSeleccionada: selectedPrinter || "", 
-         tamañoImpresora: selectedPrinterSize, 
-         puerto_com_fiscal: puertoCom,  
-         tipo_emision: tipoEmisionState,
-         token_usuario: tokenUser,
-         token_password: tokenPass,
-         modificadoPor: userId,
-         encabezadoFactura: {
-             line1: configLine1.value.trim() || "",
-             line2: configLine2.value.trim() || "",
-             line3: configLine3.value.trim() || "",
-             line4: configLine4.value.trim() || "",
-             line5: configLine5.value.trim() || "",
-             line6: configLine6.value.trim() || ""
-         },
-         useSearchOnType: false, 
-         enableMulticurrency: enableMulticurrencyState 
-     };
+        const selectedPrinter = printerSelect.value;
+        const selectedPrinterSize = printerSizeSelect ? printerSizeSelect.value : '58';
+        const enableMulticurrencyState = multicurrencyCheckbox ? multicurrencyCheckbox.checked : false;
+        const validarEliminarState = validarEliminarCheckbox ? validarEliminarCheckbox.checked : false; // NUEVO
+        const tipoEmisionState = document.getElementById('tipo-emision-select').value;
+        const tokenUser = document.getElementById('configTokenUsuario').value.trim();
+        const tokenPass = document.getElementById('configTokenPassword').value.trim();
+        const puertoCom = document.getElementById('configPuertoCOM').value || 'COM2';
 
-     await window.nexusAPI.guardarConfiguracion('config_factura', JSON.stringify(facturaData));
-     return true;
- }
+        // 🟢 NUEVOS CAMPOS CAPTURADOS
+        const hkaSucursalVal = document.getElementById('hkaSucursal').value.trim() || '0001';
+        const hkaSerieVal = document.getElementById('hkaSerie').value.trim().toUpperCase() || '';
+        const hkaMonedaVal = document.getElementById('hkaMoneda').value || 'VES';
+
+        const facturaData = {
+            ultimoCambio: new Date().toISOString(),
+            configuracionEjemplo: {
+                iva: 0.16, 
+                moneda: 'Bs',
+                prefijoFactura: 'FAC'
+            },
+            impresoraSeleccionada: selectedPrinter || "", 
+            tamañoImpresora: selectedPrinterSize, 
+            puerto_com_fiscal: puertoCom,  
+            tipo_emision: tipoEmisionState,
+            token_usuario: tokenUser,
+            token_password: tokenPass,
+
+            hka_sucursal: hkaSucursalVal,
+            hka_serie: hkaSerieVal,
+            hka_moneda: hkaMonedaVal,
+
+            modificadoPor: userId,
+            encabezadoFactura: {
+                line1: configLine1.value.trim() || "",
+                line2: configLine2.value.trim() || "",
+                line3: configLine3.value.trim() || "",
+                line4: configLine4.value.trim() || "",
+                line5: configLine5.value.trim() || "",
+                line6: configLine6.value.trim() || ""
+            },
+            useSearchOnType: false, 
+            enableMulticurrency: enableMulticurrencyState,
+            validarEliminarProducto: validarEliminarState // NUEVO
+        };
+
+        await window.nexusAPI.guardarConfiguracion('config_factura', JSON.stringify(facturaData));
+        await window.nexusAPI.guardarConfiguracion('config_auto_productos', JSON.stringify(window.autoProductsSelected));
+        return true;
+    }
 
     async function saveBasculaConfiguration() {
         const comPortToSave = scaleVpsUrl.value; 
@@ -433,5 +505,81 @@ if (tipoEmisionSelect && sectionElectronica) {
         sectionElectronica.style.display = 'block';
     }
 }
+
+// --- LÓGICA DE PRODUCTOS AUTOMÁTICOS ---
+    function iniciarBuscadorAutoProductos() {
+        const searchInput = document.getElementById('auto-product-search');
+        const resultsDiv = document.getElementById('auto-autocomplete-results');
+
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            if (!query) {
+                resultsDiv.classList.add('hidden');
+                return;
+            }
+            const filtered = window.allProductsConfig.filter(p => p.nombre.toLowerCase().includes(query) || (p.codigo && String(p.codigo).toLowerCase().includes(query))).slice(0, 10);
+            
+            resultsDiv.innerHTML = '';
+            if (filtered.length === 0) {
+                resultsDiv.innerHTML = '<div class="p-3 text-gray-500 text-sm">No se encontraron productos</div>';
+            } else {
+                filtered.forEach(p => {
+                    const div = document.createElement('div');
+                    div.className = 'p-3 border-b cursor-pointer hover:bg-green-50 text-sm';
+                    div.innerHTML = `<strong>${p.nombre}</strong> <span class="text-gray-500 text-xs ml-2">(${p.codigo || 'S/C'})</span>`;
+                    div.onclick = () => {
+                        window.addAutoProduct(p);
+                        searchInput.value = '';
+                        resultsDiv.classList.add('hidden');
+                    };
+                    resultsDiv.appendChild(div);
+                });
+            }
+            resultsDiv.classList.remove('hidden');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !resultsDiv.contains(e.target)) resultsDiv.classList.add('hidden');
+        });
+    }
+
+    window.addAutoProduct = function(prod, qty = 1) {
+        const prodId = prod.id || prod.producto_ID;
+        if (!window.autoProductsSelected.find(p => p.id === prodId)) {
+            window.autoProductsSelected.push({ id: prodId, nombre: prod.nombre, cantidad: qty });
+            window.renderAutoProducts();
+        }
+    };
+
+    window.removeAutoProduct = function(id) {
+        window.autoProductsSelected = window.autoProductsSelected.filter(p => p.id !== id);
+        window.renderAutoProducts();
+    };
+
+    window.updateAutoQty = function(id, val) {
+        const item = window.autoProductsSelected.find(p => p.id === id);
+        if (item) item.cantidad = parseFloat(val) || 1;
+    };
+
+    window.renderAutoProducts = function() {
+        const list = document.getElementById('auto-products-list');
+        list.innerHTML = '';
+        window.autoProductsSelected.forEach(p => {
+            list.innerHTML += `
+                <div class="flex justify-between items-center bg-white p-3 border rounded-md shadow-sm mb-2">
+                    <span class="font-medium text-gray-700">${p.nombre}</span>
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center">
+                            <label class="text-xs text-gray-500 mr-2">Cant:</label>
+                            <input type="number" min="1" value="${p.cantidad}" onchange="window.updateAutoQty('${p.id}', this.value)" class="w-16 border border-gray-300 rounded p-1 text-center text-sm outline-none focus:border-green-500">
+                        </div>
+                        <button onclick="window.removeAutoProduct('${p.id}')" class="text-red-600 hover:text-red-900 flex items-center justify-center" title="Eliminar">
+                            <span class="material-icons text-xl">delete</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+    };
 
 </script>

@@ -509,70 +509,76 @@
             return;
         }
 
-if (auth) {
-    onAuthStateChanged(auth, async (user) => {
-        if (esLoginManual) return; 
+        // Leemos si el usuario cerró sesión a propósito previamente
+        const explicitLogout = localStorage.getItem('explicit_logout') === 'true';
+        
+        // MAGIA: Si viene de cerrar sesión, el tiempo de espera es 0. Si es inicio de app, 7.5s.
+        const tiempoEspera = explicitLogout ? 0 : 7500;
 
-        // Retrasamos la lectura para que el video termine tranquilo (7.5 segundos)
-        setTimeout(async () => {
-            try {
-                const sesionLocal = await window.nexusAPI.obtenerSesionLocal();
+        if (auth) {
+            onAuthStateChanged(auth, async (user) => {
+                if (esLoginManual) return; 
 
-                if (user) {
-                    if (!sesionLocal) {
-                        console.log("Sesión local no encontrada. Sincronizando cierre...");
-                        await signOut(auth); // <--- AHORA SÍ EXISTE
+                // Usamos la variable inteligente "tiempoEspera"
+                setTimeout(async () => {
+                    try {
+                        const sesionLocal = await window.nexusAPI.obtenerSesionLocal();
+
+                        if (user) {
+                            if (!sesionLocal) {
+                                console.log("Sesión local no encontrada. Sincronizando cierre...");
+                                await signOut(auth); // <--- AHORA SÍ EXISTE
+                            } else {
+                                // Actualizamos los datos locales en segundo plano
+                                const idTokenResult = await user.getIdTokenResult();
+                                const role = idTokenResult.claims.role;
+
+                                await window.nexusAPI.guardarUsuarioLocal({
+                                    uid: user.uid,
+                                    email: user.email,
+                                    role: role,
+                                    companyId: idTokenResult.claims.companyId || 'nexus_pos_id',
+                                    branchId: idTokenResult.claims.branchId || null
+                                });
+                            }
+                        }
+                        
+                        // LÓGICA INTELIGENTE: Si hay sesión y NO fue un cierre explícito, lo dejamos pasar.
+                        if (sesionLocal && !explicitLogout) {
+                            console.log("Sesión activa detectada (sin cierre explícito). Redirigiendo automáticamente...");
+                            const rolFinal = user ? (await user.getIdTokenResult()).claims.role : sesionLocal.role;
+                            window.nexusAPI.abrirVentanaPrincipal(rolFinal === 'admin' ? 'inicio.html' : 'inicio_cajera.html');
+                        } else {
+                            if (loadingContainer) loadingContainer.classList.add('hidden');
+                            mostrarLogin();
+                        }
+
+                    } catch (error) {
+                        console.error("Error en validación cruzada:", error);
                         if (loadingContainer) loadingContainer.classList.add('hidden');
                         mostrarLogin();
-                        return;
                     }
-
-                    const idTokenResult = await user.getIdTokenResult();
-                    const role = idTokenResult.claims.role;
-
-                    await window.nexusAPI.guardarUsuarioLocal({
-                        uid: user.uid,
-                        email: user.email,
-                        role: role,
-                        companyId: idTokenResult.claims.companyId || 'nexus_pos_id',
-                        branchId: idTokenResult.claims.branchId || null
-                    });
-
-                    window.nexusAPI.abrirVentanaPrincipal(role === 'admin' ? 'inicio.html' : 'inicio_cajera.html');
-                } else {
-                    if (sesionLocal && !navigator.onLine) {
+                }, tiempoEspera); 
+            });
+        }
+        else {  
+            // LÓGICA OFFLINE
+            setTimeout(async () => {
+                try {
+                    const sesionLocal = await window.nexusAPI.obtenerSesionLocal();
+                    if (sesionLocal && !explicitLogout) {
+                        console.log("Sesión offline activa detectada. Redirigiendo automáticamente...");
                         window.nexusAPI.abrirVentanaPrincipal(sesionLocal.role === 'admin' ? 'inicio.html' : 'inicio_cajera.html');
                     } else {
-                        if (loadingContainer) loadingContainer.classList.add('hidden');
+                        if (loadingContainer) loadingContainer.classList.add('hidden'); // OCULTAR SPINNER
                         mostrarLogin();
                     }
+                } catch (error) {
+                    if (loadingContainer) loadingContainer.classList.add('hidden'); // OCULTAR SPINNER
+                    mostrarLogin();
                 }
-            } catch (error) {
-                console.error("Error en validación cruzada:", error);
-                if (loadingContainer) loadingContainer.classList.add('hidden');
-                mostrarLogin();
-            }
-        }, 7500); 
-    });
-}
-
-else {  
-  try {
-        const sesionLocal = await window.nexusAPI.obtenerSesionLocal();
-        if (loadingContainer) loadingContainer.classList.add('hidden'); // OCULTAR SPINNER
-        
-        if (sesionLocal) {
-            window.nexusAPI.abrirVentanaPrincipal(sesionLocal.role === 'admin' ? 'inicio.html' : 'inicio_cajera.html');
-        } else { 
-            mostrarLogin(); 
+            }, tiempoEspera);
         }
-        
-    } 
-        catch (error) {
-            if (loadingContainer) loadingContainer.classList.add('hidden'); // OCULTAR SPINNER
-            mostrarLogin();
-        }
-}
 
         // --- 2. LOGIN PRINCIPAL ---
         if (loginForm) {
@@ -585,6 +591,7 @@ else {
                 const password = loginForm['login-password'].value.trim();
 
                 try {
+                    // Forzamos el intento con Firebase si dice estar online, sino disparamos error de red manual
                     if (navigator.onLine) {
                         // --- MECANISMO DE SEGURIDAD (Asegura que Firebase exista) ---
                         if (!auth || !db) {
@@ -619,22 +626,38 @@ else {
                             companyData: companyDataString // ¡La magia ocurre aquí!
                         });
                         
+                        // APAGAMOS LA BANDERA PARA REACTIVAR EL AUTO-LOGIN AL CERRAR LA APP EN LA 'X'
+                        localStorage.setItem('explicit_logout', 'false');
+
                         showMessage("Inicio exitoso y datos sincronizados", "success");
                         window.nexusAPI.abrirVentanaPrincipal(idToken.claims.role === 'admin' ? 'inicio.html' : 'inicio_cajera.html');
                         
                     } else {
-                        // MODO OFFLINE (Se mantiene intacto)
-                        const user = await window.nexusAPI.loginLocal(email, password);
-                        if (user) {
-                            window.location.href = user.role === 'admin' ? 'inicio.html' : 'inicio_cajera.html';
-                        } else {
-                            showMessage("Credenciales inválidas en este equipo", "error");
-                        }
+                        throw { code: 'auth/network-request-failed' }; // Simula error de red para saltar al Catch local
                     }
+
                 } catch (err) {
-                    esLoginManual = false; // Rehabilitar auto-login si hay error
-                    console.error("Detalle del error:", err);
-                    showMessage("Error al entrar: " + err.message, "error");
+                    // SI ES ERROR DE RED O ESTAMOS OFFLINE, INTENTAMOS CON LA BASE DE DATOS LOCAL
+                    if (err.code === 'auth/network-request-failed' || !navigator.onLine) {
+                        console.log("Red inestable o sin internet. Intentando inicio de sesión local...");
+                        try {
+                            const user = await window.nexusAPI.loginLocal(email, password);
+                            if (user) {
+                                localStorage.setItem('explicit_logout', 'false');
+                                // AHORA SÍ USA abrirVentanaPrincipal
+                                window.nexusAPI.abrirVentanaPrincipal(user.role === 'admin' ? 'inicio.html' : 'inicio_cajera.html');
+                            } else {
+                                showMessage("Lamentablemente no tienes internet y tampoco tienes la sesión guardada en la base de datos local.", "error");
+                            }
+                        } catch (localErr) {
+                            showMessage("Lamentablemente no tienes internet y tampoco tienes la sesión guardada en la base de datos local.", "error");
+                        }
+                    } else {
+                        // SI ES OTRO ERROR (Ej. Contraseña incorrecta), LO MOSTRAMOS
+                        esLoginManual = false; 
+                        console.error("Detalle del error:", err);
+                        showMessage("Error al entrar: " + err.message, "error");
+                    }
                 }
             });
         }
@@ -646,16 +669,33 @@ else {
                 const email = cashierLoginForm['cashier-email'].value.trim();
                 const password = cashierLoginForm['cashier-password'].value.trim();
                 
-                if (navigator.onLine) {
-                    try {
+                try {
+                    if (navigator.onLine) {
                         await signIn(email, password);
+                        localStorage.setItem('explicit_logout', 'false'); // REACTIVAR AUTO-LOGIN
                         showMessage("Cajera: Sesión iniciada.", "success");
-                    } catch (e) { showMessage("Error de autenticación.", "error"); }
-                } else {
-                    const user = await window.nexusAPI.loginLocal(email, password);
-                    if (user && user.role === 'cajera') {
-                        window.nexusAPI.abrirVentanaPrincipal('inicio_cajera.html');
-                    } else { showMessage("Acceso denegado offline.", "error"); }
+                        window.nexusAPI.abrirVentanaPrincipal('inicio_cajera.html'); // Aseguramos el salto
+                    } else {
+                        throw { code: 'auth/network-request-failed' }; 
+                    }
+                } catch (err) {
+                    // SI ES ERROR DE RED O ESTAMOS OFFLINE, INTENTAMOS CON LA BASE DE DATOS LOCAL
+                    if (err.code === 'auth/network-request-failed' || !navigator.onLine) {
+                        console.log("Red inestable o sin internet. Intentando inicio de sesión local para cajera...");
+                        try {
+                            const user = await window.nexusAPI.loginLocal(email, password);
+                            if (user && user.role === 'cajera') {
+                                localStorage.setItem('explicit_logout', 'false'); // REACTIVAR AUTO-LOGIN OFFLINE
+                                window.nexusAPI.abrirVentanaPrincipal('inicio_cajera.html');
+                            } else { 
+                                showMessage("Lamentablemente no tienes internet y tampoco tienes la sesión guardada en la base de datos local.", "error"); 
+                            }
+                        } catch (localErr) {
+                            showMessage("Lamentablemente no tienes internet y tampoco tienes la sesión guardada en la base de datos local.", "error");
+                        }
+                    } else {
+                        showMessage("Error de autenticación.", "error");
+                    }
                 }
             });
         }

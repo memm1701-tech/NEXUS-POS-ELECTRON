@@ -8,336 +8,314 @@
     <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
     <script src="tailwindcss.js"></script>
 
-    <style>
-body {
-            font-family: 'Roboto', sans-serif;
-            background-color: #f3f4f6;
-            margin: 0;
-            padding: 0;
-            width: 100%; 
-        }
-
-        .inventory-container {
-            background-color: transparent; 
-            padding: 20px; 
-            border-radius: 0; 
-            box-shadow: none; 
-            width: 100% !important; 
-            max-width: 100% !important; 
-            box-sizing: border-box;
-            text-align: center;
-            margin: 0; 
-        }
-
-
-        h1 {
-            color: #333;
-            margin-bottom: 25px;
-            font-size: 2.5em; 
-            font-weight: 700;
-            letter-spacing: -1px;
-        }
-
-        .table-section-container h2 {
-    font-size: 1.8em;          /* Un poco más grande que el estándar */
-    font-weight: 800;         /* Negrita extra para resaltar */
-    color: #333;              /* Mismo tono de gris oscuro que el h1 */
-    letter-spacing: -0.5px;   /* Estilo moderno y compacto */
-    margin-bottom: 20px;
-    text-align: left;         /* Alineado a la izquierda como pediste */
-}
-        
-        .form-section {
-    display: block; 
-    margin-bottom: 30px;
-    text-align: left;
-}
-
-.form-grid > div, 
-.stock-options-container > div {
-    display: flex;
-    flex-direction: column;
-    text-align: left;
-}
-        .form-section label {
-            font-weight: bold;
-            color: #555;
-            margin-bottom: 5px;
-        }
-        .form-section input[type="text"],
-        .form-section input[type="number"],
-        .form-section select {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 8px; 
-            box-sizing: border-box;
-            font-size: 1em;
-            transition: border-color 0.3s;
-        }
-        .form-section input[type="text"]:focus,
-        .form-section input[type="number"]:focus,
-        .form-section select:focus {
-            border-color: #007bff;
-            outline: none;
-        }
-
-.form-actions {
-        flex-direction: row; 
-        justify-content: space-between; 
-        gap: 15px;
-        margin-top: 20px;
-        width: 100%; 
+<style>
+    /* =========================================
+       1. GLOBALES Y RESET
+       ========================================= */
+    *, *::before, *::after {
+        box-sizing: border-box; /* Previene que los paddings rompan el 100% del ancho */
     }
 
-.btn-add-product, .btn-save-product, .btn-cancel-edit {
-    padding: 15px 15px; 
-    border: none;
-    border-radius: 8px;
-    font-size: 1.1em; 
-    cursor: pointer;
-    transition: background-color 0.3s;
-    width: 100%; 
-    box-sizing: border-box; 
-}
+    body {
+        font-family: 'Roboto', sans-serif;
+        background-color: #f3f4f6;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        overflow-x: hidden; 
+    }
+    body {
+        font-family: 'Roboto', sans-serif;
+        background-color: #f3f4f6;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        overflow-x: hidden; 
+    }
 
-        .btn-add-product {
-            background-color: #28a745;
-            color: white;
-        }
-        .btn-add-product:hover {
-            background-color: #218838;
-        }
-        
-        .btn-save-product {
-            background-color: #007bff;
-            color: white;
-            display: none; 
-        }
-        .btn-save-product:hover {
-            background-color: #0056b3;
-        }
+    /* AGREGA ESTE BLOQUE NUEVO */
+    main {
+        width: 100%;
+        display: block;
+    }
 
-        .btn-cancel-edit {
-            background-color: #dc3545;
-            color: white;
-            display: none; 
-        }
-        .btn-cancel-edit:hover {
-            background-color: #c82333;
-        }
+    /* =========================================
+       2. CONTENEDORES PRINCIPALES
+       ========================================= */
+    .inventory-container {
+        background-color: transparent;
+        padding: 20px;
+        border-radius: 0;
+        box-shadow: none;
+        width: 100% !important;
+        max-width: 100% !important;
+        text-align: center;
+        margin: 0;
+        min-width: 0; /* CRÍTICO: Permite que el contenedor se encoja dentro del Flexbox del padre (inicio.html) */
+        overflow-x: hidden; /* CRÍTICO: Actúa como barrera final para que nada se salga del módulo */
+    }
 
-        .table-actions-container {
-            display: flex; 
-            flex-direction: row; 
-            gap: 5px; 
-            justify-content: center; 
-            align-items: center; 
-            padding: 0; 
-            flex-wrap: nowrap;
-        }
-
-        .btn-edit, .btn-delete {
-            padding:10px 8px; 
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            font-size: 0.8em; 
-            min-width: 65px; 
-            box-sizing: border-box;
-            text-align: center;
-        }
-        
-        .btn-edit {
-            background-color: #ffc107;
-            color: #333;
-        }
-        .btn-edit:hover {
-            background-color: #e0a800;
-        }
-
-        .btn-delete {
-            background-color: #dc3545; 
-            color: white;
-        }
-        .btn-delete:hover {
-            background-color: #c82333;
-        }
-
-        .table-section-container {
-            margin-top: 30px;
-        }
-        
-        .table-responsive-wrapper {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch; 
-            border-radius: 8px; 
-        }
-        
-.table-section {
-    width: 100%;
-    min-width: fit-content; 
-    border-collapse: collapse;
-    table-layout: auto; 
-}
-        .table-section th, .table-section td {
-            border: 1px solid #e0e0e0;
-            padding: 10px 8px; 
-            text-align: left;
-            font-size: 0.8em; 
-            white-space: nowrap; 
-        }
-        .table-section th {
-            background-color: #f2f2f2;
-            color: #444;
-            font-weight: 600;
-        }
-        
-        .table-section th:nth-child(1), .table-section td:nth-child(1) { width: 18%;}
-        
-        .table-section th:nth-child(8), .table-section td:nth-child(8) { 
-            width: 150px; 
-            text-align: center;
-            padding: 3px 5px; 
-        }
-        
-        .table-section td:last-child {
-            text-align: center;
-        }
-
-        .table-section th:nth-child(2), .table-section td:nth-child(2) {
-            width: 12%; 
-            max-width: 100px; 
-            overflow: hidden; 
-            text-overflow: ellipsis; 
-            white-space: nowrap; 
-        }
-        .table-section th:nth-child(7), .table-section td:nth-child(7) {
-            width: 15%; 
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-
-.help-icon-container {
-    display: inline-block;
-    position: relative;
-    margin-left: 6px;
-    cursor: help;
-    vertical-align: middle;
-}
-
-.help-icon {
-    background-color: #6c757d;
-    color: white;
-    font-size: 12px;
-    font-weight: bold;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.help-tooltip {
-    visibility: hidden;
-    width: 240px;
-    background-color: #ffffff;
-    color: #000000;
-    text-align: left;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    padding: 10px;
-    position: absolute;
-    z-index: 100;
-    bottom: 125%; 
-    left: 50%;
-    transform: translateX(-50%);
-    box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
-    font-weight: normal;
-    font-size: 0.9em;
-    line-height: 1.4;
-}
-
-.help-icon-container:hover .help-tooltip {
-    visibility: visible;
-}
-
-
-.form-main-container {
-    display: flex;
-    flex-direction: column; 
-    gap: 25px;
-    align-items: center;
-    width: 100%;
-}
-
-.inputs-wrapper {
-    width: 100%;
-}
-
-.inputs-wrapper .form-grid {
-    display: grid;
-    grid-template-columns: 1fr; 
-    gap: 15px;
-    width: 100%;
-}
-
-.stock-options-container {
-    display: grid;
-    grid-template-columns: 1fr; 
-    gap: 20px;
-    width: 100%;
-}
-
-@media (min-width: 768px) {
     .form-main-container {
-        display: flex !important;
-        flex-direction: row !important; 
-        align-items: flex-start;
-        gap: 30px;
-    }
-
-    .image-wrapper {
-        flex: 0 0 250px; 
-    }
-
-    .inputs-wrapper {
-        flex: 1; 
-    }
-
-    .inputs-wrapper .form-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr); 
-        gap: 15px;
-    }
-
-.form-actions {
         display: flex;
-        flex-direction: row; 
-        gap: 15px;
-        width: 100%; 
-        margin-top: 25px;
+        flex-direction: column;
+        gap: 25px;
+        align-items: center;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0; 
     }
 
-.btn-add-product, .btn-save-product, .btn-cancel-edit {
-        flex: 1; 
+    .form-section {
+        display: block;
+        margin-bottom: 30px;
+        text-align: left;
         width: 100%;
     }
 
-    .scroll-hint {
-        display: none;
+    .inputs-wrapper {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0; /* CRÍTICO: Evita que la grilla de inputs empuje el contenido hacia la derecha */
     }
 
-    .stock-options-container {
-        grid-template-columns: repeat(3, 1fr); 
+    /* =========================================
+       3. TIPOGRAFÍA
+       ========================================= */
+    h1 {
+        color: #333;
+        margin-bottom: 25px;
+        font-size: 2.5em;
+        font-weight: 700;
+        letter-spacing: -1px;
     }
-}
 
-    </style>
+    .table-section-container h2 {
+        font-size: 1.8em;
+        font-weight: 800;
+        color: #333;
+        letter-spacing: -0.5px;
+        margin-bottom: 20px;
+        text-align: left;
+    }
+
+    /* =========================================
+       4. FORMULARIOS E INPUTS
+       ========================================= */
+    .form-section label {
+        font-weight: bold;
+        color: #555;
+        margin-bottom: 5px;
+        display: block;
+    }
+
+    .form-section input[type="text"],
+    .form-section input[type="number"],
+    .form-section select {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 1em;
+        transition: border-color 0.3s;
+    }
+
+    .form-section input[type="text"]:focus,
+    .form-section input[type="number"]:focus,
+    .form-section select:focus {
+        border-color: #007bff;
+        outline: none;
+    }
+
+    /* =========================================
+       5. BOTONES Y ACCIONES
+       ========================================= */
+    .form-actions {
+        display: flex;
+        flex-direction: column; 
+        gap: 15px;
+        margin-top: 20px;
+        width: 100%;
+    }
+
+    .btn-add-product, 
+    .btn-save-product, 
+    .btn-cancel-edit {
+        padding: 15px;
+        border: none;
+        border-radius: 8px;
+        font-size: 1.1em;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        width: 100%;
+    }
+
+    .btn-add-product { background-color: #28a745; color: white; }
+    .btn-add-product:hover { background-color: #218838; }
+
+    .btn-save-product { background-color: #007bff; color: white; display: none; }
+    .btn-save-product:hover { background-color: #0056b3; }
+
+    .btn-cancel-edit { background-color: #dc3545; color: white; display: none; }
+    .btn-cancel-edit:hover { background-color: #c82333; }
+
+    .table-actions-container {
+        display: flex;
+        flex-direction: row;
+        gap: 5px;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: nowrap; /* CRÍTICO: Fuerza a que los botones se mantengan en una sola línea siempre */
+    }
+
+    .btn-edit, 
+    .btn-delete,
+    .btn-trash {
+        padding: 10px 8px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        font-size: 0.8em;
+        font-weight: bold;
+        min-width: 65px;
+        flex: 0 0 auto; /* CRÍTICO: Evita que los botones crezcan o se encojan desproporcionadamente */
+        text-align: center;
+        white-space: nowrap; /* Evita que palabras largas como "Deshabilitar" se rompan en dos líneas */
+    }
+
+    .btn-edit { background-color: #ffc107; color: #333; }
+    .btn-edit:hover { background-color: #e0a800; }
+
+    .btn-delete { background-color: #dc3545; color: white; }
+    .btn-delete:hover { background-color: #c82333; }
+
+    .btn-trash { background-color: #dc2626; color: white; } 
+    .btn-trash:hover { background-color: #b91c1c; }
+
+    /* =========================================
+       6. TABLA DE INVENTARIO
+       ========================================= */
+    .table-section-container {
+        margin-top: 30px;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0; /* Asegura que no rompa el diseño del padre */
+    }
+
+    .table-responsive-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 8px;
+        width: 100%;
+        max-width: 100%;
+        display: block; /* Asegura el scroll interno de la tabla */
+    }
+
+    .table-section {
+        width: 100%;
+        min-width: 800px; 
+        border-collapse: collapse;
+    }
+
+    .table-section th, 
+    .table-section td {
+        border: 1px solid #e0e0e0;
+        padding: 10px 8px;
+        text-align: left;
+        font-size: 0.8em;
+        white-space: nowrap;
+    }
+
+    .table-section th {
+        background-color: #f2f2f2;
+        color: #444;
+        font-weight: 600;
+    }
+
+    .table-section th:nth-child(1), .table-section td:nth-child(1) { width: 18%; }
+    
+    .table-section th:nth-child(2), .table-section td:nth-child(2) {
+        width: 12%;
+        max-width: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .table-section th:nth-child(7), .table-section td:nth-child(7) {
+        width: 15%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .table-section th:nth-child(8), .table-section td:nth-child(8) {
+        width: 150px;
+        text-align: center;
+        padding: 3px 5px;
+    }
+    
+    .table-section td:last-child {
+        text-align: center;
+    }
+
+    /* =========================================
+       7. MEDIA QUERIES (Adaptación a Escritorio)
+       ========================================= */
+    @media (min-width: 768px) {
+
+        .inventory-container {
+            padding: 15px 30px;
+        }
+
+        .form-main-container {
+            flex-direction: row; 
+            align-items: flex-start;
+            gap: 30px;
+        }
+
+        .image-wrapper {
+            flex: 0 0 250px;
+        }
+
+        .inputs-wrapper {
+            flex: 1;
+            min-width: 0; /* Mantiene la protección activa en escritorio */
+        }
+
+        .form-actions {
+            flex-direction: row; 
+        }
+
+        .scroll-hint {
+            display: none; 
+        }
+    }
+</style>
+
 </head>
+
+<div id="permanent-delete-modal" style="display: none; position: fixed; z-index: 10001; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); backdrop-filter: blur(2px);">
+    <div style="background-color: white; margin: 10% auto; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 90%; max-width: 400px; animation: modalIn 0.3s ease-out; border: 2px solid #ef4444;">
+        <div style="padding: 30px 20px; text-align: center; background-color: #fef2f2;">
+            <div style="font-size: 50px; margin-bottom: 10px;">🗑️</div>
+            <h3 style="margin: 0; font-size: 1.4em; font-weight: 800; color: #b91c1c;">¡Eliminar Producto!</h3>
+        </div>
+        
+        <div style="padding: 25px; text-align: center;">
+            <p id="permanent-modal-message" style="margin: 0; font-size: 1.1em; color: #4b5563; line-height: 1.5;"></p>
+        </div>
+
+        <div style="display: flex; padding: 0 20px 25px 20px; gap: 12px;">
+            <button id="permanent-cancel-btn" style="flex: 1; padding: 12px; border: 1px solid #d1d5db; border-radius: 12px; background-color: #f9fafb; color: #374151; font-weight: bold; cursor: pointer; transition: background 0.2s;">
+                Cancelar
+            </button>
+            <button id="permanent-confirm-btn" style="flex: 1; padding: 12px; border: none; border-radius: 12px; background-color: #ef4444; color: white; font-weight: bold; cursor: pointer; transition: opacity 0.2s;">
+                Sí, Eliminar
+            </button>
+        </div>
+    </div>
+</div>
+
 <body>
     <div id="profit-warning-alert" class="hidden mb-4 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 shadow-sm rounded">
         <div class="flex items-center">
@@ -369,7 +347,7 @@ body {
             <div class="form-section">
                 <div class="form-main-container">
                     <div class="image-wrapper">
-                        <div id="product-img-box" style="width: 250px; height: 250px; border-radius: 20px; border: 2px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #fff;">
+    <div id="product-img-box" style="width: 100%; max-width: 250px; aspect-ratio: 1/1; height: auto; border-radius: 20px; border: 2px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #fff; margin: 0 auto;">
                             <img id="img-display" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
                             <span id="img-placeholder" style="color: #94a3b8; font-size: 60px;">+</span>
                         </div>
@@ -549,8 +527,14 @@ body {
 
 
 <script type="module">
+    const RUTAS_VPS = {
+        'productos':  '/api/maestro/inventario/sincronizar',
+        'categorias': '/api/maestro/categorias/sincronizar'
+    };
 
-    const SERVER_URL = "https://productos.nexusposgobal.com";
+    let sincronizando = false;
+    let SERVER_URL = "";
+    let respaldoActivo = false;
     const LOCAL_URL = "http://localhost:3000";
     const SERVER_URL_CATEGORY = "https://categorias.nexusposgobal.com";
 
@@ -562,6 +546,9 @@ body {
     let actionPending = null;
     let currentProductInEditing = null;
     let currentTier = "1";
+    let intervaloSync = null;
+    let descargandoFondo = false; 
+    let productToDestroy = null;
     let preciosData = {
         p1: { compra: 0, porcentaje: 0, venta: 0 },
         p2: { compra: 0, porcentaje: 0, venta: 0 },
@@ -671,6 +658,63 @@ function guardarTierActual() {
     };
 }
 
+async function iniciarSincronizacionSilenciosa() {
+    if (typeof sincronizando === 'undefined') window.sincronizando = false;
+    if (window.sincronizando) return; 
+    
+    const api = window.nexusAPI;
+    const RUTAS_VPS = {
+        'productos': '/api/maestro/inventario/sincronizar',
+        'categorias': '/api/maestro/categorias/sincronizar'
+    };
+
+    if (!navigator.onLine || !respaldoActivo || !SERVER_URL || !api) return; 
+
+    window.sincronizando = true;
+    try {
+        const cola = await api.obtenerColaSincronizacion();
+
+        if (cola && cola.length > 0) {
+            console.log(`⏳ [SYNC] Procesando ${cola.length} registros pendientes en Inventario...`);
+            
+            for (const registro of cola) {
+                const rutaParcial = RUTAS_VPS[registro.tabla];
+                if (!rutaParcial) continue;
+
+                try {
+                    const datosJSON = typeof registro.datos === 'string' ? JSON.parse(registro.datos) : registro.datos;
+
+                    const response = await fetch(`${SERVER_URL}${rutaParcial}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(datosJSON)
+                    });
+
+                    if (response.ok) {
+                        await api.eliminarDeCola(registro.id);
+                        
+                        // Actualizamos el estado local a 1 para que el "radar" de descarga lo acepte
+                        datosJSON.estado_sync = 1; 
+                        if (registro.tabla === 'productos') {
+                            datosJSON.datos_json = JSON.stringify(datosJSON);
+                            await api.sincronizarProductoServidor(datosJSON);
+                        } else {
+                            await api.marcarComoSincronizado(registro.tabla, datosJSON.id || datosJSON.categoria_ID);
+                        }
+                    }
+                } catch (e) {
+                    console.error("❌ Error subiendo registro individual:", e);
+                    break; // Si falla la conexión, paramos el bucle
+                }
+            }
+        }
+    } catch (error) {
+        console.error("❌ Error en hilo de subida de Inventario:", error);
+    } finally {
+        window.sincronizando = false; 
+    }
+}
+
 async function loadCategories() {
     const productCategorySelect = document.getElementById('product-category');
     if (!productCategorySelect) return;
@@ -683,8 +727,6 @@ async function loadCategories() {
             setTimeout(loadCategories, 100); // Reintento seguro
             return;
         }
-
-        console.log("📂 Inventario: Cargando categorías desde la base de datos local (SQLite)...");
         
         // 2. Llamada a SQLite para obtener todas las categorías en bruto
         const categoriasBrutas = await api.obtenerCategoriasLocal();
@@ -721,7 +763,6 @@ async function loadCategories() {
                 // Llenamos el mapa para que la tabla de productos sepa traducir el ID al Nombre
                 window.categoryMap[cat.id] = cat.nombre || cat.name;
             });
-            console.log(`✅ ${categoriasFiltradas.length} categorías cargadas localmente para la empresa ${idEmpresaActual}.`);
         } else {
             console.warn(`⚠️ No tienes categorías creadas para la empresa ${idEmpresaActual}.`);
         }
@@ -774,118 +815,150 @@ async function checkLocalSession() {
     }
 }
 
-async function descargarYValidarProductos() {
-    // 1. Verificación rápida del navegador
-    if (!navigator.onLine) {
-        console.log("📴 Modo Offline detectado por el navegador.");
+async function descargarYValidarProductos(companyId) {
+    if (!navigator.onLine || !respaldoActivo || !SERVER_URL) {
         cargarProductosDesdeLocal();
         return;
     }
 
     try {
-        if (typeof showCustomAlert === 'function') {
-            showCustomAlert("Intentando sincronizar con servidor...", "info");
-        }
-        
-        const response = await fetch(`${SERVER_URL}/api/productos/${companyId}`, {
-            signal: AbortSignal.timeout(3000) 
+        const response = await fetch(`${SERVER_URL}/api/maestro/inventario/${companyId}`, {
+            signal: AbortSignal.timeout(4000) 
         });
         
-        if (!response.ok) throw new Error("Servidor no disponible");
+        if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+        
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            throw new Error(`El servidor no devolvió un JSON válido.`);
+        }
         
         const productosServidor = await response.json();
+        
+        // 🛡️ NUEVO: Escaneamos la base de datos local ANTES de descargar
+        const productosLocales = await window.nexusAPI.obtenerProductosLocal(companyId);
+        const estadosLocales = {};
+        if (productosLocales) {
+            // Creamos un mapa rápido para saber el estado de cada producto local
+            productosLocales.forEach(p => {
+                estadosLocales[p.id] = p.estado_sync;
+            });
+        }
+
         let procesados = 0;
+        let omitidos = 0;
 
         for (const pServidor of productosServidor) {
+            const idServidor = pServidor.producto_ID || pServidor.id || pServidor.producto_id;
             
-            // 🔥 CLAVE 1: Rescatamos el JSON original del servidor
-            let jsonCorrecto = pServidor.datos_json;
-            if (!jsonCorrecto) {
-                jsonCorrecto = JSON.stringify(pServidor);
-            } else if (typeof jsonCorrecto !== 'string') {
-                jsonCorrecto = JSON.stringify(jsonCorrecto);
+            // 🛑 EL ESCUDO: Si el producto local está en 0 (haciendo cola para subir), 
+            // PROHIBIMOS que el servidor lo sobreescriba. El vigilante tiene prioridad.
+            if (estadosLocales[idServidor] === 0) {
+                console.log(`⏳ [SYNC] Omitiendo descarga de ${idServidor}. Tiene cambios locales pendientes.`);
+                omitidos++;
+                continue; 
             }
 
-            // 🔥 CLAVE 2: EL MAPEO COMPLETO
-            // Aquí añadimos todos los campos de precios y porcentajes que no estaban pasando a SQLite
-            const productoParaValidar = {
-                id: pServidor.producto_ID || pServidor.id, 
-                company_id: companyId,
-                branch_id: pServidor.sucursal_ID || pServidor.branchId || 'sucursal_1',
-                codigo: String(pServidor.codigo),
-                nombre: pServidor.nombre,
-                
-                // --- CAMPOS RECUPERADOS ---
-                precio: pServidor.precio_venta || pServidor.precio || 0,
-                precio_venta: pServidor.precio_venta || pServidor.precio || 0,
-                precio_compra: pServidor.precio_compra || 0,
-                porcentaje_ganancia: pServidor.porcentaje_ganancia || 0,
-                ganancia: pServidor.ganancia || 0,
-                precios: pServidor.precios || null, // <- Vital para P2 y P3
-                
-                // Aseguramos configuración regional
-                moneda: pServidor.currency || pServidor.moneda || 'USD',
-                currency: pServidor.currency || pServidor.moneda || 'USD',
-                unit: pServidor.unit || 'UN',
-                tipo_alicuota: pServidor.tipo_alicuota || '16',
-                // --------------------------
+            let datosParsed = {};
+            if (pServidor.datos_json) {
+                try {
+                    datosParsed = typeof pServidor.datos_json === 'string' 
+                        ? JSON.parse(pServidor.datos_json) 
+                        : pServidor.datos_json;
+                } catch(e) { console.warn("Error parseando JSON"); }
+            }
 
-                categoria: pServidor.categoria || 'Sin Cat.',
+            const productoParaValidar = {
+                id: idServidor,
+                company_id: companyId,
+                branch_id: datosParsed.branch_id || datosParsed.sucursal_ID || pServidor.sucursal_ID || 'sucursal_1',
+                codigo: String(datosParsed.codigo || pServidor.codigo || ''),
+                nombre: pServidor.nombre || datosParsed.nombre,
+                precio: pServidor.precio_venta || datosParsed.precio_venta || datosParsed.precio || 0,
+                precio_venta: pServidor.precio_venta || datosParsed.precio_venta || 0,
+                precio_compra: datosParsed.precio_compra || 0,
+                porcentaje_ganancia: datosParsed.porcentaje_ganancia || 0,
+                ganancia: datosParsed.ganancia || 0,
+                precios: pServidor.precios_json || datosParsed.precios || null,
+                moneda: datosParsed.moneda || datosParsed.currency || pServidor.moneda || 'USD',
+                currency: datosParsed.currency || datosParsed.moneda || 'USD',
+                unit: datosParsed.unit || datosParsed.unidad || pServidor.unidad || 'UN',
+                tipo_alicuota: datosParsed.tipo_alicuota || pServidor.tipo_alicuota || '16',
+                categoria: datosParsed.categoria || pServidor.categoria_id || 'Sin Cat.',
                 status: pServidor.status !== undefined ? pServidor.status : 1,
-                imagen: pServidor.imagen || '',
-                datos_json: jsonCorrecto, // <- El JSON protegido
-                fecha_modificacion: pServidor.fecha_modificacion || pServidor.updatedAt || new Date().toISOString()
+                imagen: datosParsed.imagen || pServidor.imagen || '',
+                
+                estado_sync: 1, // Sigue bajando como 1 porque viene puro de la nube
+                
+                datos_json: JSON.stringify(datosParsed), 
+                fecha_modificacion: pServidor.ultima_sincronizacion || new Date().toISOString()
             };
 
             await window.nexusAPI.sincronizarProductoServidor(productoParaValidar);
             procesados++;
         }
 
-        console.log(`✅ Sincronización completada. ${procesados} productos actualizados.`);
+        console.log(`✅ [SYNC] ${procesados} descargados. ${omitidos} protegidos por edición local.`);
         cargarProductosDesdeLocal();
 
     } catch (error) {
-        console.warn("⚠️ Nota: No se pudo sincronizar (Servidor Xeon desconectado).");
-        if (typeof showCustomAlert === 'function') {
-            showCustomAlert("Trabajando en modo local (Servidor offline)", "info");
-        }
+        console.warn(`⚠️ Mantenimiento modo local. Motivo: ${error.message}`);
         cargarProductosDesdeLocal();
     }
 }
 
-// 1. Convertimos el bloque en una función autónoma
 async function iniciarMotorInventario() {
     try {
-        // Forzamos la búsqueda de la API en la ventana actual o en la del padre
         const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
 
         if (!api) {
             console.warn("⏳ NexusAPI no encontrada aún. Reintentando en 100ms...");
-            // REGLA DE ORO: En vez de disparar el evento de nuevo, simplemente volvemos a llamar a esta función
             setTimeout(iniciarMotorInventario, 100); 
             return;
+        }
+
+        // --- Obtener IP, Puerto y Respaldo del .env ---
+        try {
+            if (api.obtenerConfigServer) {
+                const config = await api.obtenerConfigServer();
+                respaldoActivo = config.respaldo_datos === 'true' || config.respaldo_datos === true;
+
+                if (respaldoActivo) {
+                    SERVER_URL = `http://${config.serverIp || config.SERVER_IP}:${config.serverPort || config.SERVER_PORT}`;
+                    console.log("🧠 Cerebro PostgreSQL detectado en:", SERVER_URL);
+                } else {
+                    SERVER_URL = null;
+                    console.log("🔒 Respaldo en la nube desactivado (Plan de Datos Local).");
+                }
+            }
+        } catch (configError) {
+            console.error("❌ Error obteniendo configuración del servidor:", configError);
         }
 
         const session = await api.obtenerSesionLocal();
 
         if (session) {
-            console.log("✅ Sesión validada localmente en Inventario.");
-            // companyId debe estar declarada como global (let companyId;) arriba en tu script
             companyId = session.companyId;
             window.currentCompanyId = companyId;
             window.currentBranchId = session.branchId || 'principal';
 
-            // Carga inmediata de SQLite para que el usuario no espere
+            // 1. Carga inicial rápida desde SQLite
             await cargarProductosDesdeLocal(); 
 
-            if (navigator.onLine) {
-                console.log("🌐 Internet detectado, validando con el servidor Xeon...");
-                // Esta función hará el fetch al puerto 3000 del Xeon (113)
+            // 2. Proceso de Sincronización si hay red y plan activo
+            if (navigator.onLine && respaldoActivo && SERVER_URL) {
+                
+                // 🔥 PRIMERO: Subimos lo que está en estado 0 (Sincronización Silenciosa)
+                // Esto evita que 'descargarYValidarProductos' los omita por cambios pendientes.
+                await iniciarSincronizacionSilenciosa();
+
+                // 🔥 SEGUNDO: Descargamos y validamos cambios del servidor
                 if (typeof descargarYValidarProductos === 'function') {
                     await descargarYValidarProductos(companyId); 
                 }
+
             } else {
-                console.log("🔌 Modo Offline: Usando datos de SQLite exclusivamente.");
+                console.log("🔌 Modo Local Activo: Usando datos de SQLite exclusivamente.");
             }
         } else {
             window.location.href = 'login.html';
@@ -894,7 +967,6 @@ async function iniciarMotorInventario() {
         console.error("❌ Error en el arranque del inventario:", error);
     }
 }
-
 
 iniciarMotorInventario();
 
@@ -1102,71 +1174,64 @@ window.enableEditing = async function(docId, productData) {
 };
 
 async function addProduct(companyId) {
-    // 1. Obtención y Validación de datos
-    // Esta función ya captura nombre, precios, ganancia, %, etc.
     const productData = getValidatedProductData();
     if (!productData) return;
+    const uniqueId = `PROD-${Date.now()}`;
 
-    // 2. Preparación del objeto final (Traducción universal)
+    // 🟢 AQUÍ ESTÁ LA MAGIA: El producto NACE en estado 0 por defecto
     const finalProduct = {
         ...productData,
-        producto_ID: `PROD-${Date.now()}`, // ID único para Xeon/Nube
-        id: `PROD-${Date.now()}`,          // ID para SQLite local
+        producto_ID: `PROD-${Date.now()}`,
+        id: `PROD-${Date.now()}`,         
         empresa_ID: companyId,
         fecha_modificacion: new Date().toISOString(),
-        status: 1, // Activo por defecto
-        // Empaquetamos todo en el JSON que SQLite guardará en la columna datos_json
-        datos_json: JSON.stringify({
-            ...productData,
-            status: 1,
-            id: `PROD-${Date.now()}`
-        })
+        status: 1,
+        estado_sync: 0 // <--- Declarado desde la raíz
     };
 
     try {
-        // 3. GUARDADO LOCAL PRIORITARIO (Reflejo instantáneo en el Cerebro)
-        // Al usar sincronizarProductoServidor, el main.js detectará el cambio y avisará a la tabla
-        await window.nexusAPI.sincronizarProductoServidor(finalProduct);
-
-        // 4. INTENTO DE ENVÍO AL SERVIDOR XEON
-        if (navigator.onLine) {
-            const response = await fetch(`${SERVER_URL}/api/productos`, {
+        if (navigator.onLine && respaldoActivo && SERVER_URL) {
+            const response = await fetch(`${SERVER_URL}/api/maestro/inventario/sincronizar`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(finalProduct)
             });
 
-            if (!response.ok) throw new Error("Error en el servidor Xeon");
-            showCustomAlert("✅ Producto creado y sincronizado con el Xeon");
+            if (!response.ok) throw new Error("Error en el Servidor Maestro");
+            
+            // ✅ SOLO SI EL SERVIDOR RESPONDE OK, LO PASAMOS A 1
+            finalProduct.estado_sync = 1;
+            finalProduct.datos_json = JSON.stringify(finalProduct);
+            await window.nexusAPI.sincronizarProductoServidor(finalProduct);
+            
+            showCustomAlert("✅ Producto creado y sincronizado con el Servidor Maestro");
         } else {
-            // Si no hay red, lanzamos error para caer en el catch y encolar
-            throw new Error("Sin conexión a la red"); 
+            throw new Error("Modo local activo o sin permisos de nube");
         }
-
-    } catch (e) {
-        console.warn("⚠️ No se pudo enviar al Xeon, encolando tarea:", e.message);
         
-        // 5. ENCOLADO DE TAREA (Respaldo para sincronización posterior)
+    } catch (error) {
+        console.warn("Sincronización en tiempo real no disponible:", error.message);
+        
+        // ⚠️ ANTE CUALQUIER FALLO, MANTIENE EL 0 Y ENCOLA
+        finalProduct.estado_sync = 0;
+        finalProduct.datos_json = JSON.stringify(finalProduct);
+        await window.nexusAPI.sincronizarProductoServidor(finalProduct);
+        
         await window.nexusAPI.encolarSincronizacion({
             operacion: 'INSERT',
             tabla: 'productos',
             datos: finalProduct
         });
-        
-        showCustomAlert("💾 Guardado localmente. Se subirá al Xeon automáticamente al detectar conexión.", "info");
-        
+        showCustomAlert("⚠️ Guardado localmente. Se subirá al reconectar.", "warning");
     } finally {
-        // 6. LIMPIEZA Y REFRESCO DE INTERFAZ
         clearForm();
         
-        // Cerramos el panel de stock y reseteamos la flecha
         const stockContainer = document.getElementById('stock-container');
         if (stockContainer) stockContainer.style.display = 'none';
         
         const stockArrow = document.getElementById('stock-arrow');
         if (stockArrow) stockArrow.style.transform = 'rotate(0deg)';
 
-        // Forzamos la recarga de la tabla para ver el nuevo producto inmediatamente
         await cargarProductosDesdeLocal();
     }
 }
@@ -1247,6 +1312,78 @@ document.getElementById('modal-cancel-delete-btn').onclick = function() {
     actionPending = null;
 };
 
+window.eliminarPermanente = function(docId, productName) {
+    productToDestroy = { docId, name: productName };
+    document.getElementById('permanent-modal-message').innerHTML = `¿Está seguro que desea ELIMINAR el producto <br> "<strong>${productName}</strong>"?<br><br><span style="font-size: 0.85em; color: #ef4444;">El producto desaparecerá inmediatamente y será destruido por completo de la base de datos en 30 días.</span>`;
+    document.getElementById('permanent-delete-modal').style.display = 'block';
+};
+
+document.getElementById('permanent-cancel-btn').onclick = function() {
+    document.getElementById('permanent-delete-modal').style.display = 'none';
+    productToDestroy = null;
+};
+
+document.getElementById('permanent-confirm-btn').onclick = async function() {
+    if (!productToDestroy) return;
+    const { docId, name } = productToDestroy;
+    document.getElementById('permanent-delete-modal').style.display = 'none';
+    
+    const itemEnRam = allProducts.find(item => item.docId === docId);
+    if (!itemEnRam) return;
+
+    // 🚨 ESTADO -1 PARA ELIMINACIÓN LÓGICA
+    const productoCompleto = { ...itemEnRam.product, status: -1 };
+
+    const updateData = { 
+        ...productoCompleto,
+        producto_ID: docId, 
+        id: docId, 
+        empresa_ID: companyId || window.currentCompanyId,
+        company_id: companyId || window.currentCompanyId,
+        fecha_modificacion: new Date().toISOString(),
+        estado_sync: 0 // Reinicio estricto a 0
+    };
+
+    try {
+        if (navigator.onLine && respaldoActivo && SERVER_URL) {
+            const response = await fetch(`${SERVER_URL}/api/maestro/inventario/sincronizar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updateData)
+            });
+            
+            if (!response.ok) throw new Error("Fallo en la nube al eliminar");
+
+            // ✅ ÉXITO
+            updateData.estado_sync = 1;
+            updateData.datos_json = JSON.stringify(updateData);
+            await window.nexusAPI.sincronizarProductoServidor(updateData);
+            
+            showCustomAlert(`🗑️ Producto movido a la papelera (Se autodestruirá en 30 días).`);
+        } else {
+            throw new Error("Offline o sin plan activo");
+        }
+    } catch (e) {
+        console.error("Error en el proceso de eliminación:", e);
+        
+        // ⚠️ FALLO: A la cola local
+        updateData.estado_sync = 0;
+        updateData.datos_json = JSON.stringify(updateData);
+        await window.nexusAPI.sincronizarProductoServidor(updateData);
+        
+        await window.nexusAPI.encolarSincronizacion({
+            operacion: 'UPDATE',
+            tabla: 'productos',
+            datos: updateData
+        });
+        
+        showCustomAlert("⚠️ Eliminado localmente (Pendiente de sincronizar)", "warning");
+    } finally {
+        productToDestroy = null;
+        cargarProductosDesdeLocal();
+    }
+};
+
 window.cancelEditing = function() {
     editingProductId = null;
     clearForm();
@@ -1276,55 +1413,64 @@ async function guardarInactivacionLocal(datos) {
 }
 
 window.updateProduct = async function(idEmpresa) {
+    // 1. Obtenemos los datos ya validados y procesados del formulario
     const data = getValidatedProductData();
     
     if (!data || !editingProductId || !currentProductInEditing) {
-        console.error("❌ No se puede actualizar: Datos inválidos o falta objeto de respaldo.");
         showCustomAlert("Error de integridad. Intente seleccionar el producto de nuevo.", "error");
         return;
     }
-
-    // 🧠 FUSIÓN INTELIGENTE: Conservamos campos técnicos (createdAt, sucursal_ID)
+    
+    // 2. Construimos el objeto final usando los datos de 'data'
+    // Inyectamos la redundancia (producto_codigo) para el Servidor Maestro
     const productData = {
-        ...currentProductInEditing,
         ...data,
         id: editingProductId,
         producto_ID: editingProductId,
+        company_id: idEmpresa,
         empresa_ID: idEmpresa,
+        branch_id: window.currentBranchId || 'principal',
+        producto_codigo: data.codigo, // 🔥 REFUERZO para el servidor
+        producto_nombre: data.nombre,
+        status: currentProductInEditing.status,
         fecha_modificacion: new Date().toISOString()
     };
 
-    // Actualizamos el JSON que lee la tabla
-    productData.datos_json = JSON.stringify(productData);
-
     try {
-        // 1. Guardar en Local (Cerebro SQLite)
-        const resultadoLocal = await window.nexusAPI.sincronizarProductoServidor(productData);
-
-        // 2. Sincronización con Xeon
-        if (navigator.onLine) {
-            fetch(`${SERVER_URL}/api/productos/${editingProductId}`, {
-                method: 'PUT',
+        if (navigator.onLine && respaldoActivo && SERVER_URL) {
+            const response = await fetch(`${SERVER_URL}/api/maestro/inventario/sincronizar`, {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(productData)
-            }).catch(err => console.warn("⚠️ Sincronización Xeon pendiente"));
-        } else {
-            await window.nexusAPI.encolarSincronizacion({
-                operacion: 'UPDATE',
-                tabla: 'productos',
-                datos: productData
             });
-        }
-
-        if (resultadoLocal) {
+            
+            if (!response.ok) throw new Error("Fallo en servidor Maestro");
+            
+            productData.estado_sync = 1;
+            productData.datos_json = JSON.stringify(productData);
+            await window.nexusAPI.sincronizarProductoServidor(productData);
+            
             showCustomAlert("✅ Producto actualizado de forma íntegra");
-            window.cancelEditing(); 
-            currentProductInEditing = null;
+        } else {
+            throw new Error("Offline o sin plan activo");
         }
-
     } catch (error) {
-        console.error("❌ Error:", error);
-        showCustomAlert("Hubo un error al actualizar el producto.", "error");
+        console.warn("⚠️ Guardando actualización en modo local:", error.message);
+        
+        productData.estado_sync = 0;
+        productData.datos_json = JSON.stringify(productData);
+        await window.nexusAPI.sincronizarProductoServidor(productData);
+        
+        await window.nexusAPI.encolarSincronizacion({
+            operacion: 'UPDATE',
+            tabla: 'productos',
+            datos: productData
+        });
+        showCustomAlert("⚠️ Actualizado localmente. Se subirá al reconectar.", "warning");
+    } finally {
+        window.cancelEditing(); 
+        currentProductInEditing = null;
+        await cargarProductosDesdeLocal();
     }
 };
 
@@ -1353,7 +1499,8 @@ async function guardarEnColaLocal(productData, companyId) {
 }
 
 async function handleStockUpdate(productId, name) {
-    const SERVER_URL = "https://productos.nexusposgobal.com";
+    // --- MODIFICACIÓN: Se eliminó el SERVER_URL quemado localmente.
+    // Ahora usa el SERVER_URL global obtenido desde Electron.
     const branchId = stockBranchSelect.value;
     const totalToAdd = parseFloat(stockTotalAddInput.value) || 0;
 
@@ -1369,7 +1516,7 @@ async function handleStockUpdate(productId, name) {
             fecha_modificacion: new Date().toISOString()
         };
 
-        if (navigator.onLine) {
+        if (navigator.onLine && respaldoActivo && SERVER_URL) {
             try {
                 const response = await fetch(`${SERVER_URL}/api/inventario/actualizar`, {
                     method: 'POST',
@@ -1456,7 +1603,10 @@ function getValidatedProductData() {
         porcentaje_ganancia: p1Porcentaje,
         ganancia: p1Venta - p1Compra,
 
-        imagen: (typeof productBase64 !== 'undefined' && productBase64) ? productBase64 : (currentProductInEditing ? currentProductInEditing.imagen : ""),
+        // 🔥 CORRECCIÓN: productBase64 ya gestiona si hay o no imagen desde updateImageUI.
+        // Al quitar la validación estricta, permitimos que se sobreescriba con un string vacío ("") si se borra.
+        imagen: typeof productBase64 !== 'undefined' ? productBase64 : "",
+        
         stock_nuevo: document.getElementById('stock-total-add') ? (parseFloat(document.getElementById('stock-total-add').value) || 0) : 0
     };
 }
@@ -1470,11 +1620,7 @@ function getValidatedProductData() {
 
 async function confirmDeleteAction(companyId, docId, productName, newStatus) {
     const itemEnRam = allProducts.find(item => item.docId === docId);
-    if (!itemEnRam) {
-        console.error("❌ Error: Producto no encontrado en memoria.");
-        return;
-    }
-
+    if (!itemEnRam) return;
 
     const productoCompleto = {
         ...itemEnRam.product, 
@@ -1487,31 +1633,50 @@ async function confirmDeleteAction(companyId, docId, productName, newStatus) {
         id: docId, 
         empresa_ID: companyId,
         fecha_modificacion: new Date().toISOString(),
-        datos_json: JSON.stringify(productoCompleto) 
+        estado_sync: 0 // 🟢 REINICIO ESTRICTO A 0
     };
 
     try {
-        if (navigator.onLine) {
-            // Sincronización con Servidor Xeon
-            await fetch(`${SERVER_URL}/api/productos/${docId}`, {
-                method: 'PUT',
+        if (navigator.onLine && respaldoActivo && SERVER_URL) {
+            const response = await fetch(`${SERVER_URL}/api/maestro/inventario/sincronizar`, {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updateData)
             });
+            
+            if (!response.ok) throw new Error("Fallo en la nube");
+
+            // ✅ ÉXITO: Sello 1
+            updateData.estado_sync = 1;
+            updateData.datos_json = JSON.stringify(updateData);
+            await window.nexusAPI.sincronizarProductoServidor(updateData);
+            
+            showCustomAlert(`Producto ${newStatus === 1 ? 'habilitado' : 'inhabilitado'} con éxito.`);
+        } else {
+            throw new Error("Offline o sin plan activo");
         }
-
-        await window.nexusAPI.sincronizarProductoServidor(updateData);
-        
-        showCustomAlert(`Producto ${newStatus === 1 ? 'habilitado' : 'inhabilitado'} con éxito.`);
-
         
     } catch (e) {
         console.error("Error en el proceso de cambio de estado:", e);
-        guardarInactivacionLocal(updateData);
+        
+        // ⚠️ FALLO: Sello 0 y a la cola
+        updateData.estado_sync = 0;
+        updateData.datos_json = JSON.stringify(updateData);
+        await window.nexusAPI.sincronizarProductoServidor(updateData);
+        
+        await window.nexusAPI.encolarSincronizacion({
+            operacion: 'UPDATE',
+            tabla: 'productos',
+            datos: updateData
+        });
+        
+        showCustomAlert("⚠️ Estado cambiado localmente (Pendiente de sincronizar)", "warning");
+    } finally {
+        cargarProductosDesdeLocal();
     }
 }
 
-    function renderProducts(products) {
+function renderProducts(products) {
     const inventoryTableBody = document.getElementById('inventory-table-body'); 
     if (!inventoryTableBody) return;
 
@@ -1522,10 +1687,22 @@ async function confirmDeleteAction(companyId, docId, productName, newStatus) {
         return;
     }
 
-    products.forEach(item => {
+    // Ordenamiento alfanumérico previo
+    const productosOrdenados = [...products].sort((a, b) => {
+        const nombreA = a.product.nombre || '';
+        const nombreB = b.product.nombre || '';
+        return nombreA.localeCompare(nombreB, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    productosOrdenados.forEach(item => {
         const product = item.product;
         const docId = item.docId;
         
+        // Convertir nombre a mayúsculas
+        const nombreMayuscula = (product.nombre || '').toUpperCase();
+        const displayNombre = nombreMayuscula || '---';
+        const safeProductName = nombreMayuscula.replace(/'/g, "\\'");
+
         // 1. TRADUCTOR DE CATEGORÍA
         const categoryName = window.categoryMap && window.categoryMap[product.categoria] 
             ? window.categoryMap[product.categoria] 
@@ -1561,11 +1738,11 @@ async function confirmDeleteAction(companyId, docId, productName, newStatus) {
 
         const row = document.createElement('tr');
         const safeProductJson = JSON.stringify(product).replace(/"/g, '&quot;');
-        const safeProductName = (product.nombre || '').replace(/'/g, "\\'");
 
         // 5. RENDERIZADO FINAL
+        // --- INICIO DE LA MODIFICACIÓN: Estilo aplicado a la columna del nombre ---
         row.innerHTML = `
-            <td>${product.nombre || '---'}</td>
+            <td style="font-weight: bold; color: #2c3e50;">${displayNombre}</td>
             <td title="${product.categoria}">${categoryName}</td>
             <td style="text-align: center;">${product.unit || 'UN'}</td>
             
@@ -1601,12 +1778,16 @@ async function confirmDeleteAction(companyId, docId, productName, newStatus) {
             <td>
                 <div class="table-actions-container">
                     <button class="btn-edit" onclick="window.enableEditing('${docId}', ${safeProductJson})">Editar</button>
-                    <button class="btn-delete" onclick="window.deleteProduct('${docId}', '${safeProductName}', ${product.status})">
+                    <button class="btn-delete" style="background-color: ${product.status === 1 ? '#64748b' : '#10b981'}; color: white;" onclick="window.deleteProduct('${docId}', '${safeProductName}', ${product.status})">
                         ${product.status === 1 ? 'Deshabilitar' : 'Habilitar'}
+                    </button>
+                    <button class="btn-trash" onclick="window.eliminarPermanente('${docId}', '${safeProductName}')">
+                        Eliminar
                     </button>
                 </div>
             </td>
         `;
+        // --- FIN DE LA MODIFICACIÓN ---
         
         inventoryTableBody.appendChild(row);
     });
@@ -1680,15 +1861,13 @@ async function cargarProductosDesdeLocal() {
                     tipo_alicuota: d.tipo_alicuota || p.tipo_alicuota || "16"
                 }
             };
-        }).filter(item => item !== null);
+        }).filter(item => item !== null && item.product.status !== -1);
             
             // 3. Dibujar la tabla y sincronizar UI
             if (typeof renderProducts === 'function') renderProducts(allProducts);
             
             // Si el buscador tiene texto, volvemos a filtrar para no perder la vista del usuario
             if (typeof filterProducts === 'function') filterProducts();
-            
-            console.log(`📦 ${allProducts.length} productos cargados y sincronizados.`);
         } else {
             console.warn("La tabla local está vacía.");
             if (typeof renderProducts === 'function') renderProducts([]);
@@ -1704,9 +1883,7 @@ async function cargarProductosDesdeLocal() {
 const apiGlobal = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
 
 if (apiGlobal && apiGlobal.onProductosCambiados) {
-    console.log("👁️ [INVENTARIO] Radar conectado. Escuchando cambios en base de datos...");
     apiGlobal.onProductosCambiados(() => {
-        console.log("🔄 [INVENTARIO] ¡Cambio detectado! Recargando tabla...");
         // Esta función vuelve a leer SQLite y redibuja la tabla renderProducts
         cargarProductosDesdeLocal(); 
     });
@@ -1715,56 +1892,21 @@ if (apiGlobal && apiGlobal.onProductosCambiados) {
 
 
 async function loadInventory(companyId) {
-    console.log("🔄 Sincronizando inventario con Xeon...");
-    let cargadoExitosamente = false;
-    if (navigator.onLine) {
+    console.log("🔄 Recarga manual solicitada...");
+    
+    if (navigator.onLine && respaldoActivo && SERVER_URL) {
+        // Redirigimos la llamada a nuestra función principal robusta
+        await descargarYValidarProductos(companyId);
+    } else {
+        console.warn("⚠️ Sin conexión o plan restringido. Cargando solo datos locales.");
         try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 4000); 
-
-            const response = await fetch(`${SERVER_URL}/api/productos/empresa/${companyId}`, { 
-                signal: controller.signal 
-            });
-            clearTimeout(timeoutId);
-
-            if (response.ok) {
-                const productos = await response.json();
-                allProducts = productos.map(p => ({
-                    docId: p.producto_ID,
-                    product: p
-                }));
-
-                renderTable(allProducts); 
-                cargadoExitosamente = true;
-                fetch(`${LOCAL_URL}/api/sincronizar-desde-xeon`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(productos)
-                }).catch(err => console.error("Error respaldando en SQLite:", err));
-            }
-        } catch (err) {
-            console.warn("⚠️ Xeon fuera de línea, activando respaldo local.");
-        }
-    }
-    if (!cargadoExitosamente) {
-        try {
-            const localData = await window.nexusAPI.obtenerProductosLocal();
-            if (localData && localData.length > 0) {
-                allProducts = localData.map(p => ({
-                    docId: p.producto_ID,
-                    product: p
-                }));
-                renderTable(allProducts);
-                console.log("📂 Cargado exitosamente desde SQLite (Modo Respaldo)");
-            } else {
-                showCustomAlert("No hay datos locales disponibles", "error");
-            }
+            await cargarProductosDesdeLocal();
         } catch (err) {
             console.error("❌ Error al acceder al almacenamiento local:", err);
+            showCustomAlert("Error crítico al cargar datos locales.", "error");
         }
     }
 }
-
 
 if (btnSave) {
     btnSave.addEventListener('click', () => {

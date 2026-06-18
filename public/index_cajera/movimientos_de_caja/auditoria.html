@@ -1,0 +1,286 @@
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Auditoría de Seguridad</title>
+    
+    <link href="../../../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <script src="../../tailwindcss.js"></script> 
+    <link href="../../../node_modules/material-icons/iconfont/material-icons.css" rel="stylesheet">
+
+    <style>
+        .custom-table-container {
+            max-height: calc(100vh - 260px);
+            overflow-y: auto;
+        }
+        .custom-table-container::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-table-container::-webkit-scrollbar-track {
+            background: #f3f4f6;
+        }
+        .custom-table-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-table-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .row-animation {
+            transition: background-color 0.15s ease;
+        }
+        .row-animation:hover {
+            background-color: #f8fafc;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 md:p-6 w-full animate-fadeIn">
+    <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+        <div class="flex items-center">
+            <div class="p-3 bg-red-100 rounded-lg text-red-600 mr-4 shadow-inner">
+                <i class="material-icons text-3xl">shield</i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800 tracking-tight">Auditoría de Administrador</h1>
+                <p class="text-sm text-gray-500">Historial detallado de autorizaciones y modificaciones críticas en el sistema</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-lg border border-gray-200">
+            <span class="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.6)] animate-pulse"></span>
+            <span id="txt-contador-registros" class="text-sm font-semibold text-gray-700">Cargando registros...</span>
+        </div>
+    </header>
+
+    <section class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 flex flex-col gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="relative">
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1 tracking-wider">Buscar por Texto</label>
+                <div class="absolute inset-y-0 left-0 pl-3 pt-5 flex items-center pointer-events-none text-gray-400">
+                    <i class="material-icons text-lg">search</i>
+                </div>
+                <input type="text" id="filter-search" placeholder="Admin, detalles o caja..."
+                    class="block w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-red-500 focus:border-red-500 transition outline-none">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1 tracking-wider">Tipo de Acción</label>
+                <select id="filter-accion" 
+                    class="block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-red-500 focus:border-red-500 transition outline-none">
+                    <option value="TODOS">-- Mostrar todas --</option>
+                    <option value="Eliminación de Producto del Carrito">Eliminación de Productos</option>
+                    <option value="Acceso a Nota de Crédito">Notas de Crédito</option>
+                    <option value="Acceso a Nota de Débito">Notas de Débito</option>
+                    <option value="Acceso a Guía de Despacho">Guías de Despacho</option>
+                    <option value="Acceso a Orden de Entrega">Órdenes de Entrega</option>
+                    <option value="Acceso a Retención IVA">Retenciones IVA</option>
+                    <option value="Acceso a Retención ISLR">Retenciones ISLR</option>
+                    <option value="Acceso a Comprobante ARCV">Comprobantes ARCV</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1 tracking-wider">Desde la Fecha</label>
+                <input type="date" id="filter-date-start" 
+                    class="block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-red-500 focus:border-red-500 transition outline-none">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1 tracking-wider">Hasta la Fecha</label>
+                <input type="date" id="filter-date-end" 
+                    class="block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-red-500 focus:border-red-500 transition outline-none">
+            </div>
+        </div>
+    </section>
+
+    <main class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="custom-table-container">
+            <table class="min-w-full divide-y divide-gray-200 text-left border-collapse">
+                <thead class="bg-gray-50 sticky top-0 z-10 border-b border-gray-200 shadow-sm">
+                    <tr>
+                        <th class="px-4 py-3 text-xs font-bold text-gray-600 uppercase tracking-wider w-1/6">Fecha / Hora</th>
+                        <th class="px-4 py-3 text-xs font-bold text-gray-600 uppercase tracking-wider w-1/5">Autorizado Por</th>
+                        <th class="px-4 py-3 text-xs font-bold text-gray-600 uppercase tracking-wider w-1/5">Operación / Acción</th>
+                        <th class="px-4 py-3 text-xs font-bold text-gray-600 uppercase tracking-wider w-1/3">Detalles de la Instrucción</th>
+                        <th class="px-4 py-3 text-xs font-bold text-gray-600 uppercase tracking-wider w-1/12 text-center">Caja / Suc.</th>
+                        <th class="px-4 py-3 text-xs font-bold text-gray-600 uppercase tracking-wider w-1/12 text-center">Sync</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-auditoria" class="bg-white divide-y divide-gray-100 text-sm text-gray-700">
+                    </tbody>
+            </table>
+        </div>
+        
+        <div id="audit-empty-state" class="hidden flex-col items-center justify-center py-16 px-4 bg-gray-50">
+            <i class="material-icons text-5xl text-gray-300 mb-2">gpp_maybe</i>
+            <h3 class="text-base font-bold text-gray-600">No se encontraron registros de auditoría</h3>
+            <p class="text-xs text-gray-400 mt-1 max-w-sm text-center">Verifica los filtros aplicados o asegúrate de que se hayan realizado autorizaciones con clave maestra en este equipo.</p>
+        </div>
+    </main>
+
+    <script type="module">
+        let registrosLogs = [];
+        let companyId = null;
+
+        // Referencias del DOM
+        const tbodyAuditoria = document.getElementById('tbody-auditoria');
+        const txtContador = document.getElementById('txt-contador-registros');
+        const emptyState = document.getElementById('audit-empty-state');
+        
+        // Elementos de Filtro
+        const inputSearch = document.getElementById('filter-search');
+        const selectAccion = document.getElementById('filter-accion');
+        const dateStart = document.getElementById('filter-date-start');
+        const dateEnd = document.getElementById('filter-date-end');
+
+        async function inicializarModuloAuditoria() {
+            try {
+                // Leer la sesión activa
+                const sesion = await window.nexusAPI.obtenerSesionLocal();
+                if (sesion && sesion.companyId) {
+                    companyId = sesion.companyId;
+                    await cargarHistorialAuditoria();
+                } else {
+                    txtContador.textContent = "Error de sesión";
+                    txtContador.className = "text-sm font-semibold text-red-600";
+                }
+            } catch (error) {
+                console.error("Fallo inicializando la vista de auditoría:", error);
+            }
+
+            // Asignación de escuchadores de eventos para los filtros en tiempo real
+            inputSearch.addEventListener('input', renderizarTablaFiltrada);
+            selectAccion.addEventListener('change', renderizarTablaFiltrada);
+            dateStart.addEventListener('change', renderizarTablaFiltrada);
+            dateEnd.addEventListener('change', renderizarTablaFiltrada);
+        }
+
+        async function cargarHistorialAuditoria() {
+            try {
+                // 🛑 IMPORTANTE: Si aún no creas el método de lectura en main.js, usaremos este puente seguro
+                if (window.nexusAPI && typeof window.nexusAPI.obtenerAuditoriaAdmin === 'function') {
+                    registrosLogs = await window.nexusAPI.obtenerAuditoriaAdmin(companyId);
+                } else {
+                    // Fallback directo por si ejecutas antes de actualizar el preload.js
+                    registrosLogs = [];
+                }
+                
+                renderizarTablaFiltrada();
+            } catch (e) {
+                console.error("Error leyendo datos de auditoría de SQLite:", e);
+                txtContador.textContent = "Fallo de conexión";
+            }
+        }
+
+        function renderizarTablaFiltrada() {
+            const query = inputSearch.value.toLowerCase().trim();
+            const accionSeleccionada = selectAccion.value;
+            const fInicio = dateStart.value ? new Date(dateStart.value + 'T00:00:00') : null;
+            const fFin = dateEnd.value ? new Date(dateEnd.value + 'T23:59:59') : null;
+
+            // Filtrado del array en memoria
+            const logsFiltrados = registrosLogs.filter(log => {
+                // 1. Filtro por término de búsqueda
+                const matchTexto = !query || 
+                    log.admin_name.toLowerCase().includes(query) ||
+                    log.detalles.toLowerCase().includes(query) ||
+                    log.accion.toLowerCase().includes(query) ||
+                    (log.cashier_id && log.cashier_id.toLowerCase().includes(query));
+
+                // 2. Filtro por tipo de acción
+                const matchAccion = (accionSeleccionada === 'TODOS') || (log.accion === accionSeleccionada);
+
+                // 3. Filtro por rangos de fecha
+                const fechaLog = new Date(log.fecha);
+                const matchFechaInicio = !fInicio || (fechaLog >= fInicio);
+                const matchFechaFin = !fFin || (fechaLog <= fFin);
+
+                return matchTexto && matchAccion && matchFechaInicio && matchFechaFin;
+            });
+
+            // Limpieza del cuerpo de la tabla
+            tbodyAuditoria.innerHTML = "";
+
+            if (logsFiltrados.length === 0) {
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+                txtContador.textContent = "0 Registros";
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            emptyState.classList.remove('flex');
+            txtContador.textContent = `${logsFiltrados.length} Operaciones`;
+
+            // Construcción del DOM fila por fila
+            logsFiltrados.forEach(log => {
+                const tr = document.createElement('tr');
+                tr.className = "row-animation border-b border-gray-100";
+
+                // Formatear la fecha local de forma legible
+                const dateObj = new Date(log.fecha);
+                const fechaFormateada = dateObj.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                const horaFormateada = dateObj.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+
+                // Diseño visual dinámico para el tipo de acción
+                let badgeEstilo = "bg-gray-100 text-gray-700 border-gray-200";
+                let iconoAccion = "verified_user";
+                
+                if (log.accion.includes("Eliminación")) {
+                    badgeEstilo = "bg-orange-50 text-orange-700 border-orange-200";
+                    iconoAccion = "delete_sweep";
+                } else if (log.accion.includes("Nota de Crédito")) {
+                    badgeEstilo = "bg-purple-50 text-purple-700 border-purple-200";
+                    iconoAccion = "assignment_return";
+                } else if (log.accion.includes("Retención") || log.accion.includes("ARCV")) {
+                    badgeEstilo = "bg-teal-50 text-teal-700 border-teal-200";
+                    iconoAccion = "account_balance";
+                } else if (log.accion.includes("Guía") || log.accion.includes("Orden")) {
+                    badgeEstilo = "bg-blue-50 text-blue-700 border-blue-200";
+                    iconoAccion = "local_shipping";
+                }
+
+                // Columna Sincronización
+                const syncBadge = log.estado_sync === 1 
+                    ? `<span class="inline-flex items-center text-green-600 bg-green-50 px-2 py-0.5 rounded text-xs border border-green-200 font-medium"><i class="material-icons text-xs mr-0.5">cloud_done</i>Listo</span>`
+                    : `<span class="inline-flex items-center text-amber-600 bg-amber-50 px-2 py-0.5 rounded text-xs border border-amber-200 font-medium"><i class="material-icons text-xs mr-0.5">cloud_queue</i>Local</span>`;
+
+                tr.innerHTML = `
+                    <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-500">
+                        <div class="font-semibold text-gray-700">${fechaFormateada}</div>
+                        <div class="text-[10px] mt-0.5 font-medium">${horaFormateada}</div>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="h-7 w-7 rounded-full bg-red-50 border border-red-200 flex items-center justify-center text-red-600 font-bold text-xs mr-2 shadow-sm uppercase">
+                                ${log.admin_name.substring(0, 2)}
+                            </div>
+                            <div class="text-sm font-semibold text-gray-800">${log.admin_name}</div>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${badgeEstilo}">
+                            <i class="material-icons text-sm mr-1">${iconoAccion}</i>
+                            ${log.accion}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-xs text-gray-600 max-w-xs break-words leading-relaxed font-medium">
+                        ${log.detalles}
+                    </td>
+                    <td class="px-4 py-3 text-center whitespace-nowrap text-xs font-semibold text-gray-600">
+                        <div class="bg-gray-100 rounded px-1.5 py-0.5 border border-gray-200 inline-block">
+                            Caja: ${log.cashier_id ? log.cashier_id.substring(0, 4).toUpperCase() : 'N/A'}
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 text-center whitespace-nowrap">
+                        ${syncBadge}
+                    </td>
+                `;
+                tbodyAuditoria.appendChild(tr);
+            });
+        }
+
+        // Lanzar inicialización del módulo
+        inicializarModuloAuditoria();
+    </script>
+</body>
+</html>

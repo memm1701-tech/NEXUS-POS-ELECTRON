@@ -13,8 +13,8 @@
             background-color: #f9fafb; /* bg-gray-50 */
             margin: 0;
             padding: 0;
-            height: 100vh;
-            overflow: hidden; /* Evita doble scroll */
+            min-height: 100vh; 
+            overflow-y: auto; 
         }
 
         /* Envoltorio principal: Pantalla completa con márgenes (p-4) */
@@ -309,9 +309,9 @@
         .btn-confirm-delete:hover { background-color: #b91c1c; /* hover:bg-red-700 */ }
     </style>
 </head>
-<body class="bg-gray-50 font-sans overflow-hidden">
+<body class="bg-gray-50 font-sans overflow-y-auto">
     
-    <main class="flex flex-col w-full h-screen p-4 gap-4">
+    <main class="flex flex-col w-full min-h-screen p-4 gap-4">
         
         <div class="text-center shrink-0 mb-2">
             <h1 class="text-2xl font-bold text-gray-800 tracking-wide">GESTIÓN DE CATEGORÍAS</h1>
@@ -362,7 +362,7 @@
 
         </div>
 
-        <div class="flex-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden mt-2">
+       <div class="flex-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden mt-2 min-h-[320px]">
             <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-3 shrink-0">CATEGORÍAS EXISTENTES</h2>
             
             <div class="flex-1 overflow-y-auto pr-2 table-container">
@@ -396,12 +396,13 @@
     </div>
     
     <script type="module">
-    const SERVER_URL = "https://categorias.nexusposgobal.com";
     const LOCAL_URL = "http://localhost:3000";
 
         let companyId = null;
         let allProductsMap = {}; 
         let allProducts = [];
+        let SERVER_URL = null; 
+        let respaldoActivo = false;
         
         // --- Elementos del Panel Izquierdo ---
         const categoryInput = document.getElementById('category-name');
@@ -425,57 +426,156 @@
 
 async function iniciarModuloCategorias() {
     try {
-        console.log("🚀 Iniciando módulo de categorías...");
-        
-        // 1. Buscamos el puente de Electron (NexusAPI)
         const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
 
         if (!api) {
-            console.warn("⏳ NexusAPI no detectada. Reintentando en 100ms...");
             setTimeout(iniciarModuloCategorias, 100);
             return;
         }
 
-        // 2. Obtener Sesión Local desde SQLite (Cerebro)
+        if (api.obtenerConfigServer) {
+            const config = await api.obtenerConfigServer();
+            respaldoActivo = config.respaldo_datos === "true" || config.respaldo_datos === true;
+            
+            if (respaldoActivo) {
+                SERVER_URL = `http://${config.serverIp || config.SERVER_IP}:${config.serverPort || config.SERVER_PORT}`;
+            }
+        }
+
         const session = await api.obtenerSesionLocal();
 
         if (session) {
             companyId = session.companyId;
             window.currentCompanyId = companyId;
-            console.log("✅ Sesión validada. Empresa:", companyId);
 
-            // 3. Habilitar la interfaz (Quitar el 'disabled' de los campos)
+            // Habilitar la interfaz
             categoryInput.disabled = false;
             addButton.disabled = false;
             productSearchInput.disabled = false;
             if (newCategorySelect) newCategorySelect.disabled = false;
 
-            // 4. CARGA FLASH: Primero lo que está en SQLite para velocidad instantánea
+            // 1. CARGA RÁPIDA DESDE SQLITE
             await cargarCategoriasDesdeLocal();
             await cargarProductosDesdeLocal(); 
 
-            // 5. CONFIGURAR EVENTOS (Listeners)
-            // Usamos removeEventListener antes de add para evitar duplicados si la función se relanza
-            changeCategoryBtn.removeEventListener('click', handleChangeCategoryBatch);
-            changeCategoryBtn.addEventListener('click', handleChangeCategoryBatch);
-            
-            productSearchInput.removeEventListener('input', handleProductSearch);
-            productSearchInput.addEventListener('input', handleProductSearch);
+            // 2. CICLO DE SINCRONIZACIÓN (Si hay red y plan activo)
+            if (navigator.onLine && respaldoActivo && SERVER_URL) {
+                console.log("🌐 Iniciando ciclo de sincronización de categorías...");
+                
+                // 🔥 PRIMERO: Subimos lo que está en estado 0
+                await iniciarSincronizacionSilenciosa();
 
-            // 6. SEGUNDO PLAN: Sincronizar con el Servidor Xeon (113)
-            if (navigator.onLine) {
-                // Llamamos a la sincronización sin el 'await' para que no bloquee la vista
-                sincronizarConServidorXeon(companyId);
+                // 🔥 SEGUNDO: Descargamos y validamos del servidor
+                await descargarYValidarCategorias(companyId);
             }
 
         } else {
-            console.warn("No hay sesión local. Redirigiendo a login...");
             window.location.href = 'login.html';
         }
     } catch (error) {
-        console.error("❌ Error crítico en el arranque de categorías:", error);
+        console.error("❌ Error en el arranque de categorías:", error);
     }
 }
+
+window.addEventListener('categoriasActualizadasBackground', () => {
+    console.log("⚡ [GESTOR CATEGORÍAS] Actualización detectada desde el Servidor Maestro.");
+    if (typeof cargarCategorias === 'function') {
+        cargarCategorias();
+    }
+});
+
+async function iniciarSincronizacionSilenciosa() {
+    if (window.sincronizando) return; 
+    
+    const api = window.nexusAPI;
+    const RUTA_SYNC = '/api/maestro/categorias/sincronizar';
+
+    if (!navigator.onLine || !respaldoActivo || !SERVER_URL || !api) return; 
+
+    window.sincronizando = true;
+    try {
+        const cola = await api.obtenerColaSincronizacion();
+        // Filtramos solo los registros de la tabla 'categorias'
+        const colaCategorias = cola ? cola.filter(r => r.tabla === 'categorias') : [];
+
+        if (colaCategorias.length > 0) {
+            for (const registro of colaCategorias) {
+                try {
+                    const datosJSON = typeof registro.datos === 'string' ? JSON.parse(registro.datos) : registro.datos;
+
+                    const response = await fetch(`${SERVER_URL}${RUTA_SYNC}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(datosJSON)
+                    });
+
+
+                    if (response.ok) {
+                        await api.eliminarDeCola(registro.id);                      
+                        const datosJSON = typeof registro.datos === 'string' ? JSON.parse(registro.datos) : registro.datos;
+                        const idReal = datosJSON.id || datosJSON.categoria_id || datosJSON.categoria_ID;   
+                        if (idReal) {
+                            await api.marcarComoSincronizado('categorias', idReal);
+                        }
+                    }
+
+                } catch (e) {
+                    console.error("❌ Error subiendo categoría individual:", e);
+                    break; 
+                }
+            }
+            await cargarCategoriasDesdeLocal(); // Refrescamos la tabla local
+        }
+    } catch (error) {
+        console.error("❌ Error en hilo de subida de Categorías:", error);
+    } finally {
+        window.sincronizando = false; 
+    }
+}
+
+async function descargarYValidarCategorias(idEmpresa) {
+    try {
+        const response = await fetch(`${SERVER_URL}/api/maestro/categorias/${idEmpresa}`);
+        if (!response.ok) throw new Error("Servidor VPS no alcanzable");
+        
+        const categoriasServidor = await response.json();
+        const api = window.nexusAPI;
+
+        const categoriasLocales = await api.obtenerCategoriasLocal();
+        const estadosLocales = {};
+        categoriasLocales.forEach(c => estadosLocales[c.id] = c.estado_sync);
+
+        let procesados = 0;
+        for (const cat of categoriasServidor) {
+            // 🔥 CORRECCIÓN: PostgreSQL devuelve 'categoria_id' en minúsculas
+            const idCat = cat.categoria_id || cat.id || cat.categoria_ID;
+            
+            if (!idCat) {
+                console.warn("⚠️ Omitiendo categoría del servidor sin ID válido:", cat);
+                continue;
+            }
+
+            if (estadosLocales[idCat] === 0) continue;
+
+            await api.sincronizarCategoriaServidor({
+                id: idCat, // Se mapea a 'id' para que SQLite lo reconozca
+                company_id: idEmpresa,
+                nombre: cat.nombre,
+                fecha_modificacion: cat.fecha_modificacion || new Date().toISOString()
+            });
+            procesados++;
+        }
+        
+        if (procesados > 0) {
+            console.log(`✅ [SYNC-CAT] ${procesados} categorías actualizadas desde el servidor.`);
+            await cargarCategoriasDesdeLocal();
+        }
+        
+    } catch (error) {
+        console.warn("⚠️ Fallo en descarga de categorías. Usando datos locales.");
+    }
+}
+
 
 async function sincronizarConServidorXeon(idEmpresa) {
     // 🛡️ Candado de seguridad: Evitar pedir "todo" si idEmpresa falla
@@ -633,22 +733,22 @@ async function cargarCategoriasDesdeLocal() {
         // 1. ELIMINAR EN SQLITE (Local)
         await api.eliminarCategoriaLocal(id);
 
-        // 2. ELIMINAR EN EL SERVIDOR XEON (Si hay internet)
-        if (navigator.onLine) {
+        // 🔥 MODIFICACIÓN: ELIMINAR EN EL SERVIDOR VPS (Si el plan premium está activo)
+        if (navigator.onLine && respaldoActivo && SERVER_URL) {
             try {
-                const response = await fetch(`${SERVER_URL}/api/categorias/${id}`, {
+                const response = await fetch(`${SERVER_URL}/api/maestro/categorias/${id}`, {
                     method: 'DELETE'
                 });
-                if (!response.ok) throw new Error("Error en servidor Xeon");
+                if (!response.ok) throw new Error("Error en servidor VPS");
             } catch (srvErr) {
                 console.warn("Servidor offline, encolando eliminación.");
                 await api.encolarSincronizacion({
                     operacion: 'DELETE',
                     tabla: 'categorias',
-                    datos: { id: id } // 🔥 CORRECCIÓN: Ahora está correctamente estructurado
+                    datos: { id: id }
                 });
             }
-        } else {
+        } else if (respaldoActivo) {
             await api.encolarSincronizacion({
                 operacion: 'DELETE',
                 tabla: 'categorias',
@@ -658,7 +758,6 @@ async function cargarCategoriasDesdeLocal() {
 
         showCustomAlert(`Categoría "${name}" eliminada correctamente.`, 'success');
         
-        // 🔥 AHORA SÍ: La tabla se refrescará al instante
         await cargarCategoriasDesdeLocal();
 
     } catch (error) {
@@ -679,9 +778,6 @@ addButton.addEventListener('click', async () => {
     const newId = `CAT-${Date.now()}`;
     const fecha = new Date().toISOString();
 
-    // 🔥 SOLUCIÓN: El objeto "Universal". 
-    // Las llaves en inglés las lee SQLite (main.js) para que no crashee y actualice la tabla.
-    // Las llaves en español las lee MongoDB (Servidor Xeon).
     const nuevaCategoria = {
         id: newId,                
         categoria_ID: newId,      
@@ -692,28 +788,29 @@ addButton.addEventListener('click', async () => {
     };
 
     try {
-        // 1. Guardar localmente (Ahora sí será exitoso)
+        // 1. Guardar localmente
         await api.sincronizarCategoriaServidor(nuevaCategoria);
 
-        // 2. Enviar al Xeon
-        if (navigator.onLine) {
+        // 🔥 MODIFICACIÓN: Enviar al Servidor VPS (Protegido por el plan premium)
+        if (navigator.onLine && respaldoActivo && SERVER_URL) {
             try {
-                const response = await fetch(`${SERVER_URL}/api/categorias`, {
+                // Apuntamos al nuevo endpoint de UPSERT
+                const response = await fetch(`${SERVER_URL}/api/maestro/categorias/sincronizar`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(nuevaCategoria)
                 });
                 
-                if (!response.ok) throw new Error("Bad Request");
+                if (!response.ok) throw new Error("Bad Request VPS");
             } catch (srvErr) {
-                console.warn("Servidor rechazó o está offline, encolando.");
+                console.warn("Servidor VPS rechazó o está offline, encolando.");
                 await api.encolarSincronizacion({
                     operacion: 'INSERT',
                     tabla: 'categorias',
                     datos: nuevaCategoria
                 });
             }
-        } else {
+        } else if (respaldoActivo) {
             await api.encolarSincronizacion({
                 operacion: 'INSERT',
                 tabla: 'categorias',
@@ -724,7 +821,6 @@ addButton.addEventListener('click', async () => {
         showCustomAlert(`Categoría "${categoryName}" añadida.`, 'success');
         categoryInput.value = '';
         
-        // 🔥 COMO YA NO HAY ERROR LOCAL, ESTA LÍNEA SÍ SE EJECUTARÁ Y ACTUALIZARÁ LA TABLA INMEDIATAMENTE
         await cargarCategoriasDesdeLocal();
 
     } catch (error) {
@@ -734,9 +830,6 @@ addButton.addEventListener('click', async () => {
 });
 
 
-        
-        // Manejar la búsqueda y autocompletar de productos
-        // Manejar la búsqueda y autocompletar de productos
         function handleProductSearch() {
             const searchTerm = productSearchInput.value.trim().toLowerCase();
             searchResultsDiv.innerHTML = '';
@@ -896,110 +989,106 @@ function updateChangeButtonState() {
         }
 
 async function handleChangeCategoryBatch() {
-            if (selectedProductIds.size === 0) {
-                showCustomAlert("Selecciona al menos un producto.", "warning");
-                return;
+    if (selectedProductIds.size === 0) {
+        showCustomAlert("Selecciona al menos un producto.", "warning");
+        return;
+    }
+    
+    const newCategoryId = newCategorySelect.value;
+    if (!newCategoryId) {
+        showCustomAlert("Selecciona una nueva categoría.", "warning");
+        return;
+    }
+
+    const newCategoryName = allCategories[newCategoryId] || "Sin nombre";
+
+    // 🔥 MODIFICACIÓN: Se elimina la constante quemada SERVER_PRODUCTOS_URL = "http://192.168.0.113:3000"
+
+    changeCategoryBtn.disabled = true; 
+
+    try {
+        let successfulUpdates = 0;
+        const productIdsArray = Array.from(selectedProductIds);
+        const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+
+        for (const docId of productIdsArray) {
+            const currentProduct = allProductsMap[docId];
+            if (!currentProduct) continue;
+
+            const now = new Date().toISOString();
+
+            // 1. Preparamos el objeto
+            const updatedDataForServer = {
+                ...currentProduct,
+                categoria: newCategoryId, 
+                empresa_ID: window.currentCompanyId,
+                producto_ID: docId,
+                fecha_modificacion: now
+            };
+
+            // 2. ACTUALIZAR EN SQLITE (Cerebro Local)
+            await api.sincronizarProductoServidor({
+                id: docId,
+                company_id: window.currentCompanyId,
+                codigo: currentProduct.codigo,
+                nombre: currentProduct.nombre,
+                precio: currentProduct.precio || 0,
+                categoria: newCategoryId, 
+                status: currentProduct.status !== undefined ? currentProduct.status : 1,
+                imagen: currentProduct.imagen || '',
+                datos_json: JSON.stringify(updatedDataForServer),
+                fecha_modificacion: now
+            });
+
+            // 3. 🔥 MODIFICACIÓN: ACTUALIZAR EN EL SERVIDOR VPS (Inventario)
+            if (navigator.onLine && respaldoActivo && SERVER_URL) {
+                try {
+                    // Apuntamos al endpoint de INVENTARIO porque estamos modificando un producto
+                    const response = await fetch(`${SERVER_URL}/api/maestro/inventario/sincronizar`, {
+                        method: 'POST', // Cambiado de PUT a POST para hacer match con tu Upsert
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(updatedDataForServer)
+                    });
+                    
+                    if (!response.ok) throw new Error("Fallo en servidor VPS");
+                    
+                } catch (srvErr) {
+                    console.warn(`Encolando producto ${docId}.`);
+                    await api.encolarSincronizacion({
+                        operacion: 'UPDATE',
+                        tabla: 'productos',
+                        datos: updatedDataForServer
+                    });
+                }
+            } else if (respaldoActivo) {
+                // 4. ENCOLAR SI NO HAY RED Y ES PREMIUM
+                await api.encolarSincronizacion({
+                    operacion: 'UPDATE',
+                    tabla: 'productos',
+                    datos: updatedDataForServer
+                });
             }
             
-            const newCategoryId = newCategorySelect.value;
-            if (!newCategoryId) {
-                showCustomAlert("Selecciona una nueva categoría.", "warning");
-                return;
-            }
-
-            // Mantenemos consistencia: Usamos el ID para la base de datos
-            // pero el nombre para mostrar en el mensaje
-            const newCategoryName = allCategories[newCategoryId] || "Sin nombre";
-
-            // DEFINIMOS EL PUERTO CORRECTO PARA PRODUCTOS (3000)
-            // Esto evita el error 404 que estabas recibiendo
-            const SERVER_PRODUCTOS_URL = "http://192.168.0.113:3000";
-
-            changeCategoryBtn.disabled = true; 
-
-            try {
-                let successfulUpdates = 0;
-                const productIdsArray = Array.from(selectedProductIds);
-                const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
-
-                for (const docId of productIdsArray) {
-                    const currentProduct = allProductsMap[docId];
-                    if (!currentProduct) continue;
-
-                    const now = new Date().toISOString();
-
-                    // 1. Preparamos el objeto para el Servidor Xeon (Puerto 3000)
-                    // Importante: empresa_ID y producto_ID deben coincidir con tu Schema de MongoDB
-                    const updatedDataForServer = {
-                        ...currentProduct,
-                        categoria: newCategoryId, // Guardamos el ID para consistencia relacional
-                        empresa_ID: window.currentCompanyId,
-                        producto_ID: docId,
-                        fecha_modificacion: now
-                    };
-
-                    // 2. ACTUALIZAR EN SQLITE (Cerebro Local)
-                    await api.sincronizarProductoServidor({
-                        id: docId,
-                        company_id: window.currentCompanyId,
-                        codigo: currentProduct.codigo,
-                        nombre: currentProduct.nombre,
-                        precio: currentProduct.precio || 0,
-                        categoria: newCategoryId, // Guardamos el ID
-                        status: currentProduct.status !== undefined ? currentProduct.status : 1,
-                        imagen: currentProduct.imagen || '',
-                        datos_json: JSON.stringify(updatedDataForServer),
-                        fecha_modificacion: now
-                    });
-
-                    // 3. ACTUALIZAR EN EL SERVIDOR XEON (Puerto 3000)
-                    if (navigator.onLine) {
-                        try {
-                            const response = await fetch(`${SERVER_PRODUCTOS_URL}/api/productos/${docId}`, {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(updatedDataForServer)
-                            });
-                            
-                            if (!response.ok) throw new Error("Fallo en servidor Xeon");
-                            
-                        } catch (srvErr) {
-                            console.warn(`Encolando producto ${docId} en el puerto 3000.`);
-                            await api.encolarSincronizacion({
-                                operacion: 'UPDATE',
-                                tabla: 'productos',
-                                datos: updatedDataForServer
-                            });
-                        }
-                    } else {
-                        // 4. ENCOLAR SI NO HAY RED
-                        await api.encolarSincronizacion({
-                            operacion: 'UPDATE',
-                            tabla: 'productos',
-                            datos: updatedDataForServer
-                        });
-                    }
-                    
-                    successfulUpdates++;
-                }
-
-                showCustomAlert(`Éxito: ${successfulUpdates} productos movidos a "${newCategoryName}".`, 'success');
-                
-                // Limpieza y refresco
-                selectedProductIds.clear();
-                if (typeof renderSelectedProducts === 'function') renderSelectedProducts();
-                await cargarProductosDesdeLocal(); // Recarga el mapa con las nuevas categorías
-                
-                newCategorySelect.value = '';
-                if (typeof updateChangeButtonState === 'function') updateChangeButtonState();
-
-            } catch (e) {
-                console.error("Error en cambio masivo:", e);
-                showCustomAlert("Error al actualizar. Revisa la consola.", 'error');
-            } finally {
-                changeCategoryBtn.disabled = false;
-            }
+            successfulUpdates++;
         }
+
+        showCustomAlert(`Éxito: ${successfulUpdates} productos movidos a "${newCategoryName}".`, 'success');
+        
+        // Limpieza y refresco
+        selectedProductIds.clear();
+        if (typeof renderSelectedProducts === 'function') renderSelectedProducts();
+        await cargarProductosDesdeLocal(); 
+        
+        newCategorySelect.value = '';
+        if (typeof updateChangeButtonState === 'function') updateChangeButtonState();
+
+    } catch (e) {
+        console.error("Error en cambio masivo:", e);
+        showCustomAlert("Error al actualizar. Revisa la consola.", 'error');
+    } finally {
+        changeCategoryBtn.disabled = false;
+    }
+}
         
         // Función para mostrar alertas personalizadas
 function showCustomAlert(message, type = 'success') {

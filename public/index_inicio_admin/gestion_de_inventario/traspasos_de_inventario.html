@@ -3,760 +3,633 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Traspaso de Inventario</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <style>
-        body {
-            font-family: 'Roboto', sans-serif;
-            background-color: #f3f4f6;
-            margin: 0;
-            padding: 0;
-        }
+    <title>Traspaso de Inventario - Nexus POS</title>
+    <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <script src="tailwindcss.js"></script>
+<style>
+    body {
+        font-family: 'Roboto', sans-serif;
+        background-color: #f3f4f6;
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+    }
 
-        .inventory-transfer-container {
-            background-color: #ffffff;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            width: 90%;
-            max-width: 1200px;
-            box-sizing: border-box;
-            margin: 2rem auto;
-            text-align: left;
-        }
-        
-        h1 {
-            color: #333;
-            margin-bottom: 30px;
-            font-size: 2.2em;
-            font-weight: 600;
-            text-align: center;
-        }
-        
-        /* ESTILOS AÑADIDOS PARA LA INFO DEL USUARIO */
-        .user-info {
-            background-color: #f0f4f8;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            text-align: left;
-            border: 1px solid #e2e8f0;
-        }
-        .user-info p {
-            margin: 5px 0;
-            font-size: 1rem;
-            color: #4a5568;
-        }
-        /* FIN ESTILOS INFO USUARIO */
+    /* --- ESTILO EXPANSIVO NEXUS (100% + 1rem de margen) --- */
+    #app-container {
+        background-color: transparent !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 20px 1rem !important; 
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+    }
 
-        .form-section {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
+    @media (min-width: 768px) {
+        #app-container { padding: 30px 1rem !important; }
+    }
 
-        .form-section label {
-            font-weight: bold;
-            color: #555;
-            margin-bottom: 5px;
-        }
+    h1 {
+        color: #333;
+        margin-bottom: 25px;
+        font-size: 2.2em; 
+        font-weight: 700;
+        letter-spacing: -1px;
+        text-align: center;
+    }
 
-        .form-section input[type="number"],
-        .form-section select,
-        .form-section textarea,
-        /* Incluimos el nuevo campo de búsqueda */
-        #product-search,
-        #total-transfer-display { /* Estilo para el campo de solo lectura */
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            box-sizing: border-box;
-            font-size: 1em;
-            transition: border-color 0.3s;
-        }
-        
-        #total-transfer-display {
-             background-color: #e9ecef; /* Color de fondo para campo de solo lectura */
-             cursor: default;
-             font-weight: bold;
-             color: #495057;
-        }
-        
-        .form-section input:focus,
-        .form-section select:focus,
-        .form-section textarea:focus {
-            border-color: #007bff;
-            outline: none;
-        }
+    h2 {
+        color: #333;
+        margin-bottom: 20px;
+        font-size: 1.5em; 
+        font-weight: 700;
+        letter-spacing: -1px;
+        text-align: center;
+    }
 
-        /* Estilos para el menú desplegable de sugerencias */
-        .autocomplete-container {
-            position: relative;
-        }
-        #product-suggestions {
-            position: absolute;
-            z-index: 100;
-            border: 1px solid #ddd;
-            border-top: none;
-            max-height: 200px;
-            overflow-y: auto;
-            background-color: #fff;
-            width: 100%;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            border-radius: 0 0 8px 8px;
-            box-sizing: border-box;
-        }
-        .suggestion-item {
-            padding: 10px;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-            font-size: 1em;
-        }
-        .suggestion-item:hover {
-            background-color: #f0f0f0;
-        }
-        /* Fin Estilos Sugerencias */
-        
-        #stock-display {
-            font-weight: bold;
-            color: #333;
-            padding: 10px;
-            background-color: #f0f0f0;
-            border-radius: 5px;
-            text-align: center;
-        }
-        .btn-transfer {
-            background-color: #007bff;
-            color: white;
-            padding: 15px 30px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1em;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            margin-top: 20px;
-            width: 100%;
-        }
-        .btn-transfer:hover {
-            background-color: #0056b3;
-        }
-    </style>
+    /* --- FORMULARIO --- */
+    .form-section {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 25px;
+        text-align: left;
+    }
+
+    .input-group-item {
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        flex: 1;
+    }
+
+    .form-section label {
+        font-weight: bold;
+        color: #4a5568;
+        margin-bottom: 6px;
+        font-size: 0.95em;
+    }
+
+    .form-section input, .form-section select, .form-section textarea {
+        width: 100%;
+        padding: 14px;
+        border: 1px solid #cbd5e0;
+        border-radius: 8px;
+        box-sizing: border-box;
+        font-size: 1em;
+        background-color: white;
+    }
+
+    /* Usaremos un tema Morado/Violeta para Traspasos para diferenciarlo de Entradas(Azul) y Salidas(Rojo) */
+    .form-section input:focus, .form-section select:focus, .form-section textarea:focus {
+        outline: none;
+        border-color: #8b5cf6; /* Violeta */
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+    }
+
+    #final-stock-display {
+        background-color: #ede9fe;
+        cursor: default;
+        font-weight: 800;
+        color: #5b21b6;
+        border: 1px solid #c4b5fd;
+    }
+
+    .btn-submit {
+        background-color: #8b5cf6; /* Violeta 500 */
+        color: white;
+        padding: 18px 30px;
+        border: none;
+        border-radius: 8px;
+        font-size: 1.1em;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        margin-top: 10px;
+        width: 100%;
+    }
+
+    .btn-submit:hover { background-color: #7c3aed; /* Violeta 600 */ }
+    .btn-submit:disabled { background-color: #a78bfa; cursor: not-allowed; }
+
+    /* --- TABLA DE HISTORIAL --- */
+    .table-container {
+        margin-top: 30px;
+        overflow-x: auto;
+    }
+
+    .table-scroll-wrapper {
+        max-height: 600px;
+        overflow-y: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        background-color: white;
+    }
+
+    table {
+        width: 100%;
+        min-width: 700px;
+        border-collapse: collapse;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    th, td {
+        border: 1px solid #e2e8f0;
+        padding: 14px;
+        text-align: left;
+        font-size: 0.9em;
+    }
+
+    th {
+        background-color: #8b5cf6; 
+        color: white;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    tr:nth-child(even) { background-color: #f7fafc; }
+    tr:hover { background-color: #f5f3ff; }
+
+    /* --- BUSCADOR --- */
+    #product-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: white;
+        border-radius: 0 0 8px 8px;
+        max-height: 250px;
+        overflow-y: auto;
+        z-index: 9999;
+        display: none; 
+        border: 1px solid #cbd5e0;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+    #product-results.activo { display: block !important; }
+    .result-item { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #edf2f7; text-align: left; }
+    .result-item.autocomplete-active { background-color: #ede9fe !important; border-left: 4px solid #8b5cf6 !important; color: #5b21b6; }
+    .no-results-msg { padding: 12px 15px; color: #718096; font-style: italic; text-align: center; }
+</style>
 </head>
 <body>
-    <main>
-        <div class="inventory-transfer-container">
-            <h1>Traspaso de Inventario</h1>
-            
-            <div class="user-info">
-                <p><strong>ID de Usuario:</strong> <span id="userIdDisplay">Cargando...</span></p>
-                <p><strong>ID de Compañía:</strong> <span id="companyIdDisplay">Cargando...</span></p>
-                <p><strong>Rol:</strong> <span id="userRoleDisplay">Cargando...</span></p>
+<div id="toast-container" class="fixed top-5 right-5 z-[10000] flex flex-col gap-3"></div>
+    <div id="app-container">
+        <h1>Traspaso de Inventario</h1>
+        
+        <form id="inventory-form" class="form-section">
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="input-group-item md:w-1/2">
+                    <label for="storage-origin">1. Sucursal Origen (Retiro):</label>
+                    <select id="storage-origin" required>
+                        <option value="" disabled selected>Cargando sucursales...</option>
+                    </select>
+                </div>
+                <div class="input-group-item md:w-1/2">
+                    <label for="storage-destination">2. Sucursal Destino (Entrada):</label>
+                    <select id="storage-destination" required disabled>
+                        <option value="" disabled selected>Selecciona origen primero...</option>
+                    </select>
+                </div>
             </div>
-            <div class="form-section">
-                <label for="product-search">Búsqueda de Producto:</label>
-                <div class="autocomplete-container">
-                    <input type="text" id="product-search" placeholder="Escribe el nombre del producto..." onkeyup="handleProductSearch(this.value)" required>
-                    <input type="hidden" id="selected-product-id">
-                    <div id="product-suggestions"></div>
-                </div>
-                <div id="stock-display"></div>
-                
-                <div class="flex flex-col md:flex-row gap-4">
-                    <div class="flex-1">
-                        <label for="quantity-input">Cantidad de Paquetes/Unidades a Traspasar:</label>
-                        <input type="number" id="quantity-input" placeholder="Ej: 1" min="0.01" step="0.01" required>
-                    </div>
-                    <div class="flex-1">
-                        <label for="packaging-unit-select">Unidad de Empaque (Opcional):</label>
-                        <select id="packaging-unit-select" disabled>
-                            <option value="" selected>Selecciona un producto primero...</option> 
-                        </select>
-                    </div>
+
+            <div class="flex flex-col md:flex-row gap-4 mt-2">
+                <div class="input-group-item md:w-1/2">
+                    <label for="product-search">3. Producto a Traspasar:</label>
+                    <input type="text" id="product-search" placeholder="Selecciona origen primero..." autocomplete="off" required disabled>
+                    <div id="product-results"></div>
                 </div>
 
-                <div class="flex-1">
-                    <label>Total de Stock Base a Mover:</label>
-                    <input type="text" id="total-transfer-display" placeholder="0 unidad(es)" readonly>
+                <div class="input-group-item md:w-1/2">
+                    <label for="packaging-unit-select">Unidad de Empaque:</label>
+                    <select id="packaging-unit-select" disabled>
+                        <option value="1" selected>Unidad Individual (x1)</option> 
+                    </select>
                 </div>
-                <label for="origin-location">Sucursal de Origen:</label>
-                <select id="origin-location" required onchange="displayStock()">
-                    <option value="" disabled selected>Cargando sucursales...</option>
-                </select>
+            </div>
+            
+            <div class="flex flex-col md:flex-row gap-4 mt-2">
+                <div class="input-group-item md:w-1/2">
+                    <label for="quantity-input">Cantidad de Paquetes/Unidades:</label>
+                    <input type="number" id="quantity-input" placeholder="Ej: 5" step="0.01" required min="0.01" disabled>
+                </div>
 
-                <label for="destination-location">Sucursal de Destino:</label>
-                <select id="destination-location" required>
-                    <option value="" disabled selected>Cargando sucursales...</option>
-                </select>
-                
-                <label for="observation">Observación:</label>
-                <textarea id="observation" rows="3" placeholder="Añade una nota sobre este traspaso..."></textarea>
-                
-                <button class="btn-transfer" onclick="transferInventory()">Realizar Traspaso</button>
+                <div class="input-group-item md:w-1/2">
+                    <label>Total de Stock a Traspasar:</label>
+                    <input type="text" id="final-stock-display" value="0.00" readonly>
+                </div>
+            </div>
+
+            <div class="mt-2">
+                <label for="observation">Observación (Opcional):</label>
+                <textarea id="observation" rows="2" placeholder="Añade una nota o motivo sobre este traspaso..."></textarea>
+            </div>
+            
+            <button type="submit" id="btn-submit-transfer" class="btn-submit">
+                Ejecutar Traspaso de Inventario
+            </button>
+        </form>
+
+        <hr class="my-8">
+
+        <div class="table-container">
+            <h2>Historial de Traspasos Recientes</h2>
+            <div class="table-scroll-wrapper">
+                <table id="transaction-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha / Hora</th>
+                            <th>Producto</th>
+                            <th>Cantidad Traspasada</th>
+                            <th>Desde (Origen)</th>
+                            <th>Hacia (Destino)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transaction-log-body">
+                        <tr><td colspan="5" class="text-center py-4 text-gray-500 italic">No hay traspasos recientes.</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
-    </main>
+    </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        // Se asegura que runTransaction esté importado para atomicidad
-        import { getFirestore, collection, onSnapshot, query, doc, getDocs, updateDoc, setDoc, increment, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-        
-        // Variables globales proporcionadas por el entorno de Canvas
-        const firebaseConfig = {
-            apiKey: "AIzaSyDN9mZ1n-OkC-Qz52eTCOy4yJH7M0U9zYI",
-            authDomain: "nexus-pos-75593.firebaseapp.com",
-            projectId: "nexus-pos-75593",
-            storageBucket: "nexus-pos-75593.firebasestorage.app",
-            messagingSenderId: "626840984883",
-            appId: "1:626840984883:web:08d56544ee28bc8e637246",
-            measurementId: "G-K1EQVJWJHG"
-        };
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
-        // Inicializa Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        
-        let companyId = null;
-        let userId = null;
-        let userRole = null;
-        
-        let loadedProducts = []; 
-        let loadedLocations = []; 
-        let allPackagings = []; 
-        
-        let selectedProductId = null; 
-        let selectedPackagingFactor = 1; 
-        let currentStockValue = 0; 
-        
-        // Elementos del DOM
-        const productSearchInput = document.getElementById('product-search');
-        const selectedProductIdInput = document.getElementById('selected-product-id');
-        const suggestionsContainer = document.getElementById('product-suggestions');
-        const originSelect = document.getElementById('origin-location');
-        const destinationSelect = document.getElementById('destination-location');
-        const stockDisplay = document.getElementById('stock-display');
-        const userIdDisplay = document.getElementById('userIdDisplay');
-        const companyIdDisplay = document.getElementById('companyIdDisplay');
-        const userRoleDisplay = document.getElementById('userRoleDisplay');
-        
-        // Nuevas referencias a elementos del DOM de empaque
-        const quantityInput = document.getElementById('quantity-input');
-        const packagingUnitSelect = document.getElementById('packaging-unit-select');
-        const totalTransferDisplayInput = document.getElementById('total-transfer-display');
+    // --- 1. VARIABLES DE ESTADO ---
+    let idEmpresa = null;
+    let idUsuario = null;
+    let sucursalesDisponibles = [];
+    
+    let idSucursalOrigen = null;
+    let idSucursalDestino = null;
+    let listaProductosOrigen = []; 
+    let idProductoSeleccionado = null;
+    let factorEmpaque = 1;
+    let focoProducto = -1; 
 
+    // --- 2. REFERENCIAS DOM ---
+    const selectOrigen = document.getElementById('storage-origin');
+    const selectDestino = document.getElementById('storage-destination');
+    const inputBusqueda = document.getElementById('product-search');
+    const contenedorResultados = document.getElementById('product-results');
+    const selectEmpaque = document.getElementById('packaging-unit-select');
+    const inputCantidad = document.getElementById('quantity-input');
+    const visorTotal = document.getElementById('final-stock-display');
+    const formulario = document.getElementById('inventory-form');
+    const cuerpoHistorial = document.getElementById('transaction-log-body');
+    const btnSubmit = document.getElementById('btn-submit-transfer');
 
-        /**
-         * Función para mostrar una alerta personalizada
-         */
-        function showCustomAlert(message, type = "info") {
-            const alertDiv = document.createElement('div');
-            alertDiv.textContent = message;
-            let backgroundColor = '#007bff';
-            if (type === "error") backgroundColor = "#f44336";
-            if (type === "success") backgroundColor = "#4CAF50";
-            if (type === "warning") backgroundColor = "#ff9800";
+    // --- 3. INICIALIZACIÓN ---
+    async function inicializar() {
+        try {
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
+            if (sesion && sesion.companyId) {
+                idEmpresa = sesion.companyId;
+                idUsuario = sesion.uid || sesion.id;
+                await cargarSucursales();
+            } else {
+                mostrarToast("No hay sesión activa.", "error");
+            }
+        } catch (e) { 
+            console.error("❌ [NEXUS] Error al inicializar:", e); 
+        }
+    }
 
-            alertDiv.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background-color: ${backgroundColor};
-                color: white;
-                padding: 15px;
-                border-radius: 5px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                z-index: 1000;
-                transition: opacity 0.5s ease-in-out;
+    async function cargarSucursales() {
+        sucursalesDisponibles = await window.nexusAPI.obtenerSucursalesLocal(idEmpresa);
+        
+        selectOrigen.innerHTML = '<option value="" disabled selected>Selecciona sucursal origen...</option>';
+        selectDestino.innerHTML = '<option value="" disabled selected>Selecciona sucursal destino...</option>';
+        
+        if(sucursalesDisponibles && sucursalesDisponibles.length > 0) {
+            sucursalesDisponibles.forEach(s => {
+                const optOrigen = document.createElement('option');
+                optOrigen.value = s.id;
+                optOrigen.textContent = s.nombre;
+                selectOrigen.appendChild(optOrigen);
+
+                const optDestino = document.createElement('option');
+                optDestino.value = s.id;
+                optDestino.textContent = s.nombre;
+                selectDestino.appendChild(optDestino);
+            });
+        }
+        selectDestino.disabled = false;
+    }
+
+    // --- 4. PREPARACIÓN DEL ENTORNO (STOCK ORIGEN) ---
+    async function prepararEntornoOrigen() {
+        if (!idSucursalOrigen) return;
+
+        inputBusqueda.disabled = false;
+        inputBusqueda.placeholder = "Buscando stock en el Maestro...";
+        inputCantidad.disabled = false;
+        
+        const servidorIP = localStorage.getItem('serverIP') || '192.168.0.111';
+        const URL_BASE = `http://${servidorIP}:3000`;
+
+        try {
+            // 1. Catálogo local
+            const todosLosProductos = await window.nexusAPI.obtenerProductosLocal(); 
+            const productosBase = todosLosProductos.filter(p => p.company_id === idEmpresa);
+            
+            // 2. Stock del maestro para el ORIGEN
+            const params = new URLSearchParams({
+                sucursalId: idSucursalOrigen,
+                companyId: idEmpresa
+            });
+            const respuesta = await fetch(`${URL_BASE}/api/maestro/stock?${params.toString()}`);
+            const stockCentral = await respuesta.json();
+
+            // 3. Cruzar datos (solo productos con stock > 0 para agilizar)
+            listaProductosOrigen = productosBase.map(prod => {
+                const servidorData = stockCentral.find(s => s.producto_id === prod.id);
+                return {
+                    ...prod,
+                    stock_sucursal: servidorData ? servidorData.cantidad_real : 0 
+                };
+            }).filter(p => p.stock_sucursal > 0);
+
+            inputBusqueda.placeholder = "Escribe el producto a traspasar...";
+            
+            // 4. Cargar Historial de Traspasos Local
+            await cargarHistorialTraspasos();
+
+        } catch (error) {
+            console.error("❌ Error cargando origen:", error);
+            mostrarToast("Error de conexión con el servidor", "error");
+        }
+    }
+
+    // --- 5. LÓGICA DE AUTOCOMPLETADO Y SELECCIÓN ---
+    async function seleccionarProducto(p) {
+        idProductoSeleccionado = p.id;
+        inputBusqueda.value = p.nombre;
+        contenedorResultados.innerHTML = "";
+        contenedorResultados.classList.remove('activo');
+        
+        // Cargar Empaques
+        const empaques = await window.nexusAPI.obtenerEmpaquePorProducto(p.id);
+        selectEmpaque.innerHTML = `<option value="1">Unidad Individual (1.00 ${p.unit || 'UN'})</option>`;
+        selectEmpaque.disabled = false;
+        
+        if (empaques && empaques.length > 0) {
+            empaques.forEach(emp => {
+                const opt = document.createElement('option');
+                opt.value = emp.factor_cantidad;
+                opt.textContent = `${emp.nombre_unidad} (x${emp.factor_cantidad} ${emp.tipo_medida})`;
+                selectEmpaque.appendChild(opt);
+            });
+        }
+        
+        factorEmpaque = 1;
+        recalcular();
+        inputCantidad.focus();
+    }
+
+    function recalcular() {
+        const cant = parseFloat(inputCantidad.value) || 0;
+        const total = cant * factorEmpaque;
+        visorTotal.value = `${total.toFixed(2)} unidad(es)`;
+    }
+
+    // --- 6. HISTORIAL DE TRASPASOS ---
+    async function cargarHistorialTraspasos() {
+        try {
+            // Reutilizamos tu API de salidas para leer el historial local
+            let historialLocal = await window.nexusAPI.obtenerSalidasLocal({
+                companyId: idEmpresa,
+                branchId: idSucursalOrigen
+            });
+
+            // Filtramos solo los movimientos que contengan "Traspaso" en el motivo
+            const traspasos = historialLocal.filter(h => (h.motivo || '').toLowerCase().includes('traspaso'));
+            renderizarHistorial(traspasos);
+        } catch (error) {
+            console.error("❌ Error leyendo historial:", error);
+        }
+    }
+
+    function renderizarHistorial(lista) {
+        cuerpoHistorial.innerHTML = '';
+        if (!lista || lista.length === 0) {
+            cuerpoHistorial.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500 italic">No hay traspasos recientes desde esta sucursal.</td></tr>';
+            return;
+        }
+
+        lista.forEach(h => {
+            const fila = document.createElement('tr');
+            const nombreProd = h.nombre_producto || 'Producto Desconocido';
+            const unidadLimpia = h.unidad ? h.unidad.split(' ')[0] : 'UN';
+            
+            // Extraer el nombre del destino del motivo (Ej: "Traspaso a Sucursal Centro")
+            const motivoTexto = h.motivo || '';
+            const destinoAprox = motivoTexto.replace('Traspaso a ', '');
+
+            fila.innerHTML = `
+                <td class="px-6 py-4 text-xs text-gray-500">${new Date(h.fecha_modificacion).toLocaleString()}</td>
+                <td class="px-6 py-4 text-sm font-bold text-gray-900">${nombreProd}</td>
+                <td class="px-6 py-4 text-sm font-bold text-purple-600">${h.cantidad} ${unidadLimpia}</td>
+                <td class="px-6 py-4 text-sm text-gray-600">${h.branch_id}</td>
+                <td class="px-6 py-4 text-sm text-gray-600">${destinoAprox}</td>
             `;
-            document.body.appendChild(alertDiv);
-            setTimeout(() => {
-                alertDiv.style.opacity = '0';
-                setTimeout(() => alertDiv.remove(), 500);
-            }, 3000);
-        }
-
-        // Escucha cambios en el estado de autenticación
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                try {
-                    const idTokenResult = await user.getIdTokenResult();
-                    
-                    userId = user.uid;
-                    companyId = idTokenResult.claims.companyId;
-                    userRole = idTokenResult.claims.role || 'guest';
-
-                    userIdDisplay.textContent = userId;
-                    companyIdDisplay.textContent = companyId || 'No disponible';
-                    userRoleDisplay.textContent = userRole || 'No disponible';
-
-                    if (companyId) {
-                        console.log(`ID de Usuario: ${userId}, ID de Empresa: ${companyId}, Rol: ${userRole}`);
-                        
-                        setupProductsListener(companyId); 
-                        setupLocationsListener(companyId);
-
-                    } else {
-                        console.error("No se encontró el ID de la empresa en los claims del token.");
-                        showCustomAlert("Error: ID de la empresa no disponible.", "error");
-                    }
-                } catch (error) {
-                    console.error("Error al obtener los claims del token:", error);
-                    showCustomAlert("Error de autenticación. Por favor, recarga la página.", "error");
-                }
-            } else {
-                if (initialAuthToken) {
-                    try {
-                        await signInWithCustomToken(auth, initialAuthToken);
-                    } catch (error) {
-                        console.error("Error al iniciar sesión con el token de empresa:", error);
-                        showCustomAlert("Error de autenticación. Por favor, recarga la página.", "error");
-                    }
-                } else {
-                    console.error("Token de autenticación no disponible. No se puede iniciar sesión.");
-                    showCustomAlert("Error: El token de autenticación no está disponible.", "error");
-                }
-            }
+            cuerpoHistorial.appendChild(fila);
         });
-        
-        /**
-         * Escucha en tiempo real los productos de la empresa y carga los empaques
-         */
-        async function setupProductsListener(companyId) {
-            const productsCollectionRef = collection(db, `companies/${companyId}/products`);
-            const q = query(productsCollectionRef);
-            
-            onSnapshot(q, async (snapshot) => {
-                loadedProducts = []; 
-                if (!snapshot.empty) {
-                    snapshot.forEach((doc) => {
-                        // Guardamos todos los metadatos del producto para usarlos al crear el documento de inventario de destino
-                        loadedProducts.push({ id: doc.id, ...doc.data() }); 
-                    });
-                }
-                productSearchInput.placeholder = loadedProducts.length > 0 ? "Escribe el nombre del producto..." : "No hay productos disponibles.";
-                
-                await loadAllPackagings(companyId);
+    }
 
-            }, (error) => {
-                console.error("Error al escuchar cambios en los productos:", error);
-                showCustomAlert("Error al cargar productos.", "error");
-            });
+    // --- 7. EVENT LISTENERS DOM ---
+    selectOrigen.onchange = async (e) => {
+        idSucursalOrigen = e.target.value;
+        if (idSucursalOrigen === idSucursalDestino) {
+            mostrarToast("Origen y Destino no pueden ser iguales.", "error");
+            selectOrigen.value = ""; idSucursalOrigen = null; return;
         }
-        
-        /**
-         * Carga todas las unidades de empaque ('packing') de la compañía
-         */
-        async function loadAllPackagings(companyId) {
-            try {
-                const packingsRef = collection(db, 'companies', companyId, 'packing');
-                const packingsSnapshot = await getDocs(packingsRef);
-                allPackagings = packingsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                console.log("Packing catalog loaded:", allPackagings);
-            } catch (error) {
-                console.error("Error loading packing catalog:", error);
-                showCustomAlert("Error al cargar las unidades de empaque.", "error");
-            }
+        await prepararEntornoOrigen();
+    };
+
+    selectDestino.onchange = (e) => {
+        idSucursalDestino = e.target.value;
+        if (idSucursalOrigen === idSucursalDestino) {
+            mostrarToast("Destino y Origen no pueden ser iguales.", "error");
+            selectDestino.value = ""; idSucursalDestino = null;
+        }
+    };
+
+    // Buscador: Escritura
+    inputBusqueda.oninput = (e) => {
+        const termino = e.target.value.toLowerCase().trim();
+        focoProducto = -1;
+        contenedorResultados.innerHTML = "";
+
+        if (termino.length < 2) {
+            contenedorResultados.classList.remove('activo');
+            return;
         }
 
-        /**
-         * Lógica de filtrado de productos y visualización de sugerencias
-         */
-        window.handleProductSearch = function(searchText) { 
-            suggestionsContainer.innerHTML = '';
-            
-            if (searchText.length < 2) {
-                return;
-            }
+        const filtrados = listaProductosOrigen.filter(p => 
+            p.nombre.toLowerCase().includes(termino) || (p.codigo && p.codigo.includes(termino))
+        );
 
-            const searchTerm = searchText.toUpperCase();
-            const filteredProducts = loadedProducts.filter(product => 
-                product.name.toUpperCase().includes(searchTerm)
-            );
-
-            if (filteredProducts.length > 0) {
-                filteredProducts.forEach(product => {
-                    const item = document.createElement('div');
-                    item.className = 'suggestion-item';
-                    item.textContent = `${product.name} (${product.unit})`;
-                    item.setAttribute('data-id', product.id);
-                    item.onclick = () => selectProduct(product.id, product.name);
-                    suggestionsContainer.appendChild(item);
-                });
-            } else {
+        if (filtrados.length > 0) {
+            contenedorResultados.classList.add('activo');
+            filtrados.forEach((p) => {
                 const item = document.createElement('div');
-                item.className = 'suggestion-item text-gray-500';
-                item.textContent = 'No se encontraron productos.';
-                suggestionsContainer.appendChild(item);
-            }
-        }
-
-        /**
-         * Selecciona un producto del menú desplegable y actualiza los campos
-         */
-        window.selectProduct = function(productId, productName) {
-            selectedProductId = productId;
-            selectedProductIdInput.value = productId;
-            
-            productSearchInput.value = productName;
-            suggestionsContainer.innerHTML = '';
-            
-            updatePackagingSelect(productName);
-            updateTotalTransferDisplay();
-            displayStock();
-        }
-
-        /**
-         * Rellena el selector de unidades de empaque para el producto seleccionado
-         */
-        function updatePackagingSelect(productName) {
-            packagingUnitSelect.innerHTML = '';
-            packagingUnitSelect.disabled = false;
-            selectedPackagingFactor = 1;
-
-            const productData = loadedProducts.find(p => p.name.toUpperCase() === productName.toUpperCase());
-            let baseUnitName = productData ? productData.unit : 'unidad';
-
-            // Opción por defecto (Sin conversión - Traspaso por unidad base)
-            const defaultOption = document.createElement('option');
-            defaultOption.value = "";
-            defaultOption.selected = true;
-            defaultOption.textContent = `Traspasar por ${baseUnitName} (Unidad Base)`;
-            packagingUnitSelect.appendChild(defaultOption);
-
-            const relevantPackings = allPackagings.filter(p => 
-                p.productType && p.productType.toUpperCase() === productName.toUpperCase()
-            );
-
-            if (relevantPackings.length > 0) {
-                 relevantPackings.forEach(packing => {
-                    const option = document.createElement('option');
-                    const optionText = `${packing.unit} (equivale a ${packing.quantity} ${packing.measureType})`;
-                    
-                    option.value = packing.unit;
-                    option.textContent = optionText;
-                    // Almacena el factor de conversión
-                    option.dataset.conversionFactor = packing.quantity;
-                    option.dataset.measureType = packing.measureType;
-                    
-                    packagingUnitSelect.appendChild(option);
-                });
-            } else {
-                 // Si no hay empaques, mantiene la unidad base y deshabilita
-                 packagingUnitSelect.innerHTML = `<option value="" selected>Traspasar por ${baseUnitName} (Unidad Base)</option>`;
-                 packagingUnitSelect.disabled = true;
-            }
-        }
-        
-        /**
-         * Calcula y muestra la cantidad total de unidades base a mover
-         */
-        function updateTotalTransferDisplay() {
-            const quantity = parseFloat(quantityInput.value);
-            
-            if (!selectedProductId || isNaN(quantity) || quantity <= 0) {
-                totalTransferDisplayInput.value = '0';
-                return;
-            }
-
-            const productData = loadedProducts.find(p => p.id === selectedProductId);
-            let baseUnit = productData ? productData.unit : 'unidad';
-
-            let measureType = baseUnit; 
-            
-            if (selectedPackagingFactor > 1) {
-                const selectedOption = packagingUnitSelect.options[packagingUnitSelect.selectedIndex];
-                measureType = selectedOption.dataset.measureType || baseUnit; 
-            }
-
-            const finalStockQuantity = quantity * selectedPackagingFactor;
-            
-            // Redondear a 2 decimales
-            const roundedQuantity = Math.round(finalStockQuantity * 100) / 100;
-
-            totalTransferDisplayInput.value = `${roundedQuantity} ${measureType}`;
-            
-            displayStock();
-        }
-
-        // Eventos para actualizar la conversión
-        quantityInput.addEventListener('input', updateTotalTransferDisplay);
-        
-        packagingUnitSelect.addEventListener('change', (e) => {
-            const selectedOption = e.target.options[e.target.selectedIndex];
-            selectedPackagingFactor = parseFloat(selectedOption.dataset.conversionFactor) || 1;
-            updateTotalTransferDisplay();
-        });
-
-
-        /**
-         * Escucha en tiempo real las sucursales (branches) de la empresa
-         */
-        function setupLocationsListener(companyId) {
-            const locationsCollectionRef = collection(db, `companies/${companyId}/branches`); 
-            const q = query(locationsCollectionRef);
-            
-            onSnapshot(q, (snapshot) => {
-                const currentOriginValue = originSelect.value;
-                const currentDestinationValue = destinationSelect.value;
-                
-                loadedLocations = [];
-                originSelect.innerHTML = '<option value="" disabled selected>Selecciona la sucursal de origen...</option>';
-                destinationSelect.innerHTML = '<option value="" disabled selected>Selecciona la sucursal de destino...</option>';
-
-                if (!snapshot.empty) {
-                    snapshot.forEach((doc) => {
-                        const location = doc.data();
-                        loadedLocations.push({ id: doc.id, name: location.name });
-                        
-                        const originOption = document.createElement('option');
-                        originOption.value = doc.id;
-                        originOption.textContent = location.name;
-                        originSelect.appendChild(originOption);
-
-                        const destinationOption = document.createElement('option');
-                        destinationOption.value = doc.id;
-                        destinationOption.textContent = location.name;
-                        destinationSelect.appendChild(destinationOption);
-                    });
-                } else {
-                    const noLocationOption = '<option value="" disabled selected>No hay sucursales disponibles.</option>';
-                    originSelect.innerHTML = noLocationOption;
-                    destinationSelect.innerHTML = noLocationOption;
-                }
-
-                if (currentOriginValue) originSelect.value = currentOriginValue;
-                if (currentDestinationValue) destinationSelect.value = currentDestinationValue;
-                
-                displayStock(); 
-            }, (error) => {
-                console.error("Error al escuchar cambios en las sucursales:", error);
-                showCustomAlert("Error al cargar sucursales.", "error");
+                item.className = "result-item";
+                item.innerHTML = `
+                    <div class="flex justify-between">
+                        <strong>${p.nombre}</strong>
+                        <span class="text-purple-600 font-bold">Disp: ${p.stock_sucursal} ${p.unit || 'UN'}</span>
+                    </div>
+                `;
+                item.onclick = () => seleccionarProducto(p);
+                contenedorResultados.appendChild(item);
             });
+        } else {
+            contenedorResultados.classList.add('activo');
+            contenedorResultados.innerHTML = `<div class="no-results-msg px-4 py-3 italic text-gray-500">Sin stock disponible o no encontrado</div>`;
         }
-        
-        // El evento 'change' en originSelect se maneja en el HTML con onchange="displayStock()"
+    };
 
+    // Buscador: Navegación Teclado
+    inputBusqueda.addEventListener('keydown', (e) => {
+        const items = contenedorResultados.querySelectorAll('.result-item');
+        if (items.length === 0) return;
 
-        /**
-         * Muestra el stock disponible del producto seleccionado en la sucursal de origen.
-         */
-        window.displayStock = async function() {
-            const productIdForStock = selectedProductIdInput.value; 
-            const selectedOriginId = originSelect.value;
-            
-            stockDisplay.textContent = ''; 
-            currentStockValue = 0; 
-
-            if (!companyId) return;
-
-            if (!productIdForStock) {
-                stockDisplay.textContent = 'Selecciona un producto primero.';
-                return;
-            }
-            if (!selectedOriginId) {
-                stockDisplay.textContent = 'Selecciona la sucursal de origen.';
-                return;
-            }
-            
-            stockDisplay.textContent = 'Cargando stock...';
-
-            try {
-                const inventoryDocRef = doc(db, `companies/${companyId}/branches/${selectedOriginId}/inventory/${productIdForStock}`);
-                
-                // Usamos onSnapshot para que el stock se actualice en tiempo real
-                onSnapshot(inventoryDocRef, (inventoryDocSnap) => {
-                    let stockQuantity = 0;
-
-                    if (inventoryDocSnap.exists()) {
-                        stockQuantity = inventoryDocSnap.data().stock || 0;
-                    }
-                    
-                    // Solo inicializamos currentStockValue con el valor del documento
-                    currentStockValue = parseFloat(stockQuantity) || 0;
-                    
-                    const productData = loadedProducts.find(p => p.id === productIdForStock);
-                    const unit = productData ? productData.unit : 'unidades';
-
-                    // Si no hay documento de inventario, el stock es 0, y el mensaje lo refleja.
-                    stockDisplay.textContent = `Stock disponible en esta sucursal: ${currentStockValue} ${unit}`;
-                
-                }, (error) => {
-                    console.error("Error en onSnapshot del stock:", error);
-                    stockDisplay.textContent = 'Error al cargar el stock.';
-                    currentStockValue = 0;
-                });
-            } catch (error) {
-                console.error("Error al iniciar la escucha del stock:", error);
-                stockDisplay.textContent = 'Error al cargar el stock.';
-                currentStockValue = 0;
-            }
+        if (e.key === "ArrowDown") {
+            e.preventDefault(); focoProducto++; if (focoProducto >= items.length) focoProducto = 0; aplicarResaltado(items);
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault(); focoProducto--; if (focoProducto < 0) focoProducto = items.length - 1; aplicarResaltado(items);
+        } else if (e.key === "Enter") {
+            e.preventDefault();
+            if (focoProducto > -1) items[focoProducto].click();
+            else if (items.length > 0) items[0].click();
         }
-        
-        /**
-         * Realiza el traspaso de inventario utilizando una transacción para garantizar
-         * que ambos documentos (origen y destino) se actualicen de forma atómica.
-         */
-        window.transferInventory = async function() {
-            if (!companyId) {
-                showCustomAlert('Error: Por favor, espera a que se complete la autenticación.', "error");
-                return;
-            }
-            
-            const productId = selectedProductIdInput.value; 
-            const quantity = parseFloat(quantityInput.value); 
-            const quantityBase = Math.round(quantity * selectedPackagingFactor * 100) / 100; 
-            
-            const originLocation = originSelect.value;
-            const destinationLocation = destinationSelect.value;
-            const observation = document.getElementById('observation').value;
-            
-            // 1. OBTENER TODOS LOS METADATOS DEL PRODUCTO ANTES DE LA TRANSACCIÓN
-            const productData = loadedProducts.find(p => p.id === productId);
+    });
 
-            if (!productData) {
-                showCustomAlert('Error: No se pudieron obtener los datos del producto. Recarga la página.', "error");
-                return;
-            }
-
-            const finalUnit = productData.unit || 'N/A'; 
-
-            // Validaciones iniciales
-            if (!productId || isNaN(quantity) || quantity <= 0 || !originLocation || !destinationLocation) {
-                showCustomAlert('Por favor, completa todos los campos obligatorios.', "warning");
-                return;
-            }
-
-            if (originLocation === destinationLocation) {
-                showCustomAlert('Las sucursales de origen y destino no pueden ser la misma.', "warning");
-                return;
-            }
-            
-            // Validación de stock (usando el valor cargado de forma reactiva)
-            if (quantityBase > currentStockValue) {
-                showCustomAlert(`Error: Stock insuficiente. Stock disponible: ${currentStockValue} ${finalUnit}. Intentas mover ${quantityBase}.`, "error");
-                return;
-            }
-            
-            try {
-                // 2. Referencias a los documentos de inventario
-                const originRef = doc(db, 'companies', companyId, 'branches', originLocation, 'inventory', productId);
-                const destinationRef = doc(db, 'companies', companyId, 'branches', destinationLocation, 'inventory', productId);
-
-                // Inicia la transacción atómica
-                await runTransaction(db, async (transaction) => {
-                    
-                    // 3. LECTURAS: Leer *TODOS* los documentos de inventario DENTRO de la transacción (READS FIRST)
-                    const originDoc = await transaction.get(originRef);
-                    const destinationDoc = await transaction.get(destinationRef); 
-
-                    const now = new Date();
-
-                    // --- 4. ESCRITURAS: Decremento en Origen (La causa principal del error) ---
-                    
-                    // 4a. Validación de existencia del ORIGEN
-                    if (!originDoc.exists) {
-                        // Abortamos la transacción inmediatamente con un error personalizado
-                        throw new Error(`El documento de inventario de origen (${productData.name}) no existe en la sucursal seleccionada.`); 
-                    }
-
-                    // 4b. Re-validación de stock transaccional (solo si existe)
-                    const stockBeforeTransfer = originDoc.data().stock || 0;
-                    if (stockBeforeTransfer < quantityBase) {
-                        throw new Error("Stock insuficiente detectado durante la transacción."); 
-                    }
-
-                    // 4c. Decremento en Origen (Solo se ejecuta si la existencia y el stock son válidos)
-                    transaction.update(originRef, {
-                        stock: increment(-quantityBase),
-                        updated_at: now
-                    });
-
-
-                    // --- 5. ESCRITURAS: Incremento en Destino (Crear si no existe) ---
-                    // ESTO RESPONDE A TU REQUERIMIENTO EXPLÍCITO:
-                    if (!destinationDoc.exists) {
-                        // CREACIÓN: Si el documento de destino NO existe, lo CREAMOS.
-                        transaction.set(destinationRef, {
-                            category: productData.category || '',
-                            created_at: now,
-                            name: productData.name || 'N/A',
-                            productId: productId, 
-                            stock: quantityBase, // El stock inicial es la cantidad que entra
-                            unit: productData.unit || 'N/A',
-                            updated_at: now
-                        });
-                    } else {
-                        // ACTUALIZACIÓN: Si el documento ya existe, le SUMAMOS el stock.
-                        transaction.update(destinationRef, {
-                            stock: increment(quantityBase),
-                            updated_at: now
-                        });
-                    }
-                    
-                });
-                
-                // Si la transacción fue exitosa, el flujo continúa aquí
-                console.log('Traspaso de inventario exitoso. Detalle:', {
-                    companyId: companyId,
-                    productId: productId,
-                    productName: productData.name,
-                    quantity: quantity,
-                    quantityBase: quantityBase,
-                    unit: finalUnit,
-                    originId: originLocation,
-                    destinationId: destinationLocation,
-                    observation: observation,
-                    performedByUserId: userId,
-                    timestamp: new Date().toISOString()
-                });
-
-
-                showCustomAlert(`Traspaso registrado. ${quantityBase} ${finalUnit} movidas de Origen a Destino.`, "success");
-
-                // Limpiar formulario
-                productSearchInput.value = '';
-                selectedProductIdInput.value = '';
-                quantityInput.value = '';
-                document.getElementById('observation').value = '';
-                stockDisplay.textContent = '';
-                totalTransferDisplayInput.value = '0';
-                selectedProductId = null;
-                selectedPackagingFactor = 1;
-                packagingUnitSelect.innerHTML = '<option value="" selected>Selecciona un producto primero...</option>';
-                packagingUnitSelect.disabled = true;
-                
-            } catch (error) {
-                // Si hay un error en la transacción, NO se aplica NINGÚN cambio
-                console.error("Error al realizar el traspaso de inventario:", error);
-                
-                let errorMessage = 'Error al registrar el traspaso. El inventario NO fue afectado.';
-                if (error.message.includes("Stock insuficiente")) {
-                    errorMessage = `Error de integridad: ${error.message}.`;
-                } else if (error.message.includes("documento de inventario de origen no existe")) {
-                    // Captura el error explícito
-                     errorMessage = `Error: ${error.message}. No se puede sacar stock de una sucursal donde el producto no está registrado.`;
-                } else if (error.code === 'aborted') {
-                    errorMessage = 'El traspaso falló debido a una actualización simultánea. Por favor, intenta de nuevo.';
-                } else {
-                    errorMessage = `Error de transacción: ${error.message}. Verifique reglas de seguridad o permisos.`;
-                }
-                
-                showCustomAlert(errorMessage, 'error');
-            }
+    function aplicarResaltado(items) {
+        items.forEach(el => el.classList.remove("autocomplete-active"));
+        if (focoProducto > -1) {
+            items[focoProducto].classList.add("autocomplete-active");
+            items[focoProducto].scrollIntoView({ block: "nearest" });
         }
-        
-        // Cierra el menú de sugerencias si el usuario hace clic fuera
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.autocomplete-container')) {
-                suggestionsContainer.innerHTML = '';
+    }
+
+    inputCantidad.oninput = recalcular;
+    selectEmpaque.onchange = (e) => { factorEmpaque = parseFloat(e.target.value) || 1; recalcular(); };
+
+    // --- 8. EJECUCIÓN DEL TRASPASO (DOBLE PARTIDA) ---
+    formulario.onsubmit = async (e) => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+
+        if (window.bloqueoTraspaso) return;
+        if (!idSucursalOrigen || !idSucursalDestino) return mostrarToast("Faltan sucursales.", "error");
+        if (!idProductoSeleccionado) return mostrarToast("Selecciona un producto.", "error");
+
+        const cantidadRestar = parseFloat(inputCantidad.value) || 0;
+        const totalTraspaso = cantidadRestar * factorEmpaque;
+
+        // Validación visual rápida
+        const prod = listaProductosOrigen.find(p => p.id === idProductoSeleccionado);
+        if (prod && prod.stock_sucursal < totalTraspaso) {
+            return mostrarToast(`Stock insuficiente. Disponible: ${prod.stock_sucursal}`, "error");
+        }
+
+        const nombreDestino = selectDestino.options[selectDestino.selectedIndex].text;
+        const nombreOrigen = selectOrigen.options[selectOrigen.selectedIndex].text;
+        const obsAdicional = document.getElementById('observation').value;
+        const motivoFull = `Traspaso a ${nombreDestino}` + (obsAdicional ? ` | Obs: ${obsAdicional}` : '');
+
+        try {
+            window.bloqueoTraspaso = true;
+            btnSubmit.disabled = true;
+            btnSubmit.textContent = "Procesando Traspaso...";
+
+            // PASO 1: SALIDA DE LA SUCURSAL ORIGEN (usa tu API que descuenta del maestro y guarda historial)
+            const datosSalida = {
+                id: `TRANS-${Date.now()}`,
+                company_id: idEmpresa,
+                branch_id: idSucursalOrigen,
+                product_id: idProductoSeleccionado,
+                nombre_producto: inputBusqueda.value,
+                cantidad: totalTraspaso,
+                unidad: selectEmpaque.options[selectEmpaque.selectedIndex].text,
+                motivo: motivoFull,
+                observacion: `Traspasado desde ${nombreOrigen}`,
+                usuario_id: idUsuario,
+                fecha_modificacion: new Date().toISOString()
+            };
+
+            const resSalida = await window.nexusAPI.guardarSalidaLocal(datosSalida);
+            if (!resSalida || !resSalida.success) {
+                throw new Error(resSalida.error || "Fallo al descontar del origen.");
             }
-        });
-    </script>
+
+            // PASO 2: ENTRADA EN LA SUCURSAL DESTINO (Inyección directa al Maestro)
+            const servidorIP = localStorage.getItem('serverIP') || '192.168.0.111';
+            const resEntrada = await fetch(`http://${servidorIP}:3000/api/maestro/registrar-entrada`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sucursalId: idSucursalDestino,
+                    companyId: idEmpresa,
+                    items: [{
+                        id: idProductoSeleccionado,
+                        cantidad: totalTraspaso,
+                        operacion: 'SUMAR'
+                    }]
+                })
+            });
+            
+            const jsonEntrada = await resEntrada.json();
+            if (!jsonEntrada.exito) {
+                throw new Error("El origen se descontó, pero falló la entrada al destino.");
+            }
+
+            mostrarToast("¡Traspaso exitoso!", "success");
+            
+            // Reset y Recarga
+            idProductoSeleccionado = null;
+            inputBusqueda.value = "";
+            inputCantidad.value = "";
+            visorTotal.value = "0.00 unidad(es)";
+            document.getElementById('observation').value = "";
+            selectEmpaque.innerHTML = '<option value="1">Unidad Individual (x1)</option>';
+            
+            await prepararEntornoOrigen();
+
+        } catch (error) {
+            console.error("❌ Error en traspaso:", error);
+            mostrarToast(error.message, "error");
+        } finally {
+            window.bloqueoTraspaso = false;
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = "Ejecutar Traspaso de Inventario";
+        }
+    };
+
+    function mostrarToast(mensaje, tipo = "success") {
+        const contenedor = document.getElementById('toast-container');
+        if(!contenedor) return;
+        const toast = document.createElement('div');
+        const colorBase = tipo === "success" ? "bg-green-500" : "bg-red-500";
+        toast.className = `${colorBase} text-white px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-300 translate-x-full opacity-0 flex items-center gap-3 font-bold`;
+        toast.innerHTML = `<span>${tipo === "success" ? '✅' : '❌'}</span><span>${mensaje}</span>`;
+        contenedor.appendChild(toast);
+        setTimeout(() => toast.classList.remove('translate-x-full', 'opacity-0'), 10);
+        setTimeout(() => {
+            toast.classList.add('translate-x-full', 'opacity-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    }
+
+    // Arrancar el sistema
+    inicializar();
+</script>
 </body>
 </html>

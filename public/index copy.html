@@ -780,40 +780,36 @@ document.getElementById('btn-close-custom')?.addEventListener('click', (e) => {
 // --------------------------------------------------
 
 
-// --- LÓGICA DE KIOSCO: OBTENER TASA DEL DÍA ---
 async function cargarTasaKiosco() {
     const tasaDisplay = document.getElementById('tasa-bcv-display');
     if (!tasaDisplay) return;
 
     try {
-        // 1. Obtenemos el objeto de configuración (isServer, serverIP, etc.)
-        const config = await window.nexusAPI.obtenerConfiguracion(); 
-        
-        // 2. Determinamos la IP dinámica
-        const ipServidor = config.isServer ? 'localhost' : config.serverIP;
-        const PORT = 3000;
-
-        // 3. Petición a la ruta dinámica
-        const response = await fetch(`http://${ipServidor}:${PORT}/api/tasas`);
+        const API_URL = 'https://scarping.nexusposgobal.com/api/tasas';
+        const response = await fetch(API_URL);
         
         if (response.ok) {
             const data = await response.json();
-            if (data.rates && data.rates.USD) {
-                tasaDisplay.textContent = `Bs. ${data.rates.USD}`;
+            
+            // 2. Extraemos el valor del USD validando la nueva estructura
+            if (data.success && data.rates && data.rates.USD) {
+                // Formateamos a 2 decimales para que se vea elegante en la pantalla del Kiosco
+                const tasaFormateada = parseFloat(data.rates.USD).toFixed(2);
+                tasaDisplay.textContent = `Bs. ${tasaFormateada}`;
                 return;
             }
         }
-        throw new Error("Tasa no encontrada en la respuesta");
+        
+        throw new Error("La estructura de la tasa no es válida o está incompleta");
+        
     } catch (error) {
-        console.error("Error al cargar la tasa del día:", error);
+        console.error("❌ Error al cargar la tasa del día en el Kiosco:", error);
         tasaDisplay.textContent = "Bs. --";
     }
 }
 
-// Ejecutar la función automáticamente cuando la pantalla cargue
-cargarTasaKiosco();
 
-// Ejecutar la función automáticamente cuando la pantalla cargue
+cargarTasaKiosco();
 cargarTasaKiosco();
 // ----------------------------------------------
 

@@ -18,6 +18,7 @@
             background-color: #f3f4f6;
             margin: 0;
             padding: 0;
+            width: 100%;
         }
 
         .spinner {
@@ -33,21 +34,18 @@
             to { transform: rotate(360deg); }
         }
 
-        /* --- Ajustes de Contenedor General --- */
+        /* Estilo expansivo 100% sin recuadro (Igual a sucursales.html) */
         .inventory-container {
-            background-color: #ffffff;
+            background-color: transparent;
             padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            width: 95%;
-            max-width: 1200px;
+            border-radius: 0;
+            box-shadow: none;
+            width: 100% !important;
+            max-width: 100% !important;
             box-sizing: border-box;
             text-align: center;
-            margin: 1rem auto;
+            margin: 0;
         }
-        
-        /* --- Eliminación de CSS para Móviles (Mantener la tabla horizontal) --- */
-        /* Se eliminaron las reglas @media que transformaban la tabla en bloques de div. */
 
         /* Message/Toast Styles */
         .message-container {
@@ -116,22 +114,20 @@
             box-shadow: 0 8px 25px rgba(0,0,0,0.4);
             text-align: left;
         }
-        /* Encabezado: Texto rojo/marrón con mayúsculas en inicio de palabra */
         .modal-header {
             background-color: #fefefe;
             border-bottom: none;
             color: #dc2626; 
             padding: 10px 15px 5px 15px;
             font-weight: 700;
-            font-size: 18px; /* TAMAÑO AUMENTADO */
+            font-size: 18px;
             border-top-left-radius: 10px;
             border-top-right-radius: 10px;
             display: flex;
             align-items: center;
         }
-        /* Ajuste para el emoji de warning ⚠️ */
         .modal-header .warning-icon {
-            font-size: 24px; /* TAMAÑO AUMENTADO DEL EMOJI */
+            font-size: 24px;
             margin-right: 12px;
         }
         .modal-body {
@@ -147,7 +143,6 @@
             justify-content: flex-end;
             gap: 10px;
         }
-        /* Estilos de botones */
         .modal-footer button {
             padding: 6px 15px;
             font-size: 13px;
@@ -163,11 +158,9 @@
             background-color: #ef4444;
             color: white;
         }
-        /* CLASE ADICIONAL PARA EL TITULO DEL MODAL (Capitalize) */
         .modal-title-case {
             text-transform: capitalize;
         }
-        /* --- FIN MODAL STYLE --- */
     </style>
 </head>
 <body class="bg-gray-100">
@@ -179,70 +172,56 @@
                 <span class="warning-icon">⚠️</span> 
                 <span class="modal-title-case">Advertencia de Eliminación</span>
             </div>
-            
             <div class="modal-body">
                 <p id="modal-text" class="text-gray-700 text-justify">
-                    <strong>Está seguro que desea ELIMINAR a la cajera "caja" 1?</strong> Eliminar este usuario podría causar problemas con los productos y con todo lo que conlleva el uso de ellos en este sistema POS. Se recomienda <strong>"VERIFICAR LAS ACCIONES CONTRAPRODUCENTES "</strong> del usuario antes de proceder.
+                    <strong>Está seguro que desea ELIMINAR a la cajera?</strong> Eliminar este usuario podría causar problemas con los productos y con todo lo que conlleva el uso de ellos en este sistema POS. Se recomienda <strong>"VERIFICAR LAS ACCIONES CONTRAPRODUCENTES "</strong> del usuario antes de proceder.
                 </p>
             </div>
-            
             <div class="modal-footer">
-                <button id="modal-cancel-btn" class="hover:bg-gray-700">
-                    Cancelar
-                </button>
-                <button id="modal-confirm-btn" class="hover:bg-red-700">
-                    Sí, Eliminar
-                </button>
+                <button id="modal-cancel-btn" class="hover:bg-gray-700">Cancelar</button>
+                <button id="modal-confirm-btn" class="hover:bg-red-700">Sí, Eliminar</button>
             </div>
         </div>
     </div>
 
-    <main class="w-full min-h-screen flex justify-center items-start py-4"> 
+    <main class="w-full h-full flex justify-center items-start py-4"> 
         <div class="inventory-container">
-            <h2 class="text-2xl sm:text-3xl font-bold mb-6 text-gray-800 text-center flex items-center justify-center">
-                <span class="material-icons text-purple-600 mr-2 text-3xl sm:text-4xl">person_add</span>
+            <h2 class="text-3xl font-bold mb-8 text-gray-800 text-center flex items-center justify-center">
+                <span class="material-icons text-purple-600 mr-3 text-4xl">person_add</span>
                 Gestión de Cajeras
             </h2>
-            
-            <div class="mb-6 p-3 border border-blue-200 bg-blue-50 rounded-lg shadow-sm text-sm sm:text-base">
-                <h4 class="text-md font-semibold text-blue-800 mb-2">Estado de Permisos (Diagnóstico)</h4>
-                <div id="permission-status" class="text-left text-blue-700 space-y-1">
-                    <p><strong>Rol:</strong> <span id="user-role-display" class="font-medium text-blue-900">Cargando...</span></p>
-                    <p><strong>ID de Empresa:</strong> <span id="user-company-id-display" class="font-medium text-blue-900">Cargando...</span></p>
-                </div>
-            </div>
 
-            <div class="mb-6 p-4 border border-gray-200 rounded-lg shadow-md">
-                <h3 class="text-xl sm:text-2xl font-semibold mb-5 text-gray-700 text-center">Registrar Nueva Cajera</h3>
-                <form id="cashier-form" class="space-y-4">
+            <div class="mb-8 p-6 border border-gray-200 rounded-lg shadow-sm bg-white">
+                <h3 class="text-2xl font-semibold mb-6 text-gray-700 text-center">Registrar Nueva Cajera</h3>
+                <form id="cashier-form" class="space-y-6">
                     <div>
-                        <label for="cashier-name" class="block text-sm font-medium text-gray-700 mb-1">Nombre de la Cajera:</label>
+                        <label for="cashier-name" class="block text-sm font-medium text-gray-700 mb-2">Nombre de la Cajera:</label>
                         <input type="text" id="cashier-name" name="name" required
-                               class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm placeholder-gray-400"
+                               class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm placeholder-gray-400"
                                placeholder="ej. Juan Pérez">
                     </div>
                     <div>
-                        <label for="cashier-email" class="block text-sm font-medium text-gray-700 mb-1">Correo Electrónico:</label>
+                        <label for="cashier-email" class="block text-sm font-medium text-gray-700 mb-2">Correo Electrónico:</label>
                         <input type="email" id="cashier-email" name="email" required
-                               class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm placeholder-gray-400"
+                               class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm placeholder-gray-400"
                                placeholder="ej. juan.perez@empresa.com">
                     </div>
                     <div>
-                        <label for="cashier-password" class="block text-sm font-medium text-gray-700 mb-1">Contraseña:</label>
+                        <label for="cashier-password" class="block text-sm font-medium text-gray-700 mb-2">Contraseña:</label>
                         <input type="password" id="cashier-password" name="password" required
-                               class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm placeholder-gray-400"
+                               class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm placeholder-gray-400"
                                placeholder="Mínimo 6 caracteres">
                     </div>
                     <div>
-                        <label for="branch-id" class="block text-sm font-medium text-gray-700 mb-1">Asignar a Sucursal:</label>
+                        <label for="branch-id" class="block text-sm font-medium text-gray-700 mb-2">Asignar a Sucursal:</label>
                         <select id="branch-id" name="branchId" required
-                                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                             <option value="">Cargando sucursales...</option>
-                            </select>
+                        </select>
                     </div>
                     <div>
                         <button type="submit" id="register-cashier-btn"
-                                class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out">
+                                class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out">
                             <span id="register-cashier-text">Registrar Cajera</span>
                             <div id="register-cashier-spinner" class="spinner ml-2 hidden"></div>
                         </button>
@@ -250,31 +229,21 @@
                 </form>
             </div>
 
-            <div class="p-4 border border-gray-200 rounded-lg shadow-md">
-                <h3 class="text-xl sm:text-2xl font-semibold mb-5 text-gray-700 text-center">Cajeras Registradas</h3>
+            <div class="p-6 border border-gray-200 rounded-lg shadow-sm bg-white">
+                <h3 class="text-2xl font-semibold mb-6 text-gray-700 text-center">Cajeras Registradas</h3>
                 <div class="overflow-x-auto"> 
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tl-lg whitespace-nowrap">
-                                    Nombre
-                                </th>
-                                <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                                    Email
-                                </th>
-                                <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                                    Sucursal
-                                </th>
-                                <th scope="col" class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                                    Acciones
-                                </th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Sucursal</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="cashiers-list" class="bg-white divide-y divide-gray-200">
                             <tr>
-                                <td colspan="4" class="px-3 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                    Cargando cajeras...
-                                </td>
+                                <td colspan="4" class="px-6 py-10 text-center text-gray-500 italic">Cargando cajeras...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -282,22 +251,20 @@
             </div>
         </div>
     </main>
+
     <script type="module">
         import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, collectionGroup, query, where, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         const BACKEND_CREATE_URL = 'https://api.nexusposgobal.com/createCashier';
         const BACKEND_DELETE_URL = 'https://api.nexusposgobal.com/deleteCashier';
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        let app, db, auth, userId, userRole, userCompanyId;
+        let app, db, auth, userRole, userCompanyId;
 
-        const userRoleDisplay = document.getElementById('user-role-display');
-        const userCompanyIdDisplay = document.getElementById('user-company-id-display');
         const cashierForm = document.getElementById('cashier-form');
         const branchSelect = document.getElementById('branch-id');
         const registerCashierBtn = document.getElementById('register-cashier-btn');
@@ -310,316 +277,174 @@
         const modalConfirmBtn = document.getElementById('modal-confirm-btn');
         const modalCancelBtn = document.getElementById('modal-cancel-btn');
 
-        // Función para mostrar mensajes de éxito, error o info
         function showInfoMessage(message, type = 'info') {
             const messageElement = document.createElement('div');
             messageElement.className = `message ${type}`;
-            messageElement.innerHTML = `
-                <span class="material-icons mr-2 text-xl">
-                    ${type === 'success' ? 'check_circle' : (type === 'error' ? 'error' : 'info')}
-                </span>
-                <span>${message}</span>
-            `;
+            messageElement.innerHTML = `<span class="material-icons mr-2 text-xl">${type === 'success' ? 'check_circle' : (type === 'error' ? 'error' : 'info')}</span><span>${message}</span>`;
             messageContainer.appendChild(messageElement);
-            setTimeout(() => {
-                messageElement.remove();
-            }, 5000);
+            setTimeout(() => { messageElement.remove(); }, 5000);
         }
 
-        // Función para verificar permisos y cargar datos
         async function verifyPermissionsAndLoadData(user) {
             try {
-                if (!user) {
-                    userRoleDisplay.textContent = 'No autenticado';
-                    userCompanyIdDisplay.textContent = 'No autenticado';
-                    return;
-                }
-
+                if (!user) return;
                 const idTokenResult = await user.getIdTokenResult(true);
-
                 userRole = idTokenResult.claims.role || 'No asignado';
                 userCompanyId = idTokenResult.claims.companyId || 'No asignado';
-                userId = user.uid;
-                
-                userRoleDisplay.textContent = userRole;
-                userCompanyIdDisplay.textContent = userCompanyId;
 
                 if (userCompanyId !== 'No asignado' && userRole === 'admin') {
+                    // Llama a la nueva lógica local
                     loadBranches(userCompanyId);
                 } else {
-                    branchSelect.innerHTML = '<option value="">Sin permisos para ver sucursales</option>';
-                    branchSelect.disabled = true;
-                    cashiersList.innerHTML = `
-                        <tr>
-                            <td colspan="4" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                Acceso Denegado: Permisos insuficientes para gestionar cajeras.
-                            </td>
-                        </tr>
-                    `;
+                    branchSelect.innerHTML = '<option value="">Sin permisos</option>';
+                    cashiersList.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Acceso Denegado.</td></tr>';
                 }
             } catch (error) {
-                console.error("Error al verificar los permisos:", error);
-                showInfoMessage('Error de autenticación. Por favor, recargue la página.', 'error');
+                showInfoMessage('Error al verificar permisos de administrador.', 'error');
             }
         }
 
         function initializeFirebase() {
             try {
-                if (!getApps().length) {
-                    app = initializeApp(firebaseConfig);
-                } else {
-                    app = getApps()[0];
-                }
+                app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
                 db = getFirestore(app);
                 auth = getAuth(app);
-
                 onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        verifyPermissionsAndLoadData(user);
-                    } else {
-                        if (initialAuthToken) {
-                            await signInWithCustomToken(auth, initialAuthToken);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
-                    }
+                    if (user) verifyPermissionsAndLoadData(user);
+                    else if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken);
+                    else await signInAnonymously(auth);
                 });
-
             } catch (error) {
-                console.error("Error grave al iniciar Firebase:", error);
-                showInfoMessage('Error grave al iniciar Firebase.', 'error');
+                showInfoMessage('Error al iniciar Firebase.', 'error');
             }
         }
 
         async function loadBranches(companyId) {
             branchSelect.disabled = true;
             try {
-                const branchesPath = `companies/${companyId}/branches`;
-                const q = collection(db, branchesPath);
-                const querySnapshot = await getDocs(q);
+                // Ahora obtenemos las sucursales desde la base de datos local (SQLite)
+                const sucursales = await window.nexusAPI.obtenerSucursalesLocal(companyId);
                 
                 branchSelect.innerHTML = '<option value="">Selecciona una sucursal...</option>';
                 
-                if (querySnapshot.empty) {
-                    showInfoMessage('No se encontraron sucursales para su empresa.', 'info');
+                // Validamos que los datos locales sean un array válido
+                const listaSucursales = Array.isArray(sucursales) ? sucursales : [];
+
+                if (listaSucursales.length === 0) {
+                    showInfoMessage('No se encontraron sucursales registradas localmente.', 'info');
                     branchSelect.innerHTML = '<option value="" disabled>No se encontraron sucursales</option>';
                 } else {
-                    querySnapshot.forEach((doc) => {
-                        const branch = doc.data();
+                    listaSucursales.forEach((branch) => {
                         const option = document.createElement('option');
-                        option.value = doc.id;
-                        option.textContent = branch.name;
+                        // Usamos branch.id y branch.nombre según el esquema de sucursales.html
+                        option.value = branch.id;
+                        option.textContent = branch.nombre; 
                         branchSelect.appendChild(option);
                     });
+                    
                     branchSelect.disabled = false;
                     
-                    const firstBranchId = querySnapshot.docs[0].id;
+                    // Seleccionamos la primera sucursal por defecto y activamos el listener de cajeras
+                    const firstBranchId = listaSucursales[0].id;
                     branchSelect.value = firstBranchId;
-                    listenForCashiers(userCompanyId, firstBranchId);
+                    listenForCashiers(companyId, firstBranchId);
                 }
             } catch (error) {
-                showInfoMessage(`Hubo un error al cargar las sucursales. Error: ${error.message}`, 'error');
+                console.error("Error al cargar sucursales desde SQLite:", error);
+                showInfoMessage('Error al cargar sucursales desde la base de datos local.', 'error');
                 branchSelect.innerHTML = '<option value="" disabled>Error al cargar sucursales</option>';
             }
         }
 
         async function createCashier(e) {
             e.preventDefault();
+            if (!userCompanyId || userRole !== 'admin') return;
 
-            if (!userCompanyId || userRole !== 'admin') {
-                showInfoMessage('Error de permisos. Solo un administrador puede registrar cajeras.', 'error');
-                return;
-            }
-
+            registerCashierBtn.disabled = true;
             registerCashierText.classList.add('hidden');
             registerCashierSpinner.classList.remove('hidden');
-            registerCashierBtn.disabled = true;
 
-            const cashierName = document.getElementById('cashier-name').value.trim();
-            const cashierEmail = document.getElementById('cashier-email').value.trim();
-            const cashierPassword = document.getElementById('cashier-password').value.trim();
-            const branchId = document.getElementById('branch-id').value;
-
-            if (!cashierName || !cashierEmail || !cashierPassword || !branchId) {
-                showInfoMessage('Por favor, complete todos los campos requeridos.', 'info');
-                registerCashierText.classList.remove('hidden');
-                registerCashierSpinner.classList.add('hidden');
-                registerCashierBtn.disabled = false;
-                return;
-            }
+            const branchId = branchSelect.value; // ID obtenido del menú desplegable local
+            const payload = {
+                cashierName: document.getElementById('cashier-name').value,
+                cashierEmail: document.getElementById('cashier-email').value,
+                cashierPassword: document.getElementById('cashier-password').value,
+                companyId: userCompanyId,
+                branchId: branchId
+            };
 
             try {
                 const response = await fetch(BACKEND_CREATE_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        cashierName,
-                        cashierEmail,
-                        cashierPassword,
-                        companyId: userCompanyId,
-                        branchId
-                    }),
+                    body: JSON.stringify(payload),
                 });
-
-                const data = await response.json();
-
+                
                 if (response.ok) {
-                    showInfoMessage('Cajera registrada con éxito. ¡Refrescando lista!', 'success');
+                    showInfoMessage('Cajera registrada con éxito.', 'success');
                     cashierForm.reset();
-                    document.getElementById('branch-id').value = branchId;
+                    // Mantenemos la selección de la sucursal actual tras el reset
+                    branchSelect.value = branchId;
                 } else {
-                    showInfoMessage(`Error al registrar: ${data.message || 'Error desconocido'}`, 'error');
+                    const data = await response.json();
+                    showInfoMessage(`Error: ${data.message}`, 'error');
                 }
             } catch (error) {
-                console.error("Error al registrar cajera:", error);
-                showInfoMessage(`Error de conexión: No se pudo registrar la cajera.`, 'error');
+                showInfoMessage('Error de conexión con el servidor de registro.', 'error');
             } finally {
+                registerCashierBtn.disabled = false;
                 registerCashierText.classList.remove('hidden');
                 registerCashierSpinner.classList.add('hidden');
-                registerCashierBtn.disabled = false;
             }
         }
-        
-        async function deleteCashier(cashierId) {
-            if (!userCompanyId || userRole !== 'admin') {
-                showInfoMessage('Permisos insuficientes para eliminar una cajera.', 'error');
-                return;
-            }
-            try {
-                const response = await fetch(BACKEND_DELETE_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userId: cashierId,
-                        companyId: userCompanyId
-                    })
-                });
-                const data = await response.json();
-                if (response.ok) {
-                    showInfoMessage(data.message || 'Cajera eliminada con éxito.', 'success');
-                } else {
-                    showInfoMessage(data.error || 'Hubo un error al eliminar la cajera.', 'error');
-                }
-            } catch (error) {
-                console.error("Error al eliminar cajera:", error);
-                showInfoMessage(`Error de red: No se pudo conectar al servidor.`, 'error');
-            }
-        }
-
-        // --- Lógica del Modal ---
-        let cashierToDelete = null;
-
-        function confirmDelete(cashierId, cashierName) {
-            cashierToDelete = cashierId;
-            
-            // Nuevo texto de mensaje con las palabras específicas en negrita
-            const dynamicText = `
-                <strong>Está seguro que desea ELIMINAR a la cajera "caja" ${cashierName}?</strong> Eliminar este usuario podría causar problemas con los productos y con todo lo que conlleva el uso de ellos en este sistema POS. Se recomienda <strong>"VERIFICAR LAS ACCIONES CONTRAPRODUCENTES "</strong> del usuario antes de proceder.
-            `;
-            
-            // Reemplaza el marcador de posición con el nombre real
-            modalText.innerHTML = dynamicText.replace('"caja" 1', `"caja" ${cashierName}`);
-            
-            // Mostrar el modal usando flex para centrar
-            modal.style.display = 'flex'; 
-        }
-
-        modalConfirmBtn.onclick = () => {
-            if (cashierToDelete) {
-                deleteCashier(cashierToDelete);
-                cashierToDelete = null;
-            }
-            modal.style.display = 'none';
-        };
-
-        modalCancelBtn.onclick = () => {
-            modal.style.display = 'none';
-            cashierToDelete = null;
-        };
-
-        // Cerrar al hacer clic fuera del modal
-        window.onclick = (event) => {
-            if (event.target == modal) {
-                modal.style.display = 'none';
-                cashierToDelete = null;
-            }
-        };
-        // --- Fin Lógica del Modal ---
-
 
         function listenForCashiers(companyId, branchId) {
-            if (!companyId || !branchId) {
-                cashiersList.innerHTML = `
-                    <tr>
-                        <td colspan="4" class="px-3 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                            Selecciona una sucursal para ver las cajeras.
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
+            if (!companyId || !branchId) return;
             const cashiersRef = collection(db, 'companies', companyId, 'branches', branchId, 'cashiers');
-
-            onSnapshot(cashiersRef, async (snapshot) => {
+            onSnapshot(cashiersRef, (snapshot) => {
                 cashiersList.innerHTML = '';
                 if (snapshot.empty) {
-                    cashiersList.innerHTML = `
-                        <tr>
-                            <td colspan="4" class="px-3 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                No hay cajeras registradas en esta sucursal.
-                            </td>
-                        </tr>
-                    `;
+                    cashiersList.innerHTML = '<tr><td colspan="4" class="px-6 py-10 text-center text-gray-500 italic">No hay cajeras en esta sucursal.</td></tr>';
                 } else {
                     snapshot.forEach(doc => {
                         const cashier = doc.data();
-                        
-                        // Crear la fila del DOM dinámicamente
                         const row = document.createElement('tr');
-                        row.classList.add('hover:bg-gray-100');
+                        row.className = "hover:bg-gray-50 transition-all duration-200";
                         row.innerHTML = `
-                            <td class="px-3 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">${cashier.name || 'N/A'}</td>
-                            <td class="px-3 py-4 text-sm text-gray-500 whitespace-nowrap">${cashier.email || 'N/A'}</td>
-                            <td class="px-3 py-4 text-sm text-gray-500 whitespace-nowrap">${cashier.branchId}</td>
-                            <td class="px-3 py-4 text-sm font-medium flex justify-center items-center space-x-2 whitespace-nowrap">
-                                <button class="text-blue-600 hover:text-blue-900 edit-btn p-1 rounded-full hover:bg-blue-100 transition duration-150" title="Editar">
-                                    <span class="material-icons text-xl">edit</span>
-                                </button>
-                                <button class="text-red-600 hover:text-red-900 delete-btn p-1 rounded-full hover:bg-red-100 transition duration-150" title="Eliminar">
-                                    <span class="material-icons text-xl">delete</span>
-                                </button>
+                            <td class="px-6 py-4 text-sm font-medium text-gray-900 text-center">${cashier.name || 'N/A'}</td>
+                            <td class="px-6 py-4 text-sm text-gray-500 text-center">${cashier.email || 'N/A'}</td>
+                            <td class="px-6 py-4 text-sm text-gray-500 text-center">${cashier.branchId}</td>
+                            <td class="px-6 py-4 text-center text-sm font-medium">
+                                <button class="text-red-600 hover:text-red-900 font-bold delete-btn" data-id="${doc.id}" data-name="${cashier.name}">ELIMINAR</button>
                             </td>
                         `;
-                        
-                        // Agregar el listener al botón de eliminar
-                        const deleteBtn = row.querySelector('.delete-btn');
-                        deleteBtn.addEventListener('click', () => {
-                            confirmDelete(doc.id, cashier.name);
+                        row.querySelector('.delete-btn').addEventListener('click', (e) => {
+                            cashierToDelete = e.target.dataset.id;
+                            modalText.innerHTML = `<strong>¿Está seguro que desea ELIMINAR a la cajera "${e.target.dataset.name}"?</strong> Esta acción podría afectar la integridad de los datos en el sistema.`;
+                            modal.style.display = 'flex';
                         });
-
-                        // Agregar un listener al botón de editar (futura implementación)
-                        const editBtn = row.querySelector('.edit-btn');
-                        editBtn.addEventListener('click', () => {
-                            showInfoMessage('La funcionalidad de edición de cajeras se implementará próximamente.', 'info');
-                        });
-
                         cashiersList.appendChild(row);
                     });
                 }
-            }, (error) => {
-                showInfoMessage(`Hubo un error al cargar las cajeras. Error: ${error.message}`, 'error');
             });
         }
-        
-        branchSelect.addEventListener('change', (e) => {
-            const selectedBranchId = e.target.value;
-            // Solo se escucha si se ha seleccionado un valor (no la opción "Selecciona una sucursal...")
-            if (selectedBranchId) {
-                listenForCashiers(userCompanyId, selectedBranchId);
-            }
-        });
 
+        let cashierToDelete = null;
+        modalConfirmBtn.onclick = async () => {
+            if (cashierToDelete) {
+                try {
+                    const res = await fetch(BACKEND_DELETE_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: cashierToDelete, companyId: userCompanyId })
+                    });
+                    if (res.ok) showInfoMessage('Cajera eliminada.', 'success');
+                } catch (e) { showInfoMessage('Error al eliminar.', 'error'); }
+            }
+            modal.style.display = 'none';
+        };
+        modalCancelBtn.onclick = () => modal.style.display = 'none';
+        branchSelect.addEventListener('change', (e) => listenForCashiers(userCompanyId, e.target.value));
         cashierForm.addEventListener('submit', createCashier);
         initializeFirebase();
     </script>

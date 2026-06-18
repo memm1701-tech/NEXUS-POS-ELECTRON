@@ -286,7 +286,10 @@
     let userCompanyId = null;
     let userRole = null;
     let editingBranchId = null;
-    const XEON_URL = "https://sucursales.nexusposgobal.com/api/xeon/sucursales"; 
+    
+    // --- VARIABLES DINÁMICAS PARA NEXUS POS GLOBAL ---
+    let SERVER_URL = "";
+    let respaldoActivo = false;
 
     // --- Lógica de Modales ---
     function showModal(title, message, isSuccess) {
@@ -319,6 +322,20 @@
     async function inicializarModulo() {
         if(registerBtn) registerBtn.disabled = true;
         try {
+            // --- OBTENER CONFIGURACIÓN DEL SERVIDOR MAESTRO ---
+            if (window.nexusAPI && window.nexusAPI.obtenerConfigServer) {
+                const config = await window.nexusAPI.obtenerConfigServer();
+                respaldoActivo = config.respaldo_datos === 'true' || config.respaldo_datos === true;
+
+                if (respaldoActivo) {
+                    SERVER_URL = `http://${config.serverIp || config.SERVER_IP}:${config.serverPort || config.SERVER_PORT}`;
+                    console.log("🧠 Cerebro PostgreSQL detectado en:", SERVER_URL);
+                } else {
+                    SERVER_URL = null;
+                    console.log("🔒 Respaldo en la nube desactivado (Plan de Datos Local).");
+                }
+            }
+
             const sesion = await window.nexusAPI.obtenerSesionLocal();
             if (sesion && sesion.companyId) {
                 userCompanyId = sesion.companyId;
@@ -326,7 +343,7 @@
                 
                 if(registerBtn) registerBtn.disabled = false;   
                 await cargarSucursalesLocales();            
-                if (navigator.onLine) {                
+                if (navigator.onLine && respaldoActivo && SERVER_URL) {                
                     await sincronizarConXeon();
                 }
             } else {
@@ -353,9 +370,10 @@
 
     // --- 3. Sincronización (Ley: El más reciente gana) ---
     async function sincronizarConXeon() {
+        if (!SERVER_URL) return;
         try {
-            const response = await fetch(`${XEON_URL}/${userCompanyId}`);
-            if (!response.ok) throw new Error('Fallo al conectar con Xeon');
+            const response = await fetch(`${SERVER_URL}/api/maestro/sucursales/${userCompanyId}`);
+            if (!response.ok) throw new Error('Fallo al conectar con Servidor Maestro');
             const sucursalesNube = await response.json();
             
             const sucursalesLocales = await window.nexusAPI.obtenerSucursalesLocal(userCompanyId);
@@ -389,10 +407,11 @@
         }
     }
 
-    // --- 4. Comunicación con Servidor Xeon ---
+    // --- 4. Comunicación con Servidor Xeon (Maestro) ---
     async function subirAXeon(datos) {
+        if (!SERVER_URL) return;
         try {
-            const res = await fetch(`${XEON_URL}/sync`, {
+            const res = await fetch(`${SERVER_URL}/api/maestro/sucursales/sincronizar`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(datos)
@@ -486,7 +505,7 @@
 
             await window.nexusAPI.guardarSucursalLocal(sucursalData);
             
-            if (navigator.onLine) {
+            if (navigator.onLine && respaldoActivo && SERVER_URL) {
                 await subirAXeon(sucursalData);
             }
 
@@ -540,8 +559,8 @@
             console.log(`🗑️ [DEBUG] Solicitando eliminación de ID: ${id}`);
             
             // Intentar borrar en la nube si hay conexión
-            if (navigator.onLine) {
-                await fetch(`${XEON_URL}/${id}`, { method: 'DELETE' }).catch(() => console.warn("Xeon offline durante borrado"));
+            if (navigator.onLine && respaldoActivo && SERVER_URL) {
+                await fetch(`${SERVER_URL}/api/maestro/sucursales/${id}`, { method: 'DELETE' }).catch(() => console.warn("Servidor maestro offline durante borrado"));
             }
 
             // Borrado local en SQLite

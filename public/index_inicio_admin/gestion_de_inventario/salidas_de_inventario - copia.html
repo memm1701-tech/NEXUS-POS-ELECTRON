@@ -270,7 +270,8 @@
     let listaProductosSucursal = []; 
     let idProductoSeleccionado = null;
     let factorEmpaque = 1;
-    let focoProducto = -1; // Control de navegación por teclado
+    let focoProducto = -1; 
+    let estaProcesandoSalida = false;
 
     // --- 2. REFERENCIAS DOM ---
     const selectSucursal = document.getElementById('storage-location');
@@ -330,22 +331,45 @@
     // --- 4. FLUJO DE TRABAJO ---
 
     async function prepararEntornoSucursal() {
-        if (!idSucursalSeleccionada) return;
+    if (!idSucursalSeleccionada) return;
 
-        inputBusqueda.disabled = false;
-        inputBusqueda.placeholder = "Escribe para buscar producto con stock...";
-        inputBusqueda.value = "";
+    inputBusqueda.disabled = false;
+    inputBusqueda.placeholder = "Buscando stock en el Maestro...";
+    
+    const servidorIP = localStorage.getItem('serverIP') || '192.168.0.111';
+    const URL_BASE = `http://${servidorIP}:3000`;
+
+    try {
+        // 1. Obtener productos y stock real desde el Servidor Maestro
+        const todosLosProductos = await window.nexusAPI.obtenerProductosLocal(); 
+        const productosBase = todosLosProductos.filter(p => p.company_id === idEmpresa);
         
-        // Cargar catálogo de la sucursal
-        const inventario = await window.nexusAPI.obtenerInventarioSucursal({
-            companyId: idEmpresa,
-            sucursalId: idSucursalSeleccionada
+        const params = new URLSearchParams({
+            sucursalId: idSucursalSeleccionada,
+            companyId: idEmpresa
         });
-        listaProductosSucursal = inventario || [];
 
-        // Cargar historial de salidas
+        const respuesta = await fetch(`${URL_BASE}/api/maestro/stock?${params.toString()}`);
+        const stockCentral = await respuesta.json();
+
+        // Cruzamos datos para el buscador
+        listaProductosSucursal = productosBase.map(prod => {
+            const servidorData = stockCentral.find(s => s.producto_id === prod.id);
+            return {
+                ...prod,
+                stock_sucursal: servidorData ? servidorData.cantidad_real : 0 
+            };
+        });
+
+        // 2. Cargar el historial desde la base de datos LOCAL (SQLite)
         await cargarHistorialSalidas();
+
+        console.log(`✅ [NEXUS] Entorno listo: Stock desde Maestro e Historial desde Local.`);
+    } catch (error) {
+        console.error("❌ Error al preparar entorno:", error);
+        mostrarToast("Error de conexión con el servidor local", "error");
     }
+}
 
     async function seleccionarProducto(p) {
         idProductoSeleccionado = p.id;
@@ -509,22 +533,36 @@
     }
 
     inputCantidad.oninput = recalcular;
-    selectEmpaque.onchange = (e) => {
+   selectEmpaque.onchange = (e) => {
         factorEmpaque = parseFloat(e.target.value) || 1;
-        recalculate();
+        recalcular();
     };
 
-    // --- 7. REGISTRO FINAL ---
+    // ... [Tu código anterior permanece igual hasta llegar a selectEmpaque.onchange] ...
+    
     formulario.onsubmit = async (e) => {
         e.preventDefault();
+        e.stopImmediatePropagation(); 
+
+        // 🛡️ CERROJO GLOBAL ANTI-DUPLICADOS
+        if (window.bloqueoSalidaEnProceso) {
+            console.warn("⚠️ [NEXUS] Intento de envío duplicado bloqueado por el cerrojo global.");
+            return;
+        }
+
         if (!idProductoSeleccionado) return mostrarToast("Selecciona un producto.", "error");
 
+        // Calculamos el total en positivo
         const totalARestar = (parseFloat(inputCantidad.value) || 0) * factorEmpaque;
-        const datosSalida = {
+        
+        const btnSubmit = document.getElementById('btn-submit-exit');
+
+        const datosSalidaHistorial = {
             id: `OUT-${Date.now()}`,
             company_id: idEmpresa,
             branch_id: idSucursalSeleccionada,
             product_id: idProductoSeleccionado,
+            nombre_producto: inputBusqueda.value,
             cantidad: totalARestar,
             unidad: selectEmpaque.options[selectEmpaque.selectedIndex].text,
             motivo: document.getElementById('exit-reason').value,
@@ -534,37 +572,31 @@
         };
 
         try {
-            // A. Guardar Historial Local
-            const resHistorial = await window.nexusAPI.guardarSalidaLocal(datosSalida);
-            
-            // B. Actualizar Stock Local (Valor Negativo)
-            const resStock = await window.nexusAPI.guardarStockSucursal({
-                productoId: idProductoSeleccionado,
-                sucursalId: idSucursalSeleccionada,
-                companyId: idEmpresa,
-                cantidad: -totalARestar, 
-                operacion: 'SUMAR'
-            });
+            window.bloqueoSalidaEnProceso = true; // ACTIVAMOS EL CERROJO
+            btnSubmit.disabled = true;
+            btnSubmit.textContent = "Sincronizando...";
 
-            if (resHistorial.success && resStock.success) {
-                // C. Sincronización Xeon (Subida)
-                if (navigator.onLine) {
-                    fetch(URL_XEON_SALIDAS, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(datosSalida)
-                    }).catch(err => console.warn("Sync Xeon pendiente."));
-                }
+            // 🔥 FIX: Delegamos todo a la API local. main.js hará el descuento en el Maestro y el guardado local.
+            const resultado = await window.nexusAPI.guardarSalidaLocal(datosSalidaHistorial);
 
-                mostrarToast("Salida procesada y sincronizada correctamente.", "success");
+            if (resultado && resultado.success) {
+                mostrarToast("Salida registrada correctamente.", "success");
+                
                 formulario.reset();
                 idProductoSeleccionado = null;
-                visorTotal.value = "0.00";
-                await cargarHistorialSalidas();
+                visorTotal.value = "0.00 unidad(es)";
+                
+                await prepararEntornoSucursal(); 
+            } else {
+                throw new Error(resultado.error || "Error al registrar la salida.");
             }
         } catch (error) {
-            console.error("❌ Error al procesar salida:", error);
-            mostrarToast("Error crítico al guardar.", "error");
+            console.error("❌ Error en salida:", error);
+            mostrarToast("Error: " + error.message, "error");
+        } finally {
+            window.bloqueoSalidaEnProceso = false; // LIBERAMOS EL CERROJO
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = "Registrar Salida de Inventario";
         }
     };
 

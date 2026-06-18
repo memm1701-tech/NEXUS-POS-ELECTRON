@@ -203,7 +203,7 @@
                     <a href="#" class="text-gray-600 hover:text-blue-600 transition duration-150">X (Twitter)</a>
                 </div>
                 <p class="text-sm text-gray-500">
-                    © 2025 NEXUS POS. Todos los derechos reservados.<br>
+                    © 2026 NEXUS POS. Todos los derechos reservados.<br>
                     Contacto: <a href="mailto:nexusposgobal@gmail.com" class="text-blue-600 hover:underline">nexusposgobal@gmail.com</a>
                 </p>
             </div>
@@ -217,7 +217,7 @@
                     <svg class="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                     Sistema
                 </h2>
-                <span class="text-xs font-bold bg-gray-200 text-gray-700 px-3 py-1 rounded-full shadow-inner">v1.1.5</span>
+                <span id="version-chip" class="text-xs font-bold bg-gray-200 text-gray-700 px-3 py-1 rounded-full shadow-inner">Cargando...</span>
             </div>
 
             <div class="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center mb-6 shadow-sm">
@@ -231,16 +231,16 @@
                 </div>
             </div>
 
-            <button onclick="simularBusqueda()" class="w-full flex items-center justify-center bg-white border border-gray-300 hover:border-blue-500 hover:text-blue-600 text-gray-700 font-bold py-3 px-4 rounded-xl transition duration-200 mb-8 shadow-sm group">
+            <button onclick="buscarActualizacionesReales()" class="w-full flex items-center justify-center bg-white border border-gray-300 hover:border-blue-500 hover:text-blue-600 text-gray-700 font-bold py-3 px-4 rounded-xl transition duration-200 mb-8 shadow-sm group">
                 <svg class="w-5 h-5 mr-2 text-gray-400 group-hover:text-blue-500 group-hover:rotate-180 transition-all duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                 Buscar actualizaciones
             </button>
 
-            <div id="update-banner" class="bg-[#e6f7ff] border border-[#b3e0ff] rounded-xl p-5 relative shadow-md">
+            <div id="update-banner" class="hidden bg-[#e6f7ff] border border-[#b3e0ff] rounded-xl p-5 relative shadow-md">
                 <div class="absolute -top-3 -right-3 bg-blue-600 text-white text-xs font-black px-3 py-1 rounded-full shadow-lg border-2 border-white animate-pulse">NUEVO</div>
-                <h3 class="font-black text-blue-900 text-base mb-1">NEXUS POS v1.2</h3>
-                <p class="text-sm text-blue-700 mb-4 leading-tight">Módulo avanzado de reportes y correcciones de sincronización en la nube.</p>
-                <button onclick="simularActualizacion()" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2.5 px-4 rounded-lg transition duration-200 shadow">
+                <h3 id="update-title" class="font-black text-blue-900 text-base mb-1"></h3>
+                <p id="update-desc" class="text-sm text-blue-700 mb-4 leading-tight whitespace-pre-wrap"></p>
+                <button onclick="iniciarActualizacionReal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2.5 px-4 rounded-lg transition duration-200 shadow">
                     Actualizar Ahora
                 </button>
             </div>
@@ -267,13 +267,31 @@
         const mBtn = document.getElementById('modal-btn');
         const pContainer = document.getElementById('progress-container');
         const pBar = document.getElementById('progress-bar');
+        
+        // Variables para el banner y GitHub
         const updateBanner = document.getElementById('update-banner');
+        const updateTitle = document.getElementById('update-title');
+        const updateDesc = document.getElementById('update-desc');
+        let urlDescargaReal = "";
+
+        // === NUEVO: OBTENER LA VERSIÓN REAL AL INICIAR ===
+        (async function cargarVersionReal() {
+            try {
+                if (window.nexusAPI && window.nexusAPI.obtenerVersionApp) {
+                    const version = await window.nexusAPI.obtenerVersionApp();
+                    const chip = document.getElementById('version-chip');
+                    if (chip) chip.innerText = `v${version}`;
+                }
+            } catch (error) {
+                console.warn("No se pudo obtener la versión de la app, usando v1.0.0 por defecto.");
+                document.getElementById('version-chip').innerText = "v1.0.0";
+            }
+        })();
 
         function openModal(title, text, showSpinner = false) {
             overlay.style.display = 'flex';
             mTitle.innerText = title;
-            mText.innerText = text;
-            // Si requiere spinner de carga, insertamos el div con la clase loader
+            mText.innerHTML = text;
             mIcon.innerHTML = showSpinner ? '<div class="loader"></div>' : '';
             mBtn.classList.add('hidden');
             pContainer.classList.add('hidden');
@@ -283,69 +301,76 @@
             overlay.style.display = 'none'; 
         }
 
-        // Simulación: Buscar Actualizaciones
-        function simularBusqueda() {
-            openModal("Conectando...", "Conectando con el servidor para buscar actualizaciones...", true);
-            
-            setTimeout(() => {
-                mIcon.innerHTML = '<span class="text-5xl drop-shadow-md">🔍</span>';
-                mTitle.innerText = "Búsqueda Completada";
-                mText.innerText = "Ya tienes una actualización pendiente (v1.2) en tu panel lateral.";
+        // LÓGICA DE GITHUB REAL
+        async function buscarActualizacionesReales() {
+            const versionLocal = document.getElementById('version-chip').innerText.trim(); 
+            openModal("Seguridad Nexus", "Consultando servidor seguro...", true);
+
+            try {
+                const result = await window.nexusAPI.verificarActualizacion(versionLocal);
+
+                if (!result.success) {
+                    openModal("Aviso de Sistema", "No se pudo verificar la actualización: " + result.error, false);
+                    mBtn.classList.remove('hidden');
+                    return;
+                }
+
+                if (result.hayActualizacion) {
+                    closeModal(); 
+                    
+                    updateTitle.innerText = `NEXUS POS ${result.nuevaVersion}`;
+                    updateDesc.innerText = result.notas; 
+                    urlDescargaReal = result.urlDescarga; 
+                    
+                    updateBanner.classList.remove('hidden'); 
+                } else {
+                    mIcon.innerHTML = '<span class="text-5xl">✅</span>';
+                    mTitle.innerText = "Sistema Protegido";
+                    mText.innerText = "Estás usando la última versión oficial de Nexus POS Global.";
+                    mBtn.classList.remove('hidden');
+                    updateBanner.classList.add('hidden'); 
+                }
+            } catch (err) {
+                openModal("Error Fatal", "Error de comunicación con el núcleo: " + err.message);
                 mBtn.classList.remove('hidden');
-            }, 2500); // Tarda 2.5 segundos simulando la búsqueda
+            }
         }
 
-        // Simulación: Proceso de Actualización Completo
-        function simularActualizacion() {
-            openModal("Iniciando...", "Preparando el entorno de actualización...", true);
+        // ACCIÓN DE DESCARGA REAL Y AUTOINSTALACIÓN
+        async function iniciarActualizacionReal() {
+            if(!urlDescargaReal) {
+                openModal("Error", "No se encontró el archivo instalador (.exe).", false);
+                mBtn.classList.remove('hidden');
+                return;
+            }
+
+            openModal("Descargando...", "Obteniendo actualización de GitHub...", true);
+            pContainer.classList.remove('hidden');
+            pBar.style.width = "0%"; 
             
-            // Pausa breve antes de empezar la barra
-            setTimeout(() => {
-                mIcon.innerHTML = '<span class="text-5xl drop-shadow-md animate-bounce">📦</span>';
-                mTitle.innerText = "Actualizando Sistema";
-                pContainer.classList.remove('hidden');
-                pBar.style.width = "0%";
-                
-                // 🛠️ ACTUALIZACIÓN DE FASES: Añadida la verificación del Certificado
-                let fases = [
-                    { porcentaje: 15, texto: "Iniciando descarga e instalación..." },
-                    { porcentaje: 35, texto: "Descargando paquetes de NEXUS POS v1.2..." },
-                    { porcentaje: 60, texto: "Descomprimiendo e instalando archivos..." },
-                    { porcentaje: 80, texto: "Verificando Certificado de Integridad..." },
-                    { porcentaje: 95, texto: "Configurando bases de datos..." },
-                    { porcentaje: 100, texto: "Reiniciando servicios del servidor local..." }
-                ];
-
-                let faseActual = 0;
-                
-                // Intervalo que avanza la barra cada 1.5 segundos
-                let intervalo = setInterval(() => {
-                    if (faseActual < fases.length) {
-                        pBar.style.width = fases[faseActual].porcentaje + "%";
-                        mText.innerText = fases[faseActual].texto;
-                        faseActual++;
-                    } else {
-                        // Terminó la carga
-                        clearInterval(intervalo);
-                        setTimeout(() => {
-                            mIcon.innerHTML = '<span class="text-5xl drop-shadow-md">🚀</span>';
-                            mTitle.innerText = "¡Actualización Exitosa!";
-                            mText.innerText = "NEXUS POS se ha actualizado correctamente. El sistema está listo para operar.";
-                            
-                            pContainer.classList.add('hidden');
-                            mBtn.classList.remove('hidden');
-                            mBtn.innerText = "Finalizar";
-                            
-                            // Ocultamos el banner lateral porque ya actualizamos
-                            updateBanner.style.display = 'none';
-                            
-                            // Actualizamos el numerito de versión en el panel
-                            document.querySelector('.bg-gray-200.text-gray-700.px-3').innerText = 'v1.2.0';
-                        }, 1000);
+            if (window.nexusAPI.onDownloadProgress) {
+                window.nexusAPI.onDownloadProgress((progreso) => {
+                    pBar.style.width = progreso + "%";
+                    mText.innerText = `Descargando: ${progreso}% completado...`;
+                    
+                    if(progreso === 100) {
+                        mIcon.innerHTML = '<span class="text-5xl animate-spin">⚙️</span>';
+                        mTitle.innerText = "Instalando Actualización";
+                        mText.innerText = "El sistema se cerrará automáticamente para aplicar los cambios.";
                     }
-                }, 1500); // Tiempo entre cada fase
+                });
+            }
 
-            }, 1500);
+            try {
+                const result = await window.nexusAPI.descargarEInstalar(urlDescargaReal);
+                
+                if (!result.success && result.error) {
+                    openModal("Error de Descarga", "Falló la descarga: " + result.error, false);
+                    mBtn.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.log("Aplicación cerrándose para actualizar...");
+            }
         }
     </script>
 </body>

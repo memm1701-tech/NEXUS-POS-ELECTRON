@@ -399,8 +399,6 @@
     const entradaBusquedaProducto = document.getElementById('product-type');
     const resultadosBusquedaProducto = document.getElementById('product-search-results');
     const contenedorToast = document.getElementById('toast-container');
-    const URL_XEON_EMPAQUES = "https://empaque.nexusposgobal.com/api/xeon/empaques/sync";
-    const URL_XEON_LISTAR = "https://empaque.nexusposgobal.com/api/xeon/empaques";
     const modalEliminar = document.getElementById('delete-modal');
     const botonConfirmarEliminar = document.getElementById('confirm-delete');
     const botonCancelarEliminar = document.getElementById('cancel-delete');
@@ -409,7 +407,7 @@
 
     // --- 3. Inicialización del Módulo ---
     async function inicializarModulo() {
-        console.log("🚀 [NEXUS] Inicializando Unidades de Empaque...");
+        console.log("🚀 [NEXUS] Inicializando Unidades de Empaque (Modo Local)...");
         
         cargandoMensaje.style.display = 'none';
         appContenedor.style.display = 'flex';
@@ -467,7 +465,7 @@
         
         const query = termino.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-        if (query.length < 2) {
+        if (query.length < 1) {
             resultadosBusquedaProducto.classList.remove('activo');
             return;
         }
@@ -475,16 +473,19 @@
         const resultados = listaProductos.filter(p => {
             const nombreProd = (p.nombre || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             const codigoProd = (p.codigo || "").toLowerCase();
-            const categoriaProd = (p.categoria || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             
-            return nombreProd.includes(query) || codigoProd.includes(query) || categoriaProd.includes(query);
+            // Eliminamos la categoría de la ecuación de búsqueda para evitar resultados fantasma
+            // const categoriaProd = (p.categoria || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            
+            // Ahora SOLO busca coincidencias en el Nombre o en el Código del producto
+            return nombreProd.includes(query) || codigoProd.includes(query);
         });
 
         if (resultados.length > 0) {
             resultadosBusquedaProducto.classList.add('activo');
             
             resultados.forEach(producto => {
-                const item = document.createElement('li'); // Usamos <li> por la estructura HTML
+                const item = document.createElement('li'); 
                 item.className = "result-item"; 
                 item.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -508,63 +509,41 @@
         }
     }
 
-
-
-    // --- 4. Funciones de Base de Datos (Para completar con IPC) ---
-
     async function cargarUnidadesEmpaque() {
-    try {
-        // 1. CARGA INICIAL DESDE SQLITE (Velocidad)
-        let empaquesLocales = await window.nexusAPI.obtenerUnidadesEmpaqueLocal(idEmpresa);
-        renderizarTablaEmpaques(empaquesLocales);
+        try {
+            // 1. CARGA INICIAL DESDE SQLITE (Velocidad)
+            let empaquesLocales = await window.nexusAPI.obtenerUnidadesEmpaqueLocal(idEmpresa);
+            renderizarTablaEmpaques(empaquesLocales);
 
-        // 2. VALIDACIÓN CON XEON (Descarga/Sincronización)
-        if (navigator.onLine) {
-            console.log("🌐 Validando empaques con servidor Xeon...");
-            const respuesta = await fetch(`${URL_XEON_LISTAR}/${idEmpresa}`);
-            
-            if (respuesta.ok) {
-                const empaquesNube = await respuesta.json();
-                
-                // Sincronizar cada empaque de la nube al SQLite local
-                for (const emp of empaquesNube) {
-                    await window.nexusAPI.guardarUnidadEmpaqueLocal(emp);
-                }
-                
-                // Refrescar tabla con datos actualizados
-                const localesActualizados = await window.nexusAPI.obtenerUnidadesEmpaqueLocal(idEmpresa);
-                renderizarTablaEmpaques(localesActualizados);
-            }
+        } catch (error) {
+            console.error("❌ Error al cargar empaques:", error);
+            cuerpoTablaEmpaque.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-red-500">Error al conectar con la base de datos local.</td></tr>';
         }
-    } catch (error) {
-        console.error("❌ Error al cargar empaques:", error);
-        cuerpoTablaEmpaque.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-red-500">Error al conectar con la base de datos.</td></tr>';
-    }
-}
-
-function renderizarTablaEmpaques(lista) {
-    cuerpoTablaEmpaque.innerHTML = '';
-    
-    if (!lista || lista.length === 0) {
-        cuerpoTablaEmpaque.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-500">No hay unidades de empaque registradas.</td></tr>';
-        return;
     }
 
-    lista.forEach(emp => {
-        const fila = document.createElement('tr');
-        fila.className = "hover:bg-gray-50 transition-colors";
-        fila.innerHTML = `
-            <td class="px-6 py-4 text-sm font-medium text-gray-900">${emp.nombre_producto || 'Producto desconocido'}</td>
-            <td class="px-6 py-4 text-sm text-gray-600">${emp.nombre_unidad}</td>
-            <td class="px-6 py-4 text-sm text-gray-600">${emp.tipo_medida}</td>
-            <td class="px-6 py-4 text-sm font-bold text-blue-600">${emp.factor_cantidad}</td>
-            <td class="px-6 py-4 text-sm">
-                <button onclick="eliminarEmpaque('${emp.id}')" class="text-red-600 hover:text-red-900 font-bold">Eliminar</button>
-            </td>
-        `;
-        cuerpoTablaEmpaque.appendChild(fila);
-    });
-}
+    function renderizarTablaEmpaques(lista) {
+        cuerpoTablaEmpaque.innerHTML = '';
+        
+        if (!lista || lista.length === 0) {
+            cuerpoTablaEmpaque.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-500">No hay unidades de empaque registradas.</td></tr>';
+            return;
+        }
+
+        lista.forEach(emp => {
+            const fila = document.createElement('tr');
+            fila.className = "hover:bg-gray-50 transition-colors";
+            fila.innerHTML = `
+                <td class="px-6 py-4 text-sm font-medium text-gray-900">${emp.nombre_producto || 'Producto desconocido'}</td>
+                <td class="px-6 py-4 text-sm text-gray-600">${emp.nombre_unidad}</td>
+                <td class="px-6 py-4 text-sm text-gray-600">${emp.tipo_medida}</td>
+                <td class="px-6 py-4 text-sm font-bold text-blue-600">${emp.factor_cantidad}</td>
+                <td class="px-6 py-4 text-sm">
+                    <button onclick="eliminarEmpaque('${emp.id}')" class="text-red-600 hover:text-red-900 font-bold">Eliminar</button>
+                </td>
+            `;
+            cuerpoTablaEmpaque.appendChild(fila);
+        });
+    }
 
     async function buscarProductos(termino) {
         // Aquí conectaremos con la búsqueda de productos de la empresa
@@ -664,7 +643,7 @@ function renderizarTablaEmpaques(lista) {
         }
     });
 
-    // Procesar el formulario: Guardado Local + Sincronización Xeon
+    // Procesar el formulario: Guardado Local Exclusivo
     formularioEmpaque.addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -676,7 +655,7 @@ function renderizarTablaEmpaques(lista) {
         const nombreUnidad = document.getElementById('packaging-unit').value;
         const unidadFinal = nombreUnidad === 'otro' ? document.getElementById('other-unit').value : nombreUnidad;
 
-        // Estructura de datos alineada con el Cerebro (main.js) y Xeon (puerto 3005)
+        // Estructura de datos alineada con el Cerebro (main.js)
         const datosEmpaque = {
             id: `EMP-${Date.now()}`,
             company_id: idEmpresa,
@@ -688,23 +667,12 @@ function renderizarTablaEmpaques(lista) {
         };
 
         try {
-            // 1. GUARDADO LOCAL (SQLite) - Prioridad absoluta para funcionamiento offline
+            // 1. GUARDADO LOCAL (SQLite)
             const resultadoLocal = await window.nexusAPI.guardarUnidadEmpaqueLocal(datosEmpaque);
 
             if (resultadoLocal.success) {
                 mostrarToastEmpaque("✅ Guardado localmente", "success");
                 
-                // 2. SINCRONIZACIÓN CON XEON (Carga mediante URL segura)
-                if (navigator.onLine) {
-                    fetch(URL_XEON_EMPAQUES, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(datosEmpaque)
-                    }).then(res => {
-                        if(res.ok) console.log("🌐 Sincronizado con Xeon con éxito");
-                    }).catch(err => console.warn("⚠️ Xeon offline, sincronización pendiente."));
-                }
-
                 // Limpieza de interfaz
                 formularioEmpaque.reset();
                 if(document.getElementById('other-unit-container')) {
@@ -744,12 +712,6 @@ function renderizarTablaEmpaques(lista) {
             const resultado = await window.nexusAPI.eliminarUnidadEmpaqueLocal(idItemAEliminar);
 
             if (resultado.success) {
-                // 2. ELIMINACIÓN EN XEON (Si hay conexión)
-                if (navigator.onLine) {
-                    fetch(`https://empaque.nexusposgobal.com/api/xeon/empaques/${idItemAEliminar}`, {
-                        method: 'DELETE'
-                    }).catch(err => console.warn("⚠️ No se pudo eliminar en Xeon, se hará en la próxima sync."));
-                }
 
                 mostrarToastEmpaque("🗑️ Unidad eliminada correctamente", "success");
                 modalEliminar.style.display = 'none';

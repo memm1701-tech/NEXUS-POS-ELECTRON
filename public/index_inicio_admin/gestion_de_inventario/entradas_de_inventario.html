@@ -91,6 +91,13 @@
         background-size: 1.5em;
     }
 
+    .form-section input:focus,
+    .form-section select:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        outline: none;
+    }
+
     #final-stock-display {
         background-color: #edf2f7;
         cursor: default;
@@ -450,22 +457,25 @@
     </div>
 
 
-    <script type="module">
-    // --- 1. Variables de Estado Global (En Español) ---
+<script type="module">
+    // --- 1. Variables de Estado Global ---
     let idEmpresa = null;
     let idSucursalSeleccionada = null;
     let idUsuario = null;
     let rolUsuario = null;
     let focoProducto = -1;
     let listaProductos = [];
-    let listaEmpaques = [];
     let idProductoSeleccionado = null;
     let factorEmpaqueSeleccionado = 1;
     let datosInventarioActual = [];
     let mapaCategorias = {};
     let modoEdicion = false;
+    
+    // Variables para el servidor VPS (Xeon)
+    let SERVER_URL = null;
+    let respaldoActivo = false;
 
-    // --- 2. Referencias a Elementos del DOM ---
+    // --- 2. Referencias al DOM ---
     const selectorSucursal = document.getElementById('branch-select');
     const entradaBusquedaProducto = document.getElementById('product-search');
     const selectorEmpaque = document.getElementById('packaging-unit-select');
@@ -476,246 +486,117 @@
     const cuerpoTablaInventario = document.getElementById('inventory-table-body');
     const entradaBusquedaInventario = document.getElementById('inventory-search-input');
 
-    // --- 3. Inicialización del Módulo ---
+    // --- 3. Inicialización ---
     async function inicializarModulo() {
         console.log("🚀 [NEXUS] Inicializando Entradas de Inventario...");
         try {
-            const sesion = await window.nexusAPI.obtenerSesionLocal();
-
+            const api = window.nexusAPI;
+            const sesion = await api.obtenerSesionLocal();
             if (sesion && sesion.companyId) {
                 idEmpresa = sesion.companyId;
                 idUsuario = sesion.uid || sesion.id;
                 rolUsuario = sesion.role;
 
-                // --- MOTOR DEL TRADUCTOR ---
-                // Cargamos las categorías para convertir IDs a nombres legibles
-                const categorias = await window.nexusAPI.obtenerCategoriasLocal();
-                categorias.forEach(cat => {
-                    mapaCategorias[cat.id] = cat.nombre;
-                });
+                // --- Extraer configuración del servidor en la nube (.env) ---
+                try {
+                    if (api.obtenerConfigServer) {
+                        const config = await api.obtenerConfigServer();
+                        respaldoActivo = config.respaldo_datos === 'true' || config.respaldo_datos === true;
+
+                        if (respaldoActivo) {
+                            SERVER_URL = `http://${config.serverIp || config.SERVER_IP}:${config.serverPort || config.SERVER_PORT}`;
+                            console.log("🧠 Servidor VPS (PostgreSQL/Xeon) detectado en:", SERVER_URL);
+                        } else {
+                            SERVER_URL = null;
+                            console.log("🔒 Respaldo en la nube inactivo.");
+                        }
+                    }
+                } catch (configError) {
+                    console.error("❌ Error al obtener configuración externa:", configError);
+                }
+
+                const categorias = await api.obtenerCategoriasLocal();
+                categorias.forEach(cat => { mapaCategorias[cat.id] = cat.nombre; });
 
                 await cargarSucursalesLocal();
+                await cargarCatalogoProductos();
             } else {
-                mostrarAlerta("No se detectó una sesión activa. Redirigiendo...", "error");
+                mostrarAlerta("Sesión no válida.", "error");
             }
         } catch (error) {
-            console.error("❌ Error en inicialización:", error);
+            console.error("❌ Error inicialización:", error);
         }
-        await cargarCatalogoProductos();
     }
 
-    // --- 4. Funciones de Carga de Datos (SQLite) ---
+    // --- 4. Gestión de Datos ---
     async function cargarSucursalesLocal() {
-        try {
-            console.log("📂 Cargando sucursales desde base de datos local...");
-            const sucursales = await window.nexusAPI.obtenerSucursalesLocal(idEmpresa);
-
-            selectorSucursal.innerHTML = '<option value="" disabled selected>Seleccione una sucursal</option>';
-
-            if (!sucursales || sucursales.length === 0) {
-                selectorSucursal.innerHTML = '<option value="" disabled>Sin sucursales disponibles</option>';
-                return;
-            }
-
-            sucursales.forEach(sucursal => {
-                const opcion = document.createElement('option');
-                opcion.value = sucursal.id;
-                opcion.textContent = sucursal.nombre; // Usando el esquema de tu DB local
-                selectorSucursal.appendChild(opcion);
-            });
-
-        } catch (error) {
-            console.error("❌ Error al cargar sucursales:", error);
-            mostrarAlerta("Error al leer sucursales locales", "error");
-        }
+        const sucursales = await window.nexusAPI.obtenerSucursalesLocal(idEmpresa);
+        selectorSucursal.innerHTML = '<option value="" disabled selected>Seleccione sucursal</option>';
+        sucursales.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.nombre;
+            selectorSucursal.appendChild(opt);
+        });
     }
 
     async function cargarCatalogoProductos() {
-        try {
-            console.log("📦 [NEXUS] Cargando catálogo de productos desde SQLite...");
-            
-            // Llamada al IPC que configuramos en inventario.html
-            const productosBrutos = await window.nexusAPI.obtenerProductosLocal(idEmpresa);
-            
-            if (productosBrutos && productosBrutos.length > 0) {
-                // Mapeamos los datos para que sean fáciles de usar (Traducción de datos_json)
-                listaProductos = productosBrutos.map(p => {
-                    let info = {};
-                    try {
-                        info = typeof p.datos_json === 'string' ? JSON.parse(p.datos_json) : p.datos_json;
-                    } catch (e) { info = {}; }
-                    
-                    return {
-                        id: p.id || p.producto_ID,
-                        nombre: info.nombre || p.nombre || "Sin nombre",
-                        categoria: info.categoria || p.categoria || "General",
-                        unidad: info.unit || p.unit || "UN",
-                        codigo: info.codigo || p.codigo || ""
-                    };
-                });
-                console.log(`✅ [NEXUS] ${listaProductos.length} productos listos para búsqueda.`);
-            }
-        } catch (error) {
-            console.error("❌ Error al cargar catálogo local:", error);
-        }
-    }
-
-    // --- Lógica de Búsqueda de Productos (Estilo Facturación) ---
-    function manejarBusquedaProducto(termino) {
-        contenedorResultadosBusqueda.innerHTML = '';
-        
-        // 1. Normalizar el término de búsqueda (quitar acentos y minúsculas)
-        const query = termino.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-        if (query.length < 2) {
-            contenedorResultadosBusqueda.classList.remove('activo');
-            return;
-        }
-
-        // 2. Filtrar con la misma potencia que en facturación
-        const resultados = listaProductos.filter(p => {
-            const nombreProd = (p.nombre || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            const codigoProd = (p.codigo || "").toLowerCase();
-            const categoriaProd = (p.categoria || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            
-            return nombreProd.includes(query) || 
-                   codigoProd.includes(query) || 
-                   categoriaProd.includes(query);
-        });
-
-        // 3. Renderizar resultados
-        if (resultados.length > 0) {
-            contenedorResultadosBusqueda.classList.add('activo');
-            
-            resultados.forEach(producto => {
-                const item = document.createElement('div');
-                item.className = "result-item"; 
-                item.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <div style="font-weight: bold; color: #2d3748; text-transform: uppercase; font-size: 0.9em;">${producto.nombre}</div>
-                            <div style="font-size: 0.7rem; color: #718096;">
-                                ${producto.categoria} | <span class="font-mono">Cod: ${producto.codigo || 'S/C'}</span>
-                            </div>
-                        </div>
-                        <div style="font-weight: bold; color: #3182ce; font-size: 0.8em;">
-                            ${producto.unidad}
-                        </div>
-                    </div>
-                `;
-                
-                item.onclick = () => seleccionarProducto(producto);
-                contenedorResultadosBusqueda.appendChild(item);
-            });
-        } else {
-            contenedorResultadosBusqueda.classList.remove('activo');
-        }
-    }
-
-    // --- 4.3 Selección de Producto (Asegura cerrar el menú) ---
-    function seleccionarProducto(producto) {
-        idProductoSeleccionado = producto.id;
-        entradaBusquedaProducto.value = producto.nombre;
-        
-        // Limpieza de buscador
-        contenedorResultadosBusqueda.innerHTML = '';
-        contenedorResultadosBusqueda.classList.remove('activo');
-        
-        // 🔥 DISPARO DE LÓGICA DE EMPAQUE
-        actualizarSelectEmpaques(producto.id, producto.unidad);
-        
-        // Enfocar cantidad para velocidad de usuario
-        if(entradaCantidad) {
-            entradaCantidad.focus();
-            entradaCantidad.value = ""; // Limpiar valor previo si existe
-        }
-    }
-
-    function aplicarResaltado(items) {
-        if (!items || items.length === 0) return;
-        
-        // Limpiamos el resaltado de todos
-        items.forEach(el => el.classList.remove("autocomplete-active"));
-        
-        // Aplicamos al índice actual
-        if (focoProducto > -1 && items[focoProducto]) {
-            items[focoProducto].classList.add("autocomplete-active");
-            
-            // Asegura que el scroll siga al resaltado
-            items[focoProducto].scrollIntoView({ block: "nearest" });
-        }
-    }
-
-async function cargarInventarioSucursal() {
-    if (!idSucursalSeleccionada) return;
-
-    const servidorIP = localStorage.getItem('serverIP') || '192.168.0.111';
-    const URL_BASE = `http://${servidorIP}:3000`;
-
-    try {
-        console.log(`🌐 [NEXUS] Consultando stock al Cerebro Maestro...`);
-        
-        // 1. Obtenemos el catálogo local completo
-        const todosLosProductos = await window.nexusAPI.obtenerProductosLocal(); 
-        
-        // --- 🔥 CORRECCIÓN: El campo exacto en tu base de datos es company_id 🔥 ---
-        const productosBase = todosLosProductos.filter(p => p.company_id === idEmpresa);
-        
-        // 2. Pedir stock al servidor
-        const params = new URLSearchParams({
-            sucursalId: idSucursalSeleccionada,
-            companyId: idEmpresa
-        });
-
-        const respuesta = await fetch(`${URL_BASE}/api/maestro/stock?${params.toString()}`);
-        
-        if (!respuesta.ok) {
-            const errorData = await respuesta.json();
-            throw new Error(errorData.error || "Error interno del servidor Maestro");
-        }
-        
-        const stockCentral = await respuesta.json();
-
-        // 3. Cruzamos los datos
-        const inventarioFinal = productosBase.map(prod => {
-            const servidorData = stockCentral.find(s => s.producto_id === prod.id);
+        const brutos = await window.nexusAPI.obtenerProductosLocal(idEmpresa);
+        listaProductos = brutos.map(p => {
+            let info = typeof p.datos_json === 'string' ? JSON.parse(p.datos_json) : (p.datos_json || {});
             return {
-                ...prod,
-                stock_sucursal: servidorData ? servidorData.cantidad_real : 0 
+                id: p.id || p.producto_ID,
+                nombre: info.nombre || p.nombre || "Sin nombre",
+                categoria: info.categoria || p.categoria || "General",
+                unidad: info.unit || p.unit || "UN",
+                codigo: info.codigo || p.codigo || ""
             };
         });
-
-        datosInventarioActual = inventarioFinal;
-        renderizarTablaInventario(datosInventarioActual);
-        console.log(`✅ Tabla cargada: ${productosBase.length} productos mostrados para la empresa.`);
-        
-    } catch (error) {
-        console.error("❌ Error en carga centralizada:", error);
-        mostrarAlerta(`Error al cargar datos: ${error.message}`, "error");
     }
-}
 
-    // --- 4.5 Renderizar Tabla de Inventario ---
-    function renderizarTablaInventario(lista) {
+    window.cargarInventarioSucursal = async function() {
+        if (!idSucursalSeleccionada) return;
+        try {
+            const todos = await window.nexusAPI.obtenerProductosLocal(idEmpresa);
+            const productosBase = todos.filter(p => p.company_id === idEmpresa);
+            
+            // 🛡️ Utilizamos el puente IPC puro para evitar la colisión de puertos
+            const stockCentral = await window.nexusAPI.obtenerInventarioSucursal({
+                companyId: idEmpresa,
+                sucursalId: idSucursalSeleccionada
+            });
+
+            const inventarioFinal = productosBase.map(prod => {
+                const servidorData = stockCentral.find(s => s.producto_id === prod.id);
+                return { ...prod, stock_sucursal: servidorData ? servidorData.cantidad_real : 0 };
+            });
+
+            inventarioFinal.sort((a, b) => {
+                return (a.nombre || "").localeCompare((b.nombre || ""), undefined, { numeric: true, sensitivity: 'base' });
+            });
+
+            datosInventarioActual = inventarioFinal;
+            window.renderizarTablaInventario(datosInventarioActual);
+        } catch (e) { console.error("❌ Error carga stock:", e); }
+    };
+
+    window.renderizarTablaInventario = function(lista) {
         cuerpoTablaInventario.innerHTML = '';
 
         if (lista.length === 0) {
-            cuerpoTablaInventario.innerHTML = `<tr><td colspan="5" class="placeholder-message">No hay productos vinculados.</td></tr>`;
+            cuerpoTablaInventario.innerHTML = '<tr><td colspan="5" class="placeholder-message">Sin productos vinculados.</td></tr>';
             return;
         }
 
         lista.forEach(item => {
             const fila = document.createElement('tr');
-            // stock_sucursal es el alias que definimos en el LEFT JOIN del main.js
             const stock = item.stock_sucursal || 0;
-            
-            // --- TRADUCCIÓN EN TIEMPO REAL ---
-            // Buscamos el nombre en el mapa; si no se encuentra, mostramos el ID o "General" como respaldo
-            const nombreCategoria = mapaCategorias[item.categoria] || item.categoria || "General";
+            const cat = mapaCategorias[item.categoria] || item.categoria || "General";
+            const nombreMayuscula = (item.nombre || '').toUpperCase();
 
             fila.innerHTML = `
-                <td class="font-medium text-gray-900">${item.nombre}</td>
-                <td class="text-gray-600">${nombreCategoria}</td> 
+                <td style="font-weight: bold; color: #2c3e50;">${nombreMayuscula}</td>
+                <td class="text-gray-600">${cat}</td> 
                 <td class="text-center">${item.unit || 'UN'}</td>
                 <td class="text-center font-bold text-blue-600">${stock}</td>
                 <td>
@@ -728,243 +609,164 @@ async function cargarInventarioSucursal() {
         });
     }
 
-    // --- 4.6 Registrar Entrada de Mercancía (Versión con Depuración) ---
-async function registrarEntradaStock() {
-    const cantidadInput = parseFloat(entradaCantidad.value);
+    // --- 6. Registro de Entrada (USANDO IPC LOCAL Y FETCH AL VPS) ---
+    window.registrarEntradaStock = async function() {
+        const cantInput = parseFloat(entradaCantidad.value);
+        if (!idProductoSeleccionado || isNaN(cantInput)) return mostrarAlerta("Datos incompletos.", "warning");
 
-    if (!idProductoSeleccionado || isNaN(cantidadInput)) {
-        mostrarAlerta("Seleccione producto y cantidad.", "warning");
-        return;
-    }
+        const cantFinal = modoEdicion ? cantInput : (cantInput * factorEmpaqueSeleccionado);
 
-    const cantidadFinal = modoEdicion ? cantidadInput : (cantidadInput * factorEmpaqueSeleccionado);
-    const tipoOperacion = modoEdicion ? 'FIJAR' : 'SUMAR';
-    
-    const servidorIP = localStorage.getItem('serverIP') || '192.168.0.111';
-    const URL_BASE = `http://${servidorIP}:3000`;
-
-    try {
-        botonRegistrar.disabled = true;
-        botonRegistrar.textContent = "Sincronizando...";
-
-        // Enviamos el paquete completo como espera tu transaccion en server.js
-        const respuesta = await fetch(`${URL_BASE}/api/maestro/registrar-entrada`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                sucursalId: idSucursalSeleccionada,
-                companyId: idEmpresa,
-                items: [{
-                    id: idProductoSeleccionado,
-                    cantidad: cantidadFinal,
-                    operacion: tipoOperacion 
-                }]
-            })
-        });
-
-        const resultado = await respuesta.json();
-
-        if (resultado && resultado.exito) {
-            mostrarAlerta("✅ Stock sincronizado con el Maestro.", "success");
-            limpiarFormularioEntrada();
-            await cargarInventarioSucursal(); 
-        } else {
-            throw new Error(resultado.error || "Fallo al guardar");
-        }
-    } catch (error) {
-        mostrarAlerta("Error Crítico: " + error.message, "error");
-    } finally {
-        botonRegistrar.disabled = false;
-        modoEdicion = false;
-        botonRegistrar.textContent = "Registrar Entrada de Inventario";
-        botonRegistrar.classList.replace('bg-amber-500', 'bg-blue-600');
-    }
-}
-
-
-    function limpiarFormularioEntrada() {
-        entradaBusquedaProducto.value = '';
-        idProductoSeleccionado = null;
-        entradaCantidad.value = '';
-        visorStockFinal.value = '0';
-        selectorEmpaque.disabled = true;
-        selectorEmpaque.innerHTML = '<option value="">Selecciona un producto primero...</option>';
-    }
-
-    // --- 5. Utilidades de Interfaz ---
-    function mostrarAlerta(mensaje, tipo = "success") {
-        const colores = {
-            success: "#10B981", // Verde
-            error: "#EF4444",   // Rojo
-            warning: "#F59E0B", // Naranja
-            info: "#3B82F6"     // Azul
+        // 📦 Payload estructurado para DB Local
+        const payloadLocal = {
+            productoId: idProductoSeleccionado,
+            sucursalId: idSucursalSeleccionada,
+            companyId: idEmpresa,
+            cantidad: cantFinal,
+            operacion: modoEdicion ? 'FIJAR' : 'SUMAR'
         };
 
-        const alerta = document.createElement('div');
-        alerta.textContent = mensaje;
-        alerta.style.cssText = `
-            position: fixed; top: 20px; right: 20px;
-            background-color: ${colores[tipo]}; color: white;
-            padding: 15px 25px; border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 10000; transition: all 0.5s ease;
-            font-weight: bold;
-        `;
-        document.body.appendChild(alerta);
-        setTimeout(() => {
-            alerta.style.opacity = '0';
-            setTimeout(() => alerta.remove(), 500);
-        }, 3000);
-    }
+        // 📦 Payload estructurado para Servidor VPS
+        const payloadVPS = {
+            sucursalId: idSucursalSeleccionada,
+            companyId: idEmpresa,
+            items: [{ id: idProductoSeleccionado, cantidad: cantFinal, operacion: modoEdicion ? 'FIJAR' : 'SUMAR' }]
+        };
 
-    async function actualizarSelectEmpaques(idProducto, unidadBase = 'UN') {
         try {
-            console.log(`🔍 [NEXUS] Buscando unidades de empaque para: ${idProducto}`);
-            
-            // 1. Consultar al Cerebro Local (IPC definido en su momento)
-            const empaques = await window.nexusAPI.obtenerEmpaquePorProducto(idProducto);
-            
-            // 2. Limpiar y habilitar el selector
-            selectorEmpaque.innerHTML = '';
-            selectorEmpaque.disabled = false;
+            botonRegistrar.disabled = true;
+            botonRegistrar.textContent = "Sincronizando...";
 
-            // 3. Añadir SIEMPRE la "Unidad Base" (multiplicador 1)
-            const optBase = document.createElement('option');
-            optBase.value = "1";
-            optBase.textContent = `Unidad Individual (1.00 ${unidadBase})`;
-            selectorEmpaque.appendChild(optBase);
+            // 1️⃣ Guardado Local usando IPC (Ahora apunta directo a stock_maestro)
+            const resLocal = await window.nexusAPI.guardarStockSucursal(payloadLocal);
+            let exitoLocal = resLocal && resLocal.success;
 
-            // 4. Si hay empaques especiales (Bultos, Sacos), los añadimos
-            if (empaques && empaques.length > 0) {
-                empaques.forEach(emp => {
-                    const opt = document.createElement('option');
-                    opt.value = emp.factor_cantidad; // Ejemplo: 24.00
-                    // Mostramos: "Bulto (x24.00 Kilos)"
-                    opt.textContent = `${emp.nombre_unidad} (x${emp.factor_cantidad} ${emp.tipo_medida})`;
-                    selectorEmpaque.appendChild(opt);
-                });
-                mostrarAlerta(`Se encontraron ${empaques.length} empaques vinculados.`, "info");
+            // 2️⃣ Guardado en el VPS (Intacto)
+            let exitoVPS = false;
+            if (navigator.onLine && respaldoActivo && SERVER_URL) {
+                try {
+                    const resVPS = await fetch(`${SERVER_URL}/api/maestro/inventario/registrar-entrada`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payloadVPS)
+                    });
+                    
+                    if (resVPS.ok) {
+                        const jsonVPS = await resVPS.json();
+                        if (jsonVPS.exito || jsonVPS.success) exitoVPS = true;
+                    }
+                } catch (vpsError) {
+                    console.error("⚠️ Sincronización VPS fallida:", vpsError.message);
+                }
             }
 
-            // 5. Resetear el factor al valor de la primera opción (la base)
-            factorEmpaqueSeleccionado = 1;
-            recalcularStockTotal();
+            if (exitoLocal) {
+                if (respaldoActivo && SERVER_URL && !exitoVPS) {
+                    mostrarAlerta("⚠️ Registrado localmente. Error conectando al VPS.", "warning");
+                } else {
+                    mostrarAlerta("✅ Stock registrado correctamente en ambos servidores.", "success");
+                }
+                limpiarFormulario();
+                await window.cargarInventarioSucursal();
+            } else {
+                mostrarAlerta("Error al procesar el inventario local.", "error");
+            }
 
-        } catch (error) {
-            console.error("❌ Error vinculando empaques:", error);
-            selectorEmpaque.innerHTML = '<option value="1">Error cargando empaques (Usa x1)</option>';
+        } catch (e) { 
+            mostrarAlerta("Error general en el registro.", "error"); 
+        } finally {
+            botonRegistrar.disabled = false;
+            modoEdicion = false;
+            botonRegistrar.textContent = "Registrar Entrada de Inventario";
+            botonRegistrar.classList.replace('bg-amber-500', 'bg-blue-600');
         }
-    }
+    };
 
-    function recalcularStockTotal() {
-        const cantidadIngresada = parseFloat(entradaCantidad.value) || 0;
-        
-        // REGLA MATEMÁTICA: Cantidad de empaques * Factor de conversión
-        const totalCalculado = cantidadIngresada * factorEmpaqueSeleccionado;
-        
-        // Actualizar el visor visual
-        visorStockFinal.value = totalCalculado.toFixed(2);
-        
-        console.log(`🧪 [CÁLCULO NEXUS]: ${cantidadIngresada} x ${factorEmpaqueSeleccionado} = ${totalCalculado}`);
-    }
+    window.prepararEdicionStock = (id, nombre, stock) => {
+        idProductoSeleccionado = id;
+        modoEdicion = true;
+        entradaBusquedaProducto.value = nombre;
+        entradaCantidad.value = stock;
+        visorStockFinal.value = stock;
+        botonRegistrar.textContent = "Actualizar Stock Total (Fijar)";
+        botonRegistrar.classList.replace('bg-blue-600', 'bg-amber-500');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
-// --- 6. Event Listeners (Buscador con Navegación) ---
-
+    // --- 7. Event Listeners ---
     entradaBusquedaProducto.addEventListener('input', (e) => {
-        focoProducto = -1; // Reiniciamos el foco en cada nueva letra
-        manejarBusquedaProducto(e.target.value);
-    });
-
-    entradaBusquedaProducto.addEventListener('keydown', (e) => {
-        const items = contenedorResultadosBusqueda.querySelectorAll('.result-item');
-        if (items.length === 0) return;
-
-        if (e.key === "ArrowDown") {
-            e.preventDefault();
-            focoProducto++;
-            if (focoProducto >= items.length) focoProducto = 0;
-            aplicarResaltado(items);
-        } 
-        else if (e.key === "ArrowUp") {
-            e.preventDefault();
-            focoProducto--;
-            if (focoProducto < 0) focoProducto = items.length - 1;
-            aplicarResaltado(items);
-        } 
-        else if (e.key === "Enter") {
-            e.preventDefault();
-            // Si el usuario tiene algo resaltado, hacemos clic en ello
-            if (focoProducto > -1 && items[focoProducto]) {
-                items[focoProducto].click();
-            } else if (items.length > 0) {
-                // Si no hay nada resaltado pero hay resultados, elegimos el primero
-                items[0].click();
-            }
-        }
-    }); // <--- 🔥 LLAVE CORRECTA: Cierra el evento keydown aquí
-
-    // --- EVENTOS AHORA LIBERADOS Y FUNCIONALES ---
-
-    selectorSucursal.addEventListener('change', async (e) => {
-        idSucursalSeleccionada = e.target.value; // Capturamos el ID real
-        console.log(`📍 Nexus POS: Sucursal detectada -> ${idSucursalSeleccionada}`);
+        const query = e.target.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        if (query.length < 2) return contenedorResultadosBusqueda.classList.remove('activo');
         
-        if (idSucursalSeleccionada) {
-            await cargarInventarioSucursal(); // Ahora sí llamamos a la carga
+        const filtered = listaProductos.filter(p => p.nombre.toLowerCase().includes(query) || p.codigo.includes(query)).slice(0, 10);
+        contenedorResultadosBusqueda.innerHTML = '';
+        if (filtered.length > 0) {
+            contenedorResultadosBusqueda.classList.add('activo');
+            filtered.forEach(p => {
+                const div = document.createElement('div');
+                div.className = "result-item";
+                div.innerHTML = `<b>${p.nombre}</b> <br> <small>${p.categoria} | ${p.codigo}</small>`;
+                div.onclick = () => {
+                    idProductoSeleccionado = p.id;
+                    entradaBusquedaProducto.value = p.nombre;
+                    contenedorResultadosBusqueda.classList.remove('activo');
+                    actualizarSelectEmpaques(p.id, p.unidad);
+                };
+                contenedorResultadosBusqueda.appendChild(div);
+            });
         }
     });
 
-    // Botón de registro
-    botonRegistrar.addEventListener('click', registrarEntradaStock);
-
-    // Cálculo automático del stock final mientras escribes la cantidad
-    entradaCantidad.addEventListener('input', () => {
-        const cant = parseFloat(entradaCantidad.value) || 0;
-        const total = cant * factorEmpaqueSeleccionado;
-        visorStockFinal.value = total.toFixed(2);
+    selectorSucursal.addEventListener('change', (e) => {
+        idSucursalSeleccionada = e.target.value;
+        window.cargarInventarioSucursal();
     });
 
-    window.prepararEdicionStock = (id, nombre, stockActual) => {
-    console.log(`📝 [NEXUS] Preparando edición para: ${nombre}`);
-    
-    // 1. Llenamos las variables de control
-    idProductoSeleccionado = id;
-    modoEdicion = true;
+    botonRegistrar.addEventListener('click', window.registrarEntradaStock);
 
-    // 2. Rellenamos la interfaz
-    entradaBusquedaProducto.value = nombre;
-    entradaCantidad.value = stockActual;
-    visorStockFinal.value = stockActual; 
-    
-    // 3. Cambiamos visualmente el botón de registro
-    botonRegistrar.textContent = "Actualizar Stock Total (Fijar)";
-    botonRegistrar.classList.replace('bg-blue-600', 'bg-amber-500'); 
-    
-    // 4. Subimos al formulario con un efecto suave
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    
-    mostrarAlerta(`Editando stock de: ${nombre}`, "info");
-};
-
-    selectorEmpaque.addEventListener('change', (e) => {
-        factorEmpaqueSeleccionado = parseFloat(e.target.value) || 1;
-        recalcularStockTotal();
-    });
-
-    // 2. Cuando el usuario escribe la cantidad (Reemplaza tu listener anterior)
-    entradaCantidad.addEventListener('input', recalcularStockTotal);
-
-    // Filtro de búsqueda de la tabla (inventario actual)
     entradaBusquedaInventario.addEventListener('input', (e) => {
-        const termino = e.target.value.toLowerCase();
-        const filtrados = datosInventarioActual.filter(i => 
-            i.nombre.toLowerCase().includes(termino) || (i.codigo && i.codigo.includes(termino))
-        );
-        renderizarTablaInventario(filtrados);
+        const term = e.target.value.toLowerCase();
+        const filtrados = datosInventarioActual.filter(i => i.nombre.toLowerCase().includes(term));
+        window.renderizarTablaInventario(filtrados);
     });
 
+    // --- 8. Helpers ---
+    async function actualizarSelectEmpaques(id, unidad) {
+        const empaques = await window.nexusAPI.obtenerEmpaquePorProducto(id);
+        selectorEmpaque.innerHTML = `<option value="1">Unidad (1.00 ${unidad})</option>`;
+        selectorEmpaque.disabled = false;
+        empaques.forEach(e => {
+            const opt = document.createElement('option');
+            opt.value = e.factor_cantidad;
+            opt.textContent = `${e.nombre_unidad} (x${e.factor_cantidad})`;
+            selectorEmpaque.appendChild(opt);
+        });
+        factorEmpaqueSeleccionado = 1;
+        recalcular();
+    }
 
-    // --- 7. Ejecución Inicial ---
+    function recalcular() {
+        const total = (parseFloat(entradaCantidad.value) || 0) * factorEmpaqueSeleccionado;
+        visorStockFinal.value = total.toFixed(2);
+    }
+
+    selectorEmpaque.addEventListener('change', (e) => { factorEmpaqueSeleccionado = parseFloat(e.target.value); recalcular(); });
+    entradaCantidad.addEventListener('input', recalcular);
+
+    function limpiarFormulario() {
+        entradaBusquedaProducto.value = '';
+        entradaCantidad.value = '';
+        visorStockFinal.value = '0';
+        idProductoSeleccionado = null;
+    }
+
+    function mostrarAlerta(m, t) {
+        const a = document.createElement('div');
+        a.textContent = m;
+        a.style.cssText = `position:fixed; top:20px; right:20px; background:${t==='error'?'#EF4444':t==='warning'?'#F59E0B':'#10B981'}; color:white; padding:15px; border-radius:8px; z-index:10000; font-weight:bold;`;
+        document.body.appendChild(a);
+        setTimeout(() => a.remove(), 3000);
+    }
+
     inicializarModulo();
 </script>
 </body>

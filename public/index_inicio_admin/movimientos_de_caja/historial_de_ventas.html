@@ -203,14 +203,7 @@
                     <option value="">Cargando sucursales...</option>
                 </select>
             </div>
-            
-            <div>
-                <label for="cashier-select">Cajera:</label>
-                <select id="cashier-select">
-                    <option value="">Selecciona una cajera...</option>
-                </select>
             </div>
-        </div>
 
         <button id="btn-search-sales" class="w-full bg-red-500 text-white font-bold py-3 px-6 rounded-md hover:bg-red-600 transition-colors mt-4 mb-6">
             Buscar Todas las Ventas
@@ -253,7 +246,7 @@
                             </tr>
                         </thead>
                         <tbody id="sales-history-body">
-                            <tr><td colspan="5" class="text-center p-4 text-gray-500" id="log-status">Seleccione sucursal y cajera, y luego presione "Buscar".</td></tr>
+                            <tr><td colspan="5" class="text-center p-4 text-gray-500" id="log-status">Seleccione sucursal y luego presione "Buscar".</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -273,8 +266,10 @@
     </div>
 
     <script type="module">
+        console.log("🚀 [INICIO] El script de historial_de_ventas.html se ha inyectado y está ejecutándose.");
+
         // ===================================================================
-        // --- ESTADO GLOBAL NEXUS (MODO LOCAL SQLITE) ---
+        // --- ESTADO GLOBAL NEXUS ---
         // ===================================================================
         let userCompanyId = null;
         let userId = null;
@@ -286,7 +281,6 @@
         // --- Referencias al DOM ---
         const messageBox = document.getElementById('message-box');
         const branchSelect = document.getElementById('branch-select');
-        const cashierSelect = document.getElementById('cashier-select');
         const salesLogDiv = document.getElementById('sales-log');
         const logStatus = document.getElementById('log-status');
         const saleDetailPanel = document.getElementById('sale-detail-panel');
@@ -301,6 +295,7 @@
         // *******************************************************************
 
         function showMessage(text, type = 'success') {
+            if (!messageBox) return;
             messageBox.textContent = text;
             messageBox.classList.remove('hidden', 'bg-red-200', 'text-red-700', 'bg-green-200', 'text-green-700', 'bg-blue-200', 'text-blue-700');
             
@@ -315,11 +310,9 @@
         window.hideSaleDetails = function() {
             document.getElementById('sale-id-display').textContent = 'No Seleccionada';
             saleDetailContent.innerHTML = '<p class="text-gray-500 text-center mt-6 text-sm">Haz clic en una venta de la tabla para ver sus detalles aquí.</p>';
-            
             document.querySelectorAll('.sale-row').forEach(row => row.classList.remove('bg-red-50'));
         }
 
-        // --- EXTRACCIÓN DE FECHA DESDE EL ID (VTA-TIMESTAMP) ---
         function obtenerFechaDeVenta(sale) {
             if (sale.fecha_emision) return new Date(sale.fecha_emision);
             if (sale.createdAt) return new Date(sale.createdAt);
@@ -328,7 +321,7 @@
                 const timestamp = parseInt(sale.id.replace('VTA-', ''));
                 if (!isNaN(timestamp)) return new Date(timestamp);
             }
-            return new Date(); // Fallback
+            return new Date();
         }
 
         function formatSaleDetails(saleData) {
@@ -336,7 +329,6 @@
             let paymentsObject = {};
             let datosJson = {};
 
-            // Parsear campos que vienen en formato JSON desde SQLite (como se guarda en facturacion.html)
             try { datosJson = JSON.parse(saleData.datos_json || '{}'); } catch (e) {}
             try { paymentsObject = JSON.parse(saleData.metodo_pago || '{}'); } catch (e) {}
             
@@ -346,24 +338,19 @@
             const createdAtDate = saleDate.toLocaleString('es-VE');
             const cashierName = saleData.cashier_id || saleData.userId || 'N/A';
             
-            // Totales fiscales base
             const subtotal = parseFloat(saleData.base_imponible || 0) + parseFloat(saleData.monto_exento || 0);
             const iva = parseFloat(saleData.monto_iva || 0);
             const igtf = parseFloat(saleData.monto_igtf || 0);
             const totalBs = parseFloat(saleData.monto_total || 0);
             
-            const totalDolarPagado = parseFloat(paymentsObject.dolar || 0);
-
             let details = '<div>';
             
-            // Info Principal (Adaptado a campos de SQLite)
             details += `<p><strong>Nro Control:</strong> ${saleData.numero_control || 'N/A'}</p>`;
             details += `<p><strong>Cajero:</strong> ${cashierName}</p>`;
             details += `<p><strong>Fecha:</strong> ${createdAtDate}</p>`;
             details += `<p><strong>C.I./RIF:</strong> ${saleData.cliente_rif || 'N/A'}</p>`;
             details += `<p><strong>Cliente:</strong> ${saleData.cliente_nombre || 'N/A'}</p>`;
             
-            // Totales
             details += '<hr class="my-4 border-gray-200">';
             details += '<h3>Totales Facturados</h3>';
             details += `<p><strong>Subtotal (BI + Exento):</strong> Bs ${subtotal.toFixed(2)}</p>`;
@@ -371,11 +358,9 @@
             if (igtf > 0) details += `<p><strong>IGTF (3%):</strong> Bs ${igtf.toFixed(2)}</p>`;
             details += `<p><strong>Total Factura:</strong> <span class="text-red-600 font-bold">Bs ${totalBs.toFixed(2)}</span></p>`;
             
-            // Métodos de Pago
             details += '<hr class="my-4 border-gray-200">';
             details += '<h3>Métodos de Pago Utilizados</h3>';
             
-            // Mapeo dinámico de métodos de pago
             const paymentLabels = {
                 'efectivo': 'Efectivo (Bs)', 'pagomovil': 'Pago Móvil', 'debito': 'Débito', 
                 'biopago': 'Biopago', 'dolar': 'Efectivo ($)', 'transferencia': 'Transferencia',
@@ -384,7 +369,6 @@
 
             for (const [methodKey, amount] of Object.entries(paymentsObject)) {
                 const numAmount = parseFloat(amount);
-                // Ignoramos campos auxiliares del json como 'tasa_credito' o strings como 'cliente_credito'
                 if (!isNaN(numAmount) && numAmount > 0 && paymentLabels[methodKey]) {
                     const isDollar = methodKey === 'dolar';
                     const symbol = isDollar ? '$' : 'Bs';
@@ -393,7 +377,6 @@
                 }
             }
 
-            // Productos
             details += '<hr class="my-4 border-gray-200">';
             details += `<h3>Productos Vendidos (${itemsArray.length})</h3>`;
             if (itemsArray.length > 0) {
@@ -436,17 +419,44 @@
             const tableBody = document.getElementById('sales-history-body');
             if (!tableBody) return;
             
+            // Creamos una versión del término de búsqueda ignorando los ceros a la izquierda
+            // Ejemplo: si buscas "TICK-6" o "006", facilitará el emparejamiento
+            const termNoZeros = searchTerm.replace(/(^|-)0+/g, '$1');
+
             const rows = tableBody.getElementsByTagName('tr');
+            
             for (let i = 0; i < rows.length; i++) {
                 const row = rows[i];
-                const customerCell = row.cells[0]; 
                 
-                if (customerCell) {
-                    const rowText = customerCell.textContent.toLowerCase();
-                    if (rowText.includes(searchTerm)) {
+                // Ignorar la fila de estado/carga si existe
+                if (row.cells.length === 1 || (row.cells[0] && row.cells[0].id === 'log-status')) continue;
+
+                // Extraer el ID de la venta desde el ID de la fila (ej: "sale-row-VTA-123" -> "VTA-123")
+                const saleId = row.id.replace('sale-row-', '');
+                const sale = salesCache[saleId]; // Buscamos toda la información de la venta en la caché
+
+                if (sale) {
+                    const customerName = (sale.cliente_nombre || '').toLowerCase();
+                    const customerRif = (sale.cliente_rif || '').toLowerCase();
+                    const invoiceNum = (sale.numero_factura || '').toLowerCase();
+                    const controlNum = (sale.numero_control || '').toLowerCase();
+                    
+                    // Crear versión del correlativo sin ceros para búsquedas flexibles
+                    // Ej: "tick-00000006" se lee internamente como "tick-6"
+                    const invoiceNoZeros = invoiceNum.replace(/(^|-)0+/g, '$1');
+
+                    // Verificamos si el texto ingresado coincide con CUALQUIERA de estos datos
+                    if (
+                        customerName.includes(searchTerm) || 
+                        customerRif.includes(searchTerm) || 
+                        invoiceNum.includes(searchTerm) || 
+                        invoiceNoZeros.includes(termNoZeros) ||
+                        controlNum.includes(searchTerm)
+                    ) {
                         row.style.display = ''; 
                     } else {
                         row.style.display = 'none'; 
+                        // Si se oculta la fila y estaba seleccionada en el panel, la limpiamos
                         if (row.classList.contains('bg-red-50')) {
                             window.hideSaleDetails();
                         }
@@ -456,7 +466,6 @@
         }
 
         window.renderSalesTable = function() {
-            const cashierId = cashierSelect.value;
             const dateFromValue = dateFromInput.value;
             const dateToValue = dateToInput.value;
 
@@ -466,12 +475,6 @@
 
             let ventasMostrar = rawSalesData;
 
-            // Filtro por Cajera Dinámica
-            if (cashierId && cashierId !== 'TODAS' && cashierId !== "") {
-                ventasMostrar = ventasMostrar.filter(s => s.cashier_id === cashierId);
-            }
-
-            // Filtros de Fecha usando la función de parseo
             if (dateFromValue) {
                 const dateFrom = new Date(dateFromValue).getTime();
                 ventasMostrar = ventasMostrar.filter(s => obtenerFechaDeVenta(s).getTime() >= dateFrom);
@@ -484,7 +487,6 @@
                 ventasMostrar = ventasMostrar.filter(s => obtenerFechaDeVenta(s).getTime() <= dateToMs);
             }
 
-            // Ordenar Descendente (Más recientes primero)
             ventasMostrar.sort((a, b) => obtenerFechaDeVenta(b).getTime() - obtenerFechaDeVenta(a).getTime());
 
             const historyBody = document.getElementById('sales-history-body');
@@ -529,18 +531,20 @@
             });
 
             historyBody.innerHTML = tableHTML;
+            console.log("✅ Tabla de ventas renderizada correctamente.");
         }
         
-        // *******************************************************************
-        // ********************* CARGA DE DATOS (SQLITE) *********************
-        // *******************************************************************
-
         async function loadBranches(companyId, currentBranchId) {
+            console.log("📡 Cargando sucursales desde la Base de Datos Local...");
             try {
-                const sucursales = await window.nexusAPI.obtenerSucursalesLocales();
+                // 🛑 CORRECCIÓN AQUÍ: Se quitó la "s" al final y se le pasa el companyId
+                const sucursales = await window.nexusAPI.obtenerSucursalesLocal(companyId); 
+                
+                if (!branchSelect) return;
                 branchSelect.innerHTML = '<option value="" disabled selected>Selecciona la sucursal...</option>';
                 
-                const sucursalesEmpresa = sucursales.filter(s => s.company_id === companyId || s.empresa_ID === companyId);
+                // Aseguramos de que sea un array antes de filtrar
+                const sucursalesEmpresa = Array.isArray(sucursales) ? sucursales.filter(s => s.company_id === companyId || s.empresa_ID === companyId) : [];
 
                 sucursalesEmpresa.forEach(branch => {
                     const option = document.createElement('option');
@@ -554,51 +558,56 @@
                     await window.fetchSalesData();
                 }
             } catch (error) {
-                console.error("Error loading branches:", error);
-                showMessage("Error al cargar las sucursales locales.", "error");
+                console.error("❌ Error cargando sucursales:", error);
+                showMessage("Error al cargar las sucursales.", "error");
             }
         }
 
         window.fetchSalesData = async function() {
-            const branchId = branchSelect.value;
+            const branchId = branchSelect ? branchSelect.value : null;
             const historyBody = document.getElementById('sales-history-body');
             
             if (!branchId) {
-                historyBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-500">Seleccione una sucursal.</td></tr>`;
+                if(historyBody) historyBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-500">Seleccione una sucursal.</td></tr>`;
                 return;
             }
 
-            historyBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-500">Cargando historial local...</td></tr>`;
+            if(historyBody) historyBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-500">Sincronizando con el Servidor Maestro (Puerto 3000)...</td></tr>`;
 
             try {
-                // Llama al endpoint de tu preload. Ajusta el nombre si en tu backend se llama distinto.
-                // En facturacion se usa guardarVentaLocal. Aquí usamos la de lectura:
-                rawSalesData = await window.nexusAPI.obtenerVentasLocales({ 
-                    companyId: userCompanyId, 
-                    branchId: branchId 
-                });
-
-                if (!rawSalesData || rawSalesData.length === 0) {
-                    historyBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-500">No hay ventas registradas en esta sucursal.</td></tr>`;
-                    return;
+                let ipMaestro;
+                try {
+                    ipMaestro = await window.nexusAPI.obtenerIpMaestro();
+                } catch (e) {
+                    console.warn("⚠️ No se pudo obtener IP, usando localhost.");
+                    ipMaestro = 'localhost';
                 }
 
-                // Extraer CAJERAS DINÁMICAS basadas en las ventas reales
-                if (cashierSelect.dataset.branch !== branchId) {
-                    const cajerasUnicas = [...new Set(rawSalesData.map(s => s.cashier_id))].filter(Boolean);
-                    
-                    cashierSelect.innerHTML = '<option value="TODAS" selected>Todas las cajeras</option>';
-                    cajerasUnicas.forEach(c => {
-                        cashierSelect.innerHTML += `<option value="${c}">${c}</option>`;
-                    });
-                    cashierSelect.dataset.branch = branchId;
+                // 🛑 ATENCIÓN: Asegúrate de que esta ruta /api/maestro/ventas/... SÍ exista en el server.js
+                const urlServidorMaestro = `http://${ipMaestro}:3000/api/maestro/ventas/${branchId}/${userCompanyId}`;
+                console.log("📡 Buscando ventas en:", urlServidorMaestro);
+                
+                const response = await fetch(urlServidorMaestro);
+
+                if (!response.ok) {
+                    throw new Error(`Error HTTP del servidor: ${response.status}`);
+                }
+
+                const dataRecibida = await response.json();
+                console.log("📦 Ventas recibidas del maestro:", dataRecibida);
+                
+                rawSalesData = Array.isArray(dataRecibida) ? dataRecibida : (dataRecibida.ventas || dataRecibida.data || []);
+
+                if (!rawSalesData || rawSalesData.length === 0) {
+                    if(historyBody) historyBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-500">No hay ventas registradas en el Servidor Maestro para esta sucursal.</td></tr>`;
+                    return;
                 }
 
                 window.renderSalesTable();
 
             } catch (error) {
-                console.error("Error al cargar el historial local:", error);
-                historyBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-red-500">Error de base de datos local: ${error.message}</td></tr>`;
+                console.error("❌ Error al cargar el historial desde el Servidor Maestro:", error);
+                if(historyBody) historyBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-red-500">Error conectando al Servidor Maestro: Verifica que el endpoint exista en server.js. (${error.message})</td></tr>`;
             }
         }
 
@@ -609,14 +618,12 @@
                 window.renderSalesTable();
             }
         };
-
-        // *******************************************************************
-        // ********************* INICIALIZACIÓN (NEXUS) **********************
-        // *******************************************************************
         
         async function inicializarApp() {
+            console.log("⚡ Ejecutando inicializarApp()...");
             try {
                 const sesion = await window.nexusAPI.obtenerSesionLocal();
+                console.log("👤 Sesión obtenida:", sesion);
                 if (sesion) {
                     userId = sesion.uid;
                     userCompanyId = sesion.companyId;
@@ -630,26 +637,30 @@
                     showMessage("Error: No se encontró una sesión activa.", "error");
                 }
             } catch (error) {
-                console.error("Fallo de arranque Nexus:", error);
+                console.error("❌ Fallo crítico al arrancar Nexus:", error);
             }
         }
 
-        document.addEventListener('DOMContentLoaded', inicializarApp);
-
-        // Disparar recarga al cambiar Sucursal
-        branchSelect.addEventListener('change', () => {
-            cashierSelect.innerHTML = '<option value="">Selecciona una cajera...</option>';
-            cashierSelect.dataset.branch = "";
-            rawSalesData = []; 
-            window.fetchSalesData();
-        });
-
-        // Filtrar al cambiar Cajera
-        cashierSelect.addEventListener('change', window.loadSalesHistory);
+        // --- ASIGNACIÓN DE EVENTOS SEGUROS ---
+        if (branchSelect) {
+            branchSelect.addEventListener('change', () => {
+                rawSalesData = []; 
+                window.fetchSalesData();
+            });
+        }
         
-        // Botón Buscar
-        btnSearchSales.addEventListener('click', window.loadSalesHistory);
+        if (btnSearchSales) {
+            btnSearchSales.addEventListener('click', window.loadSalesHistory);
+        }
 
+        // --- MANEJO DEL CICLO DE VIDA SPA ---
+        // Si el documento está cargando (Página inicial normal)
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', inicializarApp);
+        } else {
+            // Si el DOM ya cargó (Inyectado vía SPA / innerHTML) se fuerza a arrancar de inmediato.
+            inicializarApp();
+        }
     </script>
 </body>
 </html>

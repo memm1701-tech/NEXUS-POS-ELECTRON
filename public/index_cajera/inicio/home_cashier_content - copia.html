@@ -1,74 +1,249 @@
-<main class="main-content flex flex-col items-center justify-center p-3 min-h-screen bg-gray-100">
-    <div class="w-full max-w-full mx-auto shadow-2xl bg-white rounded-xl p-6 md:p-8">
-        <div class="text-center mb-10 md:mb-12 max-w-4xl mx-auto">
-            <h1 class="text-4xl md:text-5xl font-extrabold text-blue-800 leading-tight">
-                ¡Bienvenida, <span class="text-green-500">Cajera!</span> 👋
-            </h1>
-            <p class="text-lg md:text-xl text-gray-600 mt-4 max-w-3xl">
-                Tu centro de operaciones NEXUS POS está listo. Todo lo que necesitas para optimizar tu jornada está a un clic.
-            </p>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+    .cashier-wrapper { font-family: 'Roboto', sans-serif; }
+    
+    /* Estilos del Modal y Spinner */
+    .loader {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #2563eb;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    #modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(3px);
+        z-index: 100;
+        align-items: center;
+        justify-content: center;
+    }
+</style>
+
+<div class="cashier-wrapper flex flex-col lg:flex-row min-h-screen w-full bg-gray-50">
+    
+    <div id="modal-overlay">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 transform transition-all relative text-center">
+            <div id="modal-icon" class="flex justify-center mb-5"></div>
+            <h3 id="modal-title" class="text-xl font-black text-gray-800 mb-2">Procesando...</h3>
+            <p id="modal-text" class="text-sm text-gray-600 mb-6 font-medium">Por favor, espera un momento.</p>
+            <div id="progress-container" class="hidden w-full bg-gray-200 rounded-full h-3 mb-6 overflow-hidden shadow-inner">
+                <div id="progress-bar" class="bg-blue-600 h-3 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+            </div>
+            <button id="modal-btn" onclick="closeModal()" class="hidden w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition shadow-md">Aceptar</button>
         </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-10 w-full max-w-6xl px-4 mx-auto">
-
-            <div class="flex flex-col items-center text-center bg-white p-8 rounded-3xl shadow-lg border border-gray-200 transition-all duration-300 hover:shadow-2xl hover:border-blue-400">
-                <div class="bg-blue-100 rounded-full p-4 mb-4">
-                    <i class="material-icons text-blue-500 text-6xl">receipt_long</i>
-                </div>
-                <h2 class="text-2xl font-bold text-gray-800 mb-2">Facturación Rápida</h2>
-                <p class="text-gray-600 leading-snug">
-                    Inicia ventas, añade productos y gestiona el carrito de forma ágil. Tu eficiencia es la clave del éxito.
-                </p>
-            </div>
-
-            <div class="flex flex-col items-center text-center bg-white p-8 rounded-3xl shadow-lg border border-gray-200 transition-all duration-300 hover:shadow-2xl hover:border-yellow-400">
-                <div class="bg-yellow-100 rounded-full p-4 mb-4">
-                    <i class="material-icons text-yellow-500 text-6xl">attach_money</i>
-                </div>
-                <h2 class="text-2xl font-bold text-gray-800 mb-2">Cierre de Caja Seguro</h2>
-                <p class="text-gray-600 leading-snug">
-                    Realiza un cierre de caja preciso al finalizar tu turno. Garantiza el control total de cada transacción.
-                </p>
-            </div>
-
-            <div class="flex flex-col items-center text-center bg-white p-8 rounded-3xl shadow-lg border border-gray-200 transition-all duration-300 hover:shadow-2xl hover:border-green-400">
-                <div class="bg-green-100 rounded-full p-4 mb-4">
-                    <i class="material-icons text-green-500 text-6xl">trending_up</i>
-                </div>
-                <h2 class="text-2xl font-bold text-gray-800 mb-2">Gestión de Movimientos</h2>
-                <p class="text-gray-600 leading-snug">
-                    Registra ingresos y gastos, mantén un historial detallado y consulta el flujo de efectivo diario.
-                </p>
-            </div>
-
-        </div>
-
-        <div class="mt-12 md:mt-16 text-center">
-            <h3 class="text-xl font-semibold text-gray-700 mb-4">Síguenos en nuestras redes sociales</h3>
-            <div class="flex flex-wrap justify-center items-center space-x-6">
-                <a href="https://facebook.com" target="_blank" class="flex items-center text-gray-500 hover:text-blue-600 transition-colors">
-                    <i class="fab fa-facebook-square text-2xl mr-2"></i>
-                    <span class="text-sm font-medium">Facebook</span>
-                </a>
-                <a href="https://instagram.com" target="_blank" class="flex items-center text-gray-500 hover:text-pink-500 transition-colors">
-                    <i class="fab fa-instagram text-2xl mr-2"></i>
-                    <span class="text-sm font-medium">Instagram</span>
-                </a>
-                <a href="https://tiktok.com" target="_blank" class="flex items-center text-gray-500 hover:text-black transition-colors">
-                    <i class="fab fa-tiktok text-2xl mr-2"></i>
-                    <span class="text-sm font-medium">TikTok</span>
-                </a>
-                <a href="https://x.com" target="_blank" class="flex items-center text-gray-500 hover:text-black transition-colors">
-                    <i class="fab fa-x-twitter text-2xl mr-2"></i>
-                    <span class="text-sm font-medium">X (Twitter)</span>
-                </a>
-            </div>
-        </div>
-
-        <footer class="mt-12 text-center text-sm text-gray-500">
-            <p>&copy; 2025 NEXUS POS. Todos los derechos reservados.</p>
-            <p class="mt-1">Contacto: soporte@nexuspos.com</p>
-        </footer>
-
     </div>
-</main>
+
+    <div class="flex-grow p-6 md:p-12 flex flex-col justify-center">
+        
+        <div class="w-full max-w-7xl mx-auto">
+            <div class="text-center mb-12 md:mb-16">
+                <h1 class="text-5xl md:text-6xl font-black text-blue-900 leading-tight tracking-tight">
+                    ¡Bienvenida, <span class="text-green-500">Cajera!</span> 👋
+                </h1>
+                <p class="text-xl md:text-2xl text-gray-500 mt-6 max-w-4xl mx-auto font-medium">
+                    Tu centro de operaciones NEXUS POS está listo. Todo lo que necesitas para optimizar tu jornada está a un clic.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 w-full">
+                
+                <div class="group flex flex-col items-center text-center bg-white p-10 rounded-3xl shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-xl hover:-translate-y-2 hover:border-blue-400">
+                    <div class="bg-blue-50 rounded-2xl p-6 mb-6 group-hover:bg-blue-100 transition-colors">
+                        <i class="material-icons text-blue-600 text-6xl">receipt_long</i>
+                    </div>
+                    <h2 class="text-2xl font-black text-gray-800 mb-3">Facturación Rápida</h2>
+                    <p class="text-lg text-gray-500 leading-relaxed">Inicia ventas, añade productos y gestiona el carrito de forma ágil.</p>
+                </div>
+
+                <div class="group flex flex-col items-center text-center bg-white p-10 rounded-3xl shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-xl hover:-translate-y-2 hover:border-yellow-400">
+                    <div class="bg-yellow-50 rounded-2xl p-6 mb-6 group-hover:bg-yellow-100 transition-colors">
+                        <i class="material-icons text-yellow-600 text-6xl">attach_money</i>
+                    </div>
+                    <h2 class="text-2xl font-black text-gray-800 mb-3">Cierre de Caja Seguro</h2>
+                    <p class="text-lg text-gray-500 leading-relaxed">Realiza un cierre de caja preciso al finalizar tu turno.</p>
+                </div>
+
+                <div class="group flex flex-col items-center text-center bg-white p-10 rounded-3xl shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-xl hover:-translate-y-2 hover:border-green-400">
+                    <div class="bg-green-50 rounded-2xl p-6 mb-6 group-hover:bg-green-100 transition-colors">
+                        <i class="material-icons text-green-600 text-6xl">trending_up</i>
+                    </div>
+                    <h2 class="text-2xl font-black text-gray-800 mb-3">Gestión de Movimientos</h2>
+                    <p class="text-lg text-gray-500 leading-relaxed">Registra ingresos y gastos, mantén un historial detallado.</p>
+                </div>
+            </div>
+
+            <div class="mt-20 text-center border-t border-gray-200 pt-10">
+                <div class="flex flex-wrap justify-center items-center space-x-8 mb-6">
+                    <a href="#" class="text-gray-400 hover:text-blue-600 transition-colors font-bold text-sm uppercase tracking-widest">Facebook</a>
+                    <a href="#" class="text-gray-400 hover:text-pink-500 transition-colors font-bold text-sm uppercase tracking-widest">Instagram</a>
+                    <a href="#" class="text-gray-400 hover:text-black transition-colors font-bold text-sm uppercase tracking-widest">TikTok</a>
+                </div>
+                <p class="text-xs text-gray-400 font-bold tracking-tighter uppercase">&copy; 2025 NEXUS POS. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="w-full lg:w-1/4 bg-gray-50 border-t lg:border-t-0 lg:border-l border-gray-200 p-8 flex flex-col relative z-10">
+        
+        <div class="flex items-center justify-between mb-8">
+            <h2 class="text-xl font-black text-gray-800 flex items-center">
+                <svg class="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                Sistema
+            </h2>
+            <span class="text-xs font-bold bg-gray-200 text-gray-700 px-3 py-1 rounded-full shadow-inner" id="version-chip">v1.0.0</span>
+        </div>
+
+        <div class="bg-green-50 border border-green-200 rounded-2xl p-5 flex items-center mb-8 shadow-sm">
+            <div class="relative flex h-3 w-3 mr-4 flex-shrink-0">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500 shadow-[0_0_8px_#22c55e]"></span>
+            </div>
+            <div>
+                <p class="text-[10px] font-black text-green-800 uppercase tracking-widest mb-0.5">Certificado de Integridad</p>
+                <p class="text-xs text-green-700 font-bold">Núcleo Fiscal: <span class="font-mono">v1.0.0</span></p>
+            </div>
+        </div>
+
+        <button onclick="buscarActualizacionesReales()" class="w-full flex items-center justify-center bg-white border border-gray-300 hover:border-blue-500 hover:text-blue-600 text-gray-700 font-black py-4 px-4 rounded-2xl transition duration-200 mb-8 shadow-sm group">
+            <svg class="w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-500 group-hover:rotate-180 transition-all duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            Buscar actualizaciones
+        </button>
+
+        <div id="update-banner" class="hidden bg-[#e6f7ff] border border-[#b3e0ff] rounded-2xl p-6 relative shadow-md">
+            <div class="absolute -top-3 -right-3 bg-blue-600 text-white text-xs font-black px-3 py-1 rounded-full shadow-lg border-2 border-white animate-pulse">NUEVO</div>
+            <h3 id="update-title" class="font-black text-blue-900 text-lg mb-2"></h3>
+            <p id="update-desc" class="text-sm text-blue-700 mb-5 leading-tight font-medium whitespace-pre-wrap"></p>
+            <button onclick="iniciarActualizacionReal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-3 px-4 rounded-xl transition duration-200 shadow-lg">
+                Actualizar Ahora
+            </button>
+        </div>
+
+        <div class="mt-auto pt-10">
+            <h4 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Estado de Conexión</h4>
+            <div class="flex items-center text-sm font-bold text-gray-600 mb-2">
+                <span class="relative flex h-3 w-3 mr-3">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                </span>
+                Servidor Local Estable
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Referencias del DOM
+    const overlay = document.getElementById('modal-overlay');
+    const mTitle = document.getElementById('modal-title');
+    const mText = document.getElementById('modal-text');
+    const mIcon = document.getElementById('modal-icon');
+    const mBtn = document.getElementById('modal-btn');
+    const pContainer = document.getElementById('progress-container');
+    const pBar = document.getElementById('progress-bar');
+    
+    // Variables para el banner y GitHub
+    const updateBanner = document.getElementById('update-banner');
+    const updateTitle = document.getElementById('update-title');
+    const updateDesc = document.getElementById('update-desc');
+    let urlDescargaReal = ""; 
+
+    // Funciones Base del Modal
+    function openModal(title, text, showSpinner = false) {
+        overlay.style.display = 'flex';
+        mTitle.innerText = title;
+        mText.innerHTML = text; // Cambiado a innerHTML para poder enviar saltos de línea (<br>)
+        mIcon.innerHTML = showSpinner ? '<div class="loader"></div>' : '';
+        mBtn.classList.add('hidden');
+        pContainer.classList.add('hidden');
+    }
+
+    function closeModal() { overlay.style.display = 'none'; }
+
+    // LÓGICA DE GITHUB REAL
+async function buscarActualizacionesReales() {
+        // Leemos la versión que tiene el badge
+        const versionLocal = document.getElementById('version-chip').innerText.trim(); 
+        openModal("Seguridad Nexus", "Consultando servidor seguro...", true);
+
+        try {
+            // Llama a main.js pasándole la versión local para que haga los cálculos
+            const result = await window.nexusAPI.verificarActualizacion(versionLocal);
+
+            if (!result.success) {
+                openModal("Aviso de Sistema", "No se pudo verificar la actualización: " + result.error, false);
+                mBtn.classList.remove('hidden');
+                return;
+            }
+
+            // Validamos con la nueva bandera matemática de backend
+            if (result.hayActualizacion) {
+                closeModal(); // Quitamos el modal y mostramos la caja lateral
+                
+                updateTitle.innerText = `NEXUS POS ${result.nuevaVersion}`;
+                updateDesc.innerText = result.notas; 
+                urlDescargaReal = result.urlDescarga; 
+                
+                updateBanner.classList.remove('hidden'); 
+            } else {
+                // Si la bandera es false, significa que tienes la versión más reciente (o superior)
+                mIcon.innerHTML = '<span class="text-5xl">✅</span>';
+                mTitle.innerText = "Sistema Protegido";
+                mText.innerText = "Estás usando la última versión oficial de Nexus POS Global.";
+                mBtn.classList.remove('hidden');
+                updateBanner.classList.add('hidden'); // Aseguramos que se mantenga oculto
+            }
+        } catch (err) {
+            openModal("Error Fatal", "Error de comunicación con el núcleo: " + err.message);
+            mBtn.classList.remove('hidden');
+        }
+    }
+
+// --- ACCIÓN DE DESCARGA REAL Y AUTOINSTALACIÓN ---
+    async function iniciarActualizacionReal() {
+        if(!urlDescargaReal) {
+            openModal("Error", "No se encontró el archivo instalador (.exe).", false);
+            mBtn.classList.remove('hidden');
+            return;
+        }
+
+        openModal("Descargando...", "Obteniendo actualización de GitHub...", true);
+        pContainer.classList.remove('hidden');
+        pBar.style.width = "0%"; // Iniciamos la barra en 0
+        
+        // Empezamos a escuchar los avisos de porcentaje que envía main.js
+        // (Asegúrate de haber agregado onDownloadProgress en tu preload.js)
+        if (window.nexusAPI.onDownloadProgress) {
+            window.nexusAPI.onDownloadProgress((progreso) => {
+                pBar.style.width = progreso + "%";
+                mText.innerText = `Descargando: ${progreso}% completado...`;
+                
+                if(progreso === 100) {
+                    mIcon.innerHTML = '<span class="text-5xl animate-spin">⚙️</span>';
+                    mTitle.innerText = "Instalando Actualización";
+                    mText.innerText = "El sistema se cerrará automáticamente para aplicar los cambios.";
+                }
+            });
+        }
+
+        try {
+            // 🔥 AQUÍ USAMOS TU FUNCIÓN YA EXISTENTE EN PRELOAD
+            const result = await window.nexusAPI.descargarEInstalar(urlDescargaReal);
+            
+            if (!result.success && result.error) {
+                openModal("Error de Descarga", "Falló la descarga: " + result.error, false);
+                mBtn.classList.remove('hidden');
+            }
+        } catch (error) {
+            // Nota: Es normal que salte un error aquí justo cuando la app se auto-cierra (app.quit)
+            console.log("Aplicación cerrándose para actualizar...");
+        }
+    }
+</script>

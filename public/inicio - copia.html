@@ -52,11 +52,14 @@
             box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
             height: 100vh;
             overflow-y: auto;
-            
+            overflow-x: hidden; /* NUEVO: Evita desbordamiento al recogerse */
             position: fixed; 
             top: 0;
             left: 0;
             z-index: 50;
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); /* Transición más orgánica */
+            overflow-x: hidden;
+            white-space: nowrap; /* CRITICO: Evita que el texto salte de línea al encogerse */
         }
 
         .sidebar-header {
@@ -179,7 +182,28 @@
             color: #0288D1;
         }
         
-        @media (max-width: 1024px) {
+        .sidebar-nav .dropdown ul li a:hover {
+            background-color: #F0F0F0;
+            color: #0288D1;
+        }
+
+        /* 1. Ubicamos el .main-content general ARRIBA del @media */
+        .main-content {
+            flex-grow: 1;
+            padding: 0 !important; 
+            margin: 0; 
+            background-color: #FFFFFF; 
+            min-height: 100vh;
+            margin-left: 280px; 
+            width: calc(100% - 280px);
+            display: flex;
+            flex-direction: column;
+            transition: margin-left 0.3s ease-in-out, width 0.3s ease-in-out; /* NUEVO: Animación suave */
+            transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1), width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* 2. Dejamos un solo @media y agregamos margin-left: 0 al .main-content */
+        @media (max-width: 1150px) {
             .sidebar {
                 transform: translateX(-100%);
                 position: fixed;
@@ -198,35 +222,90 @@
             }
 
             .main-content {
-    flex: 1;
-    overflow-y: auto;
-    background-color: #F3F4F6; /* El fondo gris de la app */
-    width: 100%;
-}
-        }
-
-        @media (max-width: 1024px) {
-            .sidebar {
-                transform: translateX(-100%);
-                position: fixed;
-                height: 100vh;
-                z-index: 1000;
-                transition: transform 0.3s ease-in-out;
-                box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+                flex: 1;
+                overflow-y: auto;
+                background-color: #F3F4F6; /* El fondo gris de la app */
+                width: 100%;
+                margin-left: 0; /* CORRECCIÓN: Elimina el espacio vacío a la izquierda */
             }
         }
 
-        .main-content {
-            flex-grow: 1;
-            padding: 0 !important; 
-            margin: 0; 
-            background-color: #FFFFFF; 
-            min-height: 100vh;
-            margin-left: 280px; 
-            width: calc(100% - 280px);
-            display: flex;
-            flex-direction: column;
+        .sidebar-toggle-btn {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #4A4A4A;
+            z-index: 100;
+            transition: all 0.3s ease;
         }
+
+.sidebar-toggle-btn:hover {
+    color: #0288D1;
+}
+
+/* Estado del menú recogido */
+.sidebar.collapsed {
+    width: 80px;
+    padding: 1.5rem 0.5rem;
+}
+
+/* Centrar el botón de rayitas cuando está recogido */
+.sidebar.collapsed .sidebar-toggle-btn {
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* Ocultar textos y achicar imagen */
+.sidebar.collapsed .sidebar-header h3,
+.sidebar.collapsed .sidebar-header #rif-text,
+.sidebar.collapsed .sidebar-header .flex.items-center {
+    /* QUITAMOS display: none para que la animación funcione */
+    opacity: 0;
+    transform: translateX(-20px);
+    visibility: hidden; /* Esto oculta el elemento sin romper la animación */
+    pointer-events: none;
+}
+
+.sidebar-header h3, 
+#rif-text, 
+.sidebar-header .flex {
+   transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
+    opacity: 1;
+    transform: translateX(0);
+    visibility: visible;
+}
+
+
+
+.sidebar.collapsed .sidebar-header img {
+    width: 45px !important;
+    height: 45px !important;
+    margin-top: 30px;
+    transition: all 0.3s ease;
+}
+
+/* Magia para ocultar el texto de los enlaces pero dejar los iconos */
+.sidebar.collapsed .sidebar-nav ul li a {
+    font-size: 0; 
+    justify-content: center; /* Centra el icono */
+    padding-left: 0;        /* Quitamos el padding lateral para que no se vea descentrado */
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar.collapsed .sidebar-nav ul li a i.material-icons {
+    margin-right: 0;
+    font-size: 24px;
+    transition: transform 0.3s ease;
+}
+
+/* Ajuste del contenido principal cuando el menú está recogido */
+.main-content.expanded {
+    margin-left: 80px;
+    width: calc(100% - 80px);
+}
 
         #dynamic-content-area {
     width: 100%;
@@ -331,20 +410,25 @@
                 <img src="logo_nexus.png" alt="Logo NEXUS POS" class="rounded-full" style="width: 40px; height: 40px; object-fit: cover;">
                 <h3 class="ml-2 text-lg font-bold">NEXUS POS GOBAL</h3>
             </div>
-            <button id="menu-toggle" class="p-2 text-gray-500 hover:text-gray-900 focus:outline-none">
-                <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
+            <button id="mobile-menu-toggle" class="sidebar-toggle-btn focus:outline-none">
+                <i class="material-icons">menu</i>
             </button>
         </div>
 
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <img src="logo_nexus.png" alt="Logo NEXUS POS" class="rounded-full mx-auto mb-2" style="display: block; width: 120px; height: 120px; object-fit: cover;">
+                <button id="desktop-menu-toggle" class="sidebar-toggle-btn focus:outline-none">
+                    <i id="menu-icon-dynamic" class="material-icons">menu</i>
+                </button>
+                
+                <img src="logo_nexus.png" alt="Logo NEXUS POS" class="rounded-full mx-auto mb-2" style="display: block; width: 120px; height: 120px; object-fit: cover; transition: all 0.3s ease;">
                 <h3>NEXUS POS GOBAL</h3>
-                <div class="flex items-center ml-3 mt-1 text-xs font-medium text-gray-500">
-                <span id="status-circle" class="w-2.5 h-2.5 rounded-full bg-green-500 mr-2 shadow-[0_0_5px_rgba(34,197,94,0.6)] transition-colors duration-300"></span>
-                <span id="status-text">Conectado (Online)</span>
+                
+                <p id="rif-text" class="text-sm font-bold text-gray-500 mb-2">RIF: J-50807000-3</p>
+                
+                <div class="flex items-center justify-center mt-1 text-xs font-medium text-gray-500">
+                    <span id="status-circle" class="w-2.5 h-2.5 rounded-full bg-green-500 mr-2 shadow-[0_0_5px_rgba(34,197,94,0.6)] transition-colors duration-300"></span>
+                    <span id="status-text">Conectado (Online)</span>
                 </div>
             </div>
 
@@ -369,7 +453,13 @@
                         </ul>
                     </li>
 
-                    <li><a href="administracion/inicio_administracion.html"><i class="material-icons">cases</i> Administración Gerencial</a></li>
+                    <li class="dropdown">
+                        <a href="#"><i class="material-icons">cases</i> Administración</a>
+                        <ul>
+                            <li><a href="#" data-page="index_inicio_admin/administracion/cuentas_cobrar.html"><i class="material-icons">request_quote</i> Cuentas por cobrar</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/administracion/cuentas_pagar.html"><i class="material-icons">receipt_long</i> Cuentas por pagar</a></li>
+                        </ul>
+                    </li>
 
                     <li class="dropdown">
                         <a href="#"><i class="material-icons">inventory</i> Gestión de inventario</a>
@@ -418,10 +508,18 @@
                     </li>
 
                     <li class="dropdown">
-                        <a href="#"><i class="material-icons">lock</i>Respaldo de datos</a>
+                        <a href="#"><i class="material-icons">backup</i> Respaldo de datos</a>
                         <ul>
-                            <li><a href="#" data-page="backup_data.html">Respaldar datos</a></li>
-                            <li><a href="#" data-page="restore_data.html">Restaurar datos</a></li>
+                            <li>
+                                <a href="#" data-page="index_inicio_admin/respaldo_de_datos/respaldo.html">
+                                    <i class="material-icons" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">cloud_download</i> Respaldar datos
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#" data-page="index_inicio_admin/respaldo_de_datos/restaurar.html">
+                                    <i class="material-icons" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">settings_backup_restore</i> Restaurar datos
+                                </a>
+                            </li>
                         </ul>
                     </li>
                     <li class="dropdown">
@@ -470,8 +568,255 @@
 
 <script type="module">
 
-    const SERVER_URL = "http://192.168.0.113:3000";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getFirestore, doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // 1. Tu configuración de Firebase
+    const firebaseConfig = {
+        apiKey: "AIzaSyDN9mZ1n-OkC-Qz52eTCOy4yJH7M0U9zYI",
+        authDomain: "nexus-pos-75593.firebaseapp.com",
+        projectId: "nexus-pos-75593",
+        storageBucket: "nexus-pos-75593.firebasestorage.app",
+        messagingSenderId: "626840984883",
+        appId: "1:626840984883:web:08d56544ee28bc8e637246",
+        measurementId: "G-K1EQVJWJHG"
+    };
+
+    // Inicializamos solo Firestore
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // 1. Obtenemos la ID de la Empresa logueada
+                const sesion = await window.nexusAPI.obtenerSesionLocal();
+                const companyId = sesion ? sesion.companyId : null;
+
+                if (!companyId) return;
+
+                let planLocal = null;
+
+                // ===============================================================
+                // PASO A: LECTURA INSTANTÁNEA (Milisegundos)
+                // ===============================================================
+                if (window.nexusAPI && window.nexusAPI.obtenerPlanLocal) {
+                    planLocal = await window.nexusAPI.obtenerPlanLocal(companyId);
+
+                    if (planLocal) {
+                        console.log("⚡ [NEXUS LÓGICA] Aplicando restricciones locales instantáneas...");
+                        aplicarRestriccionesSaaS(planLocal);
+                    } else {
+                        // Si no hay plan guardado (primera vez), bloqueamos todo por precaución
+                        console.warn("⚠️ Sin plan local. Aplicando restricciones máximas por seguridad.");
+                        aplicarRestriccionesSaaS({ permisos: [], nombre_plan: 'Pendiente de sincronización' });
+                    }
+                }
+
+                // ===============================================================
+                // PASO B: VIGILANTE EN TIEMPO REAL (Real-time listener)
+                // ===============================================================
+                if (navigator.onLine) {
+                    console.log("👁️ Activando vigilante en tiempo real con Firebase para el plan...");
+                    const docRef = doc(db, "companies", companyId);
+
+                    // Usamos onSnapshot para que Firebase nos avise en el instante que cambies algo en la nube
+                    onSnapshot(docRef, async (docSnap) => {
+                        if (docSnap.exists() && docSnap.data().plan) {
+                            const planNube = docSnap.data().plan;
+
+                            // Volvemos a leer el plan local para comparar contra el pulso de la nube
+                            const planLocalFresco = await window.nexusAPI.obtenerPlanLocal(companyId);
+
+                            // Comparamos si el plan de la nube es distinto al que tenemos localmente
+                            const esPlanDistinto = !planLocalFresco ||
+                                planLocalFresco.clave_producto !== planNube.clave_producto ||
+                                JSON.stringify(planLocalFresco.permisos) !== JSON.stringify(planNube.permisos);
+
+                            if (esPlanDistinto) {
+                                console.log("♻️ [NEXUS UPDATE] El plan cambió en la nube. Actualizando sistema...");
+
+                                // Guardamos el nuevo plan en la Bóveda Encriptada
+                                const datosParaGuardar = { ...planNube, companyId: companyId };
+                                await window.nexusAPI.guardarPlanLocal(datosParaGuardar);
+
+                                // Actualizamos las restricciones y el archivo .env internamente
+                                aplicarRestriccionesSaaS(planNube);
+
+                                // Bloqueamos la pantalla y disparamos el reinicio automático
+                                mostrarModalReinicioPlan(planNube.nombre_plan);
+                            } else {
+                                console.log("🛡️ El vigilante confirma: El plan local coincide con la nube. Todo en orden.");
+                            }
+                        }
+                    }, (error) => {
+                        console.error("❌ Error en el vigilante de Firebase:", error);
+                    });
+                }
+
+            } catch (error) {
+                console.error("❌ Error en el motor de verificación SaaS:", error);
+            }
+        });
+
+    function aplicarRestriccionesSaaS(plan) {
+        const permisos = plan.permisos || [];
+
+        // ===============================================================
+        // FUNCIÓN AYUDANTE: Aplica el diseño de bloqueo a cualquier enlace
+        // ===============================================================
+        const bloquearEnlace = (enlace, nombreVisual) => {
+            // 1. Matamos TODAS las formas de interacción (clics y cargas de iframes)
+            enlace.removeAttribute('onclick');
+            enlace.removeAttribute('data-page'); // Vital para submenús que cargan iframes
+            
+            // 2. Modificamos el diseño (Gris + Candado + Tachado)
+            enlace.style.color = "#9ca3af"; 
+            enlace.style.backgroundColor = "transparent";
+            enlace.innerHTML = `<i class="material-icons" style="color:#9ca3af;">lock</i> <span style="text-decoration: line-through;">${nombreVisual}</span>`;
+            
+            // 3. Ocultamos el submenú a la fuerza por si era un botón desplegable
+            const submenu = enlace.nextElementSibling;
+            if (submenu && (submenu.tagName === 'UL' || (submenu.id && submenu.id.includes('submenu')))) {
+                submenu.style.display = 'none';
+            }
+            
+            // 4. Asignamos la alerta de bloqueo
+            enlace.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation(); 
+                mostrarAlertaMejoraPlan(plan.nombre_plan);
+            };
+        };
+
+        // ===============================================================
+        // EVALUACIÓN DE PERMISOS: Recorremos todo el menú
+        // ===============================================================
+        const enlacesMenu = document.querySelectorAll('.sidebar-nav a');
+        
+        enlacesMenu.forEach(enlace => {
+            const textoEnlace = enlace.textContent.trim();
+
+            // 1. Estadísticas
+            if (textoEnlace.includes("Estadísticas")) {
+                if (!permisos.includes("Estadísticas basicas/Avanzadas") && !permisos.includes("Estadísticas Avanzadas")) {
+                    bloquearEnlace(enlace, "Estadísticas");
+                }
+            }
+            // 2. Movimientos de Caja
+            else if (textoEnlace.includes("Movimientos de caja")) {
+                if (!permisos.includes("Movimientos de caja admin")) {
+                    bloquearEnlace(enlace, "Movimientos de caja");
+                }
+            }
+            // 3. Unidades de Empaque (Dentro de Datos Básicos)
+            else if (textoEnlace.includes("Unidades de Empaque")) {
+                if (!permisos.includes("Unidades de empaque")) {
+                    bloquearEnlace(enlace, "Unidades de Empaque");
+                }
+            }
+            // 4. Generador de Códigos de Barra (Menú Principal)
+            else if (textoEnlace.includes("Generador de códigos de barra")) {
+                if (!permisos.includes("Generador de códigos de barra")) {
+                    bloquearEnlace(enlace, "Generador de códigos de barra");
+                }
+            }
+            // 5. Tienda Online
+            else if (textoEnlace.includes("Tienda online")) {
+                if (!permisos.includes("Tienda online")) {
+                    bloquearEnlace(enlace, "Tienda online");
+                }
+            }
+            // 6. Traspasos de Inventario (Dentro de Gestión de Inventario)
+            else if (textoEnlace.includes("Traspasos de inventario")) {
+                if (!permisos.includes("Traspaso de inventario")) {
+                    bloquearEnlace(enlace, "Traspasos de inventario");
+                }
+            }
+        });
+
+        // ===============================================================
+        // RESTRICCIÓN TÉCNICA: RESPALDO DE DATOS (Servidor Xeon / .env)
+        // ===============================================================
+        const tieneRespaldo = permisos.includes("Respaldo de datos");
+        const valorRespaldoEnv = tieneRespaldo ? "true" : "false";
+
+        console.log(`🛡️ Permiso de Respaldo detectado como: ${valorRespaldoEnv}. Actualizando...`);
+        
+        // Enviamos la orden al Cerebro (Node.js)
+        if (window.nexusAPI && window.nexusAPI.editarArchivoEnvLocal) {
+            window.nexusAPI.editarArchivoEnvLocal({ respaldo_datos: valorRespaldoEnv });
+        }
+    }
+
+    // Función para dibujar una Alerta Bonita tipo SaaS
+    function mostrarAlertaMejoraPlan(nombrePlan) {
+        // En vez de usar un alert() feo del navegador, creamos un div moderno
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            background: rgba(0,0,0,0.5); display: flex; align-items: center; 
+            justify-content: center; z-index: 9999; backdrop-filter: blur(4px);
+        `;
+        
+       modal.innerHTML = `
+            <div style="background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+                <i class="material-icons" style="font-size: 50px; color: #f59e0b;">workspace_premium</i>
+                <h2 style="font-size: 20px; color: #1f2937; margin: 15px 0 10px; font-weight: bold;">Función Premium</h2>
+                <p style="color: #4b5563; font-size: 15px; line-height: 1.5;">
+                    Tu plan actual (<strong>${nombrePlan}</strong>) no incluye esta sección.<br><br>
+                    ¡Cambia de plan para desbloquear esta función! Si tienes dudas, <strong>consulta con Soporte</strong>.
+                </p>
+                <button id="cerrarModalPlan" style="margin-top: 20px; background: #2563eb; color: white; border: none; padding: 10px 25px; border-radius: 8px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold;">Entendido</button>
+            </div>
+        `;
+
+        
+        document.body.appendChild(modal);
+        
+        document.getElementById('cerrarModalPlan').onclick = () => {
+            modal.remove();
+        };
+    }
+
+    function mostrarModalReinicioPlan(nombrePlan) {
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            background: rgba(0,0,0,0.8); display: flex; align-items: center; 
+            justify-content: center; z-index: 9999; backdrop-filter: blur(5px);
+        `;
+        
+       modal.innerHTML = `
+            <div style="background: white; padding: 40px 30px; border-radius: 15px; text-align: center; max-width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
+                <i class="material-icons" style="font-size: 60px; color: #10b981; margin-bottom: 15px;">update</i>
+                <h2 style="font-size: 24px; color: #1f2937; margin: 0 0 15px; font-weight: bold;">¡Plan Actualizado!</h2>
+                <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+                    Tu sistema se ha sincronizado exitosamente al <strong>${nombrePlan}</strong>.<br><br>
+                    Para habilitar de forma segura las nuevas capacidades y conexiones, Nexus POS se reiniciará automáticamente en 10 segundos.
+                </p>
+                <div class="spinner" style="position: relative; top: 0; left: 0; transform: none; margin: 0 auto; border-left-color: #10b981;"></div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Esperamos 4 segundos para que el usuario lea el mensaje y luego reiniciamos la app desde el core
+        setTimeout(() => {
+            if (window.nexusAPI && typeof window.nexusAPI.reiniciarAplicacion === 'function') {
+                window.nexusAPI.reiniciarAplicacion();
+            }
+        }, 10000);
+    }
+
+    const RUTAS_VPS = {
+        'productos':  '/api/maestro/inventario/sincronizar',
+        'categorias': '/api/maestro/categorias/sincronizar',
+        'configuracion_tienda': '/api/maestro/configuracion_tienda/sincronizar'
+    };
+
+    let SERVER_URL = null;
     const LOCAL_URL = "http://localhost:3000";
+    let respaldoActivo = false;
 
    window.currentCompanyId = null;
 
@@ -518,6 +863,7 @@
         const spinner = document.getElementById('loading-spinner');
         if (spinner) spinner.style.display = 'none';
     }
+
 
     function showInfoMessage(message, type = 'info', title = 'Información') {
         return new Promise((resolve) => {
@@ -646,35 +992,124 @@ console.log("🔌 Iniciando Nexus POS Global con base de datos local...");
 iniciarSesionLocal();
 
 async function iniciarSesionLocal() {
-        try {
-            if (!window.nexusAPI) {
-                console.error("Puente NexusAPI no detectado");
-                return;
-            }
+    console.log("🔌 Iniciando Nexus POS Global con base de datos local...");
+    
+    try {
+        // 1. Obtención de configuración del servidor (.env)
+        const config = await window.nexusAPI.obtenerConfigServer();
+        console.log("⚙️ Configuración recibida del sistema:", config);
 
-            // Consultamos al Cerebro Local (SQLite)
-            const sesion = await window.nexusAPI.obtenerSesionLocal();
-            
-            if (sesion && sesion.companyId) {
-                console.log("✅ Sesión validada localmente:", sesion.companyId);
-                window.currentCompanyId = sesion.companyId;
-                localStorage.setItem('companyId', sesion.companyId);
+        window.SERVER_IP = config.serverIp;
+        window.SERVER_PORT = config.serverPort;
 
-                // Cargar datos de empresa y luego la vista
-                await aplicarDatosEmpresa(sesion.company_data);
-                loadPageContent('index_inicio_admin/inicio/house.html');
-                
-                // Iniciar sincronización si hay internet
-                if (navigator.onLine) iniciarSincronizacionSilenciosa();
-            } else {
-                console.warn("No hay sesión. Volviendo a Login.");
-                window.location.href = "login.html";
-            }
-        } catch (error) {
-            console.error("Error en arranque:", error);
-            window.location.href = "login.html";
+        if (config.respaldo_datos === true) {
+            console.log(`🌐 MODO RED ACTIVO: Conectando a ${window.SERVER_IP}:${window.SERVER_PORT}`);
+        } else {
+            console.log("🏠 MODO LOCAL ACTIVO: Usando datos de SQLite exclusivamente (Modo Aislado).");
         }
+
+        // 2. Validación de la sesión en SQLite
+        const sesion = await window.nexusAPI.obtenerSesionLocal();
+        
+        if (sesion) {
+            console.log("✅ Sesión validada localmente:", sesion.companyId);
+            
+            const planLocal = await window.nexusAPI.obtenerPlanLocal(sesion.companyId);
+            
+            if (typeof aplicarRestriccionesSaaS === "function") {
+                if (planLocal) {
+                    aplicarRestriccionesSaaS(planLocal);
+                } else {
+                    aplicarRestriccionesSaaS({
+                        nombre_plan: 'SIN PLAN',
+                        permisos: []
+                    });
+                }
+            }
+            console.log("🚀 Cargando panel principal desde: index_inicio_admin/inicio/house.html");
+            window.loadPageContent('index_inicio_admin/inicio/house.html'); 
+
+        } else {
+            console.warn("⚠️ No hay sesión activa. Redirigiendo a login.");
+            window.location.href = 'login.html';
+        }
+
+    } catch (err) {
+        console.error("❌ ERROR CRÍTICO EN EL ARRANQUE:", err);
     }
+}
+
+
+
+async function iniciarSincronizacionSilenciosa() {
+    if (sincronizando) return; 
+    
+    // 🛡️ CANDADO DE SEGURIDAD: Si no hay red o el plan es básico, se cancela la operación
+    if (!navigator.onLine || !respaldoActivo || !SERVER_URL) {
+        return; 
+    }
+
+    sincronizando = true;
+    try {
+        const ping = await fetch('https://www.google.com/favicon.ico', { mode: 'no-cors', cache: 'no-store' });
+        if (ping) {
+            actualizarUIConexion(true); 
+            if (statusText) statusText.textContent = 'Sincronizando...';
+            
+            const api = window.nexusAPI;
+            
+            // Traemos los datos directamente desde el frontend
+            if (api && typeof api.obtenerColaSincronizacion === 'function') {
+                const cola = await api.obtenerColaSincronizacion();
+
+                if (cola && cola.length > 0) {
+                    let procesadosConExito = 0;
+
+                    for (const registro of cola) {
+                        // El motor busca la ruta en el directorio
+                        const rutaParcial = RUTAS_VPS[registro.tabla];
+                        if (!rutaParcial) continue;
+
+                        const endpointCompleto = `${SERVER_URL}${rutaParcial}`;
+
+                        try {
+                            const datosJSON = typeof registro.datos === 'string' ? JSON.parse(registro.datos) : registro.datos;
+
+                            const response = await fetch(endpointCompleto, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(datosJSON)
+                            });
+
+                            if (response.ok) {
+                                await api.eliminarDeCola(registro.id);
+                                const idReal = datosJSON.id || datosJSON.producto_ID || datosJSON.empresa_ID;
+                                if (idReal) {
+                                    await window.nexusAPI.marcarComoSincronizado(registro.tabla, idReal);
+                                }
+                                
+                                procesadosConExito++;
+                            }
+                        } catch (fetchErr) {
+                            console.error(`❌ El servidor VPS no responde. Sincronización pausada.`);
+                            break; // Se cayó el internet a mitad de camino, paramos
+                        }
+                    }
+
+                    if (procesadosConExito > 0) {
+                        console.log(`✅ Sincronización exitosa: ${procesadosConExito} registros subidos a la nube y marcados como completados.`);
+                    }
+                }
+            }
+            
+            if (statusText) statusText.textContent = 'Conectado (Online)';
+        }
+    } catch (error) {
+        actualizarUIConexion(false);
+    } finally {
+        sincronizando = false; 
+    }
+}
 
 async function aplicarDatosEmpresa(companyDataRaw) {
     const companyDisplay = document.getElementById('company-name-display');
@@ -724,25 +1159,22 @@ function cargarVistaDinamica(url) {
 
 async function ejecutarSalida() {
     try {
-        // 1. Limpieza del "Cerebro" (SQLite) vía Puente NexusAPI
-        if (window.nexusAPI && typeof window.nexusAPI.cerrarSesionLocal === 'function') {
-            await window.nexusAPI.cerrarSesionLocal();
-        }
+        // NO SE ELIMINAN LOS DATOS DE LA SESIÓN PARA CONSERVAR EL INGRESO RÁPIDO OFFLINE
+        localStorage.setItem('explicit_logout', 'true'); // Bandera inteligente activada
         
-        // 2. Limpieza de llaves y estados en el Navegador
-        localStorage.removeItem('companyId');
-        window.currentCompanyId = null;
-        
-        // Si usas la variable userCompanyId que declaramos para la tienda:
+        if (typeof window.currentCompanyId !== 'undefined') window.currentCompanyId = null;
         if (typeof userCompanyId !== 'undefined') userCompanyId = null;
 
-        console.log("Sesión cerrada exitosamente en SQLite y LocalStorage.");
+        console.log("Sesión cerrada conservando datos locales para acceso rápido.");
 
-        // 3. Redirección final
-        window.location.href = 'index.html';
+        // Redirección final al login
+        if (window.nexusAPI && typeof window.nexusAPI.cerrarYVolverAlLogin === 'function') {
+            window.nexusAPI.cerrarYVolverAlLogin();
+        } else {
+            window.location.href = 'index.html';
+        }
     } catch (error) {
         console.error("Error crítico al cerrar sesión:", error);
-        // Forzamos la salida al login aunque falle la base de datos local
         window.location.href = 'index.html';
     }
 }
@@ -762,17 +1194,10 @@ if (logoutBtn) {
                     <span class="material-icons text-4xl text-yellow-500">warning_amber</span>
                 </div>
                 <h3 class="text-xl font-bold text-gray-800 mb-2">Seguridad del Sistema</h3>
-                <p class="text-sm text-gray-600 mb-6 leading-relaxed">
-                    Al cerrar sesión se eliminará el acceso rápido de este equipo. <br><br>
-                    <strong class="text-red-500">Recuerda: Si no tienes conexión a internet, no podrás volver a iniciar sesión hasta recuperar la red.</strong>
-                </p>
+                <p class="text-sm text-gray-600 mb-6">Atención: ¿Estás seguro de que deseas salir de la sesión de este equipo?</p>
                 <div class="flex justify-center gap-3">
-                    <button id="btn-cancelar-logout" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition-colors">
-                        Cancelar
-                    </button>
-                    <button id="btn-confirmar-logout" class="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 shadow-md transition-colors">
-                        Sí, Salir
-                    </button>
+                    <button id="btn-cancelar-logout" class="flex-1 px-4 py-2.5 bg-gray-100 rounded-lg font-semibold">Cancelar</button>
+                    <button id="btn-confirmar-logout" class="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg font-semibold">Sí, Salir</button>
                 </div>
             </div>
         `;
@@ -785,19 +1210,12 @@ if (logoutBtn) {
             if (typeof mostrarLoading === 'function') mostrarLoading();
             
             try {
-                // Limpiamos la base de datos local (SQLite)
-                if (window.nexusAPI && typeof window.nexusAPI.cerrarSesionLocal === 'function') {
-                    await window.nexusAPI.cerrarSesionLocal();
-                }
-                
-                // Limpiamos variables
-                localStorage.clear();
-                window.currentCompanyId = null;
-                
-                // Redireccionamos
+                // NO SE ELIMINAN LOS DATOS DE LA SESIÓN
+                localStorage.setItem('explicit_logout', 'true');
                 window.nexusAPI.cerrarYVolverAlLogin();
             } catch (error) {
                 console.error("Error al cerrar sesión:", error);
+                localStorage.setItem('explicit_logout', 'true');
                 window.nexusAPI.cerrarYVolverAlLogin();
             }
         });
@@ -835,16 +1253,28 @@ if (logoutBtn) {
             menuToggleBtn.addEventListener('click', () => sidebar.classList.toggle('open'));
         }
 
+
+        // Busca esta sección dentro del script de tu inicio.html
         const tiendaOnlineLink = document.getElementById('tienda-online-link');
         if (tiendaOnlineLink) {
             tiendaOnlineLink.addEventListener('click', (e) => { 
                 e.preventDefault();
-                if (!userCompanyId || userCompanyId === 'nexus_pos_id') {
-                    showInfoMessage("No se pudo cargar la Tienda Online. El ID de la empresa no está disponible.", 'error', 'Error de Carga'); 
-                    return; 
+                
+                // Usamos la variable global donde guardas el ID tras validar la sesión
+                const idEmpresa = window.currentCompanyId; 
+
+                if (!idEmpresa) {
+                    // Usamos tu función nativa de mensajes
+                    showInfoMessage("Error: No se detectó el ID de la empresa en la sesión local.", 'error');
+                    return;
                 }
-                const finalUrl = `https://nexusposgobal.com/index_inicio_admin/tienda_online/tienda.html?company=${userCompanyId}`;
-                window.open(finalUrl, '_blank'); 
+
+                // REDIRECCIÓN AL SUBDOMINIO LIMPIO
+                // Al apuntar a la raíz del subdominio, Nginx entregará el index.html (el puente) del Xeon
+                const urlTiendaSubdominio = `https://tienda.nexusposgobal.com/?company=${idEmpresa}`;
+                
+                console.log("🚀 Abriendo puente de tienda en subdominio:", urlTiendaSubdominio);
+                window.open(urlTiendaSubdominio, '_blank'); 
             });
         }
 
@@ -893,30 +1323,73 @@ if (logoutBtn) {
         ocultarLoading();
     }
 
-    async function iniciarSincronizacionSilenciosa() {
-        if (sincronizando) return; 
-        sincronizando = true;
-        try {
-            const ping = await fetch('https://www.google.com/favicon.ico', { mode: 'no-cors', cache: 'no-store' });
-            if (ping) {
-                actualizarUIConexion(true); 
-                if (statusText) statusText.textContent = 'Sincronizando...';
-                
-                if (window.nexusAPI && typeof window.nexusAPI.procesarColaSync === 'function') {
-                    const resultado = await window.nexusAPI.procesarColaSync(); 
-                    if (resultado && resultado.exito) {
-                        console.log(`✅ Sincronización exitosa: ${resultado.registros_subidos} registros subidos.`);
-                    }
-                }
-                if (statusText) statusText.textContent = 'Conectado (Online)';
-            }
-        } catch (error) {
-            actualizarUIConexion(false);
-        } finally {
-            sincronizando = false; 
-        }
-    }
 
+
+/// --- GESTIÓN INTEGRAL DEL MENÚ NEXUS POS ---
+        (function() {
+            // Declaramos las variables necesarias asegurándonos de que existan en el DOM
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.querySelector('.main-content');
+            const desktopMenuToggle = document.getElementById('desktop-menu-toggle');
+            const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+            const menuIconDynamic = document.getElementById('menu-icon-dynamic');
+
+            // 1. Lógica para Escritorio (Colapsar/Expandir)
+            if (desktopMenuToggle && sidebar && mainContent) {
+                desktopMenuToggle.onclick = (e) => {
+                    e.preventDefault();
+                    
+                    // Añadimos una clase de transición para efectos extra si lo deseas
+                    sidebar.classList.toggle('collapsed');
+                    mainContent.classList.toggle('expanded');
+                    
+                    // Intercambio de icono con el estado
+                    if (sidebar.classList.contains('collapsed')) {
+                        if (menuIconDynamic) {
+                            menuIconDynamic.style.opacity = '0';
+                            setTimeout(() => {
+                                menuIconDynamic.textContent = 'chevron_right';
+                                menuIconDynamic.style.opacity = '1';
+                            }, 150); // El icono cambia mientras la barra se mueve
+                        }
+                        // Cerrar dropdowns
+                        document.querySelectorAll(".sidebar-nav .dropdown.open").forEach(el => el.classList.remove('open'));
+                    } else {
+                        if (menuIconDynamic) {
+                            menuIconDynamic.style.opacity = '0';
+                            setTimeout(() => {
+                                menuIconDynamic.textContent = 'menu';
+                                menuIconDynamic.style.opacity = '1';
+                            }, 150);
+                        }
+                    }
+                };
+            }
+
+            // 2. Lógica para Móviles (Abrir/Cerrar lateral)
+            if (mobileMenuToggle && sidebar) {
+                mobileMenuToggle.onclick = (e) => {
+                    e.preventDefault();
+                    sidebar.classList.toggle('open');
+                };
+            }
+
+            // 3. UX: Auto-expandir al hacer clic en un icono si está colapsado
+            document.querySelectorAll(".sidebar-nav a").forEach(link => {
+                link.addEventListener('click', () => {
+                    if (sidebar && sidebar.classList.contains('collapsed')) {
+                        sidebar.classList.remove('collapsed');
+                        mainContent.classList.remove('expanded');
+                        if (menuIconDynamic) menuIconDynamic.textContent = 'menu';
+                    }
+                    // En móviles, cerramos el menú al navegar
+                    if (window.innerWidth < 1024 && sidebar) {
+                        sidebar.classList.remove('open');
+                    }
+                });
+            });
+        })();
+        // -------------------------------------------
 </script>
 </body>
 </html>
