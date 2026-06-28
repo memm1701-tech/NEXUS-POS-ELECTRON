@@ -4,16 +4,14 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="tailwindcss.js"></script>
+    <script src="jsdelivr.js"></script>
     <link rel="stylesheet" href="../node_modules/@fortawesome/fontawesome-free/css/all.min.css">
     <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
     <title>Sistema de Facturación</title>
 <style>
-    /* ESTILOS DE FACTURACION.HTML (Purgados para SPA) */
-    /* Se eliminaron las reglas de *, body y .main-content para no afectar a inicio_cajera.html */
-    
     .card {
         background-color: #ffffff;
-        border-radius: 0;
+        border-radius: 0; 
         box-shadow: none;
         width: 100%;
         margin: 0;
@@ -22,7 +20,7 @@
     
     .autocomplete-container {
         position: relative;
-        display: inline-block;
+        display: inline-block; 
         width: 100%;
     }
 
@@ -219,7 +217,7 @@
         animation: pulse-red 2s infinite;
     }
 </style>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="socket.io.min.js"></script>
 <div class="p-4 w-full h-full mx-auto bg-white flex flex-col"> 
     <div class="space-y-0">
         <div class="text-center">
@@ -374,6 +372,7 @@
     
     <div class="flex items-center space-x-3 w-full">
     <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md shadow-md transition duration-300 ease-in-out flex-1" onclick="addItem()">Añadir al Carrito</button>
+    <button class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md shadow-md transition duration-300 ease-in-out whitespace-nowrap" onclick="window.solicitarVaciarCarrito()" title="Vaciar todo el carrito"><i class="fas fa-trash-alt mr-2"></i> Vaciar Carrito</button>
     
     <div id="help-nc-logic" class="hidden group relative cursor-help">
         <i class="fas fa-question-circle text-orange-500 text-3xl animate-bounce hover:text-orange-400 transition-colors"></i>
@@ -395,8 +394,8 @@
                                 <tr>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CLIENTE</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CANTIDAD</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TOTAL (USD)</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TOTAL (BS)</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SUB TOTAL (USD)</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SUB TOTAL (BS)</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ACCIONES</th>
                                 </tr>
                             </thead>
@@ -1223,8 +1222,41 @@
     </div>
 </div>
 
-<script type="module">
+<div id="modal-advertencia-borrador" class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden flex items-center justify-center z-[100] animate-fade-in">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 m-4 border border-gray-200 transform transition-all duration-300">
+        <div class="flex items-center justify-center text-amber-500 mb-4">
+            <i class="fas fa-exclamation-triangle text-4xl animate-pulse"></i>
+        </div>
+        
+        <h3 class="text-lg font-bold text-gray-900 text-center mb-3 tracking-wide uppercase border-b border-gray-100 pb-2">
+            Borrador Cargado en Carrito
+        </h3>
+        
+        <div class="text-sm text-gray-600 space-y-3 text-justify leading-relaxed">
+            <p>
+                Acabas de renderizar la factura en el carrito. Si deseas hacer una nueva venta y guardar de nuevo la factura, tienes que darle al botón de guardar factura.
+            </p>
+            <p class="font-semibold text-gray-800 bg-amber-50 p-3 rounded-lg border-l-4 border-amber-500">
+                ⚠️ Ten en cuenta que todo lo que hagas en esta factura guardada, bien sea eliminar productos, añadir productos nuevos o modificar los métodos de pago, se actualizará en el borrador de la misma factura.
+            </p>
+            <p>
+                Para poder salir de esa factura y empezar una nueva sin procesarla, tienes que darle de nuevo al botón de guardar factura o su tecla asignada (f4).
+            </p>
+            <p class="text-xs text-gray-500 italic bg-gray-50 p-2 rounded border border-gray-100">
+                (Si se seleciona a otro cliente con la factura cargada y luego se vuelve a guardar, la factura se guardará y se cargará a nombre de el último cliente seleccionado).
+            </p>
+        </div>
+        
+        <div class="mt-6 flex justify-center">
+            <button onclick="document.getElementById('modal-advertencia-borrador').classList.add('hidden')" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-10 rounded-md shadow-md transition duration-300 ease-in-out uppercase text-sm tracking-wider focus:outline-none">
+                Aceptar
+            </button>
+        </div>
+    </div>
+</div>
 
+<script type="module">
 
 function updateWeightUI(isEnabled) {
     isScaleEnabled = isEnabled; // Asigna el estado a la variable global
@@ -1310,7 +1342,6 @@ window.tarearBalanza = function() {
 window.addEventListener('tasaActualizadaBackground', (e) => {
     const nuevaTasa = e.detail.tasa;
     if (nuevaTasa && nuevaTasa > 0) {
-        console.log("⚡ [FACTURACIÓN] Nueva tasa detectada en tiempo real:", nuevaTasa);
         
         // 1. Actualizar la referencia de la tasa usada en esta vista
         if (typeof tasaBcv !== 'undefined') {
@@ -1334,7 +1365,6 @@ window.addEventListener('tasaActualizadaBackground', (e) => {
 });
 
 window.addEventListener('categoriasActualizadasBackground', () => {
-    console.log("⚡ [FACTURACIÓN] Categorías actualizadas en segundo plano. Recargando UI...");
     if (typeof cargarCategorias === 'function') {
         cargarCategorias(); 
     }
@@ -1815,7 +1845,7 @@ document.addEventListener('keydown', (event) => {
         return;
     }
 
-    // Acumulador de caracteres
+
     if (key.length === 1 && /[a-zA-Z0-9-]/.test(key)) {
         scannedBarcode += key;
         clearTimeout(scanTimer);
@@ -1843,7 +1873,7 @@ function updateCartAndRender(producto, cantidad) {
     const isCartEmpty = cart.length === 0;
     if (isCartEmpty && window.modoOperacion === 'FACTURA' && !window.isInjectingAutoProducts && window.autoProductosConfig && window.autoProductosConfig.length > 0) {
         
-        window.isInjectingAutoProducts = true; // 🔒 Bloqueamos la recursión infinita
+        window.isInjectingAutoProducts = true; 
         
         window.autoProductosConfig.forEach(autoItem => {
             // Buscamos el producto completo en el catálogo cargado en memoria
@@ -1854,7 +1884,7 @@ function updateCartAndRender(producto, cantidad) {
             }
         });
         
-        window.isInjectingAutoProducts = false; // 🔓 Desbloqueamos para el producto real de la cajera
+        window.isInjectingAutoProducts = false; // 
     }
 
     const precioUnitario = parseFloat(producto.precio_venta || producto.precio) || 0;
@@ -1867,11 +1897,9 @@ function updateCartAndRender(producto, cantidad) {
         porcentajeIva = 0;
     }
     
-    // 👇 --- INICIO DE CÓDIGO MODIFICADO --- 👇
     let baseImponible = precioUnitario * cantidad;
     let montoIva = baseImponible * (porcentajeIva / 100);
     let totalItem = baseImponible + montoIva;
-    // 👆 --- FIN DE CÓDIGO MODIFICADO --- 👆
 
     const itemCarrito = {
         id: producto.producto_ID || producto.id,
@@ -1879,7 +1907,7 @@ function updateCartAndRender(producto, cantidad) {
         codigo: producto.codigo || 'S/C',
         cantidad: cantidad,
         precio: precioUnitario,
-        tier: 'p1', // Nivel de precio por defecto
+        tier: 'p1', 
         tasaIva: porcentajeIva,
         baseImponible: baseImponible,
         montoIva: montoIva,
@@ -1949,17 +1977,15 @@ async function cargarConfiguracionFiscalMaestra() {
     try {
         const resConf = await window.nexusAPI.leerConfiguracionMaestra('isSujetoEspecial');
         
-        // 🛡️ LÓGICA DE AUDITORÍA: Si falla, si no existe o viene null
         if (!resConf || !resConf.exito || resConf.valor === null || resConf.valor === undefined) {
-            isSujetoPasivoEspecial = false; // Lo apagamos por seguridad
+            isSujetoPasivoEspecial = false; 
             
             console.warn("⚠️ ALERTA CONTABLE: No se ha definido en el Maestro si la empresa es Sujeto Pasivo Especial. IGTF desactivado por defecto.");
             
             if (typeof messageBox === 'function') {
             }
         } else {
-            // Si trae "true" cobramos IGTF, si trae "false" evadimos.
-            isSujetoPasivoEspecial = (resConf.valor === 'true');
+            isSujetoPasivoEspecial = (resConf.valor === 'true' || resConf.valor === true || resConf.valor === 1 || resConf.valor === '1');
             console.log(`✅ Estatus Fiscal (Sujeto Especial) validado con el Maestro: ${isSujetoPasivoEspecial}`);
         }
     } catch (error) {
@@ -2004,82 +2030,7 @@ function validarRIF(rif) {
     const regexConLetra = /^[VJEGPC]\d{6,9}$/;
     return regexConLetra.test(limpio);
 }
-    
 
-async function fetchExchangeRate() {
-    // Aseguramos que existan las variables necesarias
-    if (!window.companyId) {
-        console.warn("⚠️ Esperando por ID de empresa para cargar tasa...");
-        return;
-    }
-
-    let tasaRecuperada = null;
-
-    // 1. PRIORIDAD: LECTURA LOCAL (SQLite) - Lo más rápido y seguro para facturar
-    // Esta es la lógica extraída y validada de inicio_cajera.html
-    try {
-        const tasaConfigurada = await window.nexusAPI.obtenerConfiguracion('TASA_BCV');
-        if (tasaConfigurada) {
-            tasaRecuperada = parseFloat(tasaConfigurada);
-            console.log("📂 Tasa recuperada de DB Local (SQLite):", tasaRecuperada);
-            
-            // Aplicación inmediata para que el sistema no trabaje en 1:1 ni un segundo
-            window.dolarExchangeRate = tasaRecuperada;
-            actualizarInterfazTasa(tasaRecuperada);
-        }
-    } catch (localError) {
-        console.error("❌ Error al leer TASA_BCV local:", localError);
-    }
-
-    // 2. ACTUALIZACIÓN DE FONDO: INTENTO AL SERVIDOR XEON
-    // Si hay internet, intentamos traer la tasa más nueva para actualizar la local
-    if (navigator.onLine) {
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 800); // 800ms de tolerancia
-
-            const response = await fetch(`https://scarping.nexusposgobal.com/api/companias/tasa_de_cambio/${window.companyId}`, {
-                signal: controller.signal
-            });
-            clearTimeout(timeoutId);
-
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success && data.tasa) {
-                    const tasaXeon = parseFloat(data.tasa);
-                    console.log("📡 Servidor Xeon entregó tasa actualizada:", tasaXeon);
-
-                    // Si la tasa de Xeon es distinta a la que ya tenemos, actualizamos
-                    if (tasaXeon !== tasaRecuperada) {
-                        tasaRecuperada = tasaXeon;
-                        window.dolarExchangeRate = tasaRecuperada;
-                        actualizarInterfazTasa(tasaRecuperada);
-
-                        // Guardamos en local para la próxima vez que abramos sin internet
-                        if (window.nexusAPI && typeof window.nexusAPI.guardarTasaBCV === 'function') {
-                            await window.nexusAPI.guardarTasaBCV(tasaRecuperada);
-                        }
-                    }
-                }
-            }
-        } catch (xeonError) {
-            console.log("ℹ️ Servidor Xeon no disponible o lento. Manteniendo tasa local.");
-        }
-    }
-
-    // 3. PROTECCIÓN FINAL (SAFETY NET)
-    if (!tasaRecuperada || tasaRecuperada <= 0) {
-        window.dolarExchangeRate = window.dolarExchangeRate || 1.00;
-        console.warn("⚠️ No se pudo obtener tasa válida. Usando respaldo actual:", window.dolarExchangeRate);
-    }
-
-    // Forzar actualización de precios en el carrito
-    if (typeof renderCart === 'function') renderCart();
-}
-
-/**
- * Función auxiliar para inyectar el valor en el HTML
- */
 function actualizarInterfazTasa(valor) {
     const displayTasa = document.getElementById('tasa-actual-display') || document.getElementById('dollar-exchange-rate');
     if (displayTasa) {
@@ -2112,8 +2063,6 @@ function renderCart() {
     if (!cartItems) return;
     
     cartItems.innerHTML = '';
-    window.exactTotalBs = 0;
-    window.exactTotalUsd = 0;
     
     let totalBaseImponibleBs = 0;
     let totalExentoBs = 0;
@@ -2130,17 +2079,13 @@ function renderCart() {
         let tasaAlicuota = (item.tasaIva !== undefined && item.tasaIva !== null) ? parseFloat(item.tasaIva) : 16;
         
         // 🛡️ EVASIÓN DE IMPUESTOS EN MODO NO FISCAL
-        if (currentEmissionMode === 'TICKET_NO_FISCAL') {
+        if (typeof currentEmissionMode !== 'undefined' && currentEmissionMode === 'TICKET_NO_FISCAL') {
             tasaAlicuota = 0;
         }
         
         // 👇 --- INICIO DE CÁLCULO ESTRICTO HACIA ADELANTE --- 👇
-        // 1. La base imponible cruda es el precio de catálogo por cantidad
         const baseUnitariaOriginal = precioItem * cantidadItem;
-        // 2. Calculamos el IVA multiplicando la base
         const ivaUnitarioOriginal = baseUnitariaOriginal * (tasaAlicuota / 100);
-        // 3. Sumamos para el subtotal neto
-        const subtotalUnitarioOriginal = baseUnitariaOriginal + ivaUnitarioOriginal;
 
         let itemTotalBs = 0;
         let itemTotalUsd = 0;
@@ -2148,15 +2093,19 @@ function renderCart() {
         let ivaBs = 0;
 
         if (isDivisa) {
-            itemTotalUsd = subtotalUnitarioOriginal;
-            itemTotalBs = itemTotalUsd * tasaItem;
-            baseBs = baseUnitariaOriginal * tasaItem;
-            ivaBs = ivaUnitarioOriginal * tasaItem;
+            // 🔥 CÁLCULO ESTRICTO HKA: Redondeo a 2 decimales POR ÍTEM antes de sumar al acumulado
+            baseBs = Math.round((baseUnitariaOriginal * tasaItem) * 100) / 100;
+            ivaBs = Math.round((ivaUnitarioOriginal * tasaItem) * 100) / 100;
+            
+            itemTotalBs = baseBs + ivaBs;
+            itemTotalUsd = itemTotalBs / tasaItem;
         } else {
-            itemTotalBs = subtotalUnitarioOriginal;
+            // 🔥 CÁLCULO ESTRICTO HKA: Redondeo a 2 decimales POR ÍTEM antes de sumar al acumulado
+            baseBs = Math.round(baseUnitariaOriginal * 100) / 100;
+            ivaBs = Math.round(ivaUnitarioOriginal * 100) / 100;
+            
+            itemTotalBs = baseBs + ivaBs;
             itemTotalUsd = itemTotalBs / dolarExchangeRate;
-            baseBs = baseUnitariaOriginal;
-            ivaBs = ivaUnitarioOriginal;
         }
         
         if (tasaAlicuota === 0) {
@@ -2166,9 +2115,6 @@ function renderCart() {
             totalIvaBs += ivaBs;
         }
         // 👆 --- FIN DE CÁLCULO ESTRICTO HACIA ADELANTE --- 👆
-
-        window.exactTotalBs += itemTotalBs;
-        window.exactTotalUsd += itemTotalUsd;
 
         const row = document.createElement('tr');
         let precioDisplayHTML = isDivisa 
@@ -2195,7 +2141,7 @@ function renderCart() {
                        class="quantity-input border rounded p-1 text-sm w-20 text-center" min="0.001" step="any">
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${precioDisplayHTML}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">Bs${itemTotalBs.toFixed(2)}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">Bs${baseBs.toFixed(2)}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                 <div class="flex items-center">
                     ${editButtonHTML}
@@ -2211,6 +2157,10 @@ function renderCart() {
     if (document.getElementById('resumen-base')) document.getElementById('resumen-base').textContent = `Bs${totalBaseImponibleBs.toFixed(2)}`;
     if (document.getElementById('resumen-exento')) document.getElementById('resumen-exento').textContent = `Bs${totalExentoBs.toFixed(2)}`;
     if (document.getElementById('resumen-iva')) document.getElementById('resumen-iva').textContent = `Bs${totalIvaBs.toFixed(2)}`;
+
+    // 🔥 SINCRONIZACIÓN PERFECTA: El total exacto del sistema se basa estrictamente en la sumatoria ya redondeada
+    window.exactTotalBs = totalBaseImponibleBs + totalExentoBs + totalIvaBs;
+    window.exactTotalUsd = window.exactTotalBs / dolarExchangeRate;
 
     if (document.getElementById('subtotal')) document.getElementById('subtotal').textContent = `Bs${window.exactTotalBs.toFixed(2)}`; 
     if (document.getElementById('total')) document.getElementById('total').textContent = `Bs${window.exactTotalBs.toFixed(2)}`;
@@ -2518,6 +2468,21 @@ function clearCart() {
     // 3. Notificar al usuario
     messageBox("Carrito limpiado.", 'bg-yellow-500');
 }
+
+// 👇 NUEVA FUNCIÓN AÑADIDA: INTERCEPTOR DE SEGURIDAD
+window.solicitarVaciarCarrito = function() {
+    if (cart.length === 0) {
+        messageBox("El carrito ya está vacío.", 'bg-yellow-500');
+        return;
+    }
+    
+    // Si la configuración maestra exige clave para eliminar productos, también la pedimos para vaciar el carrito
+    if (window.validarEliminarProducto) {
+        window.abrirModalSeguridad('vaciar_carrito');
+    } else {
+        window.clearCart();
+    }
+};
     
     function clearSelectedCustomer() {
         selectedCustomer = null; 
@@ -2900,7 +2865,8 @@ async function processSale() {
 
         if (currentEmissionMode === 'FISCAL_HKA') {
             confirmBtn.textContent = 'Revisando Impresora...';
-            const estadoImpresora = await window.nexusAPI.consultarEstadoFiscal();
+            // Pásale el puerto aquí también
+            const estadoImpresora = await window.nexusAPI.consultarEstadoFiscal(window.configFiscalHKA.puerto);
             if (!estadoImpresora || !estadoImpresora.success) {
                 throw new Error("⚠️ La Máquina Fiscal no responde o está apagada. Venta abortada para proteger el inventario.");
             }
@@ -2940,27 +2906,43 @@ async function processSale() {
             }
         }
 
-
         let tipoCorrelativo = currentEmissionMode; 
         if (window.modoOperacion === 'NOTA_CREDITO' && window.facturaOriginalAfectada) {
             tipoCorrelativo = 'NOTA_CREDITO';
         } else if (window.modoOperacion === 'NOTA_DEBITO' && window.facturaOriginalAfectada) {
-            tipoCorrelativo = 'NOTA_DEBITO'; // <--- LÍNEA NUEVA
+            tipoCorrelativo = 'NOTA_DEBITO'; 
         }
 
         const correlativo = await window.nexusAPI.obtenerProximoCorrelativo(tipoCorrelativo);
         if (correlativo.error) throw new Error("Error de correlativo en Master.");
-        const nroFacturaOficial = correlativo.formato;
-
+        
+        // 🔥 CORRECCIÓN ASÍNCRONA: Protegemos la definición del número de control interno si el objeto llega incompleto
+        let nroFacturaOficial = (correlativo && correlativo.formato) ? correlativo.formato : `VTA-${Math.floor(Math.random() * 900000)}`; 
         let urlPdfElectronica = null;
         let nroControlOficialHKA = "MAESTRO-001"; 
         let datosExtraHKA = null;
 
-        // --- INICIO EMISIÓN HKA ---
-        // MODIFICACIÓN: Se añade soporte para NOTA_DEBITO en la condición inicial
+        // 🟢 ADELANTAMOS LA EXTRACCIÓN DE PAGOS
+        // Es necesario para que la Impresora Fiscal sepa con qué comandos de pago cerrar (Ej: Efectivo, Débito, IGTF)
+        const dolarRecibido = parseFloat(document.getElementById('dolar-amount').value) || 0;
+        const pagosRecopilados = {
+            efectivo: (parseFloat(document.getElementById('efectivo-amount').value) || 0),
+            pagomovil: (parseFloat(document.getElementById('pago-movil-amount').value) || 0),
+            dolar: dolarRecibido, 
+            debito: parseFloat(document.getElementById('debito-amount').value) || 0,
+            credito: montoCreditoBs,
+            biopago: parseFloat(document.getElementById('bio-pago-amount').value) || 0,
+            transferencia: parseFloat(document.getElementById('transferencia-amount').value) || 0,
+            deposito: parseFloat(document.getElementById('deposito-amount').value) || 0,
+            tarjetacredito: parseFloat(document.getElementById('tarjeta-credito-amount').value) || 0,
+            vuelto_efectivo: parseFloat(document.getElementById('vuelto-efectivo-amount').value) || 0,
+            vuelto_dolar: parseFloat(document.getElementById('vuelto-dolar-amount').value) || 0,
+            vuelto_pagomovil: parseFloat(document.getElementById('vuelto-pago-movil-amount').value) || 0
+        };
+
+        // --- INICIO EMISIÓN (ENRUTADOR DE FACTURACIÓN) ---
         if (currentEmissionMode === 'ELECTRONICA' || ((window.modoOperacion === 'NOTA_CREDITO' || window.modoOperacion === 'NOTA_DEBITO') && currentEmissionMode === 'ELECTRONICA')) {
             
-            // Textos dinámicos en el botón
             if (window.modoOperacion === 'NOTA_CREDITO') confirmBtn.textContent = 'Enviando NC al SENIAT...';
             else if (window.modoOperacion === 'NOTA_DEBITO') confirmBtn.textContent = 'Enviando ND al SENIAT...';
             else confirmBtn.textContent = 'Enviando al SENIAT...';
@@ -2968,7 +2950,7 @@ async function processSale() {
             let objetoHKA;
             if (window.modoOperacion === 'NOTA_CREDITO' && window.facturaOriginalAfectada) {
                 objetoHKA = prepararJSONNotaFiscal(clienteActivo, nroFacturaOficial, window.facturaOriginalAfectada);
-            } else if (window.modoOperacion === 'NOTA_DEBITO' && window.facturaOriginalAfectada) { // <--- MODIFICACIÓN: Inyección de ND
+            } else if (window.modoOperacion === 'NOTA_DEBITO' && window.facturaOriginalAfectada) { 
                 objetoHKA = prepararJSONNotaDebito(clienteActivo, nroFacturaOficial, window.facturaOriginalAfectada);
             } else {
                 objetoHKA = prepararJSONFacturaHKA(clienteActivo, nroFacturaOficial);
@@ -2994,10 +2976,49 @@ async function processSale() {
             } else {
                 throw new Error(`Fallo en Fiscalización: ${resultadoHKA.error}`);
             }
-        }
 
-        
-        // --- FIN EMISIÓN HKA ---
+        } else if (currentEmissionMode === 'FISCAL_HKA') {
+            // 🟢 NUEVO BLOQUE: MÁQUINA FISCAL
+            if (window.modoOperacion === 'NOTA_CREDITO') confirmBtn.textContent = 'Imprimiendo NC Fiscal...';
+            else if (window.modoOperacion === 'NOTA_DEBITO') confirmBtn.textContent = 'Imprimiendo ND Fiscal...';
+            else confirmBtn.textContent = 'Imprimiendo Doc. Fiscal...';
+
+            let tramaComandos;
+            if (window.modoOperacion === 'NOTA_CREDITO' && window.facturaOriginalAfectada) {
+                // 🔥 PASAMOS nroFacturaOficial PARA EL ENCABEZADO
+                tramaComandos = prepararComandosNotaCreditoFiscal(clienteActivo, cart, pagosRecopilados, window.facturaOriginalAfectada, nroFacturaOficial);
+            } else if (window.modoOperacion === 'NOTA_DEBITO' && window.facturaOriginalAfectada) {
+                // 🔥 PASAMOS nroFacturaOficial PARA EL ENCABEZADO
+                tramaComandos = prepararComandosNotaDebitoFiscal(clienteActivo, cart, pagosRecopilados, window.facturaOriginalAfectada, nroFacturaOficial);
+            } else {
+                // 🔥 PASAMOS nroFacturaOficial PARA EL ENCABEZADO
+                tramaComandos = prepararComandosFacturaFiscal(clienteActivo, cart, pagosRecopilados, nroFacturaOficial);
+            }
+
+            // Enviamos los comandos al backend (que habla por el Puerto 99)
+            const resultadoFiscal = await window.nexusAPI.emitirTramasHKA(tramaComandos, window.configFiscalHKA.puerto);
+            
+            if (resultadoFiscal.success) {
+                // 🔥 SOLUCIÓN CRÍTICA: NO SOBRESCRIBIMOS nroFacturaOficial. 
+                // Nexus POS mantiene su correlativo FIS-XXXXXX intacto como clave primaria.
+                // El número físico de la tiquera (ej. TEST-1) pasa a ser el número de control.
+                
+                const nroFisicoTiquera = resultadoFiscal.numeroFactura || "S/N";
+                nroControlOficialHKA = `${resultadoFiscal.serialImpresora}-${nroFisicoTiquera}`;
+                
+                datosExtraHKA = {
+                    hka_nro_doc: nroFisicoTiquera, // El número legal impreso en el papel (TEST-1)
+                    hka_serial_impresora: resultadoFiscal.serialImpresora,
+                    hka_fecha_impresion: resultadoFiscal.fecha,
+                    hka_hora_impresion: resultadoFiscal.hora,
+                    hka_nro_z: resultadoFiscal.numeroZ
+                };
+            } else {
+                // Si la impresora pita, se queda sin papel o rechaza la trama, detenemos TODO aquí.
+                throw new Error(`Impresora Fiscal rechazó la operación: ${resultadoFiscal.msg}`);
+            }
+        }
+        // --- FIN EMISIÓN ---
 
         confirmBtn.textContent = 'Guardando Venta...';
 
@@ -3010,8 +3031,8 @@ async function processSale() {
             const respuestaStock = await window.nexusAPI.verificarYDescontarStockMaestro(payloadStock);
             
             if (!respuestaStock.exito) {
-                if (currentEmissionMode === 'ELECTRONICA') {
-                    console.warn("⚠️ Stock insuficiente de último segundo, pero la factura ya fue fiscalizada. Se guardará la venta para evitar descuadre en el SENIAT.");
+                if (currentEmissionMode === 'ELECTRONICA' || currentEmissionMode === 'FISCAL_HKA') {
+                    console.warn("⚠️ Stock insuficiente de último segundo, pero la factura ya fue fiscalizada. Se guardará la venta para evitar descuadre.");
                 } else {
                     throw new Error(respuestaStock.mensaje || "Stock insuficiente.");
                 }
@@ -3062,6 +3083,7 @@ async function processSale() {
             }
         }
 
+        // CÁLCULOS LOCALES OBLIGATORIOS PARA LA BASE DE DATOS
         let montoExento = 0;
         let baseImponible = 0;
         let montoIva = 0;
@@ -3100,13 +3122,29 @@ async function processSale() {
             item.subtotal = (item.moneda === 'USD' || item.isUSD === true) ? (subtotalItem / factor) : subtotalItem;
         });
 
-        const dolarRecibido = parseFloat(document.getElementById('dolar-amount').value) || 0;
-        let montoIgtf = dolarRecibido > 0 ? (dolarRecibido * (window.dolarExchangeRate || 1)) * 0.03 : 0;
-    
-        if (currentEmissionMode === 'TICKET_NO_FISCAL' || isSujetoPasivoEspecial === false) {
-            montoIgtf = 0;
+        const pagosBsSoloBD = pagosRecopilados.efectivo + pagosRecopilados.pagomovil + pagosRecopilados.debito +
+                            pagosRecopilados.credito + pagosRecopilados.biopago + pagosRecopilados.transferencia +
+                            pagosRecopilados.deposito + pagosRecopilados.tarjetacredito;
+
+        const subtotalNetoVenta = baseImponible + montoIva + montoExento;
+
+        let montoIgtf = 0;
+        if (currentEmissionMode !== 'TICKET_NO_FISCAL' && isSujetoPasivoEspecial !== false && dolarRecibido > 0) {
+            // Calculamos igual que en la interfaz para que la base de datos cuadre al céntimo
+            const faltanteAntesDolaresBs = Math.max(0, subtotalNetoVenta - pagosBsSoloBD);
+            const faltanteAntesDolaresUsd = faltanteAntesDolaresBs / (window.dolarExchangeRate || 1);
+            const dolaresAplicados = Math.min(dolarRecibido, faltanteAntesDolaresUsd);
+            montoIgtf = (dolaresAplicados * (window.dolarExchangeRate || 1)) * 0.03;
         }
+        console.log("Modo de Emisión actual:", currentEmissionMode);
+        console.log("Sujeto Especial:", isSujetoPasivoEspecial);
         
+        // SEGURO VISUAL: Re-asociamos el listener reactivo de tu frontend original
+        const inputDolares = document.getElementById('dolar-amount');
+        if (inputDolares) {
+            inputDolares.addEventListener('input', calculatePaymentSummary);
+        }
+
         const localId = `VTA-${Date.now()}`;
         const tasaActual = window.dolarExchangeRate || 1;
         
@@ -3123,23 +3161,10 @@ async function processSale() {
             base_imponible: baseImponible,
             monto_iva: montoIva,
             monto_igtf: montoIgtf,
-            monto_total: total + montoIgtf,
+            monto_total: total + montoIgtf, // Respeta la asignación del total limpio de la UI que guardaste
             tasa_bcv: tasaActual,
             items: cart, 
-            metodo_pago: JSON.stringify({
-                efectivo: (parseFloat(document.getElementById('efectivo-amount').value) || 0),
-                pagomovil: (parseFloat(document.getElementById('pago-movil-amount').value) || 0),
-                dolar: dolarRecibido, 
-                debito: parseFloat(document.getElementById('debito-amount').value) || 0,
-                credito: montoCreditoBs,
-                biopago: parseFloat(document.getElementById('bio-pago-amount').value) || 0,
-                transferencia: parseFloat(document.getElementById('transferencia-amount').value) || 0,
-                deposito: parseFloat(document.getElementById('deposito-amount').value) || 0,
-                tarjetacredito: parseFloat(document.getElementById('tarjeta-credito-amount').value) || 0,
-                vuelto_efectivo: parseFloat(document.getElementById('vuelto-efectivo-amount').value) || 0,
-                vuelto_dolar: parseFloat(document.getElementById('vuelto-dolar-amount').value) || 0,
-                vuelto_pagomovil: parseFloat(document.getElementById('vuelto-pago-movil-amount').value) || 0
-            }),
+            metodo_pago: JSON.stringify(pagosRecopilados), 
             datos_json: JSON.stringify({ productos: cart, cliente: clienteActivo, tasa: tasaActual }),
             datos_hka: datosExtraHKA
         };
@@ -3148,7 +3173,6 @@ async function processSale() {
             newSale.url_factura_electronica = urlPdfElectronica;
         }
 
-        // MODIFICACIÓN: Inyección de datos para BD si es ND o NC
         if (window.modoOperacion === 'NOTA_CREDITO') {
             newSale.es_nota_credito = 1;
             newSale.factura_afectada = window.facturaOriginalAfectada.numero_factura;
@@ -3164,7 +3188,7 @@ async function processSale() {
             throw new Error(respuestaDB.error);
         }
 
-        const montoPagoMovil = parseFloat(document.getElementById('pago-movil-amount').value) || 0;
+        const montoPagoMovil = pagosRecopilados.pagomovil;
         if (montoPagoMovil > 0) {
             let fechaPagoStr = new Date().toISOString();
             const pmHoraVal = document.getElementById('pm-hora')?.value;
@@ -3191,7 +3215,7 @@ async function processSale() {
 
             if (window.nexusAPI.guardarPagoMovil) {
                 await window.nexusAPI.guardarPagoMovil(pagoMovilData);
-                console.log("✅ Detalles de Pago Móvil guardados con estado_cierre 0.");
+                console.log("Drive: Detalles de Pago Móvil guardados con estado_cierre 0.");
             }
         }
 
@@ -3224,41 +3248,49 @@ async function processSale() {
             }
         }
 
-        if (currentEmissionMode === 'FISCAL_HKA') {
-            const fiscalResult = await window.nexusAPI.imprimirFacturaFiscal(newSale);
-            if (fiscalResult.success) {
-                Swal.fire("Éxito", "Factura Fiscal Generada", "success");
-            } else {
-                Swal.fire("Aviso Fiscal", "Venta guardada pero fallo en impresora: " + fiscalResult.msg, "warning");
-            }
-        } else {
+        if (currentEmissionMode === 'TICKET_NO_FISCAL') {
             await imprimirTicketNoFiscal(newSale);
         }
 
         // --- CULMINACIÓN EXITOSA ---
-        // MODIFICACIÓN: Ajuste de mensaje de éxito dinámico
         let labelFinal = 'Venta';
         if (window.modoOperacion === 'NOTA_CREDITO') labelFinal = 'Nota de Crédito';
         else if (window.modoOperacion === 'NOTA_DEBITO') labelFinal = 'Nota de Débito';
 
         messageBox(`✅ ${labelFinal} ${nroFacturaOficial} procesada.`, 'bg-green-500');
         
+        // 👇 NUEVO BLOQUE: ELIMINACIÓN INTELIGENTE DEL BORRADOR PROCESADO
+        if (typeof currentInvoiceId !== 'undefined' && currentInvoiceId !== null) {
+            console.log(`Venta exitosa. Destruyendo el borrador asociado: ${currentInvoiceId}`);
+            try {
+                // Hacemos el borrado silencioso directo a la API (sin pedir PIN)
+                const respBorrador = await window.nexusAPI.eliminarBorradorMaestro(currentInvoiceId);
+                if (!respBorrador.error) {
+                    // Refrescar la tabla lateral para que desaparezca visualmente al instante
+                    if (typeof loadBorradoresFromServer === 'function') {
+                        loadBorradoresFromServer();
+                    }
+                }
+            } catch (errBorrador) {
+                console.error("Aviso: No se pudo limpiar el borrador automáticamente.", errBorrador);
+            }
+        }
+        // 👆 FIN DEL NUEVO BLOQUE
+
         // RESET DE ESTADOS DE LA UI
         if (typeof window.closePaymentModal === 'function') window.closePaymentModal();
         resetPaymentModalState();        
         clearCart();
+        
+        // 🔥 LIBERACIÓN DE MEMORIA DEL BORRADOR PARA LA PRÓXIMA VENTA
+        currentInvoiceId = null;
 
         window.globalStockCache = null;
 
         if (window.GestorClientes && typeof window.GestorClientes.limpiarSeleccion === 'function') {
             window.GestorClientes.limpiarSeleccion();
         }
-        
-        if (window.GestorClientes && typeof window.GestorClientes.limpiarSeleccion === 'function') {
-            window.GestorClientes.limpiarSeleccion();
-        }
 
-        // MODIFICACIÓN: Restablecer modo si era NC o ND
         if (window.modoOperacion === 'NOTA_CREDITO' || window.modoOperacion === 'NOTA_DEBITO') {
             restablecerModoFacturaNormal();
         }
@@ -3275,7 +3307,6 @@ async function processSale() {
         if (confirmBtn) { 
             confirmBtn.disabled = false; 
             
-            // MODIFICACIÓN: Mantener el texto del botón según el modo en caso de error
             let textoBoton = 'Confirmar Venta (F3)';
             if (window.modoOperacion === 'NOTA_CREDITO') textoBoton = 'Confirmar Devolución (NC)';
             else if (window.modoOperacion === 'NOTA_DEBITO') textoBoton = 'Confirmar ND (F2)';
@@ -3479,47 +3510,70 @@ function calculatePaymentSummary() {
     const paymentContent = document.getElementById('payment-content'); 
     const paymentGrid = document.getElementById('payment-grid');       
     
+    // El total de la factura SIEMPRE se mantiene puro (Base + IVA) para los cálculos.
     let totalBs = window.exactTotalBs || 0; 
     const tasaActual = window.dolarExchangeRate || 1;
     
+    // --- PAGOS EN BOLÍVARES (PUROS) ---
     const efectivo = parseFloat(document.getElementById('efectivo-amount')?.value) || 0;
     const debito = parseFloat(document.getElementById('debito-amount')?.value) || 0;
     const pagomovil = parseFloat(document.getElementById('pago-movil-amount')?.value) || 0;
     const biopago = parseFloat(document.getElementById('bio-pago-amount')?.value) || 0;
-    const dolarInput = parseFloat(document.getElementById('dolar-amount')?.value) || 0;
     const transferencia = parseFloat(document.getElementById('transferencia-amount')?.value) || 0;
     const deposito = parseFloat(document.getElementById('deposito-amount')?.value) || 0;
     const credito = parseFloat(document.getElementById('credito-amount')?.value) || 0;
     const tarjetaCredito = parseFloat(document.getElementById('tarjeta-credito-amount')?.value) || 0;
     
-    const montoDolarBs = dolarInput * tasaActual;
+    const totalBsPurosPagados = efectivo + debito + pagomovil + biopago + transferencia + deposito + credito + tarjetaCredito;
 
-// --- LÓGICA NUEVA: IGTF DINÁMICO ---
-    let montoIgtfBs = dolarInput > 0 ? (montoDolarBs * 0.03) : 0;
-    
-    // 🛡️ ESCUDO DE EVASIÓN DE IMPUESTOS
-    // Se anula el IGTF si es Ticket Interno, O SI NO es Sujeto Pasivo Especial
-    if (currentEmissionMode === 'TICKET_NO_FISCAL' || isSujetoPasivoEspecial === false) {
-        montoIgtfBs = 0;
+    // 🔥 CÁLCULO CASCADA HKA: Faltante de la factura ANTES de procesar los dólares
+    let faltanteAntesDeDolares = totalBs - totalBsPurosPagados;
+    if (faltanteAntesDeDolares < 0) faltanteAntesDeDolares = 0;
+
+    // --- LEEMOS LOS DÓLARES Y VUELTOS ---
+    const dolarInput = parseFloat(document.getElementById('dolar-amount')?.value) || 0;
+    const vueltoEfectivoDado = parseFloat(document.getElementById('vuelto-efectivo-amount')?.value) || 0;
+    const vueltoDolarDado = parseFloat(document.getElementById('vuelto-dolar-amount')?.value) || 0;
+    const vueltoPagoMovilDado = parseFloat(document.getElementById('vuelto-pago-movil-amount')?.value) || 0;
+
+    const dolaresNetos = Math.max(0, dolarInput - vueltoDolarDado);
+    const valorBrutoDolaresBs = dolaresNetos * tasaActual;
+
+    let montoIgtfBs = 0;
+    let montoIgtfUsd = 0;
+    let poderAdquisitivoDolarBs = valorBrutoDolaresBs;
+
+    // 🛡️ ESCUDO: Solo aplica si es Fiscal, es Sujeto Pasivo y hay dólares netos ingresados
+    if (typeof currentEmissionMode !== 'undefined' && currentEmissionMode !== 'TICKET_NO_FISCAL' && typeof isSujetoPasivoEspecial !== 'undefined' && isSujetoPasivoEspecial === true && dolaresNetos > 0) {
+        
+        // 🔥 MAGIA FISCAL: Se extrae el 3% SOLO sobre la porción de divisa que salda el faltante.
+        let baseParaIgtfBs = 0;
+        const dolaresNecesariosParaPagarFaltanteBs = faltanteAntesDeDolares * 1.03;
+        
+        if (valorBrutoDolaresBs >= dolaresNecesariosParaPagarFaltanteBs) {
+            baseParaIgtfBs = faltanteAntesDeDolares;
+        } else {
+            baseParaIgtfBs = Math.min(faltanteAntesDeDolares, valorBrutoDolaresBs / 1.03); 
+        }
+
+        montoIgtfBs = baseParaIgtfBs * 0.03;
+        montoIgtfUsd = montoIgtfBs / tasaActual;
+        
+        poderAdquisitivoDolarBs = valorBrutoDolaresBs - montoIgtfBs;
     }
     
-    // CÁLCULO REFERENCIAL EN USD
-    let montoIgtfUsd = montoIgtfBs / tasaActual;
-    
+    // --- UI: ACTUALIZACIÓN DE ETIQUETAS IGTF ---
     const filaIgtf = document.getElementById('fila-igtf');
     const resumenIgtf = document.getElementById('resumen-igtf');
     const resumenIgtfUsd = document.getElementById('resumen-igtf-usd');
-    
-    // --- NUEVO: SINCRONIZAR MODAL DE PAGOS ---
     const modalFilaIgtf = document.getElementById('modal-fila-igtf');
     const modalResumenIgtf = document.getElementById('modal-resumen-igtf');
     const modalResumenIgtfUsd = document.getElementById('modal-resumen-igtf-usd');
     const modalResumenIva = document.getElementById('modal-resumen-iva');
     const mainResumenIva = document.getElementById('resumen-iva');
 
-    // Sincronizamos el IVA del carrito con el IVA del Modal
     if (modalResumenIva && mainResumenIva) {
-        modalResumenIva.textContent = mainResumenIva.textContent; // Ya viene en Bs0.00 seguro si es No Fiscal
+        modalResumenIva.textContent = mainResumenIva.textContent;
     }
 
     if (montoIgtfBs > 0) {
@@ -3532,23 +3586,16 @@ function calculatePaymentSummary() {
         if (modalResumenIgtfUsd) modalResumenIgtfUsd.textContent = `($${montoIgtfUsd.toFixed(2)})`;
     } else {
         if (filaIgtf) filaIgtf.classList.add('hidden');
-        
         if (modalFilaIgtf) modalFilaIgtf.classList.add('hidden');
         if (modalResumenIgtf) modalResumenIgtf.textContent = `Bs0.00`;
         if (modalResumenIgtfUsd) modalResumenIgtfUsd.textContent = `($0.00)`;
     }
 
-    totalBs += montoIgtfBs;
-    const totalUsd = totalBs / tasaActual; 
-    
-    const montoPagadoBs = efectivo + debito + pagomovil + biopago + montoDolarBs +
-                          transferencia + deposito + credito + tarjetaCredito;
+    // --- CÁLCULO FINAL DE PAGOS Y FALTANTES (A TU ESTILO VISUAL) ---
+    // Sumamos todos los pagos. OJO: Usamos el 'poderAdquisitivoDolarBs' ya castigado por el IGTF.
+    const montoPagadoBs = totalBsPurosPagados + poderAdquisitivoDolarBs;
 
     const faltanteBs = totalBs - montoPagadoBs;
-    
-    const vueltoEfectivoDado = parseFloat(document.getElementById('vuelto-efectivo-amount')?.value) || 0;
-    const vueltoDolarDado = parseFloat(document.getElementById('vuelto-dolar-amount')?.value) || 0;
-    const vueltoPagoMovilDado = parseFloat(document.getElementById('vuelto-pago-movil-amount')?.value) || 0;
     
     const vueltoDolarDadoBs = vueltoDolarDado * tasaActual;
     const totalVueltoDadoBs = vueltoEfectivoDado + vueltoDolarDadoBs + vueltoPagoMovilDado;
@@ -3560,9 +3607,13 @@ function calculatePaymentSummary() {
     const montoPagadoDisplay = document.getElementById('montoPagado');
     const vueltoColumn = document.getElementById('vuelto-column');
     
-    if (totalElement) totalElement.textContent = `Bs${totalBs.toFixed(2)}`;
-    if (document.getElementById('resumen-total-bs')) document.getElementById('resumen-total-bs').textContent = `Bs${totalBs.toFixed(2)}`;
-    if (document.getElementById('resumen-total-usd')) document.getElementById('resumen-total-usd').textContent = `$${totalUsd.toFixed(2)}`;
+    // ENGORDAMOS EL TOTAL NETO VISUAL COMO LO PEDISTE
+    const totalNetoConIgtfBs = totalBs + montoIgtfBs;
+    const totalNetoConIgtfUsd = totalNetoConIgtfBs / tasaActual;
+    
+    if (totalElement) totalElement.textContent = `Bs${totalNetoConIgtfBs.toFixed(2)}`;
+    if (document.getElementById('resumen-total-bs')) document.getElementById('resumen-total-bs').textContent = `Bs${totalNetoConIgtfBs.toFixed(2)}`;
+    if (document.getElementById('resumen-total-usd')) document.getElementById('resumen-total-usd').textContent = `$${totalNetoConIgtfUsd.toFixed(2)}`;
     if (montoPagadoDisplay) montoPagadoDisplay.textContent = `Bs${montoPagadoBs.toFixed(2)}`;
 
     if (resumenFaltanteBs && resumenFaltanteUsd) {
@@ -3597,7 +3648,7 @@ function calculatePaymentSummary() {
         }
         
         vueltoColumn?.classList.remove('hidden');
-        window.actualizarGridPagos();
+        if (typeof window.actualizarGridPagos === 'function') window.actualizarGridPagos();
 
     } else {
         const faltanteUsd = faltanteBs / tasaActual;
@@ -3617,7 +3668,7 @@ function calculatePaymentSummary() {
         }
 
         vueltoColumn?.classList.add('hidden');
-        window.actualizarGridPagos();
+        if (typeof window.actualizarGridPagos === 'function') window.actualizarGridPagos();
     }
 
     const btnProcesar = document.getElementById('btn-confirm-payment'); 
@@ -3826,26 +3877,50 @@ function newInvoice() {
     document.getElementById('barcode-search').focus();
 }
 
-    // Loads a saved invoice into the cart
+// Loads a saved invoice into the cart
     function loadInvoice(invoice) {
         try {
-            cart = invoice.items;
+            // 1. Convertir la cadena de texto de la base de datos a un array JSON real
+            let itemsArray = invoice.items;
+            if (typeof itemsArray === 'string') {
+                itemsArray = JSON.parse(itemsArray);
+            }
+            cart = itemsArray;
             currentInvoiceId = invoice.id;
             
+            // 2. Unificar los nombres de las variables (Cerebro DB vs Memoria Local JS)
+            const clientName = invoice.cliente_nombre || invoice.customerName;
+            const clientId = invoice.cliente_id || invoice.customerIdNumber;
+            
             // Si la factura guardada tiene información de cliente, cargarla
-            if (invoice.customerName && invoice.customerIdNumber) {
-                selectedCustomer = { name: invoice.customerName, ci: invoice.customerIdNumber };
-                document.getElementById('client-search').value = invoice.customerIdNumber;
-                clientFoundName.textContent = invoice.customerName;
-                clientFoundId.textContent = invoice.customerIdNumber;
-                clientFoundMessage.classList.remove('hidden');
-                addNewClientPrompt.classList.add('hidden');
-                addClientForm.classList.add('hidden');
+            if (clientName && clientId) {
+                selectedCustomer = { name: clientName, ci: clientId };
+                document.getElementById('client-search').value = clientId;
+                
+                // 3. Capturar formalmente los elementos del DOM en caso de que las variables globales fallen
+                const lblName = document.getElementById('client-found-name') || (typeof clientFoundName !== 'undefined' ? clientFoundName : null);
+                const lblId = document.getElementById('client-found-id') || (typeof clientFoundId !== 'undefined' ? clientFoundId : null);
+                const msgDiv = document.getElementById('client-found-message') || (typeof clientFoundMessage !== 'undefined' ? clientFoundMessage : null);
+                const promptDiv = document.getElementById('add-new-client-prompt') || (typeof addNewClientPrompt !== 'undefined' ? addNewClientPrompt : null);
+                const formDiv = document.getElementById('add-client-form') || (typeof addClientForm !== 'undefined' ? addClientForm : null);
+
+                if (lblName) lblName.textContent = clientName;
+                if (lblId) lblId.textContent = clientId;
+                if (msgDiv) msgDiv.classList.remove('hidden');
+                if (promptDiv) promptDiv.classList.add('hidden');
+                if (formDiv) formDiv.classList.add('hidden');
             }
 
             renderCart();
-            messageBox(`Factura ${invoice.id} (${invoice.customerName || 'sin nombre'}) cargada.`, 'bg-blue-500');
-            const payments = JSON.parse(invoice.payments);
+            messageBox(`Factura ${invoice.id} (${clientName || 'sin nombre'}) cargada.`, 'bg-blue-500');
+            
+            // 4. Procesar el string de metodos_pago de la BD y convertirlo a objeto JSON
+            let rawPayments = invoice.metodos_pago || invoice.payments;
+            if (typeof rawPayments === 'string') {
+                rawPayments = JSON.parse(rawPayments);
+            }
+            const payments = rawPayments || {};
+
             // Cargar los valores guardados, usando '' si el valor es 0 para que inicie en blanco (a menos que el valor guardado sea no-cero)
             document.getElementById('efectivo-amount').value = (payments.efectivo || 0) === 0 ? '' : payments.efectivo.toFixed(2);
             document.getElementById('debito-amount').value = (payments.debito || 0) === 0 ? '' : payments.debito.toFixed(2);
@@ -3855,21 +3930,37 @@ function newInvoice() {
             document.getElementById('transferencia-amount').value = (payments.transferencia || 0) === 0 ? '' : payments.transferencia.toFixed(2);
             document.getElementById('deposito-amount').value = (payments.deposito || 0) === 0 ? '' : payments.deposito.toFixed(2);
             document.getElementById('credito-amount').value = (payments.credito || 0) === 0 ? '' : payments.credito.toFixed(2);
-            document.getElementById('tarjeta-credito-amount').value = (payments.tarjetaCredito || 0) === 0 ? '' : payments.tarjetaCredito.toFixed(2);
+            document.getElementById('tarjeta-credito-amount').value = (payments.tarjetaCredito || payments.tarjeta_credito || 0) === 0 ? '' : (payments.tarjetaCredito || payments.tarjeta_credito).toFixed(2);
+            
             calculatePaymentSummary();
+
+            // 🔥 5. DISPARAR VENTANA EMERGENTE INFORMATIVA DE SEGURIDAD
+            const modalAdvertencia = document.getElementById('modal-advertencia-borrador');
+            if (modalAdvertencia) {
+                modalAdvertencia.classList.remove('hidden');
+            }
+
         } catch (e) {
+            console.error(e); // Útil para depurar si vuelve a fallar
             messageBox("Error al cargar la factura.", 'bg-red-500');
         }
     }
     
-async function deleteInvoice(invoiceId) {
-    const confirmado = await mostrarConfirmacion(`¿Desea eliminar definitivamente la factura ${invoiceId} de la red?`);
-    
-    if (!confirmado) return;
+async function deleteInvoice(invoiceId, fuerzaEjecucion = false) {
+    // Primero, pedimos la confirmación visual normal (Sí / Cancelar)
+    if (!fuerzaEjecucion) {
+        const confirmado = await mostrarConfirmacion(`¿Desea eliminar definitivamente la factura ${invoiceId} de la red?`);
+        if (!confirmado) return;
+        
+        // En lugar de borrar de inmediato, guardamos el ID en memoria y abrimos el modal de clave
+        window.facturaEliminarPendiente = invoiceId;
+        window.abrirModalSeguridad('eliminar_factura');
+        return;
+    }
 
+    // Si la función llega aquí con fuerzaEjecucion = true, significa que la clave fue CORRECTA
     try {
         const respuesta = await window.nexusAPI.eliminarBorradorMaestro(invoiceId);
-        
         if (!respuesta.error) {
             messageBox("Borrador eliminado.", 'bg-red-600');
         } else {
@@ -4317,7 +4408,6 @@ const GestorClientes = {
         try {
             const clientesDB = await window.nexusAPI.obtenerClientesLocal();
             this.lista = clientesDB || [];
-            console.log(`👥 ${this.lista.length} Clientes cargados en base de datos SQlite.`);
         } catch (e) {
             console.error("Error cargando clientes en SQlite:", e);
         }
@@ -4488,22 +4578,6 @@ async agregarCliente() {
 
                 await this.cargarTodos(); 
                 if (typeof messageBox === 'function') messageBox(`Cliente registrado y seleccionado.`, 'bg-green-500');
-
-                // 2. SINCRONIZACIÓN EN SEGUNDO PLANO
-                fetch('https://clientes.nexusposgobal.com/api/clientes', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(objetoCliente)
-                })
-                .then(async (res) => {
-                    if (res.ok) {
-                        console.log("✅ Cliente sincronizado en Xeon Global.");
-                    } else {
-                        const errData = await res.json();
-                        console.warn("⚠️ El Xeon rechazó el registro. Motivo:", errData);
-                    }
-                })
-                .catch(() => console.warn("📡 Modo Offline: Se sincronizará después."));
             }
         } catch (err) {
             console.error("Error al agregar cliente:", err);
@@ -4580,66 +4654,6 @@ async agregarCliente() {
         }
     }
 }; 
-
-// Y ahora sí, la función independiente arranca sin problemas:
-async function sincronizarClientesPendientes() {
-    if (!navigator.onLine) return;
-
-    try {
-        const clientesLocales = await window.nexusAPI.obtenerClientesLocal();
-        if (!clientesLocales || clientesLocales.length === 0) return;
-
-        let subidosNuevos = 0;
-        console.log("🔄 Verificando clientes locales pendientes de subir...");
-
-        for (const cliente of clientesLocales) {
-            try {
-                // 🔥 MANTENEMOS EL FORMATO: Usamos la normalizadora para respetar la 'J' y los guiones
-                let rifSeguro = normalizarIdentificacion(cliente.rif);
-
-                const clienteSeguro = {
-                    rif: rifSeguro,
-                    nombre: cliente.nombre,
-                    direccion: cliente.direccion || 'No especificada',
-                    telefono: cliente.telefono || '00000000000',
-                    correo: cliente.correo || 'sin@correo.com',
-                    empresa_ID: cliente.empresa_ID || window.companyId || 'DEFAULT',
-                    fecha_modificacion: cliente.fecha_modificacion || new Date().toISOString()
-                };
-
-                const res = await fetch('https://clientes.nexusposgobal.com/api/clientes', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(clienteSeguro)
-                }).catch(() => { /* Ignoramos errores de caída de red limpia */ });
-
-                // Cubrimos 200 (Actualizado) y 201 (Creado)
-                if (res && (res.status === 201 || res.status === 200)) {
-                    subidosNuevos++;
-                } 
-                
-            } catch (innerError) {
-                continue; 
-            }
-        }
-
-        if (subidosNuevos > 0) {
-            console.log(`🚀 [Motor Sync] ${subidosNuevos} nuevos clientes respaldados en la nube.`);
-        } else {
-            console.log(`✅ Todos los clientes locales ya están sincronizados.`);
-        }
-
-    } catch (error) {
-        console.warn("⚠️ [Motor Sync] Pausado temporalmente.");
-    }
-}
-
-// 2. Cuando el internet regresa: Hacemos un solo escaneo para subir lo que se vendió offline
-window.addEventListener('online', () => {
-    console.log("🌐 Internet restablecido. Sincronizando datos pendientes...");
-    if (typeof messageBox === 'function') messageBox("Conexión restablecida. Sincronizando...", 'bg-blue-500');
-    setTimeout(sincronizarClientesPendientes, 2000);
-});
 
 
 window.addItem = addItem;
@@ -4770,7 +4784,7 @@ if (window.nexusAPI && typeof window.nexusAPI.onHkaAuthLog === 'function') {
         const esError = typeof data === 'object' ? data.esError : false;
 
         const estilo = esError ? "color: #ff0000; font-weight: bold;" : "color: #00bcff;";
-        console.log(`%c[SERVIDOR-MAIN]%c ${texto}`, estilo, "color: inherit;");
+        
     });
 }
 
@@ -4805,19 +4819,20 @@ async function fetchFacturaConfig() {
         if (configDataRaw) {
             const fullConfigData = JSON.parse(configDataRaw);
 
-            // Asignación Dinámica
-            window.configFiscalHKA.sucursal = fullConfigData.hka_sucursal || "0001";
-            window.configFiscalHKA.serie = fullConfigData.hka_serie || "";
-            window.configFiscalHKA.moneda = fullConfigData.hka_moneda || "VES";
+                window.configFiscalHKA.sucursal = fullConfigData.hka_sucursal || "0001";
+                window.configFiscalHKA.serie = fullConfigData.hka_serie || "";
+                window.configFiscalHKA.moneda = fullConfigData.hka_moneda || "VES";
+                // AGREGAMOS LA EXTRACCIÓN DEL PUERTO
+                window.configFiscalHKA.puerto = fullConfigData.puerto_com_fiscal || ""; 
 
-            currentEmissionMode = fullConfigData.tipo_emision || 'TICKET_NO_FISCAL';
-            
-            if (currentEmissionMode === 'FISCAL_HKA') {
-                isFiscalMode = true;
-                console.log("🚀 Modo seleccionado: Máquina Fiscal (HKA/Bematech)");
-                if (typeof checkFiscalStatus === 'function') checkFiscalStatus(); 
+                currentEmissionMode = fullConfigData.tipo_emision || 'TICKET_NO_FISCAL';
 
-            } else if (currentEmissionMode === 'ELECTRONICA') {
+                if (currentEmissionMode === 'FISCAL_HKA') {
+                    isFiscalMode = true;
+                    console.log(`🚀 Modo seleccionado: Máquina Fiscal (HKA/Bematech) en puerto: ${window.configFiscalHKA.puerto}`);
+                    // PASAMOS EL PUERTO COMO PARÁMETRO
+                    if (typeof checkFiscalStatus === 'function') checkFiscalStatus(window.configFiscalHKA.puerto); 
+                } else if (currentEmissionMode === 'ELECTRONICA') {
                 isFiscalMode = false;
                 console.log("🌐 Modo seleccionado: Facturación Electrónica (API)");
                 
@@ -4874,19 +4889,21 @@ async function fetchFacturaConfig() {
     }
 }
 
-async function checkFiscalStatus() {
-    console.log("🟢 [FRONTEND] Iniciando checkFiscalStatus...");
+// Agrega 'puerto' como parámetro
+async function checkFiscalStatus(puerto) {
+    console.log("🟢 [FRONTEND] Iniciando checkFiscalStatus en puerto:", puerto);
     
     try {
         console.log("🟢 [FRONTEND] Llamando al puente (preload.js)...");
-        const status = await window.nexusAPI.consultarEstadoFiscal();
+        // Pásale el puerto al puente
+        const status = await window.nexusAPI.consultarEstadoFiscal(puerto);
         
         console.log("🟢 [FRONTEND] Respuesta recibida del backend:", status);
 
         if (!status || !status.success) {
             messageBox("⚠️ Impresora Fiscal desconectada o apagada.", 'bg-red-500');
         } else {
-            console.log("🟢 [FRONTEND] Impresora en línea.");
+            messageBox("🟢 Impresora Fiscal en línea.", 'bg-green-500');
         }
     } catch (error) {
         console.error("🔴 [FRONTEND] El puente colapsó antes de llegar al main.js:", error);
@@ -5702,6 +5719,375 @@ function prepararJSONGuiaDeDespacho(cliente, nroDocumento, datosTransporte) {
 }
 
 window.facturasParaRetencion = [];
+
+function prepararComandosFacturaFiscal(cliente, cart, pagos, nroControlInterno = null) {
+    const comandos = [];
+    const limpiarTextoHKA = (texto) => {
+        if (!texto) return "";
+        return texto.toString()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toUpperCase()
+            .replace(/[^A-Z0-9 +-/*.]/g, ' ')
+            .trim();
+    };
+
+    // 🟢 1. DATOS DEL CLIENTE
+    const idCruda = (cliente.rif || cliente.ci || "V000000000").toUpperCase().replace(/[-.,\s]/g, '');
+    let tipoId = idCruda.charAt(0);
+    let numId = idCruda.substring(1);
+    if (!['V', 'E', 'J', 'G', 'P', 'C'].includes(tipoId)) {
+        tipoId = 'V';
+        numId = idCruda;
+    }
+
+    comandos.push(`iS*${limpiarTextoHKA(cliente.nombre || cliente.name || "CONSUMIDOR FINAL")}`);
+    comandos.push(`iR*${tipoId}${numId}`);
+    comandos.push(`i00${limpiarTextoHKA(cliente.direccion || "NO ESPECIFICADA")}`);
+
+    // 🔥 ADICIÓN DE CORRELATIVO INTERNO: Si la tiquera recibe un correlativo de Nexus, 
+    // se inyecta en la cabecera mediante el comando de texto adicional en factura (i01)
+    if (nroControlInterno) {
+        comandos.push(`i01CORRELATIVO INT: ${limpiarTextoHKA(nroControlInterno)}`);
+    }
+
+    // 🟢 2. REGISTRO DE ÍTEMS
+    cart.forEach(item => {
+        const factor = (item.moneda === 'USD' || item.isUSD === true) ? (item.tasa || window.dolarExchangeRate || 1) : 1;
+        const cantidad = parseFloat(item.cantidad || 1);
+        let tasaNum = parseFloat(item.tasaIva) || parseFloat(item.tipo_alicuota) || 0;
+        
+        if (tasaNum === 16 || item.tipo_alicuota === "G") tasaNum = 16;
+        else if (tasaNum === 8 || item.tipo_alicuota === "R") tasaNum = 8;
+        else if (tasaNum === 31 || item.tipo_alicuota === "A") tasaNum = 31;
+        else tasaNum = 0;
+
+        let charTasa = ' ';
+        if (tasaNum === 16) charTasa = '!';
+        else if (tasaNum === 8) charTasa = '"';
+        else if (tasaNum === 31) charTasa = '#';
+
+        let precioBaseBs = parseFloat(item.precio || 0) * factor;
+
+        const precioHKA = Math.round(precioBaseBs * 100).toString().padStart(10, '0');
+        const cantidadHKA = Math.round(cantidad * 1000).toString().padStart(8, '0');
+        const descripcion = limpiarTextoHKA(item.nombre || "PRODUCTO").substring(0, 35);
+        
+        comandos.push(`${charTasa}${precioHKA}${cantidadHKA}${descripcion}`);
+    });
+
+    // 🟢 3. SUBTOTALIZAR
+    comandos.push('3');
+
+    // 🟢 4. MEDIOS DE PAGO DINÁMICOS Y CONDICIÓN MAESTRA IGTF
+    const idxEfectivo = (window.configFiscalHKA && window.configFiscalHKA.pagoEfectivo) ? window.configFiscalHKA.pagoEfectivo : '01';
+    const idxDebito = (window.configFiscalHKA && window.configFiscalHKA.pagoDebito) ? window.configFiscalHKA.pagoDebito : '04';
+    
+    let esSPE = false;
+    if (typeof isSujetoPasivoEspecial !== 'undefined' && isSujetoPasivoEspecial === true) {
+        esSPE = true;
+    }
+
+    let idxDivisa = esSPE ? '20' : '16';
+
+    const pagosActivos = [];
+
+    if ((pagos.efectivo || 0) > 0) {
+        pagosActivos.push({ codigo: idxEfectivo, monto: pagos.efectivo });
+    }
+
+    const totalElectronicoBs = (pagos.debito || 0) + (pagos.pagomovil || 0) + (pagos.transferencia || 0) + (pagos.biopago || 0);
+    if (totalElectronicoBs > 0) {
+        pagosActivos.push({ codigo: idxDebito, monto: totalElectronicoBs });
+    }
+
+    const totalDolarBs = (pagos.dolar || 0) * (window.dolarExchangeRate || 1);
+    if (totalDolarBs > 0) {
+        pagosActivos.push({ codigo: idxDivisa, monto: totalDolarBs });
+    }
+
+    if (pagosActivos.length === 0) {
+        pagosActivos.push({ codigo: idxEfectivo, monto: 1 });
+    }
+
+    // 🟢 5. CONSTRUCCIÓN DE COMANDOS DE PAGO CON PREFIJOS DE LEY
+    pagosActivos.forEach((pago, index) => {
+        const esElUltimoPago = (index === pagosActivos.length - 1);
+        
+        if (esElUltimoPago) {
+            comandos.push(`1${pago.codigo}`);
+        } else {
+            const montoFormateado = Math.round(pago.monto * 100).toString().padStart(10, '0');
+            comandos.push(`2${pago.codigo}${montoFormateado}`);
+        }
+    });
+
+    return comandos;
+}   
+
+function prepararComandosNotaCreditoFiscal(cliente, cart, pagos, facturaOriginal, nroControlInterno = null) {
+    const comandos = [];
+    const limpiarTextoHKA = (texto) => {
+        if (!texto) return "";
+        return texto.toString()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toUpperCase()
+            .replace(/[^A-Z0-9 +-/*.]/g, ' ')
+            .trim();
+    };
+
+    // 🟢 1. DATOS DEL CLIENTE
+    const idCruda = (cliente.rif || cliente.ci || "V000000000").toUpperCase().replace(/[-.,\s]/g, '');
+    let tipoId = idCruda.charAt(0);
+    let numId = idCruda.substring(1);
+    if (!['V', 'E', 'J', 'G', 'P', 'C'].includes(tipoId)) {
+        tipoId = 'V';
+        numId = idCruda;
+    }
+
+    comandos.push(`iS*${limpiarTextoHKA(cliente.nombre || cliente.name || "CONSUMIDOR FINAL")}`);
+    comandos.push(`iR*${tipoId}${numId}`);
+    comandos.push(`i00${limpiarTextoHKA(cliente.direccion || "NO ESPECIFICADA")}`);
+
+    if (nroControlInterno) {
+        comandos.push(`i01CTRL INT: ${limpiarTextoHKA(nroControlInterno)}`);
+    }
+
+    // 🟢 2. DATOS DE LA FACTURA ORIGINAL AFECTADA (OBLIGATORIO PARA EL SENIAT)
+    let hkaDatosOriginales = null;
+    try {
+        hkaDatosOriginales = (typeof facturaOriginal.datos_hka === 'string') 
+                                ? JSON.parse(facturaOriginal.datos_hka) 
+                                : facturaOriginal.datos_hka;
+    } catch (e) { hkaDatosOriginales = null; }
+
+    const numAfectado = (hkaDatosOriginales && hkaDatosOriginales.hka_nro_doc) ? hkaDatosOriginales.hka_nro_doc : facturaOriginal.numero_factura;
+    const serialAfectado = (hkaDatosOriginales && hkaDatosOriginales.hka_serial_impresora) ? hkaDatosOriginales.hka_serial_impresora : "S/N";
+    
+    // Formatear Fecha (DD-MM-YYYY)
+    let fechaAfectada = "01-01-2000";
+    if (facturaOriginal.fecha_emision || facturaOriginal.fecha) {
+        const d = new Date(facturaOriginal.fecha_emision || facturaOriginal.fecha);
+        fechaAfectada = `${d.getDate().toString().padStart(2, '0')}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getFullYear()}`;
+    }
+
+    comandos.push(`iF*${limpiarTextoHKA(numAfectado)}`);
+    comandos.push(`iD*${fechaAfectada}`);
+    comandos.push(`iI*${limpiarTextoHKA(serialAfectado)}`);
+    // 🔥 CORRECCIÓN: Se eliminó el comando iH* (Hora) porque el protocolo VE no lo soporta en NC.
+
+    // 🟢 3. REGISTRO DE ÍTEMS DE DEVOLUCIÓN (Nomenclatura 'd')
+    cart.forEach(item => {
+        const factor = (item.moneda === 'USD' || item.isUSD === true) ? (item.tasa || window.dolarExchangeRate || 1) : 1;
+        const cantidad = parseFloat(item.cantidad || 1);
+        let tasaNum = parseFloat(item.tasaIva) || parseFloat(item.tipo_alicuota) || 0;
+        
+        if (tasaNum === 16 || item.tipo_alicuota === "G") tasaNum = 16;
+        else if (tasaNum === 8 || item.tipo_alicuota === "R") tasaNum = 8;
+        else if (tasaNum === 31 || item.tipo_alicuota === "A") tasaNum = 31;
+        else tasaNum = 0;
+
+        let charTasaNC = 'd0'; // Exento
+        if (tasaNum === 16) charTasaNC = 'd1'; // General
+        else if (tasaNum === 8) charTasaNC = 'd2';  // Reducido
+        else if (tasaNum === 31) charTasaNC = 'd3'; // Adicional
+
+        let precioBaseBs = parseFloat(item.precio || 0) * factor;
+
+        const precioHKA = Math.round(precioBaseBs * 100).toString().padStart(10, '0');
+        const cantidadHKA = Math.round(cantidad * 1000).toString().padStart(8, '0');
+        const descripcion = limpiarTextoHKA(item.nombre || "PRODUCTO DEVOLUCION").substring(0, 35);
+        
+        comandos.push(`${charTasaNC}${precioHKA}${cantidadHKA}${descripcion}`);
+    });
+
+    // 🟢 4. SUBTOTALIZAR
+    comandos.push('3');
+
+    // 🟢 5. MEDIOS DE PAGO DINÁMICOS
+    const idxEfectivo = (window.configFiscalHKA && window.configFiscalHKA.pagoEfectivo) ? window.configFiscalHKA.pagoEfectivo : '01';
+    const idxDebito = (window.configFiscalHKA && window.configFiscalHKA.pagoDebito) ? window.configFiscalHKA.pagoDebito : '04';
+    
+    let esSPE = false;
+    if (typeof isSujetoPasivoEspecial !== 'undefined' && isSujetoPasivoEspecial === true) {
+        esSPE = true;
+    }
+
+    let idxDivisa = esSPE ? '20' : '16';
+
+    const pagosActivos = [];
+
+    if ((pagos.efectivo || 0) > 0) {
+        pagosActivos.push({ codigo: idxEfectivo, monto: pagos.efectivo });
+    }
+
+    const totalElectronicoBs = (pagos.debito || 0) + (pagos.pagomovil || 0) + (pagos.transferencia || 0) + (pagos.biopago || 0);
+    if (totalElectronicoBs > 0) {
+        pagosActivos.push({ codigo: idxDebito, monto: totalElectronicoBs });
+    }
+
+    const totalDolarBs = (pagos.dolar || 0) * (window.dolarExchangeRate || 1);
+    if (totalDolarBs > 0) {
+        pagosActivos.push({ codigo: idxDivisa, monto: totalDolarBs });
+    }
+
+    if (pagosActivos.length === 0) {
+        pagosActivos.push({ codigo: idxEfectivo, monto: 1 });
+    }
+
+    // 🟢 6. CONSTRUCCIÓN DE COMANDOS DE PAGO CON PREFIJOS DE LEY
+    pagosActivos.forEach((pago, index) => {
+        const esElUltimoPago = (index === pagosActivos.length - 1);
+        
+        if (esElUltimoPago) {
+            comandos.push(`1${pago.codigo}`);
+        } else {
+            const montoFormateado = Math.round(pago.monto * 100).toString().padStart(10, '0');
+            comandos.push(`2${pago.codigo}${montoFormateado}`);
+        }
+    });
+
+    return comandos;
+}
+
+function prepararComandosNotaDebitoFiscal(cliente, cart, pagos, facturaOriginal, nroControlInterno = null) {
+    const comandos = [];
+    const limpiarTextoHKA = (texto) => {
+        if (!texto) return "";
+        return texto.toString()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toUpperCase()
+            .replace(/[^A-Z0-9 +-/*.]/g, ' ')
+            .trim();
+    };
+
+    // 🟢 1. DATOS DEL CLIENTE
+    const idCruda = (cliente.rif || cliente.ci || "V000000000").toUpperCase().replace(/[-.,\s]/g, '');
+    let tipoId = idCruda.charAt(0);
+    let numId = idCruda.substring(1);
+    if (!['V', 'E', 'J', 'G', 'P', 'C'].includes(tipoId)) {
+        tipoId = 'V';
+        numId = idCruda;
+    }
+
+    comandos.push(`iS*${limpiarTextoHKA(cliente.nombre || cliente.name || "CONSUMIDOR FINAL")}`);
+    comandos.push(`iR*${tipoId}${numId}`);
+    comandos.push(`i00${limpiarTextoHKA(cliente.direccion || "NO ESPECIFICADA")}`);
+
+    if (nroControlInterno) {
+        comandos.push(`i01CTRL INT: ${limpiarTextoHKA(nroControlInterno)}`);
+    }
+
+    // 🟢 2. DATOS DE LA FACTURA ORIGINAL AFECTADA (OBLIGATORIO PARA EL SENIAT)
+    let hkaDatosOriginales = null;
+    try {
+        hkaDatosOriginales = (typeof facturaOriginal.datos_hka === 'string') 
+                                ? JSON.parse(facturaOriginal.datos_hka) 
+                                : facturaOriginal.datos_hka;
+    } catch (e) { hkaDatosOriginales = null; }
+
+    // 🚨 OJO: Aquí aseguramos extraer el número fiscal de la tiquera (hka_nro_doc). 
+    // Si tu consulta a la base de datos no trae 'datos_hka', caerá en el número de Nexus y fallará.
+    let numAfectado = (hkaDatosOriginales && hkaDatosOriginales.hka_nro_doc) ? hkaDatosOriginales.hka_nro_doc : facturaOriginal.numero_factura;
+    
+    // Limpiar caracteres no numéricos y limitar a un máximo de 11 dígitos para el comando iF*
+    numAfectado = numAfectado.toString().replace(/[^0-9]/g, '');
+    if (!numAfectado) numAfectado = "00000000000";
+    numAfectado = numAfectado.substring(0, 11);
+
+    // Serial fiscal de la tiquera original
+    let serialAfectado = (hkaDatosOriginales && hkaDatosOriginales.hka_serial_impresora) ? hkaDatosOriginales.hka_serial_impresora : "Z1F0000000";
+    if (serialAfectado === "S/N" || serialAfectado.length < 10) {
+        serialAfectado = "Z1F0000000"; 
+    }
+    
+    // Formatear Fecha (DD-MM-YYYY)
+    let fechaAfectada = "01-01-2000";
+    if (facturaOriginal.fecha_emision || facturaOriginal.fecha) {
+        const d = new Date(facturaOriginal.fecha_emision || facturaOriginal.fecha);
+        fechaAfectada = `${d.getDate().toString().padStart(2, '0')}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getFullYear()}`;
+    }
+
+    comandos.push(`iF*${numAfectado}`);
+    comandos.push(`iD*${fechaAfectada}`);
+    comandos.push(`iI*${limpiarTextoHKA(serialAfectado)}`);
+
+    // 🟢 3. REGISTRO DE ÍTEMS DE DÉBITO / INCREMENTO (Nomenclatura oficial 'e')
+    cart.forEach(item => {
+        const factor = (item.moneda === 'USD' || item.isUSD === true) ? (item.tasa || window.dolarExchangeRate || 1) : 1;
+        const cantidad = parseFloat(item.cantidad || 1);
+        let tasaNum = parseFloat(item.tasaIva) || parseFloat(item.tipo_alicuota) || 0;
+        
+        if (tasaNum === 16 || item.tipo_alicuota === "G") tasaNum = 16;
+        else if (tasaNum === 8 || item.tipo_alicuota === "R") tasaNum = 8;
+        else if (tasaNum === 31 || item.tipo_alicuota === "A") tasaNum = 31;
+        else tasaNum = 0;
+
+        // 🔥 CORRECCIÓN: Prefijos oficiales 'e0', 'e1', 'e2', 'e3' para el protocolo de Venezuela
+        let charTasaND = "e0"; // Exento
+        if (tasaNum === 16) charTasaND = "e1"; // General
+        else if (tasaNum === 8) charTasaND = "e2";  // Reducido
+        else if (tasaNum === 31) charTasaND = "e3"; // Adicional
+
+        let precioBaseBs = parseFloat(item.precio || 0) * factor;
+
+        const precioHKA = Math.round(precioBaseBs * 100).toString().padStart(10, '0');
+        const cantidadHKA = Math.round(cantidad * 1000).toString().padStart(8, '0');
+        const descripcion = limpiarTextoHKA(item.nombre || "PRODUCTO NOTA DE DEBITO").substring(0, 35);
+        
+        comandos.push(`${charTasaND}${precioHKA}${cantidadHKA}${descripcion}`);
+    });
+
+    // 🟢 4. SUBTOTALIZAR
+    comandos.push('3');
+
+    // 🟢 5. MEDIOS DE PAGO DINÁMICOS
+    const idxEfectivo = (window.configFiscalHKA && window.configFiscalHKA.pagoEfectivo) ? window.configFiscalHKA.pagoEfectivo : '01';
+    const idxDebito = (window.configFiscalHKA && window.configFiscalHKA.pagoDebito) ? window.configFiscalHKA.pagoDebito : '04';
+    
+    let esSPE = false;
+    if (typeof isSujetoPasivoEspecial !== 'undefined' && isSujetoPasivoEspecial === true) {
+        esSPE = true;
+    }
+
+    let idxDivisa = esSPE ? '20' : '16';
+
+    const pagosActivos = [];
+
+    if ((pagos.efectivo || 0) > 0) {
+        pagosActivos.push({ codigo: idxEfectivo, monto: pagos.efectivo });
+    }
+
+    const totalElectronicoBs = (pagos.debito || 0) + (pagos.pagomovil || 0) + (pagos.transferencia || 0) + (pagos.biopago || 0);
+    if (totalElectronicoBs > 0) {
+        pagosActivos.push({ codigo: idxDebito, monto: totalElectronicoBs });
+    }
+
+    const totalDolarBs = (pagos.dolar || 0) * (window.dolarExchangeRate || 1);
+    if (totalDolarBs > 0) {
+        pagosActivos.push({ codigo: idxDivisa, monto: totalDolarBs });
+    }
+
+    if (pagosActivos.length === 0) {
+        pagosActivos.push({ codigo: idxEfectivo, monto: 1 });
+    }
+
+    // 🟢 6. CONSTRUCCIÓN DE COMANDOS DE PAGO CON PREFIJOS DE LEY
+    pagosActivos.forEach((pago, index) => {
+        const esElUltimoPago = (index === pagosActivos.length - 1);
+        
+        if (esElUltimoPago) {
+            comandos.push(`1${pago.codigo}`);
+        } else {
+            const montoFormateado = Math.round(pago.monto * 100).toString().padStart(10, '0');
+            comandos.push(`2${pago.codigo}${montoFormateado}`);
+        }
+    });
+
+    return comandos;
+}
 
 window.abrirModalRetencionIVA = function() {
     const rifInput = document.getElementById('rif-search-retencion');
@@ -6554,10 +6940,8 @@ async function printInvoice(saleData = null) {
                             ? currentEmissionMode 
                             : modoEmisionBD;
 
-    const isElectronica = modoDefinitivo === 'ELECTRONICA';
-    const isNoFiscal = !isElectronica && (modoDefinitivo === 'TICKET_NO_FISCAL' || (saleData && saleData.esNoFiscal === true));
-
-    // Variables de identificación unificadas
+    // 🔥 REESTRUCTURACIÓN: Movemos la resolución del correlativo de Nexus POS aquí arriba 
+    // para tenerlo disponible antes de entrar al bloque de impresión Fiscal HKA.
     let nroFactura, nroControl;
     if (saleData) {
         nroFactura = saleData.numero_factura || saleData.id;
@@ -6567,6 +6951,37 @@ async function printInvoice(saleData = null) {
         nroFactura = (correlativo && correlativo.formato) ? correlativo.formato : `${currentEmissionMode.substring(0,2)}-${Math.floor(Math.random() * 900000)}`;
         nroControl = `00-${Math.floor(Math.random() * 900000)}`;
     }
+
+    if (modoDefinitivo === 'FISCAL_HKA') {
+        console.log(`🖨️ [NEXUS FISCAL] Desviando impresión hacia hardware HKA...`);
+
+        // Extraemos los pagos de saleData si existen, sino mandamos un objeto vacío 
+        const pagosFormateados = (saleData && saleData.metodo_pago)
+            ? (typeof saleData.metodo_pago === 'string' ? JSON.parse(saleData.metodo_pago) : saleData.metodo_pago)
+            : {};
+
+        // 🔥 MODIFICACIÓN: Pasamos 'nroFactura' como el cuarto parámetro para inyectarlo en el encabezado fiscal
+        const tramaComandos = prepararComandosFacturaFiscal(clienteActivo, cart, pagosFormateados, nroFactura);
+        
+        const puertoDestino = (window.configFiscalHKA && window.configFiscalHKA.puerto) ? window.configFiscalHKA.puerto : 'COM99';
+
+        try {
+            const resultadoFiscal = await window.nexusAPI.emitirTramasHKA(tramaComandos, puertoDestino);
+            
+            if (resultadoFiscal && resultadoFiscal.success) {
+                if (typeof messageBox === 'function') messageBox(`✅ Factura Fiscal Impresa`, 'bg-green-500');
+                return { success: true, numeroFactura: resultadoFiscal.numeroFactura, serialImpresora: resultadoFiscal.serialImpresora };
+            } else {
+                throw new Error(resultadoFiscal.msg || "Rechazo del hardware fiscal");
+            }
+        } catch (err) {
+            if (typeof messageBox === 'function') messageBox(`❌ Error Fiscal: ${err.message}`, 'bg-red-500');
+            return { success: false, error: err.message };
+        }
+    }
+
+    const isElectronica = modoDefinitivo === 'ELECTRONICA';
+    const isNoFiscal = !isElectronica && (modoDefinitivo === 'TICKET_NO_FISCAL' || (saleData && saleData.esNoFiscal === true));
     
     let totalExentoBS = 0, baseGeneralBS = 0, ivaGeneralBS = 0, globalTotalBS = 0;
     const LINE_WIDTH = (printerSize === "80") ? 48 : 32;
@@ -6582,7 +6997,6 @@ async function printInvoice(saleData = null) {
             alicuota = 0;
         }
         
-        // 👇 --- INICIO DE CÁLCULO ESTRICTO HACIA ADELANTE --- 👇
         const precioUnit = item.precio !== undefined ? item.precio : (item.price || 0);
         const cant = item.cantidad || 0;
 
@@ -6596,7 +7010,6 @@ async function printInvoice(saleData = null) {
         else { baseGeneralBS += baseBS; ivaGeneralBS += ivaBS; }
         
         globalTotalBS += (baseBS + ivaBS);
-        // 👆 --- FIN DE CÁLCULO ESTRICTO HACIA ADELANTE --- 👆
 
         const indicador = (alicuota === 0) ? "(E)" : "(G)";
         const nombreProducto = isNoFiscal ? item.nombre.toUpperCase() : `${item.nombre.toUpperCase()} ${indicador}`;
@@ -6615,10 +7028,8 @@ async function printInvoice(saleData = null) {
     const totalConIGTF_BS = globalTotalBS + montoIGTFBS;
     const totalFinalUSD = totalConIGTF_BS / (window.dolarExchangeRate || 1);
 
-    // --- INICIO DE CONSTRUCCIÓN DE LA FACTURA ---
-    let t = "\x1B\x40"; // Inicializar
+    let t = "\x1B\x40"; 
 
-    // Encabezado de la empresa
     if (encabezadoActivo.line1) t += centerText(encabezadoActivo.line1.toUpperCase(), LINE_WIDTH) + CRLF;
     if (encabezadoActivo.line2) t += centerText(encabezadoActivo.line2.toUpperCase(), LINE_WIDTH) + CRLF;
     if (encabezadoActivo.line3) t += centerText(`RIF: ${encabezadoActivo.line3.toUpperCase()}`, LINE_WIDTH) + CRLF;
@@ -6627,16 +7038,14 @@ async function printInvoice(saleData = null) {
     if (encabezadoActivo.line5) t += centerText(`TLF: ${encabezadoActivo.line5}`, LINE_WIDTH) + CRLF;
     t += SEPARATOR;
 
-    // Título del documento (Grande y Negrita)
     if (!isNoFiscal) {
-        t += "\x1B\x21\x10\x1B\x45\x01"; // Fuente Doble Altura + Negrita ON
+        t += "\x1B\x21\x10\x1B\x45\x01"; 
         t += centerText(isElectronica ? "FACTURA ELECTRONICA" : "FACTURA", LINE_WIDTH) + CRLF;
-        t += "\x1B\x21\x00\x1B\x45\x00"; // Reset
+        t += "\x1B\x21\x00\x1B\x45\x00"; 
     } else {
         t += centerText("*** DOCUMENTO NO FISCAL ***", LINE_WIDTH) + CRLF;
     }
 
-    // Datos Fiscales Unificados (Sección Única según requerimiento)
     const hka = (saleData && saleData.datos_hka) ? saleData.datos_hka : {};
     const nroDocOficial = hka.hka_nro_doc || nroFactura;
     const nroControlOficial = hka.hka_nro_control || nroControl;
@@ -6653,7 +7062,6 @@ async function printInvoice(saleData = null) {
         t += centerText(`*** ${tipoAfectacion} ***`, LINE_WIDTH) + CRLF;
         t += `APLICA A FACTURA: ${saleData.factura_afectada}${CRLF}`;
         
-        // Si es Débito, imprimimos explícitamente los datos fiscales de la original
         if (saleData.es_nota_debito) {
             let fechaAfectadaFormat = "N/A";
             if (saleData.fecha_factura_afectada) {
@@ -6666,19 +7074,16 @@ async function printInvoice(saleData = null) {
         t += SEPARATOR;
     }
 
-    // Información del Cliente
     t += `CLIENTE: ${clienteActivo.nombre}${CRLF}`;
     t += `RIF/CI: ${clienteActivo.rif}${CRLF}`;
     t += SEPARATOR;
 
-    // Cuerpo de Factura
     t += centerText("DESCRIPCION", LINE_WIDTH) + CRLF;
     t += formatLR("CANT x PRECIO", "SUBTOTAL", LINE_WIDTH) + CRLF;
     t += SEPARATOR;
     t += tableBody;
     t += SEPARATOR;
 
-    // Totales
     if (totalExentoBS > 0) t += formatLR("BI EXENTO:", totalExentoBS.toFixed(2), LINE_WIDTH) + CRLF;
     if (baseGeneralBS > 0) {
         t += formatLR("BI GENERAL (16%):", baseGeneralBS.toFixed(2), LINE_WIDTH) + CRLF;
@@ -6686,9 +7091,9 @@ async function printInvoice(saleData = null) {
     }
     if (montoIGTFBS > 0) t += formatLR("IGTF (3%):", montoIGTFBS.toFixed(2), LINE_WIDTH) + CRLF;
     
-    t += "\x1B\x45\x01"; // Negrita ON para el Total
+    t += "\x1B\x45\x01"; 
     t += formatLR(isNoFiscal ? "TOTAL A PAGAR BS:" : "TOTAL BS:", totalConIGTF_BS.toFixed(2), LINE_WIDTH) + CRLF;
-    t += "\x1B\x45\x00"; // Negrita OFF
+    t += "\x1B\x45\x00"; 
 
     if (typeof enableMulticurrency !== 'undefined' && enableMulticurrency) {
         t += SEPARATOR;
@@ -6697,11 +7102,10 @@ async function printInvoice(saleData = null) {
     }
     t += SEPARATOR;
 
-    // Pie de página y QR para Factura Electrónica
     if (isElectronica) {
         const urlQR = (saleData && saleData.url_factura_electronica) ? saleData.url_factura_electronica : "https://tfhka.com/ve/consulta";
         t += CRLF + centerText("VALIDACION FISCAL QR", LINE_WIDTH) + CRLF;
-        t += generarComandoQR_ESC_POS(urlQR); // Generar QR directamente
+        t += generarComandoQR_ESC_POS(urlQR); 
         t += CRLF + centerText(hka.hka_imprenta || "THE FACTORY HKA VENEZUELA C.A.", LINE_WIDTH) + CRLF;
         t += centerText("IMPRENTA DIGITAL AUTORIZADA", LINE_WIDTH) + CRLF;
         if (hka.hka_autorizacion) {
@@ -6713,7 +7117,7 @@ async function printInvoice(saleData = null) {
         t += centerText("PROVIDENCIA SNAT/2024/000102", LINE_WIDTH) + CRLF;
     }
 
-    t += CRLF.repeat(2) + "\x1B\x70\x00\x19\xFA" + CRLF.repeat(2) + "\x1B\x6D"; // Abrir cajón y corte
+    t += CRLF.repeat(2) + "\x1B\x70\x00\x19\xFA" + CRLF.repeat(2) + "\x1B\x6D"; 
 
     try {
         const result = await window.nexusAPI.imprimirTextoLibre(t, printerName);
@@ -6814,12 +7218,29 @@ window.saveTasaChanges = function() {
     if (!input) return;
     const nuevaTasa = parseFloat(input.value);
 
+    // Obtenemos la tasa mínima permitida (la tasa global actual del sistema)
+    const tasaMinima = window.dolarExchangeRate || 1;
+
     if (!isNaN(nuevaTasa) && nuevaTasa > 0 && window.editingItemIndex !== null) {
+        
+        // REGLA NUEVA: Bloquear si la tasa ingresada es inferior a la tasa global
+        if (nuevaTasa < tasaMinima) {
+            if (typeof messageBox === 'function') {
+                messageBox(`La tasa no puede ser menor a la actual (Bs. ${tasaMinima.toFixed(2)})`, 'bg-red-600');
+            }
+            return; // Cortamos la ejecución aquí, el modal no se cierra y no se guarda el cambio
+        }
+
+        // Si pasa la validación, aplicamos el cambio al producto en el carrito
         cart[window.editingItemIndex].tasa = nuevaTasa;
         cart[window.editingItemIndex].moneda = 'USD';
+        
         if (typeof renderCart === 'function') renderCart(); 
         window.closeTasaModal();
-        if (typeof messageBox === 'function') messageBox("Tasa actualizada", 'bg-green-600');
+        
+        if (typeof messageBox === 'function') {
+            messageBox("Tasa actualizada correctamente", 'bg-green-600');
+        }
     }
 };
 
@@ -7308,7 +7729,7 @@ async function arrancarSistema() {
             fetchProducts(),
             (typeof GestorClientes !== 'undefined') ? GestorClientes.inicializar() : Promise.resolve(),
             (typeof fetchFacturaConfig === 'function') ? fetchFacturaConfig() : Promise.resolve(),
-            (typeof fetchExchangeRate === 'function') ? fetchExchangeRate() : Promise.resolve()
+            (typeof loadBorradoresFromServer === 'function') ? loadBorradoresFromServer() : Promise.resolve(),
         ]);
 
         // 🔥 ¡AQUÍ ELIMINAMOS EL BLOQUE REDUNDANTE QUE APAGABA EL IGTF LOCALMENTE! 🔥
@@ -7322,11 +7743,6 @@ async function arrancarSistema() {
         console.timeEnd("⏱️ Tiempo de carga Nexus"); 
         console.log("🚀 Sistema de Facturación Nexus POS listo.");
         
-        loadBorradoresFromServer();  
-        if (typeof sincronizarClientesPendientes === 'function') {
-            sincronizarClientesPendientes(); 
-        }
-
         iniciarDetectorCambios();
     } catch (error) {
         console.error("❌ Error crítico al arrancar:", error);
@@ -7475,10 +7891,21 @@ function generarDetallesAuditoria(accion) {
             detalle.accion = "Eliminación de Producto del Carrito";
             detalle.descripcion = `Se autorizó la eliminación del producto del carrito de ventas: ${cantProd}x ${nombreProd} (Precio: Bs. ${parseFloat(precioProd).toFixed(2)}).`;
             break;
+
+        case 'eliminar_factura':
+            let idFactura = window.facturaEliminarPendiente || "Desconocida";
+            detalle.accion = "Eliminación de Borrador/Factura Guardada";
+            detalle.descripcion = `Se autorizó la eliminación del borrador en la red con el ID: ${idFactura}.`;
+            break;
+        case 'vaciar_carrito':
+            detalle.accion = "Vaciado de Carrito";
+            detalle.descripcion = `Se autorizó el vaciado completo del carrito (contenía ${cart.length} productos).`;
+            break;
         default:
             detalle.accion = "Autorización de Sistema";
             detalle.descripcion = `Autorización concedida para el proceso: ${accion}.`;
             break;
+            
     }
     return detalle;
 }
@@ -7628,26 +8055,35 @@ async function verificarPinContraMaestro() {
 }
 
 window.ejecutarAccionAutorizada = function(tipo) {
-    if(window.cerrarModalDocFiscales) window.cerrarModalDocFiscales(); 
+    if(window.cerrarModalDocFiscales) window.cerrarModalDocFiscales();
     
-    if (tipo === 'nota_credito' || tipo === 'nota_debito') { // <--- AHORA ACEPTA AMBAS
+    if (tipo === 'nota_credito' || tipo === 'nota_debito') { 
         document.getElementById('modal-buscar-factura').classList.remove('hidden');
         document.getElementById('input-numero-factura-afectada').value = '';
         document.getElementById('info-factura-encontrada').classList.add('hidden');
         document.getElementById('btn-buscar-fact').classList.remove('hidden');
         document.getElementById('btn-iniciar-nc').classList.add('hidden');
         document.getElementById('input-numero-factura-afectada').focus();
-        
-        // Guardamos el tipo para saber qué iniciar luego
         window.tipoOperacionFutura = tipo;
+        
     } else if (tipo === 'eliminar_producto') {
         if (window.indiceEliminarPendiente !== null && window.indiceEliminarPendiente !== undefined) {
             removeCartItem(window.indiceEliminarPendiente, true);
             window.indiceEliminarPendiente = null;
         }
+
+    } else if (tipo === 'eliminar_factura') {
+        if (window.facturaEliminarPendiente) {
+            // Llamamos de nuevo a deleteInvoice, pero con la orden de ejecución forzada
+            deleteInvoice(window.facturaEliminarPendiente, true);
+            window.facturaEliminarPendiente = null; // Limpiamos la memoria
+        }
+
+    } else if (tipo === 'vaciar_carrito') {
+        window.clearCart();
+        
     } else if (tipo === 'retencion_iva') {
         window.abrirModalRetencionIVA();
-    // 👇 GUÍA DE DESPACHO 👇
     } else if (tipo === 'guia_despacho') {
         window.abrirModalGuiaDespacho();
     } else {
@@ -7656,12 +8092,14 @@ window.ejecutarAccionAutorizada = function(tipo) {
 };
 
 window.buscarFacturaAfectada = async function() {
-    await fetchFacturaConfig(); 
-    if (currentEmissionMode !== 'ELECTRONICA') {
-        return messageBox("⚠️ Cambio a Facturación Electrónica requerido para procesar Retenciones.", "bg-red-600");
+
+    // 🔥 BARRERA CORREGIDA: Permitimos el paso a Electrónica y a Máquina Fiscal
+    if (currentEmissionMode !== 'ELECTRONICA' && currentEmissionMode !== 'FISCAL_HKA') {
+        return messageBox("⚠️ Modo Electrónico o Fiscal requerido para procesar notas.", "bg-red-600");
     }
+    
     const numFactura = document.getElementById('input-numero-factura-afectada').value.trim();
-    if (!numFactura) return messageBox("Ingrese el número", "bg-red-500");
+    if (!numFactura) return messageBox("Ingrese el número de la factura", "bg-red-500");
 
     const btnBuscar = document.getElementById('btn-buscar-fact');
     const infoDiv = document.getElementById('info-factura-encontrada');
@@ -7670,10 +8108,10 @@ window.buscarFacturaAfectada = async function() {
     btnBuscar.disabled = true;
 
     try {
-        // ✅ VOLVEMOS AL PUENTE NATIVO (Cero URLs crudas en el HTML)
         const respuesta = await window.nexusAPI.obtenerFacturaLocal(numFactura);
 
         if (respuesta.error || !respuesta.total || respuesta.total === 0) {
+            // Ahora si la factura no se encuentra, verás este recuadro rojo fijamente.
             messageBox(respuesta.mensaje || "Factura no encontrada en el Maestro.", "bg-red-500");
             infoDiv.innerHTML = "";
             return;
@@ -7708,7 +8146,7 @@ window.buscarFacturaAfectada = async function() {
 
     } catch (e) {
         console.error("❌ Error en la vista:", e);
-        messageBox("Error de comunicación interna.", "bg-red-600");
+        messageBox("Error de comunicación interna con la Base de Datos.", "bg-red-600");
     } finally {
         btnBuscar.textContent = "Buscar";
         btnBuscar.disabled = false;
@@ -7858,8 +8296,9 @@ window.toggleAsociarFacturaGuia = function() {
 };
 
 window.buscarFacturaParaGuia = async function() {
-    if (typeof currentEmissionMode !== 'undefined' && currentEmissionMode !== 'ELECTRONICA') {
-        return messageBox("⚠️ Cambio a Facturación Electrónica requerido para procesar Guías.", "bg-red-600");
+    // 🔥 PERMITIMOS EL PASO SI ES ELECTRÓNICA O MÁQUINA FISCAL HKA
+    if (typeof currentEmissionMode !== 'undefined' && currentEmissionMode !== 'ELECTRONICA' && currentEmissionMode !== 'FISCAL_HKA') {
+        return messageBox("⚠️ Cambio a Facturación Electrónica o Fiscal requerido para procesar Guías.", "bg-red-600");
     }
     
     const numFactura = document.getElementById('gd_nroFacturaAsociada').value.trim();
@@ -7914,7 +8353,7 @@ window.buscarFacturaParaGuia = async function() {
         btnBuscar.textContent = "Buscar";
         btnBuscar.disabled = false;
     }
-};
+}
 
 window.seleccionarFacturaParaGuia = function(index) {
     const facturaElegida = window.facturasMultiplesTempGuia[index];
@@ -8329,6 +8768,25 @@ window.addEventListener('productosActualizadosBackground', async () => {
         }
     }
 });
+
+if (window.nexusAPI && window.nexusAPI.onSolicitarVerificacionCierre) {
+    window.nexusAPI.onSolicitarVerificacionCierre(() => {
+        // Verificamos si la variable 'cart' existe y si contiene algún producto
+        if (typeof cart !== 'undefined' && cart.length > 0) {
+            // Lanzamos la alerta de bloqueo (Mismo estilo de error de tu sistema)
+            Swal.fire({
+                icon: 'error',
+                title: 'Acción Bloqueada',
+                text: 'Por seguridad, no puedes cerrar el sistema con productos en el carrito. Vacía el carrito con la autorización correspondiente o procesa la venta.',
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Entendido'
+            });
+        } else {
+            // Si el carrito está vacío, le decimos al main.js que puede cerrar
+            window.nexusAPI.confirmarCierreSeguro();
+        }
+    });
+}
 
 arrancarSistema();
 </script>

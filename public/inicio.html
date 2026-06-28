@@ -8,7 +8,10 @@
     <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
     <link href="../node_modules/material-icons/iconfont/material-icons.css" rel="stylesheet">
     <script src="tailwindcss.js"></script>
-    <style>
+<style>
+        /* =========================================
+           1. ESTILOS GLOBALES Y SCROLLBAR
+           ========================================= */
         body {
             font-family: 'Roboto', sans-serif;
             background-color: #FFFFFF;
@@ -17,24 +20,10 @@
             min-height: 100vh;
         }
 
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #cccccc;
-            border-radius: 10px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8;
-        }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #cccccc; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
 
         .app-container {
             display: flex;
@@ -42,6 +31,9 @@
             min-height: 100vh;
         }
 
+        /* =========================================
+           2. MENÚ LATERAL (SIDEBAR) - BASE ESCRITORIO
+           ========================================= */
         .sidebar {
             width: 280px;
             background-color: #F8F8F8;
@@ -52,11 +44,13 @@
             box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
             height: 100vh;
             overflow-y: auto;
-            
             position: fixed; 
             top: 0;
             left: 0;
             z-index: 50;
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.4s ease;
+            overflow-x: hidden;
+            white-space: nowrap; 
         }
 
         .sidebar-header {
@@ -67,17 +61,8 @@
             position: relative;
         }
 
-        .sidebar-header h3 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #333333;
-            margin-top: 0.5rem;
-        }
-
-        .sidebar-header p {
-            font-size: 0.875rem;
-            color: #6B6B6B;
-        }
+        .sidebar-header h3 { font-size: 1.5rem; font-weight: 700; color: #333333; margin-top: 0.5rem; }
+        .sidebar-header p { font-size: 0.875rem; color: #6B6B6B; }
 
         .sidebar-branch-selection,
         .sidebar-dollar-rate-input {
@@ -89,12 +74,7 @@
         }
 
         .sidebar-branch-selection label,
-        .sidebar-dollar-rate-input label {
-            color: #4A4A4A;
-            margin-bottom: 0.25rem;
-            display: block;
-            font-weight: 500;
-        }
+        .sidebar-dollar-rate-input label { color: #4A4A4A; margin-bottom: 0.25rem; display: block; font-weight: 500; }
 
         .sidebar-branch-selection select,
         .sidebar-dollar-rate-input input {
@@ -106,25 +86,13 @@
             width: 100%;
             box-sizing: border-box;
         }
-        .sidebar-dollar-rate-input input[type="number"] {
-            appearance: textfield;
-        }
+
+        .sidebar-dollar-rate-input input[type="number"] { appearance: textfield; }
         .sidebar-dollar-rate-input input::-webkit-outer-spin-button,
-        .sidebar-dollar-rate-input input::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
+        .sidebar-dollar-rate-input input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
-        .sidebar-nav ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .sidebar-nav ul li {
-            margin-bottom: 0.25rem;
-        }
-
+        .sidebar-nav ul { list-style: none; padding: 0; margin: 0; }
+        .sidebar-nav ul li { margin-bottom: 0.25rem; }
         .sidebar-nav ul li a {
             display: flex;
             align-items: center;
@@ -136,86 +104,30 @@
             position: relative; 
         }
 
-        .sidebar-nav ul li a:hover {
-            background-color: #E0F2F7;
-            color: #0288D1;
-        }
-
-        .sidebar-nav .dropdown.open > a {
-            background-color: #E0F2F7;
-            color: #0288D1;
-        }
-        
+        .sidebar-nav ul li a:hover { background-color: #E0F2F7; color: #0288D1; }
+        .sidebar-nav .dropdown.open > a { background-color: #E0F2F7; color: #0288D1; }
         .sidebar-nav .dropdown.open > a::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 4px;
-            height: 100%;
-            background-color: #0288D1;
+            content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background-color: #0288D1;
         }
 
         .sidebar-nav .dropdown > ul {
-            display: none;
-            padding-left: 1.5rem;
-            margin-top: 0.25rem;
-            border-left: 2px solid rgba(0, 0, 0, 0.03);
-            padding-bottom: 0.5rem;
+            display: none; padding-left: 1.5rem; margin-top: 0.25rem; border-left: 2px solid rgba(0, 0, 0, 0.03); padding-bottom: 0.5rem;
         }
+        .sidebar-nav .dropdown.open > ul { display: block; }
+        .sidebar-nav .dropdown ul li a { padding: 0.5rem 1rem; font-size: 0.95rem; color: #6B6B6B; }
+        .sidebar-nav .dropdown ul li a:hover { background-color: #F0F0F0; color: #0288D1; }
 
-        .sidebar-nav .dropdown.open > ul {
-            display: block;
+        /* =========================================
+           3. BOTÓN TOGGLE (ESCRITORIO Y MÓVIL)
+           ========================================= */
+        .sidebar-toggle-btn {
+            position: absolute; top: 15px; left: 15px; background: none; border: none; cursor: pointer; color: #4A4A4A; z-index: 100; transition: all 0.3s ease;
         }
+        .sidebar-toggle-btn:hover { color: #0288D1; }
 
-        .sidebar-nav .dropdown ul li a {
-            padding: 0.5rem 1rem;
-            font-size: 0.95rem;
-            color: #6B6B6B;
-        }
-
-        .sidebar-nav .dropdown ul li a:hover {
-            background-color: #F0F0F0;
-            color: #0288D1;
-        }
-        
-        @media (max-width: 1024px) {
-            .sidebar {
-                transform: translateX(-100%);
-                position: fixed;
-                height: 100vh;
-                z-index: 1000;
-                transition: transform 0.3s ease-in-out;
-                box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-            }
-
-            .sidebar.open {
-                transform: translateX(0);
-            }
-
-            .app-container {
-                display: block;
-            }
-
-            .main-content {
-    flex: 1;
-    overflow-y: auto;
-    background-color: #F3F4F6; /* El fondo gris de la app */
-    width: 100%;
-}
-        }
-
-        @media (max-width: 1024px) {
-            .sidebar {
-                transform: translateX(-100%);
-                position: fixed;
-                height: 100vh;
-                z-index: 1000;
-                transition: transform 0.3s ease-in-out;
-                box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-            }
-        }
-
+        /* =========================================
+           4. ÁREA DE CONTENIDO PRINCIPAL (BASE ESCRITORIO)
+           ========================================= */
         .main-content {
             flex-grow: 1;
             padding: 0 !important; 
@@ -226,98 +138,119 @@
             width: calc(100% - 280px);
             display: flex;
             flex-direction: column;
+            transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1), width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         #dynamic-content-area {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center; /* Centra el contenido inyectado */
-    justify-content: flex-start;
-}
+            width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+        }
 
+        /* =========================================
+           5. COMPORTAMIENTO MINIMIZADO (ESCRITORIO .collapsed)
+           ========================================= */
+        .sidebar.collapsed { width: 80px; padding: 1.5rem 0.5rem; }
+        .sidebar.collapsed .sidebar-toggle-btn { left: 50%; transform: translateX(-50%); }
+
+        .sidebar.collapsed .sidebar-header h3,
+        .sidebar.collapsed .sidebar-header #rif-text,
+        .sidebar.collapsed .sidebar-header .flex.items-center {
+            opacity: 0; transform: translateX(-20px); visibility: hidden; pointer-events: none;
+        }
+
+        .sidebar-header h3, #rif-text, .sidebar-header .flex {
+            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s; opacity: 1; transform: translateX(0); visibility: visible;
+        }
+
+        .sidebar.collapsed .sidebar-header img { width: 45px !important; height: 45px !important; margin-top: 30px; transition: all 0.3s ease; }
+        .sidebar.collapsed .sidebar-nav ul li a { font-size: 0; justify-content: center; padding-left: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar.collapsed .sidebar-nav ul li a i.material-icons { margin-right: 0; font-size: 24px; transition: transform 0.3s ease; }
+        
+        .main-content.expanded { margin-left: 80px; width: calc(100% - 80px); }
+
+        /* =========================================
+           6. COMPORTAMIENTO ADAPTATIVO (MÓVIL <= 1024px)
+           ========================================= */
+        @media (max-width: 1024px) {
+            /* Sidebar fijo minimizado por defecto */
+            .sidebar {
+                transform: none !important;
+                width: 80px; 
+                padding: 1.5rem 0.5rem;
+                box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            }
+
+            /* Expansión OVERLAY (Por encima del contenido) */
+            .sidebar.open {
+                width: 280px;
+                padding: 1.5rem 1rem;
+                box-shadow: 4px 0 15px rgba(0, 0, 0, 0.2);
+            }
+
+            .app-container { display: block; }
+
+            /* El panel principal se queda fijo a 80px, no es empujado */
+            .main-content {
+                flex: 1;
+                overflow-y: auto;
+                background-color: #F3F4F6;
+                margin-left: 80px; 
+                width: calc(100% - 80px);
+                transition: none; 
+            }
+
+            /* OCULTAR TEXTOS: Cuando está minimizado en móvil */
+            .sidebar:not(.open) .sidebar-header h3,
+            .sidebar:not(.open) .sidebar-header #rif-text,
+            .sidebar:not(.open) .sidebar-header .flex.items-center,
+            .sidebar:not(.open) .sidebar-branch-selection,
+            .sidebar:not(.open) .sidebar-dollar-rate-input {
+                opacity: 0; transform: translateX(-20px); visibility: hidden; pointer-events: none;
+            }
+
+            .sidebar:not(.open) .sidebar-nav .dropdown > ul { display: none !important; }
+            .sidebar:not(.open) .sidebar-nav ul li a { font-size: 0; justify-content: center; padding-left: 0; }
+            .sidebar:not(.open) .sidebar-nav ul li a i.material-icons { margin-right: 0; font-size: 24px; }
+            .sidebar:not(.open) .sidebar-header img { width: 45px !important; height: 45px !important; margin-top: 30px; }
+
+            /* MOSTRAR TEXTOS: Cuando se expande (.open) */
+            .sidebar.open .sidebar-header h3,
+            .sidebar.open .sidebar-header #rif-text,
+            .sidebar.open .sidebar-header .flex.items-center {
+                opacity: 1; transform: translateX(0); visibility: visible; pointer-events: auto;
+            }
+            .sidebar.open .sidebar-header img { width: 120px !important; height: 120px !important; margin-top: 0; }
+            .sidebar.open .sidebar-nav ul li a { font-size: 1rem; justify-content: flex-start; padding-left: 1rem; }
+            .sidebar.open .sidebar-nav ul li a i.material-icons { margin-right: 10px; }
+        }
+
+        /* =========================================
+           7. UTILIDADES VISUALES (SPINNER Y MODALES)
+           ========================================= */
         .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            border-left-color: #0288D1;
-            border-radius: 50%;
-            width: 36px;
-            height: 36px;
-            animation: spin 1s linear infinite;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 10;
+            border: 4px solid rgba(0, 0, 0, 0.1); border-left-color: #0288D1; border-radius: 50%;
+            width: 36px; height: 36px; animation: spin 1s linear infinite;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         .info-message-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5);
+            display: flex; justify-content: center; align-items: center; z-index: 2000;
         }
-
         .info-message-content {
-            background-color: white;
-            padding: 2rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            max-width: 400px;
-            width: 90%;
-            position: relative;
+            background-color: white; padding: 2rem; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center; max-width: 400px; width: 90%; position: relative;
         }
-
         .info-message-content .close-button {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #9ca3af;
+            position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #9ca3af;
         }
-
-        .info-message-content .material-icons {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-        }
-
-        .info-message-content h3 {
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-bottom: 1rem;
-        }
-
-        .info-message-content p {
-            margin-bottom: 1.5rem;
-            color: #4b5563;
-        }
-
+        .info-message-content .material-icons { font-size: 3rem; margin-bottom: 1rem; }
+        .info-message-content h3 { font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem; }
+        .info-message-content p { margin-bottom: 1.5rem; color: #4b5563; }
         .info-message-content button {
-            background-color: #0288D1;
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            transition: background-color 0.2s;
+            background-color: #0288D1; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; transition: background-color 0.2s;
         }
-
-        .info-message-content button:hover {
-            background-color: #0177BB;
-        }
-
+        .info-message-content button:hover { background-color: #0177BB; }
         .info-message-content.success .material-icons { color: #10b981; }
         .info-message-content.error .material-icons { color: #ef4444; }
         .info-message-content.info .material-icons { color: #0288D1; }
@@ -326,25 +259,20 @@
 </head>
 <body>
    <div class="app-container">
-        <div class="fixed top-0 left-0 w-full z-20 bg-white p-4 shadow-md flex items-center justify-between lg:hidden">
-            <div class="flex items-center">
-                <img src="logo_nexus.png" alt="Logo NEXUS POS" class="rounded-full" style="width: 40px; height: 40px; object-fit: cover;">
-                <h3 class="ml-2 text-lg font-bold">NEXUS POS GOBAL</h3>
-            </div>
-            <button id="menu-toggle" class="p-2 text-gray-500 hover:text-gray-900 focus:outline-none">
-                <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-            </button>
-        </div>
-
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <img src="logo_nexus.png" alt="Logo NEXUS POS" class="rounded-full mx-auto mb-2" style="display: block; width: 120px; height: 120px; object-fit: cover;">
+                <button id="desktop-menu-toggle" class="sidebar-toggle-btn focus:outline-none">
+                    <i id="menu-icon-dynamic" class="material-icons">menu</i>
+                </button>
+                
+                <img src="logo_nexus.png" alt="Logo NEXUS POS" class="rounded-full mx-auto mb-2" style="display: block; width: 120px; height: 120px; object-fit: cover; transition: all 0.3s ease;">
                 <h3>NEXUS POS GOBAL</h3>
-                <div class="flex items-center ml-3 mt-1 text-xs font-medium text-gray-500">
-                <span id="status-circle" class="w-2.5 h-2.5 rounded-full bg-green-500 mr-2 shadow-[0_0_5px_rgba(34,197,94,0.6)] transition-colors duration-300"></span>
-                <span id="status-text">Conectado (Online)</span>
+                
+                <p id="rif-text" class="text-sm font-bold text-gray-500 mb-2">RIF: J-50807000-3</p>
+                
+                <div class="flex items-center justify-center mt-1 text-xs font-medium text-gray-500">
+                    <span id="status-circle" class="w-2.5 h-2.5 rounded-full bg-green-500 mr-2 shadow-[0_0_5px_rgba(34,197,94,0.6)] transition-colors duration-300"></span>
+                    <span id="status-text">Conectado (Online)</span>
                 </div>
             </div>
 
@@ -369,7 +297,13 @@
                         </ul>
                     </li>
 
-                    <li><a href="administracion/inicio_administracion.html"><i class="material-icons">cases</i> Administración Gerencial</a></li>
+                    <li class="dropdown">
+                        <a href="#"><i class="material-icons">cases</i> Administración</a>
+                        <ul>
+                            <li><a href="#" data-page="index_inicio_admin/administracion/cuentas_cobrar.html"><i class="material-icons">request_quote</i> Cuentas por cobrar</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/administracion/cuentas_pagar.html"><i class="material-icons">receipt_long</i> Cuentas por pagar</a></li>
+                        </ul>
+                    </li>
 
                     <li class="dropdown">
                         <a href="#"><i class="material-icons">inventory</i> Gestión de inventario</a>
@@ -478,8 +412,288 @@
 
 <script type="module">
 
-    const SERVER_URL = "http://192.168.0.113:3000";
+    const firebaseConfig = {
+        apiKey: "AIzaSyDN9mZ1n-OkC-Qz52eTCOy4yJH7M0U9zYI",
+        authDomain: "nexus-pos-75593.firebaseapp.com",
+        projectId: "nexus-pos-75593",
+        storageBucket: "nexus-pos-75593.firebasestorage.app",
+        messagingSenderId: "626840984883",
+        appId: "1:626840984883:web:08d56544ee28bc8e637246",
+        measurementId: "G-K1EQVJWJHG"
+    };
+
+    let app = null;
+    let db = null;
+
+    // 🚨 ELIMINAMOS EL EVENTO DOMContentLoaded PARA EVITAR CHOQUES DE CONSULTAS SIMULTÁNEAS A SQLITE
+    console.log("🔌 Iniciando arranque del sistema...");
+    iniciarSesionLocal();
+
+    async function iniciarSesionLocal() {
+        console.log("🔌 Iniciando Nexus POS Global con base de datos local...");
+        
+        try {
+            // 1. Obtención de configuración
+            const config = await window.nexusAPI.obtenerConfigServer();
+            
+            // 🔥 CAPTURA BLINDADA: Busca en camelCase o exactamente como está en el .env
+            window.SERVER_IP = config.serverIp || config.SERVER_IP;
+            window.SERVER_PORT = config.serverPort || config.SERVER_PORT;
+
+            // 🔥 CORRECCIÓN DEL CANDADO: Acepta tanto el booleano (true) como el texto ('true')
+            if ((config.respaldo_datos === true || config.respaldo_datos === 'true') && navigator.onLine) {
+                respaldoActivo = true;
+                // Construimos la URL usando las variables seguras que acabamos de capturar
+                SERVER_URL = `http://${window.SERVER_IP}:${window.SERVER_PORT}`; 
+            } else {
+                respaldoActivo = false;
+                SERVER_URL = null;
+            }
+
+            // 2. Validación de la sesión en SQLite
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
+            
+            if (sesion) {
+                window.currentCompanyId = sesion.companyId;
+                const planLocal = await window.nexusAPI.obtenerPlanLocal(sesion.companyId);
+                
+                if (typeof aplicarRestriccionesSaaS === "function") {
+                    aplicarRestriccionesSaaS(planLocal || { nombre_plan: 'SIN PLAN', permisos: [] });
+                }
+
+                await cargarPanelOffline(sesion);
+
+                // ==========================================
+                // DESTRABAR PANTALLA FORZOSAMENTE
+                // ==========================================
+                hideLoadingSpinner();
+                const dynamicArea = document.getElementById('dynamic-content-area');
+                if (dynamicArea) {
+                    // Borramos el texto "Cargando..." a la fuerza para que no bloquee la vista
+                    dynamicArea.innerHTML = ''; 
+                }
+
+                console.log("🚀 Cargando vista house.html...");
+                window.loadPageContent('index_inicio_admin/inicio/house.html'); 
+
+                // 3. ACTIVAR VIGILANTE EN SEGUNDO PLANO
+                // Se llama al final para que no interrumpa la carga de la interfaz
+                activarVigilanteFirebase(sesion.companyId);
+
+            } else {
+                window.location.href = 'index.html'; 
+            }
+
+        } catch (err) {
+            console.error("❌ ERROR CRÍTICO EN EL ARRANQUE:", err);
+            hideLoadingSpinner(); 
+            const dynamicArea = document.getElementById('dynamic-content-area');
+            if (dynamicArea) {
+                dynamicArea.innerHTML = `<h2 class="text-red-600 font-bold p-4 text-center mt-10">Error al iniciar: ${err.message}</h2>`;
+            }
+        }
+    }
+
+    // Aislamos Firebase en su propia función asíncrona
+    async function activarVigilanteFirebase(companyId) {
+        if (!navigator.onLine) return;
+
+        console.log("👁️ Intentando conectar con Firebase en segundo plano...");
+        try {
+            // PING REAL: Comprobamos si hay internet de verdad antes de hacer el import.
+            // Si no hay red, esto falla rápido y evita el error ERR_NAME_NOT_RESOLVED en la consola.
+            await fetch('https://www.google.com/favicon.ico', { mode: 'no-cors', cache: 'no-store' });
+            
+            const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
+            const { getFirestore, doc, onSnapshot } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            const docRef = doc(db, "companies", companyId);
+
+            onSnapshot(docRef, async (docSnap) => {
+                if (docSnap.exists() && docSnap.data().plan) {
+                    const planNube = docSnap.data().plan;
+                    const planLocalFresco = await window.nexusAPI.obtenerPlanLocal(companyId);
+
+                    const esPlanDistinto = !planLocalFresco ||
+                        planLocalFresco.clave_producto !== planNube.clave_producto ||
+                        JSON.stringify(planLocalFresco.permisos) !== JSON.stringify(planNube.permisos);
+
+                    if (esPlanDistinto) {
+                        console.log("♻️ [NEXUS UPDATE] El plan cambió en la nube. Actualizando...");
+                        const datosParaGuardar = { ...planNube, companyId: companyId };
+                        await window.nexusAPI.guardarPlanLocal(datosParaGuardar);
+                        aplicarRestriccionesSaaS(planNube);
+                        mostrarModalReinicioPlan(planNube.nombre_plan);
+                    }
+                }
+            });
+        } catch (error) {
+            console.warn("⚠️ Vigilante Firebase omitido (Sin conexión a internet real).");
+        }
+    }
+    function aplicarRestriccionesSaaS(plan) {
+        const permisos = plan.permisos || [];
+
+        // ===============================================================
+        // FUNCIÓN AYUDANTE: Aplica el diseño de bloqueo a cualquier enlace
+        // ===============================================================
+        const bloquearEnlace = (enlace, nombreVisual) => {
+            // 1. Matamos TODAS las formas de interacción (clics y cargas de iframes)
+            enlace.removeAttribute('onclick');
+            enlace.removeAttribute('data-page'); // Vital para submenús que cargan iframes
+            
+            // 2. Modificamos el diseño (Gris + Candado + Tachado)
+            enlace.style.color = "#9ca3af"; 
+            enlace.style.backgroundColor = "transparent";
+            enlace.innerHTML = `<i class="material-icons" style="color:#9ca3af;">lock</i> <span style="text-decoration: line-through;">${nombreVisual}</span>`;
+            
+            // 3. Ocultamos el submenú a la fuerza por si era un botón desplegable
+            const submenu = enlace.nextElementSibling;
+            if (submenu && (submenu.tagName === 'UL' || (submenu.id && submenu.id.includes('submenu')))) {
+                submenu.style.display = 'none';
+            }
+            
+            // 4. Asignamos la alerta de bloqueo
+            enlace.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation(); 
+                mostrarAlertaMejoraPlan(plan.nombre_plan);
+            };
+        };
+
+        // ===============================================================
+        // EVALUACIÓN DE PERMISOS: Recorremos todo el menú
+        // ===============================================================
+        const enlacesMenu = document.querySelectorAll('.sidebar-nav a');
+        
+        enlacesMenu.forEach(enlace => {
+            const textoEnlace = enlace.textContent.trim();
+
+            // 1. Estadísticas
+            if (textoEnlace.includes("Estadísticas")) {
+                if (!permisos.includes("Estadísticas basicas/Avanzadas") && !permisos.includes("Estadísticas Avanzadas")) {
+                    bloquearEnlace(enlace, "Estadísticas");
+                }
+            }
+            // 2. Movimientos de Caja
+            else if (textoEnlace.includes("Movimientos de caja")) {
+                if (!permisos.includes("Movimientos de caja admin")) {
+                    bloquearEnlace(enlace, "Movimientos de caja");
+                }
+            }
+            // 3. Unidades de Empaque (Dentro de Datos Básicos)
+            else if (textoEnlace.includes("Unidades de Empaque")) {
+                if (!permisos.includes("Unidades de empaque")) {
+                    bloquearEnlace(enlace, "Unidades de Empaque");
+                }
+            }
+            // 4. Generador de Códigos de Barra (Menú Principal)
+            else if (textoEnlace.includes("Generador de códigos de barra")) {
+                if (!permisos.includes("Generador de códigos de barra")) {
+                    bloquearEnlace(enlace, "Generador de códigos de barra");
+                }
+            }
+            // 5. Tienda Online
+            else if (textoEnlace.includes("Tienda online")) {
+                if (!permisos.includes("Tienda online")) {
+                    bloquearEnlace(enlace, "Tienda online");
+                }
+            }
+            // 6. Traspasos de Inventario (Dentro de Gestión de Inventario)
+            else if (textoEnlace.includes("Traspasos de inventario")) {
+                if (!permisos.includes("Traspaso de inventario")) {
+                    bloquearEnlace(enlace, "Traspasos de inventario");
+                }
+            }
+        });
+
+        // ===============================================================
+        // RESTRICCIÓN TÉCNICA: RESPALDO DE DATOS (Servidor Xeon / .env)
+        // ===============================================================
+        const tieneRespaldo = permisos.includes("Respaldo de datos");
+        const valorRespaldoEnv = tieneRespaldo ? "true" : "false";
+
+        console.log(`🛡️ Permiso de Respaldo detectado como: ${valorRespaldoEnv}. Actualizando...`);
+        
+        // Enviamos la orden al Cerebro (Node.js)
+        if (window.nexusAPI && window.nexusAPI.editarArchivoEnvLocal) {
+            window.nexusAPI.editarArchivoEnvLocal({ respaldo_datos: valorRespaldoEnv });
+        }
+    }
+
+    // Función para dibujar una Alerta Bonita tipo SaaS
+    function mostrarAlertaMejoraPlan(nombrePlan) {
+        // En vez de usar un alert() feo del navegador, creamos un div moderno
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            background: rgba(0,0,0,0.5); display: flex; align-items: center; 
+            justify-content: center; z-index: 9999; backdrop-filter: blur(4px);
+        `;
+        
+       modal.innerHTML = `
+            <div style="background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+                <i class="material-icons" style="font-size: 50px; color: #f59e0b;">workspace_premium</i>
+                <h2 style="font-size: 20px; color: #1f2937; margin: 15px 0 10px; font-weight: bold;">Función Premium</h2>
+                <p style="color: #4b5563; font-size: 15px; line-height: 1.5;">
+                    Tu plan actual (<strong>${nombrePlan}</strong>) no incluye esta sección.<br><br>
+                    ¡Cambia de plan para desbloquear esta función! Si tienes dudas, <strong>consulta con Soporte</strong>.
+                </p>
+                <button id="cerrarModalPlan" style="margin-top: 20px; background: #2563eb; color: white; border: none; padding: 10px 25px; border-radius: 8px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold;">Entendido</button>
+            </div>
+        `;
+
+        
+        document.body.appendChild(modal);
+        
+        document.getElementById('cerrarModalPlan').onclick = () => {
+            modal.remove();
+        };
+    }
+
+    function mostrarModalReinicioPlan(nombrePlan) {
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            background: rgba(0,0,0,0.8); display: flex; align-items: center; 
+            justify-content: center; z-index: 9999; backdrop-filter: blur(5px);
+        `;
+        
+       modal.innerHTML = `
+            <div style="background: white; padding: 40px 30px; border-radius: 15px; text-align: center; max-width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
+                <i class="material-icons" style="font-size: 60px; color: #10b981; margin-bottom: 15px;">update</i>
+                <h2 style="font-size: 24px; color: #1f2937; margin: 0 0 15px; font-weight: bold;">¡Plan Actualizado!</h2>
+                <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+                    Tu sistema se ha sincronizado exitosamente al <strong>${nombrePlan}</strong>.<br><br>
+                    Para habilitar de forma segura las nuevas capacidades y conexiones, Nexus POS se reiniciará automáticamente en 10 segundos.
+                </p>
+                <div class="spinner" style="position: relative; top: 0; left: 0; transform: none; margin: 0 auto; border-left-color: #10b981;"></div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Esperamos 4 segundos para que el usuario lea el mensaje y luego reiniciamos la app desde el core
+        setTimeout(() => {
+            if (window.nexusAPI && typeof window.nexusAPI.reiniciarAplicacion === 'function') {
+                window.nexusAPI.reiniciarAplicacion();
+            }
+        }, 10000);
+    }
+
+    const RUTAS_VPS = {
+        'productos':  '/api/maestro/inventario/sincronizar',
+        'categorias': '/api/maestro/categorias/sincronizar',
+        'configuracion_tienda': '/api/maestro/configuracion_tienda/sincronizar'
+    };
+
+    let SERVER_URL = null;
     const LOCAL_URL = "http://localhost:3000";
+    let respaldoActivo = false;
+    window.descargandoFondo = false;
+    
 
    window.currentCompanyId = null;
 
@@ -526,6 +740,7 @@
         const spinner = document.getElementById('loading-spinner');
         if (spinner) spinner.style.display = 'none';
     }
+
 
     function showInfoMessage(message, type = 'info', title = 'Información') {
         return new Promise((resolve) => {
@@ -650,39 +865,99 @@ window.loadPageContent = function(pageUrl) {
     }
 
 
-console.log("🔌 Iniciando Nexus POS Global con base de datos local...");
-iniciarSesionLocal();
 
-async function iniciarSesionLocal() {
-        try {
-            if (!window.nexusAPI) {
-                console.error("Puente NexusAPI no detectado");
-                return;
-            }
-
-            // Consultamos al Cerebro Local (SQLite)
-            const sesion = await window.nexusAPI.obtenerSesionLocal();
-            
-            if (sesion && sesion.companyId) {
-                console.log("✅ Sesión validada localmente:", sesion.companyId);
-                window.currentCompanyId = sesion.companyId;
-                localStorage.setItem('companyId', sesion.companyId);
-
-                // Cargar datos de empresa y luego la vista
-                await aplicarDatosEmpresa(sesion.company_data);
-                loadPageContent('index_inicio_admin/inicio/house.html');
-                
-                // Iniciar sincronización si hay internet
-                if (navigator.onLine) iniciarSincronizacionSilenciosa();
-            } else {
-                console.warn("No hay sesión. Volviendo a Login.");
-                window.location.href = "login.html";
-            }
-        } catch (error) {
-            console.error("Error en arranque:", error);
-            window.location.href = "login.html";
-        }
+async function iniciarSincronizacionSilenciosa() {
+    if (sincronizando) return; 
+    
+    // 🛡️ CANDADO DE SEGURIDAD: Si no hay red o el plan es básico, se cancela la operación
+    if (!navigator.onLine || !respaldoActivo || !SERVER_URL) {
+        return; 
     }
+
+    sincronizando = true;
+    try {
+        const api = window.nexusAPI;
+        
+        // 1. PRIMERO verificamos la cola local
+        if (api && typeof api.obtenerColaSincronizacion === 'function') {
+            const cola = await api.obtenerColaSincronizacion();
+
+            // 2. SOLO si hay registros por subir, verificamos el internet real con Google
+            if (cola && cola.length > 0) {
+                
+                // 🔥 NUEVO: Temporizador de 3 segundos para evitar que el fetch se congele
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3000);
+                
+                let ping;
+                try {
+                    ping = await fetch('https://www.google.com/favicon.ico', { 
+                        mode: 'no-cors', 
+                        cache: 'no-store',
+                        signal: controller.signal // Conectamos el botón de aborto
+                    });
+                } catch (fetchError) {
+                    // Si el internet está inestable y Google no responde en 3 segundos, cae aquí.
+                    console.warn("⏳ La red está conectada pero inestable. Reintentando en breve...");
+                    throw fetchError; // Forzamos la salida al bloque catch principal para soltar el candado
+                } finally {
+                    clearTimeout(timeoutId); // Limpiamos el temporizador si Google sí respondió rápido
+                }
+                
+                if (ping) {
+                    actualizarUIConexion(true); 
+                    if (statusText) statusText.textContent = 'Sincronizando...';
+                    
+                    let procesadosConExito = 0;
+
+                    for (const registro of cola) {
+                        const rutaParcial = RUTAS_VPS[registro.tabla];
+                        if (!rutaParcial) continue;
+
+                        const endpointCompleto = `${SERVER_URL}${rutaParcial}`;
+
+                        try {
+                            const datosJSON = typeof registro.datos === 'string' ? JSON.parse(registro.datos) : registro.datos;
+
+                            const response = await fetch(endpointCompleto, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(datosJSON)
+                            });
+
+                            if (response.ok) {
+                                await api.eliminarDeCola(registro.id);
+                                const idReal = datosJSON.id || datosJSON.producto_ID || datosJSON.empresa_ID;
+                                if (idReal) {
+                                    await window.nexusAPI.marcarComoSincronizado(registro.tabla, idReal);
+                                }
+                                
+                                procesadosConExito++;
+                            }
+                        } catch (uploadErr) {
+                            console.error(`❌ Falló la subida al VPS Xeon. Sincronización pausada.`);
+                            break; 
+                        }
+                    }
+
+                    if (procesadosConExito > 0) {
+                        console.log(`✅ Sincronización exitosa: ${procesadosConExito} registros subidos a la nube y marcados como completados.`);
+                    }
+                }
+            }
+        }
+        
+        // Mantenemos el estado en verde si la rutina terminó bien
+        if (statusText) statusText.textContent = 'Conectado (Online)';
+        
+    } catch (error) {
+        // 🚦 Si algo falló (como el timeout de Google), lo marcamos como offline temporal
+        actualizarUIConexion(false);
+    } finally {
+        // 🔥 VITAL: Soltamos el candado SIEMPRE, pase lo que pase
+        sincronizando = false; 
+    }
+}
 
 async function aplicarDatosEmpresa(companyDataRaw) {
     const companyDisplay = document.getElementById('company-name-display');
@@ -732,25 +1007,22 @@ function cargarVistaDinamica(url) {
 
 async function ejecutarSalida() {
     try {
-        // 1. Limpieza del "Cerebro" (SQLite) vía Puente NexusAPI
-        if (window.nexusAPI && typeof window.nexusAPI.cerrarSesionLocal === 'function') {
-            await window.nexusAPI.cerrarSesionLocal();
-        }
+        // NO SE ELIMINAN LOS DATOS DE LA SESIÓN PARA CONSERVAR EL INGRESO RÁPIDO OFFLINE
+        localStorage.setItem('explicit_logout', 'true'); // Bandera inteligente activada
         
-        // 2. Limpieza de llaves y estados en el Navegador
-        localStorage.removeItem('companyId');
-        window.currentCompanyId = null;
-        
-        // Si usas la variable userCompanyId que declaramos para la tienda:
+        if (typeof window.currentCompanyId !== 'undefined') window.currentCompanyId = null;
         if (typeof userCompanyId !== 'undefined') userCompanyId = null;
 
-        console.log("Sesión cerrada exitosamente en SQLite y LocalStorage.");
+        console.log("Sesión cerrada conservando datos locales para acceso rápido.");
 
-        // 3. Redirección final
-        window.location.href = 'index.html';
+        // Redirección final al login
+        if (window.nexusAPI && typeof window.nexusAPI.cerrarYVolverAlLogin === 'function') {
+            window.nexusAPI.cerrarYVolverAlLogin();
+        } else {
+            window.location.href = 'index.html';
+        }
     } catch (error) {
         console.error("Error crítico al cerrar sesión:", error);
-        // Forzamos la salida al login aunque falle la base de datos local
         window.location.href = 'index.html';
     }
 }
@@ -770,58 +1042,29 @@ if (logoutBtn) {
                     <span class="material-icons text-4xl text-yellow-500">warning_amber</span>
                 </div>
                 <h3 class="text-xl font-bold text-gray-800 mb-2">Seguridad del Sistema</h3>
-                <p class="text-sm text-gray-600 mb-6 leading-relaxed">
-                    Al cerrar sesión se eliminará el acceso rápido de este equipo. <br><br>
-                    <strong class="text-red-500">Recuerda: Si no tienes conexión a internet, no podrás volver a iniciar sesión hasta recuperar la red.</strong>
-                </p>
+                <p class="text-sm text-gray-600 mb-6">Atención: ¿Estás seguro de que deseas salir de la sesión de este equipo?</p>
                 <div class="flex justify-center gap-3">
-                    <button id="btn-cancelar-logout" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition-colors">
-                        Cancelar
-                    </button>
-                    <button id="btn-confirmar-logout" class="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 shadow-md transition-colors">
-                        Sí, Salir
-                    </button>
+                    <button id="btn-cancelar-logout" class="flex-1 px-4 py-2.5 bg-gray-100 rounded-lg font-semibold">Cancelar</button>
+                    <button id="btn-confirmar-logout" class="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg font-semibold">Sí, Salir</button>
                 </div>
             </div>
         `;
         document.body.appendChild(modal);
 
+        document.getElementById('btn-cancelar-logout').addEventListener('click', () => modal.remove());
+
         document.getElementById('btn-confirmar-logout').addEventListener('click', async () => {
             modal.remove(); 
+            if (typeof mostrarLoading === 'function') mostrarLoading();
             
             try {
-                // 1. Limpiamos la base de datos local (SQLite)
-                if (window.nexusAPI && typeof window.nexusAPI.cerrarSesionLocal === 'function') {
-                    await window.nexusAPI.cerrarSesionLocal();
-                }
-                
-                // 2. Limpiamos la memoria del navegador
-                localStorage.clear();
-                window.currentCompanyId = null;
-                
-                // 3. Mostramos el mensaje de Cierre Seguro usando tu función nativa
-                showInfoMessage(
-                    "Tu sesión se ha cerrado correctamente y los datos temporales han sido borrados. El sistema se apagará en 3 segundos.", 
-                    "success", 
-                    "Cierre Seguro Exitoso"
-                );
-                
-                // 4. Apagamos el sistema limpiamente después de 3 segundos
-                setTimeout(() => {
-                    if (window.nexusAPI && window.nexusAPI.apagarSistema) {
-                        window.nexusAPI.apagarSistema();
-                    }
-                }, 3000);
-                
+                // NO SE ELIMINAN LOS DATOS DE LA SESIÓN
+                localStorage.setItem('explicit_logout', 'true');
+                window.nexusAPI.cerrarYVolverAlLogin();
             } catch (error) {
                 console.error("Error al cerrar sesión:", error);
-                showInfoMessage("Ocurrió un error, pero el sistema se apagará por seguridad.", "error", "Atención");
-                
-                setTimeout(() => {
-                    if (window.nexusAPI && window.nexusAPI.apagarSistema) {
-                        window.nexusAPI.apagarSistema();
-                    }
-                }, 3000);
+                localStorage.setItem('explicit_logout', 'true');
+                window.nexusAPI.cerrarYVolverAlLogin();
             }
         });
     }); 
@@ -883,20 +1126,149 @@ if (logoutBtn) {
             });
         }
 
-        // Eventos de Sincronización
         actualizarUIConexion(navigator.onLine);
-        window.addEventListener('online', () => {
-            actualizarUIConexion(true);
-            iniciarSincronizacionSilenciosa();
-        });
-        window.addEventListener('offline', () => {
-            actualizarUIConexion(false);
-        });
+        
+        // Mantenemos los eventos nativos como respaldo rápido
+        window.addEventListener('online', () => actualizarUIConexion(true));
+        window.addEventListener('offline', () => actualizarUIConexion(false));
 
-        setInterval(() => {
-            if (estadoConexion && !sincronizando) iniciarSincronizacionSilenciosa();
-        }, 120000); 
+        let contadorLatidos = 0; 
+        let contadorDescargas = 0; // NUEVO: Control de tiempo de descargas
 
+        setInterval(async () => {
+            // 1. Verificación del estado del adaptador físico
+            const redFisica = navigator.onLine;
+
+            if (!redFisica && estadoConexion) {
+                actualizarUIConexion(false); 
+            } else if (redFisica && !estadoConexion) {
+                try {
+                    const controller = new AbortController();
+                    const id = setTimeout(() => controller.abort(), 2000); 
+                    const ping = await fetch('https://www.google.com/favicon.ico', { mode: 'no-cors', cache: 'no-store', signal: controller.signal });
+                    clearTimeout(id);
+                    if (ping) actualizarUIConexion(true); 
+                } catch (e) {}
+            } else if (redFisica && estadoConexion) {
+                contadorLatidos++;
+                if (contadorLatidos >= 5) {
+                    contadorLatidos = 0; 
+                    try {
+                        const controller = new AbortController();
+                        const id = setTimeout(() => controller.abort(), 2000);
+                        await fetch('https://www.google.com/favicon.ico', { mode: 'no-cors', cache: 'no-store', signal: controller.signal });
+                        clearTimeout(id);
+                    } catch (e) {
+                        actualizarUIConexion(false); 
+                    }
+                }
+            }
+
+            // 2. Ejecutar la sincronización de SUBIDA (Cada 1 segundo)
+            if (estadoConexion && !sincronizando) {
+                iniciarSincronizacionSilenciosa();
+            }
+
+            if (estadoConexion && window.currentCompanyId) {
+                contadorDescargas++;
+                if (contadorDescargas >= 60) { // 60 ticks = 60 segundos
+                    contadorDescargas = 0;
+                    descargarYValidarInventarioGlobal(window.currentCompanyId);
+                }
+            }
+
+        }, 1000);
+
+// NUEVA VARIABLE GLOBAL PARA CONTROLAR LA DESCARGA
+window.descargandoFondo = false;
+
+// NUEVA FUNCIÓN: DESCARGA GLOBAL EN SEGUNDO PLANO (Sincronización Delta)
+async function descargarYValidarInventarioGlobal(companyId) {
+    if (!navigator.onLine || !respaldoActivo || !SERVER_URL || window.descargandoFondo) return;
+
+    window.descargandoFondo = true;
+    try {
+        // 1. Obtenemos la última fecha de revisión (Si es la primera vez, usamos el año 2000)
+        const claveStorage = `last_sync_inv_${companyId}`;
+        const ultimaRevision = localStorage.getItem(claveStorage) || '2000-01-01T00:00:00.000Z';
+
+        // 2. Le pedimos al servidor SOLO lo que haya cambiado DESPUÉS de esa fecha
+        const response = await fetch(`${SERVER_URL}/api/maestro/inventario/${companyId}?desde=${encodeURIComponent(ultimaRevision)}`, {
+            signal: AbortSignal.timeout(4000) 
+        });
+        
+        if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+        
+        const productosServidor = await response.json();
+        
+        // 3. Si el servidor responde con un arreglo vacío [], no hay nada nuevo.
+        if (productosServidor.length === 0) {
+            // Actualizamos el reloj local para la próxima revisión y nos vamos en silencio
+            localStorage.setItem(claveStorage, new Date().toISOString());
+            return; 
+        }
+
+        // Si hay datos, procesamos las actualizaciones
+        const api = window.nexusAPI;
+        const productosLocales = await api.obtenerProductosLocal(companyId);
+        const estadosLocales = {};
+        if (productosLocales) {
+            productosLocales.forEach(p => { estadosLocales[p.id] = p.estado_sync; });
+        }
+
+        let procesados = 0;
+        for (const pServidor of productosServidor) {
+            const idServidor = pServidor.producto_ID || pServidor.id || pServidor.producto_id;
+            
+            if (estadosLocales[idServidor] === 0) continue; 
+
+            let datosParsed = {};
+            if (pServidor.datos_json) {
+                try { datosParsed = typeof pServidor.datos_json === 'string' ? JSON.parse(pServidor.datos_json) : pServidor.datos_json; } 
+                catch(e) {}
+            }
+
+            const productoParaValidar = {
+                id: idServidor,
+                company_id: companyId,
+                branch_id: datosParsed.branch_id || datosParsed.sucursal_ID || pServidor.sucursal_ID || 'sucursal_1',
+                codigo: String(datosParsed.codigo || pServidor.codigo || ''),
+                nombre: pServidor.nombre || datosParsed.nombre,
+                precio: pServidor.precio_venta || datosParsed.precio_venta || datosParsed.precio || 0,
+                precio_venta: pServidor.precio_venta || datosParsed.precio_venta || 0,
+                precio_compra: datosParsed.precio_compra || 0,
+                porcentaje_ganancia: datosParsed.porcentaje_ganancia || 0,
+                ganancia: datosParsed.ganancia || 0,
+                precios: pServidor.precios_json || datosParsed.precios || null,
+                moneda: datosParsed.moneda || datosParsed.currency || pServidor.moneda || 'USD',
+                currency: datosParsed.currency || datosParsed.moneda || 'USD',
+                unit: datosParsed.unit || datosParsed.unidad || pServidor.unidad || 'UN',
+                tipo_alicuota: datosParsed.tipo_alicuota || pServidor.tipo_alicuota || '16',
+                categoria: datosParsed.categoria || pServidor.categoria_id || 'Sin Cat.',
+                status: pServidor.status !== undefined ? pServidor.status : 1,
+                imagen: datosParsed.imagen || pServidor.imagen || '',
+                estado_sync: 1, 
+                datos_json: JSON.stringify(datosParsed), 
+                fecha_modificacion: pServidor.ultima_sincronizacion || new Date().toISOString()
+            };
+
+            await api.sincronizarProductoServidor(productoParaValidar);
+            procesados++;
+        }
+
+        if (procesados > 0) {
+            console.log(`📥 [DOWNLOAD GLOBAL] ${procesados} productos NUEVOS/MODIFICADOS inyectados.`);
+        }
+
+        // 4. ÉXITO: Guardamos la hora exacta en la que terminamos para usarla en el próximo ciclo
+        localStorage.setItem(claveStorage, new Date().toISOString());
+
+    } catch (error) {
+        // Fallo silencioso, no actualizamos el localStorage para que lo reintente luego
+    } finally {
+        window.descargandoFondo = false;
+    }
+}
 
     async function cargarPanelOffline(sesion) {
         userCompanyId = sesion.companyId;
@@ -922,36 +1294,82 @@ if (logoutBtn) {
         }
         
         if (companyDisplay) companyDisplay.textContent = companyName;
-
-        // Cargar vista principal internamente
-        loadPageContent('index_inicio_admin/inicio/house.html');
-        ocultarLoading();
     }
 
-    async function iniciarSincronizacionSilenciosa() {
-        if (sincronizando) return; 
-        sincronizando = true;
-        try {
-            const ping = await fetch('https://www.google.com/favicon.ico', { mode: 'no-cors', cache: 'no-store' });
-            if (ping) {
-                actualizarUIConexion(true); 
-                if (statusText) statusText.textContent = 'Sincronizando...';
-                
-                if (window.nexusAPI && typeof window.nexusAPI.procesarColaSync === 'function') {
-                    const resultado = await window.nexusAPI.procesarColaSync(); 
-                    if (resultado && resultado.exito) {
-                        console.log(`✅ Sincronización exitosa: ${resultado.registros_subidos} registros subidos.`);
+
+
+/// --- GESTIÓN INTEGRAL DEL MENÚ NEXUS POS ---
+        (function() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.querySelector('.main-content');
+            const menuToggle = document.getElementById('desktop-menu-toggle');
+            const menuIconDynamic = document.getElementById('menu-icon-dynamic');
+
+            // 1. Lógica Inteligente del Botón Hamburguesa
+            if (menuToggle && sidebar && mainContent) {
+                menuToggle.onclick = (e) => {
+                    e.preventDefault();
+                    
+                    if (window.innerWidth <= 1024) {
+                        // MODO MÓVIL: Usamos la clase 'open' para flotar por ENCIMA del contenido
+                        sidebar.classList.toggle('open');
+                        
+                        // Cambiamos el icono para dar feedback
+                        if (menuIconDynamic) {
+                            menuIconDynamic.textContent = sidebar.classList.contains('open') ? 'chevron_left' : 'menu';
+                        }
+                        
+                        // Si recogemos el menú, cerramos cualquier submenú abierto
+                        if (!sidebar.classList.contains('open')) {
+                            document.querySelectorAll(".sidebar-nav .dropdown.open").forEach(el => el.classList.remove('open'));
+                        }
+                    } else {
+                        // MODO ESCRITORIO: Usamos 'collapsed' para empujar el contenido principal
+                        sidebar.classList.toggle('collapsed');
+                        mainContent.classList.toggle('expanded');
+                        
+                        if (menuIconDynamic) {
+                            menuIconDynamic.style.opacity = '0';
+                            setTimeout(() => {
+                                menuIconDynamic.textContent = sidebar.classList.contains('collapsed') ? 'chevron_right' : 'menu';
+                                menuIconDynamic.style.opacity = '1';
+                            }, 150);
+                        }
+                        
+                        if (sidebar.classList.contains('collapsed')) {
+                            document.querySelectorAll(".sidebar-nav .dropdown.open").forEach(el => el.classList.remove('open'));
+                        }
                     }
-                }
-                if (statusText) statusText.textContent = 'Conectado (Online)';
+                };
             }
-        } catch (error) {
-            actualizarUIConexion(false);
-        } finally {
-            sincronizando = false; 
-        }
-    }
 
+            // 2. Lógica Inteligente de los Enlaces (Auto-cierre)
+            document.querySelectorAll(".sidebar-nav a").forEach(link => {
+                link.addEventListener('click', (e) => {
+                    // Detectamos si el enlace tiene un submenú (<ul>) hermano
+                    const esMenuDesplegable = link.nextElementSibling && link.nextElementSibling.tagName === 'UL';
+                    
+                    // Si le damos clic a un enlace FINAL (ej. cargar vista) y estamos en móvil
+                    if (!esMenuDesplegable) {
+                        if (window.innerWidth <= 1024 && sidebar && sidebar.classList.contains('open')) {
+                            sidebar.classList.remove('open');
+                            if (menuIconDynamic) menuIconDynamic.textContent = 'menu';
+                        }
+                    } else {
+                        // Si le damos clic a un MENÚ DESPLEGABLE estando minimizado, lo forzamos a abrir
+                        if (window.innerWidth > 1024 && sidebar.classList.contains('collapsed')) {
+                            sidebar.classList.remove('collapsed');
+                            mainContent.classList.remove('expanded');
+                            if (menuIconDynamic) menuIconDynamic.textContent = 'menu';
+                        } else if (window.innerWidth <= 1024 && !sidebar.classList.contains('open')) {
+                            sidebar.classList.add('open');
+                            if (menuIconDynamic) menuIconDynamic.textContent = 'chevron_left';
+                        }
+                    }
+                });
+            });
+        })();
+        // -------------------------------------------
 </script>
 </body>
 </html>

@@ -3,12 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEXUS POS Global | High-Performance Architecture</title>
+    <title>NEXUS POS Global | Ecosistema de Gestión Comercial Corporativo</title>
     <link rel="icon" type="image/png" href="logo_nexus.png">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <!-- Fuentes de Google de Grado Profesional -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <!-- Tailwind CSS Engine -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -16,478 +20,630 @@
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
                         mono: ['JetBrains Mono', 'monospace'],
                     },
                     colors: {
-                        navy: {
-                            900: '#0a0f1c',
-                            800: '#111827',
-                            700: '#1e293b',
-                        },
-                        nexus: {
-                            blue: '#3b82f6',
-                            cyan: '#06b6d4',
-                            glow: 'rgba(59, 130, 246, 0.5)'
-                        }
-                    },
-                    animation: {
-                        'blob': 'blob 7s infinite',
-                        'data-flow': 'dataFlow 2s linear infinite',
-                        'marquee': 'marquee 25s linear infinite',
-                    },
-                    keyframes: {
-                        blob: {
-                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
-                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
-                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
-                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
-                        },
-                        dataFlow: {
-                            '0%': { transform: 'translateY(-100%)', opacity: 0 },
-                            '50%': { opacity: 1 },
-                            '100%': { transform: 'translateY(100%)', opacity: 0 },
-                        },
-                        marquee: {
-                            '0%': { transform: 'translateX(0%)' },
-                            '100%': { transform: 'translateX(-100%)' },
-                        }
+                        darkNavbar: '#0b1329',
+                        lightBg: '#f8fafc',
+                        cardLight: '#ffffff',
+                        brandBlue: '#2563eb',
+                        brandElectric: '#3b82f6',
+                        brandEmerald: '#10b981',
+                        textDark: '#0f172a',
+                        textMuted: '#475569'
                     }
                 }
             }
         }
     </script>
+
     <style>
         body {
-            background-color: #0a0f1c;
-            color: #e2e8f0;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f8fafc;
+            color: #1f2937;
             overflow-x: hidden;
         }
 
-        .tech-grid {
-            position: fixed;
-            inset: 0;
-            z-index: -1;
-            background-image: 
-                linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
-            background-size: 40px 40px;
-            mask-image: radial-gradient(circle at center, black, transparent 80%);
-            -webkit-mask-image: radial-gradient(circle at center, black, transparent 80%);
+        /* Barra de navegación superior oscura - Manteniendo diseño original */
+        .dark-premium-navbar {
+            background: rgba(11, 19, 41, 0.9);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
 
-        .glass-panel {
-            background: rgba(17, 24, 39, 0.7);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        /* Tarjetas luminosas estilo financiero/bancario moderno */
+        .luminous-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .text-glow {
-            background: linear-gradient(135deg, #60a5fa 0%, #06b6d4 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        .luminous-card:hover {
+            transform: translateY(-4px);
+            border-color: #cbd5e1;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
 
-        .glow-border {
-            position: relative;
-        }
-        .glow-border::before {
-            content: '';
-            position: absolute;
-            inset: -1px;
-            border-radius: inherit;
-            background: linear-gradient(45deg, transparent, #3b82f6, transparent);
-            z-index: -1;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        .glow-border:hover::before {
-            opacity: 1;
-        }
-
-        .node { position: relative; }
-        .node::after {
-            content: '';
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 100%; height: 100%;
-            border-radius: 50%;
-            border: 2px solid #3b82f6;
-            animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
-        }
-
+        /* Animaciones de aparición sutiles */
         .scroll-reveal {
             opacity: 0;
-            transform: translateY(30px);
-            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            transform: translateY(24px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
         }
-        .scroll-reveal.visible {
+
+        .scroll-reveal.active {
             opacity: 1;
             transform: translateY(0);
         }
 
-        /* Syntax Highlighting CSS */
-        .token.keyword { color: #c678dd; }
-        .token.string { color: #98c379; }
-        .token.function { color: #61afef; }
-        .token.number { color: #d19a66; }
-        .token.comment { color: #5c6370; font-style: italic; }
-        .token.operator { color: #56b6c2; }
+        /* Línea de comandos de simulación terminal */
+        .terminal-box {
+            background: #0f172a;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
     </style>
 </head>
-<body class="antialiased selection:bg-nexus-blue selection:text-white">
+<body class="tracking-tight selection:bg-blue-600 selection:text-white bg-slate-50 text-slate-900">
 
-    <div class="tech-grid"></div>
-    <div class="fixed top-[-10%] left-[-10%] w-96 h-96 bg-blue-600/20 rounded-full mix-blend-screen filter blur-[100px] animate-blob z-[-1]"></div>
-    <div class="fixed bottom-[-10%] right-[-10%] w-96 h-96 bg-cyan-600/20 rounded-full mix-blend-screen filter blur-[100px] animate-blob animation-delay-2000 z-[-1]"></div>
-
-    <nav class="fixed w-full z-50 top-0 glass-panel border-b-0 border-white/10">
-        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+    <!-- 1. NAVBAR PREMIUM OSCURA (CONSERVADA SEGÚN ESPECIFICACIÓN) -->
+    <nav class="fixed top-0 left-0 w-full z-50 dark-premium-navbar transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
             <div class="flex items-center space-x-3">
-                <div class="w-8 h-8 rounded bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center font-mono font-bold text-white shadow-[0_0_15px_rgba(59,130,246,0.5)]">N</div>
-                <span class="font-bold tracking-tight text-white text-lg">NEXUS <span class="font-light text-gray-400">POS Global</span></span>
-            </div>
-            
-            <div class="hidden md:flex items-center space-x-8 text-sm font-mono text-gray-400">
-                <a href="#architecture" class="hover:text-white transition-colors">/arquitectura</a>
-                <a href="#features" class="hover:text-white transition-colors">/core_features</a>
-                <a href="#api" class="hover:text-white transition-colors">/api</a>
-                <a href="#modules" class="hover:text-white transition-colors">/módulos</a>
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+                    <span class="material-icons text-xl font-bold">layers</span>
+                </div>
+                <div>
+                    <span class="font-extrabold text-xl text-white tracking-wider block">NEXUS</span>
+                    <span class="text-[9px] font-mono tracking-[0.25em] text-blue-400 block uppercase">POS GLOBAL</span>
+                </div>
             </div>
 
+            <!-- Navegación de Arquitectura Completa -->
+            <div class="hidden lg:flex items-center space-x-8 text-sm font-medium text-gray-300">
+                <a href="#ecosistema" class="hover:text-white transition-colors">Ecosistema</a>
+                <a href="#core-hibrido" class="hover:text-white transition-colors">Core Híbrido</a>
+                <a href="#seccion-fiscal" class="hover:text-blue-400 transition-colors flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span> Corporativo & SENIAT
+                </a>
+                <a href="#arquitectura-dev" class="hover:text-white transition-colors">Para Developers</a>
+            </div>
+
+            <!-- Acceso Directo de Estaciones Vinculadas -->
             <div class="flex items-center space-x-4">
-                <div class="hidden md:flex items-center space-x-2 text-xs font-mono px-3 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
-                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                    <span>System Online</span>
-                </div>
-                <a href="index.html" class="px-5 py-2 text-sm font-semibold text-white bg-white/10 rounded-lg hover:bg-white/20 transition-all border border-white/5">Init Session</a>
+                <a href="login.html" class="text-sm font-semibold text-gray-300 hover:text-white transition-colors">Consola</a>
+                <a href="login.html" class="bg-gradient-to-r from-blue-600 to-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-lg shadow-md hover:from-blue-500 hover:to-blue-600 transition-all transform hover:scale-[1.02]">
+                    Iniciar Sistema
+                </a>
             </div>
         </div>
     </nav>
 
-    <main class="relative z-10 pt-32 pb-20">
-        
-        <section class="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-12 items-center min-h-[75vh]">
-            <div class="space-y-8">
-                <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 font-mono text-xs uppercase tracking-wider">
-                    <i class="material-icons text-[14px]">memory</i>
-                    <span>Motor Híbrido v2.0</span>
+    <!-- 2. HERO SECTION LUMINOSA (ESTILO BANCARIO / FINANZAS MODERNAS) -->
+    <section class="relative pt-40 pb-24 md:pt-48 md:pb-36 bg-white overflow-hidden border-b border-slate-200">
+        <!-- Efecto Grid Sutil Corporativo -->
+        <div class="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0aa_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0aa_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
+
+        <div class="max-w-7xl mx-auto px-6 relative z-10 text-center">
+            
+            <!-- Oferta de Captación Primordial Destacada -->
+            <div class="inline-flex items-center space-x-2 bg-blue-50 border border-blue-200 px-4 py-2 rounded-full mb-8 shadow-sm transform hover:scale-105 transition-all">
+                <span class="flex h-2 w-2 relative">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-600"></span>
+                </span>
+                <span class="text-xs font-bold text-blue-700 tracking-wide uppercase">⚡ ¡Oferta de Lanzamiento: 30 días gratis con todo disponible!</span>
+            </div>
+
+            <!-- Gran Título Corporativo en Modo Claro -->
+            <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-slate-900 max-w-5xl mx-auto leading-[1.1]">
+                Control Administrativo Total de tu Comercio, <br class="hidden md:inline">
+                <span class="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-800">
+                    Estabilidad Absoluta Offline y Online.
+                </span>
+            </h1>
+
+            <p class="mt-6 text-lg md:text-xl text-slate-600 max-w-3xl mx-auto font-normal leading-relaxed">
+                El ecosistema 360 definitivo para organizar tus finanzas y procesos de venta. Centraliza inventarios, sucursales y ganancias de manera eficiente con herramientas de grado institucional.
+            </p>
+
+            <!-- Botones de Acción con Enlaces a Páginas del Front -->
+            <div class="mt-10 flex flex-col sm:flex-row justify-center items-center gap-4">
+                <a href="login.html" class="w-full sm:w-auto bg-blue-600 text-white text-sm font-bold px-8 py-4 rounded-xl shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
+                    <span class="material-icons text-lg">rocket_launch</span> Comenzar Prueba Gratuita
+                </a>
+                <a href="#core-hibrido" class="w-full sm:w-auto bg-slate-100 text-slate-700 border border-slate-200 text-sm font-semibold px-8 py-4 rounded-xl hover:bg-slate-200 transition-all flex items-center justify-center gap-2">
+                    <span class="material-icons text-lg">explore</span> Explorar Módulos Locales
+                </a>
+            </div>
+
+            <!-- Panel de Estación Administrativa Luminoso -->
+            <div class="mt-16 relative rounded-2xl border border-slate-200 bg-white p-5 max-w-5xl mx-auto shadow-xl scroll-reveal">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 mb-4 gap-2">
+                    <div class="flex items-center space-x-2 text-left">
+                        <div class="w-3 h-3 rounded-full bg-slate-300"></div>
+                        <div class="w-3 h-3 rounded-full bg-slate-300"></div>
+                        <div class="w-3 h-3 rounded-full bg-slate-300"></div>
+                        <span class="text-xs font-mono font-bold text-slate-500 ml-2">estacion_maestra_core.db (Control Administrativo Interno)</span>
+                    </div>
+                    <div class="flex items-center space-x-3 text-xs text-emerald-700 bg-emerald-50 px-3 py-1 rounded border border-emerald-200">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+                        <span class="font-bold">Entorno Local Homologado</span>
+                    </div>
                 </div>
                 
-                <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight leading-[1.1]">
-                    Ingeniería pura en <br>
-                    <span class="text-glow">Gestión Comercial.</span>
-                </h1>
-                
-                <p class="text-gray-400 text-lg md:text-xl max-w-xl font-light leading-relaxed">
-                    Arquitectura distribuida con tolerancia a fallos. Despliegue de bases de datos locales para velocidad extrema en caja, sincronizadas en tiempo real con un servidor central para control absoluto de stock y correlativos fiscales.
-                </p>
-                
-                <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 pt-4">
-                    <a href="index.html" class="group relative px-8 py-4 bg-blue-600 text-white font-semibold rounded-lg overflow-hidden flex items-center justify-center transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(59,130,246,0.4)]">
-                        <span class="relative z-10 flex items-center">
-                            Desplegar Entorno <i class="material-icons ml-2 text-sm transition-transform group-hover:translate-x-1">arrow_forward</i>
-                        </span>
-                    </a>
-                    <a href="#features" class="px-8 py-4 bg-transparent border border-white/20 text-white font-semibold rounded-lg hover:bg-white/5 transition-all flex items-center justify-center">
-                        Explorar Specs
-                    </a>
+                <!-- KPIs Administrativos Reales en Modo Claro -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-left p-2">
+                    <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+                        <div class="text-xs text-slate-500 uppercase font-bold tracking-wider">Módulo de Ventas Activo</div>
+                        <div class="text-2xl font-extrabold text-slate-900 mt-1 font-mono">Control Interno</div>
+                        <div class="text-xs text-blue-600 mt-1 flex items-center gap-1 font-medium">
+                            <span class="material-icons text-xs">analytics</span> Auditoría local de transacciones
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+                        <div class="text-xs text-slate-500 uppercase font-bold tracking-wider">Tasa de Cambio de Referencia</div>
+                        <div class="text-2xl font-extrabold text-blue-600 mt-1 font-mono">Monitoreo BCV</div>
+                        <div class="text-xs text-slate-500 mt-1">Conmutación automática de divisas</div>
+                    </div>
+                    <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+                        <div class="text-xs text-slate-500 uppercase font-bold tracking-wider">Infraestructura Distribuida</div>
+                        <div class="text-2xl font-extrabold text-indigo-600 mt-1 font-mono">Multisucursal</div>
+                        <div class="text-xs text-slate-500 mt-1">Sincronización en la nube disponible</div>
+                    </div>
                 </div>
             </div>
 
-            <div class="relative w-full aspect-square md:aspect-auto md:h-[550px] glass-panel rounded-2xl border border-white/10 p-1 overflow-hidden glow-border group shadow-2xl">
-                <div class="absolute inset-0 bg-gradient-to-b from-blue-500/5 to-transparent z-0"></div>
-                <div class="h-8 border-b border-white/10 flex items-center px-4 space-x-2 relative z-10 bg-navy-800/80">
-                    <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
-                    <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
-                    <div class="w-3 h-3 rounded-full bg-green-500/80"></div>
-                    <div class="mx-auto text-xs font-mono text-gray-500">root@nexus-main-server ~ /var/log/pos</div>
-                </div>
-                <div class="p-6 font-mono text-[13px] space-y-2 relative z-10 h-[calc(100%-2rem)] overflow-hidden text-gray-300 flex flex-col justify-end pb-8">
-                    <div class="opacity-50 text-gray-500">Nexus POS Global Daemon (v2.0.4) starting...</div>
-                    <div class="opacity-60">[DB] SQLite Local DB mounted successfully <span class="text-green-400">(0.18ms)</span></div>
-                    <div class="opacity-70">[DB] MongoDB Cloud Sync Thread initialized</div>
-                    <div class="opacity-80 text-cyan-400">[NETWORK] API Gateway listening on 192.168.1.100:3000</div>
-                    <div class="flex items-center text-green-400 mt-2">
-                        <i class="material-icons text-[14px] mr-2">lan</i>
-                        [AUTH] Nodo_Cajera_01 se ha unido al clúster LAN.
-                    </div>
-                    <div class="flex items-center text-green-400">
-                        <i class="material-icons text-[14px] mr-2">lan</i>
-                        [AUTH] Nodo_Cajera_02 se ha unido al clúster LAN.
-                    </div>
-                    <div class="text-yellow-400 mt-2">> Fetching Tasa BCV from external Oracle...</div>
-                    <div class="pl-4 border-l border-white/20 ml-2 mt-1">
-                        <div class="text-gray-400">Status: 200 OK | Rate updated globally</div>
-                    </div>
-                    <div class="flex items-center mt-2">
-                        <span class="text-blue-400 font-bold mr-2">REQ</span>
-                        <span>POST /api/facturacion/reservar-correlativo</span>
-                    </div>
-                    <div class="pl-4 border-l border-white/20 ml-2 space-y-1">
-                        <div class="text-purple-400">Validating fiscal rules (SENIAT compliance)... OK</div>
-                        <div class="text-gray-400">{ "correlativo": "00000150", "stock_updated": true }</div>
-                    </div>
-                    <div class="mt-2 flex">
-                        <span class="text-green-500 mr-2">root@nexus:~#</span> <span class="animate-pulse">_</span>
-                    </div>
-                    <div class="absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-navy-900 to-transparent"></div>
-                </div>
-            </div>
-        </section>
+        </div>
+    </section>
 
-        <div class="w-full bg-white/5 border-y border-white/10 py-4 overflow-hidden flex items-center relative z-10 mt-10">
-            <div class="absolute left-0 w-24 h-full bg-gradient-to-r from-navy-900 to-transparent z-10"></div>
-            <div class="absolute right-0 w-24 h-full bg-gradient-to-l from-navy-900 to-transparent z-10"></div>
-            <div class="flex space-x-16 min-w-full animate-marquee font-mono text-sm text-gray-400 whitespace-nowrap">
-                <span>⚡ Powered by Electron</span>
-                <span>•</span>
-                <span>🟢 Node.js Backend</span>
-                <span>•</span>
-                <span>🗄️ SQLite Local Edge</span>
-                <span>•</span>
-                <span>🍃 MongoDB Cloud Sync</span>
-                <span>•</span>
-                <span>📊 Real-time Analytics</span>
-                <span>•</span>
-                <span>🔒 Fiscal Compliant</span>
-                <span>•</span>
-                <span>⚡ Powered by Electron</span>
-                <span>•</span>
-                <span>🟢 Node.js Backend</span>
-                <span>•</span>
-                <span>🗄️ SQLite Local Edge</span>
-                <span>•</span>
-                <span>🍃 MongoDB Cloud Sync</span>
-                <span>•</span>
-                <span>📊 Real-time Analytics</span>
-                <span>•</span>
-                <span>🔒 Fiscal Compliant</span>
-            </div>
+    <!-- 3. BENTO GRID REFINADO (LUMINOUS STYLE) -->
+    <section id="core-hibrido" class="py-20 max-w-7xl mx-auto px-6">
+        <div class="text-center mb-16">
+            <h2 class="text-xs font-mono tracking-[0.3em] text-blue-600 uppercase font-bold">Gestión de Alta Disponibilidad</h2>
+            <p class="text-3xl md:text-4xl font-extrabold text-slate-900 mt-3">Core de Funciones Administrativas Integradas</p>
         </div>
 
-        <section id="features" class="max-w-7xl mx-auto px-6 py-24 scroll-reveal">
-            <div class="text-center mb-16">
-                <h2 class="text-sm font-mono text-blue-400 tracking-widest uppercase mb-2">/ Especificaciones Técnicas</h2>
-                <h3 class="text-3xl md:text-5xl font-bold text-white mb-4">Diseñado para la robustez absoluta</h3>
-                <p class="text-gray-400 max-w-2xl mx-auto">Cada línea de código de Nexus está optimizada para prevenir cuellos de botella en operaciones de alto volumen.</p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div class="glass-panel p-8 rounded-2xl glow-border">
-                    <div class="w-12 h-12 bg-blue-500/10 text-blue-400 rounded-xl flex items-center justify-center mb-6">
-                        <i class="material-icons text-2xl">offline_bolt</i>
-                    </div>
-                    <h4 class="text-xl font-bold text-white mb-3">Tolerancia a Fallos Offline</h4>
-                    <p class="text-gray-400 text-sm leading-relaxed">Si la red principal cae, el sistema de caché local permite continuar operaciones de consulta sin interrupción. La cola de sincronización se retoma automáticamente al restablecer conexión.</p>
-                </div>
-                <div class="glass-panel p-8 rounded-2xl glow-border">
-                    <div class="w-12 h-12 bg-green-500/10 text-green-400 rounded-xl flex items-center justify-center mb-6">
-                        <i class="material-icons text-2xl">account_balance</i>
-                    </div>
-                    <h4 class="text-xl font-bold text-white mb-3">Cumplimiento Fiscal</h4>
-                    <p class="text-gray-400 text-sm leading-relaxed">Arquitectura de base de datos preparada para las normativas del SENIAT. Registros inmutables, correlativos blindados y reportes Z generados con precisión criptográfica.</p>
-                </div>
-                <div class="glass-panel p-8 rounded-2xl glow-border">
-                    <div class="w-12 h-12 bg-yellow-500/10 text-yellow-400 rounded-xl flex items-center justify-center mb-6">
-                        <i class="material-icons text-2xl">currency_exchange</i>
-                    </div>
-                    <h4 class="text-xl font-bold text-white mb-3">Motor Multimoneda Dinámico</h4>
-                    <p class="text-gray-400 text-sm leading-relaxed">Actualización automática de Tasa BCV (o manual centralizada) que recálcula instantáneamente el inventario en toda la red de cajeras sin recargar las vistas.</p>
-                </div>
-                <div class="glass-panel p-8 rounded-2xl glow-border">
-                    <div class="w-12 h-12 bg-purple-500/10 text-purple-400 rounded-xl flex items-center justify-center mb-6">
-                        <i class="material-icons text-2xl">inventory_2</i>
-                    </div>
-                    <h4 class="text-xl font-bold text-white mb-3">Locking de Inventario Atómico</h4>
-                    <p class="text-gray-400 text-sm leading-relaxed">El servidor principal aplica bloqueos transaccionales a nivel de fila durante la facturación para evitar race conditions y sobreventas de productos en múltiples cajas.</p>
-                </div>
-                <div class="glass-panel p-8 rounded-2xl glow-border md:col-span-2 lg:col-span-2 flex items-center justify-between">
-                    <div class="max-w-md">
-                        <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 font-mono text-xs uppercase mb-4">
-                            Ecosistema Integrado
-                        </div>
-                        <h4 class="text-xl font-bold text-white mb-3">Integración con Nexus Business</h4>
-                        <p class="text-gray-400 text-sm leading-relaxed">Más allá de un POS. Tus datos transaccionales se pueden conectar con tu ecosistema corporativo más amplio para generar nuevas oportunidades de ingresos y análisis de IA.</p>
-                    </div>
-                    <div class="hidden sm:block opacity-50">
-                        <i class="material-icons text-[80px] text-cyan-500">hub</i>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section id="api" class="max-w-7xl mx-auto px-6 py-24 scroll-reveal">
-            <div class="grid lg:grid-cols-2 gap-12 items-center">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Tarjeta Grande Bento: Offline First Sincronizado -->
+            <div class="md:col-span-2 luminous-card rounded-2xl p-8 flex flex-col justify-between group">
                 <div>
-                    <h2 class="text-sm font-mono text-blue-400 tracking-widest uppercase mb-2">/ Developer Experience</h2>
-                    <h3 class="text-3xl md:text-4xl font-bold text-white mb-6">Diseñado con mentalidad API-First</h3>
-                    <p class="text-gray-400 mb-6 leading-relaxed">
-                        Aunque funciona perfecto como una aplicación de escritorio, el backend de Nexus POS expone endpoints RESTful locales. Esto permite que el nodo Administrador procese peticiones de las cajeras de manera asíncrona y ultra-rápida.
+                    <div class="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 mb-6">
+                        <span class="material-icons">cloud_off</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors">Resiliencia Operativa Offline-First</h3>
+                    <p class="mt-3 text-slate-600 leading-relaxed text-sm">
+                        Si la conectividad externa se interrumpe, la operatividad del negocio no se detiene. El sistema procesa y almacena los flujos comerciales localmente en SQLite, rebajando empaques y mermas con absoluta fidelidad. Al restablecer la conexión, un hilo en segundo plano sincroniza todo con el servidor central de forma transparente.
                     </p>
-                    <ul class="space-y-4 font-mono text-sm text-gray-300">
-                        <li class="flex items-center"><i class="material-icons text-green-400 mr-3 text-[18px]">check_circle</i> Consultas no bloqueantes</li>
-                        <li class="flex items-center"><i class="material-icons text-green-400 mr-3 text-[18px]">check_circle</i> WebSockets para notificaciones en tiempo real</li>
-                        <li class="flex items-center"><i class="material-icons text-green-400 mr-3 text-[18px]">check_circle</i> Seguridad IPC (Inter-Process Communication)</li>
-                    </ul>
+                    
+                    <!-- Enlaces directos a las páginas operativas reales del Front -->
+                    <div class="mt-6 flex flex-wrap gap-2">
+                        <a href="inventario.html" class="inline-flex items-center text-xs bg-slate-100 text-slate-700 px-3 py-1.5 rounded-md hover:bg-blue-600 hover:text-white font-medium transition-colors border border-slate-200">
+                            <span class="material-icons text-xs mr-1">inventory</span> Inventario
+                        </a>
+                        <a href="entradas_de_inventario.html" class="inline-flex items-center text-xs bg-slate-100 text-slate-700 px-3 py-1.5 rounded-md hover:bg-blue-600 hover:text-white font-medium transition-colors border border-slate-200">
+                            <span class="material-icons text-xs mr-1">add_box</span> Carga Stock
+                        </a>
+                        <a href="salidas_de_inventario.html" class="inline-flex items-center text-xs bg-slate-100 text-slate-700 px-3 py-1.5 rounded-md hover:bg-blue-600 hover:text-white font-medium transition-colors border border-slate-200">
+                            <span class="material-icons text-xs mr-1">indeterminate_check_box</span> Mermas
+                        </a>
+                    </div>
                 </div>
+                <div class="mt-8 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-mono text-slate-400">
+                    <span>Estrategia Local Data Mirroring</span>
+                    <span class="text-blue-600 font-bold">SQLite Core</span>
+                </div>
+            </div>
+
+            <!-- Tarjeta Bento Media: Multi-Tier Pricing -->
+            <div class="luminous-card rounded-2xl p-8 flex flex-col justify-between group">
+                <div>
+                    <div class="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 mb-6">
+                        <span class="material-icons">tune</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">Ingeniería de Costos Avanzada</h3>
+                    <p class="mt-3 text-gray-600 leading-relaxed text-sm">
+                        Administra con precisión tres niveles de tarifas independientes (Detal, Mayor, Gran Mayor). Modifica los costos de manera masiva calculando de forma automática los márgenes de ganancia.
+                    </p>
+                    <div class="mt-4">
+                        <a href="actualizar_precios.html" class="text-xs text-emerald-600 font-bold flex items-center gap-1 hover:underline">
+                            Ir al Panel de Precios <span class="material-icons text-xs">arrow_forward</span>
+                        </a>
+                    </div>
+                </div>
+                <div class="mt-6 pt-4 border-t border-slate-100 text-xs font-mono text-slate-400">
+                    Calculadora de Márgenes Integrada
+                </div>
+            </div>
+
+            <!-- Tarjeta Bento Media: Conversor de Empaques -->
+            <div class="luminous-card rounded-2xl p-8 flex flex-col justify-between group">
+                <div>
+                    <div class="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mb-6">
+                        <span class="material-icons">inventory_2</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 group-hover:text-indigo-400 transition-colors">Unidades de Empaque</h3>
+                    <p class="mt-3 text-gray-600 leading-relaxed text-sm">
+                        Optimiza el control de mercancía por bulto, cesta o saco. El motor desglosa automáticamente la cantidad correspondiente a unidades sueltas según factores preestablecidos.
+                    </p>
+                    <div class="mt-4">
+                        <a href="unidades_de_empaque.html" class="text-xs text-indigo-600 font-bold flex items-center gap-1 hover:underline">
+                            Configurar Empaques <span class="material-icons text-xs">arrow_forward</span>
+                        </a>
+                    </div>
+                </div>
+                <div class="mt-6 pt-4 border-t border-slate-100 text-xs font-mono text-slate-400">
+                    Desglose automático en RAM
+                </div>
+            </div>
+
+            <!-- Tarjeta Grande Bento: Reglas de Negocio Libres -->
+            <div class="md:col-span-2 luminous-card rounded-2xl p-8 flex flex-col justify-between group">
+                <div>
+                    <div class="w-12 h-12 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 mb-6">
+                        <span class="material-icons">settings_suggest</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 group-hover:text-purple-400 transition-colors">Configuración Adaptativa del Sistema</h3>
+                    <p class="mt-3 text-gray-600 leading-relaxed text-sm">
+                        Define el comportamiento de tu red comercial de manera centralizada. Conecta balanzas comerciales, establece switches de validación estricta de stock para permitir ventas en negativo o configura parámetros de red local con herramientas intuitivas.
+                    </p>
+                    <div class="mt-6 flex flex-wrap gap-2">
+                        <a href="general_y_otros.html" class="inline-flex items-center text-xs bg-slate-100 text-slate-700 px-3 py-1.5 rounded-md hover:bg-purple-600 hover:text-white font-medium transition-colors border border-slate-200">
+                            <span class="material-icons text-xs mr-1">dns</span> Red y Ventas
+                        </a>
+                        <a href="sucursales.html" class="inline-flex items-center text-xs bg-slate-100 text-slate-700 px-3 py-1.5 rounded-md hover:bg-purple-600 hover:text-white font-medium transition-colors border border-slate-200">
+                            <span class="material-icons text-xs mr-1">storefront</span> Directorio Sucursales
+                        </a>
+                        <a href="gestion_de_clientes.html" class="inline-flex items-center text-xs bg-slate-100 text-slate-700 px-3 py-1.5 rounded-md hover:bg-purple-600 hover:text-white font-medium transition-colors border border-slate-200">
+                            <span class="material-icons text-xs mr-1">badge</span> Directorio Clientes
+                        </a>
+                    </div>
+                </div>
+                <div class="mt-8 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-mono text-slate-400">
+                    <span>Control Centralizado de Estaciones</span>
+                    <span class="text-purple-600 font-bold">General Suite</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. SECCIÓN REGULARES DE TIEMPO / FISCALIDAD EN DESARROLLO (MODO REGLA DE TIEMPO) -->
+    <!-- Se deja todo el diseño financiero corporativo limpio intacto, pero adaptando los textos a "desarrollándose" -->
+    <section id="ref-fiscal" class="bg-slate-100 text-slate-900 py-24 border-y border-slate-200 relative">
+        <div class="max-w-7xl mx-auto px-6">
+            
+            <!-- Encabezado Institucional -->
+            <div id="seccion-fiscal" class="max-w-3xl mb-16 text-left">
+                <div class="inline-flex items-center gap-2 bg-amber-100 border border-amber-300 px-4 py-1.5 rounded-full mb-4">
+                    <span class="material-icons text-xs text-amber-700">engineering</span>
+                    <span class="text-xs font-mono font-bold tracking-wider text-amber-800 uppercase">Módulos en fase de Desarrollo Activo</span>
+                </div>
+                <h2 class="text-3xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-none">
+                    Homologación Fiscal en Proceso y Adaptación Normativa SENIAT
+                </h2>
+                <p class="mt-4 text-base md:text-lg text-slate-600 leading-relaxed">
+                    Nexus POS Global está <strong>desarrollándose</strong> siguiendo de forma rigurosa las pautas del ordenamiento contable. Actualmente, el sistema está optimizado para el <strong>control administrativo interno y auditoría interna</strong> de tu negocio, mientras se completan las integraciones de los módulos de impresión directa autorizados.
+                </p>
+            </div>
+
+            <!-- Grid de Procesos en Desarrollo -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
                 
-                <div class="glass-panel rounded-xl overflow-hidden border border-white/10 shadow-2xl">
-                    <div class="bg-black/40 px-4 py-3 border-b border-white/5 flex items-center justify-between">
-                        <div class="flex space-x-2">
-                            <div class="w-3 h-3 rounded-full bg-red-500/50"></div>
-                            <div class="w-3 h-3 rounded-full bg-yellow-500/50"></div>
-                            <div class="w-3 h-3 rounded-full bg-green-500/50"></div>
+                <!-- Columna Izquierda: Tarjetas de Procesos Críticos Contables en Adaptación -->
+                <div class="lg:col-span-5 flex flex-col justify-between gap-6">
+                    <div class="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
+                        <div class="flex items-start space-x-4">
+                            <div class="p-3 rounded-xl bg-blue-50 text-blue-600">
+                                <span class="material-icons">print</span>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-lg text-slate-900">Integración de Impresoras Fiscales (Desarrollándose)</h4>
+                                <p class="text-sm text-slate-600 mt-1 leading-relaxed">
+                                    Diseñando la comunicación directa con controladores de hardware fiscal homologados en el país (como las soluciones de <strong>The Factory HKA</strong>). Preparado internamente para la estructuración de comandos requeridos para la emisión física regulada.
+                                </p>
+                            </div>
                         </div>
-                        <span class="text-xs font-mono text-gray-500">cajera_request.js</span>
                     </div>
-                    <div class="p-6 font-mono text-sm bg-navy-900/50 overflow-x-auto">
-<pre><code><span class="token comment">// Ejecutado en inicio_cajera.html antes de imprimir</span>
-<span class="token keyword">async function</span> <span class="token function">procesarVenta</span><span class="token punctuation">(</span>carrito<span class="token punctuation">)</span> <span class="token punctuation">{</span>
-  <span class="token keyword">try</span> <span class="token punctuation">{</span>
-    <span class="token keyword">const</span> response <span class="token operator">=</span> <span class="token keyword">await</span> <span class="token function">fetch</span><span class="token punctuation">(</span><span class="token string">'http://nexus-admin:3000/api/facturar'</span><span class="token punctuation">,</span> <span class="token punctuation">{</span>
-      method<span class="token operator">:</span> <span class="token string">'POST'</span><span class="token punctuation">,</span>
-      headers<span class="token operator">:</span> <span class="token punctuation">{</span> <span class="token string">'Content-Type'</span><span class="token operator">:</span> <span class="token string">'application/json'</span> <span class="token punctuation">}</span><span class="token punctuation">,</span>
-      body<span class="token operator">:</span> <span class="token class-name">JSON</span><span class="token punctuation">.</span><span class="token function">stringify</span><span class="token punctuation">({</span>
-        items<span class="token operator">:</span> carrito<span class="token punctuation">,</span>
-        caja_id<span class="token operator">:</span> window<span class="token punctuation">.</span>config<span class="token punctuation">.</span>stationID
-      <span class="token punctuation">})</span>
-    <span class="token punctuation">});</span>
 
-    <span class="token keyword">const</span> data <span class="token operator">=</span> <span class="token keyword">await</span> response<span class="token punctuation">.</span><span class="token function">json</span><span class="token punctuation">();</span>
-    <span class="token keyword">if</span> <span class="token punctuation">(</span>data<span class="token punctuation">.</span>exito<span class="token punctuation">)</span> <span class="token punctuation">{</span>
-      <span class="token comment">// Imprime con el correlativo devuelto por el Admin</span>
-      <span class="token function">imprimirTicket</span><span class="token punctuation">(</span>data<span class="token punctuation">.</span>correlativo_fiscal<span class="token punctuation">);</span> 
-    <span class="token punctuation">}</span>
-  <span class="token punctuation">}</span> <span class="token keyword">catch</span> <span class="token punctuation">(</span>error<span class="token punctuation">)</span> <span class="token punctuation">{</span>
-    <span class="token class-name">UI</span><span class="token punctuation">.</span><span class="token function">showError</span><span class="token punctuation">(</span><span class="token string">"Error de comunicación con el nodo principal"</span><span class="token punctuation">);</span>
-  <span class="token punctuation">}</span>
-<span class="token punctuation">}</span></code></pre>
+                    <div class="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
+                        <div class="flex items-start space-x-4">
+                            <div class="p-3 rounded-xl bg-purple-50 text-purple-600">
+                                <span class="material-icons">account_balance_wallet</span>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-lg text-slate-900">Mapeo de Percepción IGTF (Control Interno)</h4>
+                                <p class="text-sm text-slate-600 mt-1 leading-relaxed">
+                                    Mapeando las configuraciones lógicas para sucursales designadas como <strong>Sujeto Pasivo Especial</strong>. La estructura de datos está lista para procesar de forma interna la alícuota del impuesto en los cierres de caja administrativos.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
+                        <div class="flex items-start space-x-4">
+                            <div class="p-3 rounded-xl bg-amber-50 text-amber-600">
+                                <span class="material-icons">assignment_turned_in</span>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-lg text-slate-900">Cierres de Caja de Auditoría Interna (X / Z)</h4>
+                                <p class="text-sm text-slate-600 mt-1 leading-relaxed">
+                                    Estructurando herramientas avanzadas para la reconciliación de flujos financieros internos. Desarma colecciones de objetos JSON de transacciones registradas por las cajeras para contrastar el dinero físico y digital.
+                                </p>
+                                <div class="mt-3 flex gap-2">
+                                    <a href="historial_de_cierres.html" class="inline-flex items-center text-xs bg-slate-100 text-slate-700 px-2.5 py-1 rounded hover:bg-amber-500 hover:text-white transition-colors font-medium border border-slate-200">Historial Cierres</a>
+                                    <a href="cierre_de_caja.html" class="inline-flex items-center text-xs bg-slate-100 text-slate-700 px-2.5 py-1 rounded hover:bg-amber-500 hover:text-white transition-colors font-medium border border-slate-200">Arqueo en Vivo</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Columna Derecha: Simulación Limpia de Panel Administrativo Interno -->
+                <div class="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                            <div>
+                                <h4 class="font-bold text-slate-900 text-lg">Directorio Centralizado de Auditoría de Ventas</h4>
+                                <p class="text-xs text-slate-500">Control de transacciones y registros internos en desarrollo</p>
+                            </div>
+                            <span class="text-xs bg-slate-100 font-mono px-3 py-1.5 rounded-lg text-slate-700 font-bold">Consola de Control Interno</span>
+                        </div>
+
+                        <!-- Simulación de Tabla de Facturación / Control de Ventas -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs font-medium">
+                                <thead class="bg-slate-50 text-slate-500 uppercase tracking-wider">
+                                    <tr>
+                                        <th class="p-3">Registro Interno</th>
+                                        <th class="p-3">Cliente / RIF</th>
+                                        <th class="p-3">Base Imponible</th>
+                                        <th class="p-3">Mapeo IVA</th>
+                                        <th class="p-3 text-right">Total Administrativo</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-slate-700 font-mono">
+                                    <tr>
+                                        <td class="p-3 font-bold text-blue-600">REG-0000234</td>
+                                        <td class="p-3">V-17482931</td>
+                                        <td class="p-3">Bs 12.400,00</td>
+                                        <td class="p-3 text-slate-500">Bs 1.984,00 (16%)</td>
+                                        <td class="p-3 font-bold text-slate-900 text-right">Bs 14.384,00</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="p-3 font-bold text-blue-600">REG-0000235</td>
+                                        <td class="p-3">J-40921048</td>
+                                        <td class="p-3">Bs 45.100,00</td>
+                                        <td class="p-3 text-slate-500">Bs 7.216,00 (16%)</td>
+                                        <td class="p-3 font-bold text-slate-900 text-right">Bs 52.316,00</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-4">
+                            <a href="historial_de_ventas.html" class="inline-flex items-center text-xs bg-blue-50 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-600 hover:text-white font-bold transition-all shadow-sm">
+                                <span class="material-icons text-xs mr-1">history</span> Consultar Historial Completo de Ventas
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Información de Respaldo Local de Seguridad -->
+                    <div class="mt-6 pt-4 border-t border-slate-100 bg-slate-50 p-4 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div class="flex items-center space-x-3">
+                            <span class="material-icons text-indigo-600 text-2xl">shield</span>
+                            <div>
+                                <span class="text-xs text-slate-500 block">Protección de Datos Interna</span>
+                                <span class="text-sm font-bold text-slate-900 block">Respaldos Locales de Seguridad en .ova</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <a href="respaldo.html" class="text-[11px] font-mono font-bold uppercase tracking-wider text-blue-700 bg-blue-100 px-3 py-1.5 rounded-lg hover:bg-blue-200">Clonar DB</a>
+                            <a href="restaurar.html" class="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-700 bg-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-300">Restaurar</a>
+                        </div>
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
+    </section>
 
-        <section id="modules" class="max-w-7xl mx-auto px-6 py-24 scroll-reveal">
-            <div class="text-center mb-16">
-                <h2 class="text-sm font-mono text-blue-400 tracking-widest uppercase mb-2">/ Topología de Roles</h2>
-                <h3 class="text-3xl font-bold text-white">Nodos Especializados</h3>
-            </div>
+    <!-- 5. SECCIÓN PARA DEVELOPERS Y ARQUITECTURA DE DATOS -->
+    <section id="arquitectura-dev" class="py-24 max-w-7xl mx-auto px-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            
+            <!-- Texto Técnico -->
+            <div class="lg:col-span-5 space-y-6">
+                <div class="inline-flex items-center space-x-2 bg-blue-100 border border-blue-200 px-3 py-1 rounded-md text-xs font-mono text-blue-700 font-bold">
+                    <span>STACK TECNOLÓGICO CENTRAL</span>
+                </div>
+                <h3 class="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">
+                    Construido por Desarrolladores,<br>Garantizando Alta Velocidad.
+                </h3>
+                <p class="text-slate-600 leading-relaxed text-sm">
+                    La base estructural de la aplicación utiliza entornos estables y eficientes. El puente de comunicación nativo entre módulos garantiza ejecuciones fluidas en las consultas locales en SQLite con respuestas veloces.
+                </p>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="glass-panel p-8 rounded-2xl border-t-2 border-t-blue-500">
-                    <h4 class="text-2xl font-bold text-white mb-2">Nodo Admin</h4>
-                    <div class="text-xs font-mono text-blue-400 mb-6 bg-blue-500/10 px-2 py-1 inline-block rounded">inicio.html</div>
-                    <ul class="space-y-3 text-sm text-gray-400 font-medium">
-                        <li class="flex items-start"><i class="material-icons text-[18px] text-blue-400 mr-2">done</i> Servidor de la base de datos principal</li>
-                        <li class="flex items-start"><i class="material-icons text-[18px] text-blue-400 mr-2">done</i> Control absoluto de inventario y compras</li>
-                        <li class="flex items-start"><i class="material-icons text-[18px] text-blue-400 mr-2">done</i> Gestión de configuración y Tasa BCV</li>
-                        <li class="flex items-start"><i class="material-icons text-[18px] text-blue-400 mr-2">done</i> Emisión de Reportes Z (Fiscales)</li>
-                    </ul>
-                </div>
-                <div class="glass-panel p-8 rounded-2xl border-t-2 border-t-yellow-500 transform md:-translate-y-4 shadow-2xl relative">
-                    <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-500 text-black text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">Alto Volumen</div>
-                    <h4 class="text-2xl font-bold text-white mb-2">Nodo Cajera</h4>
-                    <div class="text-xs font-mono text-yellow-400 mb-6 bg-yellow-500/10 px-2 py-1 inline-block rounded">inicio_cajera.html</div>
-                    <ul class="space-y-3 text-sm text-gray-400 font-medium">
-                        <li class="flex items-start"><i class="material-icons text-[18px] text-yellow-500 mr-2">done</i> UI optimizada para ventas rápidas</li>
-                        <li class="flex items-start"><i class="material-icons text-[18px] text-yellow-500 mr-2">done</i> Base de datos local para caché rápido</li>
-                        <li class="flex items-start"><i class="material-icons text-[18px] text-yellow-500 mr-2">done</i> Cierre de caja por turno</li>
-                        <li class="flex items-start"><i class="material-icons text-[18px] text-yellow-500 mr-2">done</i> Petición estricta de correlativos al Admin</li>
-                    </ul>
-                </div>
-                <div class="glass-panel p-8 rounded-2xl border-t-2 border-t-green-500">
-                    <h4 class="text-2xl font-bold text-white mb-2">Modo Kiosco</h4>
-                    <div class="text-xs font-mono text-green-400 mb-6 bg-green-500/10 px-2 py-1 inline-block rounded">Client View</div>
-                    <ul class="space-y-3 text-sm text-gray-400 font-medium">
-                        <li class="flex items-start"><i class="material-icons text-[18px] text-green-400 mr-2">done</i> API de consulta pública (Tasa del Día)</li>
-                        <li class="flex items-start"><i class="material-icons text-[18px] text-green-400 mr-2">done</i> Verificador de precios para clientes</li>
-                        <li class="flex items-start"><i class="material-icons text-[18px] text-green-400 mr-2">done</i> Entorno bloqueado (Read-Only)</li>
-                        <li class="flex items-start"><i class="material-icons text-[18px] text-green-400 mr-2">done</i> Auto-actualización de interfaz</li>
-                    </ul>
+                <!-- Chips de Lenguajes -->
+                <div class="grid grid-cols-2 gap-3 pt-2 text-xs font-mono">
+                    <div class="flex items-center space-x-2 bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                        <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                        <span class="text-slate-700 font-medium">Electron & Node.js</span>
+                    </div>
+                    <div class="flex items-center space-x-2 bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                        <span class="text-slate-700 font-medium">SQLite Local Engine</span>
+                    </div>
+                    <div class="flex items-center space-x-2 bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                        <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                        <span class="text-slate-700 font-medium">PostgreSQL Server</span>
+                    </div>
+                    <div class="flex items-center space-x-2 bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        <span class="text-slate-700 font-medium">Python IT Automation</span>
+                    </div>
                 </div>
             </div>
-        </section>
 
-        <section class="max-w-5xl mx-auto px-6 py-24 scroll-reveal text-center relative">
-            <div class="absolute inset-0 bg-blue-600/10 rounded-[3rem] blur-3xl z-[-1]"></div>
-            <div class="glass-panel p-12 rounded-[2rem] border border-blue-500/30 overflow-hidden relative">
-                <div class="absolute top-0 right-0 w-64 h-64 bg-cyan-500/20 rounded-full blur-3xl -mr-20 -mt-20"></div>
-                <h2 class="text-3xl md:text-5xl font-bold text-white mb-6 relative z-10">Escalabilidad de nivel corporativo.</h2>
-                <p class="text-gray-400 text-lg mb-10 max-w-2xl mx-auto relative z-10">Despliega Nexus POS Global en tu comercio hoy y consolida tus operaciones bajo una arquitectura inquebrantable.</p>
-                <div class="glass-panel rounded-xl p-4 inline-flex items-center space-x-4 border border-white/20 font-mono text-sm shadow-2xl relative z-10 bg-black/50">
-                    <span class="text-blue-400">$</span>
-                    <span class="text-gray-200">nexus-cli init --network=lan</span>
-                    <button class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded transition-colors flex items-center font-sans font-semibold">
-                        Comenzar
-                    </button>
+            <!-- Editor de Código de Simulación Terminal -->
+            <div class="lg:col-span-7 bg-[#0b0f19] rounded-xl border border-slate-800 overflow-hidden shadow-xl font-mono text-xs">
+                <div class="bg-[#0f172a] border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-3 h-3 rounded-full bg-red-500/40"></div>
+                        <div class="w-3 h-3 rounded-full bg-yellow-500/40"></div>
+                        <div class="w-3 h-3 rounded-full bg-green-500/40"></div>
+                        <span class="text-slate-400 text-[11px] ml-2">nexus_sync_worker.js</span>
+                    </div>
+                    <span class="text-slate-500 text-[10px]">JavaScript / Async</span>
+                </div>
+                <div class="p-5 text-left text-gray-400 overflow-x-auto space-y-1.5 leading-relaxed bg-[#060a13]">
+                    <p><span class="text-purple-400">async function</span> <span class="text-blue-400">iniciarSincronizacionSilenciosa</span>() {</p>
+                    <p class="pl-4"><span class="text-purple-400">if</span> (window.sincronizando) <span class="text-purple-400">return</span>;</p>
+                    <p class="pl-4 text-slate-500">// Encolar modificaciones locales al Servidor VPS Maestro</p>
+                    <p class="pl-4"><span class="text-purple-400">const</span> cola = <span class="text-purple-400">await</span> api.<span class="text-blue-400">obtenerColaSincronizacion</span>();</p>
+                    <p class="pl-4"><span class="text-purple-400">if</span> (cola.length &gt; <span class="text-amber-400">0</span> &amp;&amp; navigator.onLine) {</p>
+                    <p class="pl-8"><span class="text-purple-400">for</span> (<span class="text-purple-400">const</span> registro <span class="text-purple-400">of</span> cola) {</p>
+                    <p class="pl-12"><span class="text-purple-400">const</span> response = <span class="text-purple-400">await</span> <span class="text-blue-400">fetch</span>(<span class="text-emerald-400">`${SERVER_URL}/api/maestro/categorias/sincronizar`</span>, {</p>
+                    <p class="pl-16">method: <span class="text-emerald-400">'POST'</span>,</p>
+                    <p class="pl-16">body: JSON.stringify(registro.datos)</p>
+                    <p class="pl-12">});</p>
+                    <p class="pl-12"><span class="text-purple-400">if</span> (response.ok) <span class="text-purple-400">await</span> api.<span class="text-blue-400">eliminarDeCola</span>(registro.id);</p>
+                    <p class="pl-8">}</p>
+                    <p class="pl-4">    }</p>
+                    <p class="text-gray-400">}</p>
                 </div>
             </div>
-        </section>
+        </div>
+    </section>
 
-    </main>
+    <!-- 6. LA SOLUCIÓN 360 INTEGRAL: NEXUS POS + NEXUS BUSINESS -->
+    <section id="ecosistema" class="py-20 bg-white border-t border-slate-200">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center max-w-3xl mx-auto mb-16">
+                <h2 class="text-xs font-mono tracking-[0.3em] text-blue-600 uppercase font-bold">Consolidación bajo firma personal</h2>
+                <p class="text-3xl md:text-5xl font-extrabold text-slate-900 mt-3">Ecosistema Integrado 360</p>
+                <p class="mt-4 text-slate-600 text-sm md:text-base">
+                    Dos plataformas complementarias diseñadas bajo una visión unificada para optimizar la operatividad comercial y expandir el crecimiento financiero individual.
+                </p>
+            </div>
 
-    <footer class="border-t border-white/10 bg-navy-900/80 backdrop-blur-md relative z-10 pt-16 pb-8">
-        <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Tarjeta de Producto: Nexus POS Global -->
+                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-8 flex flex-col justify-between shadow-sm hover:shadow-md transition-all">
+                    <div>
+                        <div class="flex items-center justify-between mb-6">
+                            <span class="text-xs font-mono font-bold tracking-widest text-blue-600 uppercase">Gestión Comercial Comercial</span>
+                            <span class="text-xs px-2.5 py-1 bg-blue-100 text-blue-700 border border-blue-200 rounded-md font-mono font-bold">Administrativo</span>
+                        </div>
+                        <h4 class="text-2xl font-bold text-slate-900">Nexus POS Global</h4>
+                        <p class="mt-3 text-slate-600 text-sm leading-relaxed">
+                            Orientada a optimizar la operatividad de negocios físicos y digitales de forma centralizada y eficiente. Facilita el control administrativo total, desde el manejo exhaustivo de inventarios en tiempo real hasta el arqueo interno de cajas, garantizando una experiencia fluida y profesional de nivel corporativo.
+                        </p>
+                    </div>
+                    <div class="mt-8 pt-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-400">
+                        <span>Éxito Comercial e Interno</span>
+                        <a href="configuracion.html" class="font-bold text-blue-600 flex items-center gap-1 hover:underline">Configurar Tienda <span class="material-icons text-xs">settings</span></a>
+                    </div>
+                </div>
+
+                <!-- Tarjeta de Producto: Nexus Business -->
+                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-8 flex flex-col justify-between shadow-sm hover:shadow-md transition-all">
+                    <div>
+                        <div class="flex items-center justify-between mb-6">
+                            <span class="text-xs font-mono font-bold tracking-widest text-emerald-600 uppercase">Generación de Ingresos</span>
+                            <span class="text-xs px-2.5 py-1 bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-md font-mono font-bold">IA Suite Ready</span>
+                        </div>
+                        <h4 class="text-2xl font-bold text-slate-900">Nexus Business</h4>
+                        <p class="mt-3 text-slate-600 text-sm leading-relaxed">
+                            Plataforma digital avanzada diseñada para conectar de manera fluida a los usuarios con la economía de micro-tareas especializadas y el entrenamiento de modelos de Inteligencia Artificial. Democratiza el acceso a recompensas mediante encuestas interactivas de alta conversión con soporte e integración nativa de <strong>CPX Research</strong>.
+                        </p>
+                    </div>
+                    <div class="mt-8 pt-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-400">
+                        <span>Crecimiento de Nuevas Oportunidades</span>
+                        <a href="tienda.html" class="font-bold text-emerald-600 flex items-center gap-1 hover:underline">Ver Vitrina Digital <span class="material-icons text-xs">shopping_bag</span></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 7. FOOTER CORPORATIVO PREMIUM -->
+    <footer class="bg-slate-900 text-slate-400 py-12 border-t border-slate-800">
+        <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
+            <div class="space-y-4">
+                <div class="flex items-center space-x-2">
+                    <div class="w-6 h-6 rounded-md bg-blue-600 flex items-center justify-center text-white font-bold text-xs">N</div>
+                    <span class="font-bold text-white tracking-wider text-sm">NEXUS POS Global</span>
+                </div>
+                <p class="text-xs text-slate-400 leading-relaxed">
+                    Ecosistema comercial descentralizado optimizado para control de inventarios, auditoría interna multisucursal y entrenamiento de datos.
+                </p>
+            </div>
             <div>
-                <div class="flex items-center space-x-3 mb-6">
-                    <div class="w-8 h-8 rounded bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center font-mono font-bold text-white">N</div>
-                    <span class="font-bold tracking-tight text-white">NEXUS <span class="font-light text-gray-400">POS</span></span>
-                </div>
-                <p class="text-gray-500 text-sm leading-relaxed">Solución integral híbrida. Gestión comercial, control administrativo total y seguridad fiscal. Parte del ecosistema integral <span class="text-gray-300 font-semibold">Nexus Business</span>.</p>
-            </div>
-            <div>
-                <h4 class="text-white font-mono text-sm uppercase tracking-wider mb-4">Arquitectura</h4>
-                <ul class="space-y-2 text-gray-500 text-sm">
-                    <li><a href="#" class="hover:text-blue-400 transition-colors">Tolerancia Offline</a></li>
-                    <li><a href="#" class="hover:text-blue-400 transition-colors">Motor SQLite Local</a></li>
-                    <li><a href="#" class="hover:text-blue-400 transition-colors">Sincronización API</a></li>
+                <h5 class="text-white font-bold text-xs uppercase tracking-wider mb-4">Solución 360</h5>
+                <ul class="text-xs space-y-2.5">
+                    <li><a href="#ecosistema" class="hover:text-blue-400 transition-colors">Nexus POS Global</a></li>
+                    <li><a href="#ecosistema" class="hover:text-emerald-400 transition-colors">Nexus Business</a></li>
+                    <li><a href="login.html" class="hover:text-white transition-colors">Consola Administrativa</a></li>
                 </ul>
             </div>
             <div>
-                <h4 class="text-white font-mono text-sm uppercase tracking-wider mb-4">Módulos</h4>
-                <ul class="space-y-2 text-gray-500 text-sm">
-                    <li><a href="#" class="hover:text-blue-400 transition-colors">Terminal Admin</a></li>
-                    <li><a href="#" class="hover:text-blue-400 transition-colors">Estación Cajera</a></li>
-                    <li><a href="#" class="hover:text-blue-400 transition-colors">Visor Kiosco</a></li>
+                <h5 class="text-white font-bold text-xs uppercase tracking-wider mb-4">Estatus del Sistema</h5>
+                <ul class="text-xs space-y-2.5">
+                    <li><a href="#seccion-fiscal" class="hover:text-white transition-colors">Control de Auditoría Interna</a></li>
+                    <li><a href="#seccion-fiscal" class="hover:text-white transition-colors">Fase de Integración Fiscal</a></li>
+                    <li><a href="#core-hibrido" class="hover:text-white transition-colors">Márgenes de Alerta SUNDDE</a></li>
                 </ul>
             </div>
             <div>
-                <h4 class="text-white font-mono text-sm uppercase tracking-wider mb-4">Sistema</h4>
-                <ul class="space-y-2 text-gray-500 text-sm">
-                    <li><a href="#" class="hover:text-blue-400 transition-colors">Documentación de Red</a></li>
-                    <li><a href="#" class="hover:text-blue-400 transition-colors">Cumplimiento SENIAT</a></li>
-                    <li><a href="#" class="hover:text-blue-400 transition-colors">Soporte Técnico</a></li>
+                <h5 class="text-white font-bold text-xs uppercase tracking-wider mb-4">Soporte Técnico</h5>
+                <ul class="text-xs space-y-2.5">
+                    <li><a href="#arquitectura-dev" class="hover:text-white transition-colors">Documentación Core API</a></li>
+                    <li><a href="login.html" class="hover:text-white transition-colors">Estaciones Operativas</a></li>
+                    <li><span class="text-emerald-400 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse"></span> Servidor VPS Conectado</span></li>
                 </ul>
             </div>
         </div>
-        <div class="max-w-7xl mx-auto px-6 border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center text-xs font-mono text-gray-600">
-            <div>&copy; 2026 NEXUS POS Global. Todos los derechos reservados.</div>
-            <div class="flex space-x-4 mt-4 md:mt-0">
-                <span class="flex items-center"><span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span> Todos los sistemas operando</span>
+
+        <div class="max-w-7xl mx-auto px-6 border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center text-xs font-mono text-slate-500">
+            <div>&copy; 2026 NEXUS POS Global. Todos los derechos reservados. Desarrollado bajo los más altos estándares de ingeniería de software.</div>
+            <div class="mt-4 md:mt-0 text-[11px] bg-slate-950 px-3 py-1 rounded border border-slate-800 text-slate-400">
+                Estación Activa: Valencia, Venezuela
             </div>
         </div>
     </footer>
 
+    <!-- Lógica de Animación Scroll Reveal -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const reveals = document.querySelectorAll('.scroll-reveal');
             const revealOnScroll = () => {
                 const windowHeight = window.innerHeight;
-                const elementVisible = 150;
                 reveals.forEach((reveal) => {
                     const elementTop = reveal.getBoundingClientRect().top;
-                    if (elementTop < windowHeight - elementVisible) {
-                        reveal.classList.add('visible');
+                    if (elementTop < windowHeight - 100) {
+                        reveal.classList.add('active');
                     }
                 });
             };
             window.addEventListener('scroll', revealOnScroll);
-            revealOnScroll(); 
+            revealOnScroll(); // Disparo inicial
         });
     </script>
 </body>
