@@ -101,7 +101,11 @@ contextBridge.exposeInMainWorld('nexusAPI', {
     registrarRetencionIVA: (datos) => ipcRenderer.invoke('registrar-retencion-iva', datos),
     obtenerFacturasPendientesRetencion: (rif) => ipcRenderer.invoke('obtener-facturas-pendientes-retencion', { rif }),
     guardarGuiaDespachoMaestro: (datos) => ipcRenderer.invoke('guardar-guia-despacho-maestro', datos),
-
+    consultarEstadoFiscal: (puerto) => ipcRenderer.invoke('consultar-estado-fiscal', puerto),
+    emitirTramasHKA: (tramas, puerto) => ipcRenderer.invoke('emitir-tramas-hka', tramas, puerto),
+    onSolicitarVerificacionCierre: (callback) => ipcRenderer.on('solicitar-verificacion-cierre', (event) => callback()),
+    confirmarCierreSeguro: () => ipcRenderer.send('confirmar-cierre-seguro'),
+    
 });
 
 console.log('✅ Puente NexusAPI establecido correctamente.');

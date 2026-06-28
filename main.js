@@ -121,6 +121,7 @@ if (config.isServer) {
 let win;   
 let splash;
 let sistemaPrincipalAbierto = false;
+let cierreAutorizado = false; // <--- NUEVA VARIABLE DE SEGURIDAD
 let printerPort;
 let apiToken = null;
 let tokenExpiration = null;
@@ -130,6 +131,7 @@ let basculaPort = null;
 let taraOffset = 0.0;
 let ultimoPesoBruto = 0.0;
 let senderBasculaActivo = null;
+
 
 async function iniciarAuthWorkerHKA(event, credentials) {
     const enviarLogAlFrontend = (mensaje, esError = false) => {
@@ -561,6 +563,11 @@ ipcMain.handle('guardar-guia-despacho-maestro', async (event, datos) => {
         console.error("❌ [ERROR] Falló al guardar la Guía de Despacho en SQLite:", error);
         return { exito: false, error: error.message };
     }
+});
+
+ipcMain.on('confirmar-cierre-seguro', () => {
+    cierreAutorizado = true;
+    app.quit(); // Ejecuta el cierre definitivo del sistema
 });
 
 ipcMain.handle('guardar-auditoria-admin', async (event, datos) => {
@@ -1139,11 +1146,17 @@ ipcMain.on('abrir-ventana-principal', (event, ruta) => {
     win.loadFile(`public/${ruta}`);
     win.maximize();
 
+    win.on('close', (e) => {
+        if (!cierreAutorizado) {
+            e.preventDefault(); 
+            win.webContents.send('solicitar-verificacion-cierre');
+        }
+    });
+
     const webContents = event.sender;
     const loginWindow = BrowserWindow.fromWebContents(webContents);
     if (loginWindow) loginWindow.close();
 });
-
 ipcMain.handle('guardar-usuario-local', async (event, datos) => {
     try {
         const stmt = db.prepare(`
@@ -1560,7 +1573,7 @@ ipcMain.handle('leer-puertos', async () => await SerialPort.list());
 ipcMain.handle('sincronizar-categorias-local', async (event, categoriasArray) => {
     try {
         const stmt = db.prepare(`
-            INSERT INTO categorias (id, nombre) 
+            INSERT INTO categorias_locales (id, nombre) 
             VALUES (@id, @nombre)
             ON CONFLICT(id) DO UPDATE SET 
             nombre = excluded.nombre
@@ -1642,7 +1655,6 @@ ipcMain.handle('guardar-configuracion', async (event, clave, valor) => {
             }
         }
         
-        console.log(`✅ Configuración [${clave}] guardada físicamente en: ${configPath}`);
         return { success: true };
     } catch (error) {
         console.error(`❌ Error crítico al guardar configuración:`, error.message);
@@ -2636,6 +2648,208 @@ ipcMain.handle('leer-config-maestra', async (event, clave) => {
     }
 });
 
+function calcularLRC(bufferDatos, bufferEtx) {
+    let lrc = 0;
+    const toCalc = Buffer.concat([bufferDatos, bufferEtx]);
+    for (let i = 0; i < toCalc.length; i++) {
+        lrc ^= toCalc[i];
+    }
+    return lrc;
+}
+
+ipcMain.handle('consultar-estado-fiscal', async (event, puerto) => {
+    return new Promise((resolve) => {
+        const portName = puerto || 'COM99'; 
+        const port = new SerialPort({ path: portName, baudRate: 9600, autoOpen: false });
+
+        // 🔥 CERRADURA SINCRONIZADA: Obliga a esperar que Windows suelte el puerto antes de avanzar
+        const closeAndResolve = (resultado) => {
+            if (port.isOpen) {
+                port.close(() => resolve(resultado));
+            } else {
+                resolve(resultado);
+            }
+        };
+
+        port.open((err) => {
+            if (err) return resolve({ success: false, msg: `No se pudo abrir ${portName}` });
+
+            const STX = Buffer.from([0x02]);
+            const ETX = Buffer.from([0x03]);
+            const comandoS1 = Buffer.from('S1', 'latin1');
+            const lrcS1 = calcularLRC(comandoS1, ETX);
+            const tramaS1 = Buffer.concat([STX, comandoS1, ETX, Buffer.from([lrcS1])]);
+            
+            let bufferRecepcion = "";
+
+            port.on('data', (data) => {
+                bufferRecepcion += data.toString('latin1');
+                
+                if (data.includes(0x15)) {
+                    closeAndResolve({ success: false, msg: "Impresora rechazó consulta inicial (NAK)." });
+                }
+                
+                if (data.includes(0x03)) {
+                    try {
+                        const contenido = bufferRecepcion.split('\x02')[1].split('\x03')[0];
+                        let serial = "DESC";
+                        
+                        if (contenido.includes('\n')) {
+                            const partes = contenido.split('\n').map(p => p.trim()); 
+                            serial = partes[13] ? partes[13] : "DESC";        
+                        } else {
+                            if (contenido.length >= 63) {
+                                serial = contenido.substring(53, 63);
+                            }
+                        }
+                        closeAndResolve({ success: true, msg: "Máquina en línea", serial: serial });
+                    } catch (e) {
+                        closeAndResolve({ success: true, msg: "Máquina en línea (Serial no leído)" });
+                    }
+                }
+            });
+
+            setTimeout(() => {
+                closeAndResolve({ success: false, msg: "Timeout al consultar estado inicial S1." });
+            }, 3000);
+
+            port.write(tramaS1);
+        });
+    });
+});
+
+ipcMain.handle('emitir-tramas-hka', async (event, tramas, puerto) => {
+    return new Promise((resolve) => {
+        const portName = puerto || 'COM99';
+        const port = new SerialPort({ path: portName, baudRate: 9600, autoOpen: false });
+
+        // 🔥 CERRADURA SINCRONIZADA
+        const closeAndResolve = (resultado) => {
+            if (port.isOpen) {
+                port.close(() => resolve(resultado));
+            } else {
+                resolve(resultado);
+            }
+        };
+
+        const tienePagos = tramas.some(cmd => /^[12](0[1-9]|1[0-9]|2[0-4])/.test(cmd));
+        if (tienePagos && !tramas.includes("199")) {
+            tramas.push("199");
+            console.log("[FISCAL] 🛠️ Comando 199 inyectado automáticamente para cierre con IGTF (Flag 50=01).");
+        }
+
+        port.open((err) => {
+            if (err) return resolve({ success: false, msg: `Error abriendo puerto: ${err.message}` });
+            
+            let index = 0;
+            const STX = Buffer.from([0x02]);
+            const ETX = Buffer.from([0x03]);
+            let timeoutOperacion; 
+            let leyendoStatusFinal = false; 
+
+            console.log(`\n[FISCAL] 🚀 Iniciando facturación con ${tramas.length} comandos.`);
+
+            const enviarSiguienteComando = () => {
+                clearTimeout(timeoutOperacion); 
+
+                if (index >= tramas.length) {
+                    console.log("[FISCAL] 🎉 Todas las tramas enviadas con éxito. Ticket Cerrado.");
+                    
+                    leyendoStatusFinal = true;
+                    console.log(`[FISCAL] 📤 Solicitando estado S1...`);
+                    
+                    const comandoS1 = Buffer.from('S1', 'latin1');
+                    const lrcS1 = calcularLRC(comandoS1, ETX);
+                    const tramaS1 = Buffer.concat([STX, comandoS1, ETX, Buffer.from([lrcS1])]);
+                    
+                    port.write(tramaS1);
+                    
+                    timeoutOperacion = setTimeout(() => {
+                        console.error(`[FISCAL] ⚠️ TIMEOUT leyendo S1. Se guardará sin número oficial.`);
+                        closeAndResolve({ success: true, numeroFactura: "S/N", serialImpresora: "DESC" });
+                    }, 5000);
+                    return;
+                }
+
+                const comandoAscii = tramas[index];
+                const bufferComando = Buffer.from(comandoAscii, 'latin1');
+                const lrcByte = calcularLRC(bufferComando, ETX);
+                const LRC = Buffer.from([lrcByte]);
+
+                const tramaFinal = Buffer.concat([STX, bufferComando, ETX, LRC]);
+
+                port.write(tramaFinal, (err) => {
+                    if (err) {
+                        return closeAndResolve({ success: false, msg: 'Error de escritura' });
+                    }
+                    console.log(`[FISCAL] 📤 Enviado -> ${comandoAscii}`);
+                });
+
+                timeoutOperacion = setTimeout(() => {
+                    console.error(`[FISCAL] ⚠️ TIMEOUT: La impresora no respondió al comando: ${comandoAscii}`);
+                    closeAndResolve({ success: false, msg: `Timeout en: ${comandoAscii}` });
+                }, 15000);
+            };
+
+            let bufferRecepcion = "";
+
+            port.on('data', (data) => {
+                if (!leyendoStatusFinal) {
+                    if (data.includes(0x06)) {
+                        index++;
+                        setTimeout(enviarSiguienteComando, 250); 
+                    } 
+                    else if (data.includes(0x15)) { 
+                        clearTimeout(timeoutOperacion);
+                        console.error(`[FISCAL] ❌ NAK recibido.`);
+                        closeAndResolve({ success: false, msg: `La impresora rechazó el comando: ${tramas[index]}` });
+                    }
+                } else {
+                    bufferRecepcion += data.toString('latin1');
+                    
+                    if (data.includes(0x03)) { 
+                        clearTimeout(timeoutOperacion);
+                        
+                        try {
+                            const contenido = bufferRecepcion.split('\x02')[1].split('\x03')[0];
+                            let nroFac = "S/N";
+                            let serial = "DESC";
+                            
+                            if (contenido.includes('\n')) {
+                                const partes = contenido.split('\n').map(p => p.trim()); 
+                                if (partes.length >= 14) {
+                                    const facturaReal = parseInt(partes[2], 10);      
+                                    const docNoFiscal = parseInt(partes[11], 10);     
+                                    serial = partes[13] ? partes[13] : "DESC";        
+                                    nroFac = (facturaReal === 0 || isNaN(facturaReal)) ? "TEST-" + (isNaN(docNoFiscal) ? "1" : docNoFiscal) : facturaReal.toString();
+                                }
+                            } else {
+                                if (contenido.length >= 63) {
+                                    const facturaReal = parseInt(contenido.substring(28, 36), 10);
+                                    serial = contenido.substring(53, 63);
+                                    nroFac = (facturaReal === 0 || isNaN(facturaReal)) ? "TEST-X" : facturaReal.toString();
+                                }
+                            }
+
+                            console.log(`[FISCAL] ✅ Número Oficial Procesado: ${nroFac} | Serial: ${serial}`);
+                            closeAndResolve({ 
+                                success: true, 
+                                numeroFactura: nroFac.padStart(8, '0'), 
+                                serialImpresora: serial 
+                            });
+
+                        } catch (e) {
+                            console.error("[FISCAL] ⚠️ Error crítico parseando S1:", e);
+                            closeAndResolve({ success: true, numeroFactura: "S/N", serialImpresora: "DESC" });
+                        }
+                    }
+                }
+            });
+
+            enviarSiguienteComando();
+        });
+    });
+});
 
 function calcularChecksum(trama) {
     let checksum = 0;
@@ -2645,12 +2859,12 @@ function calcularChecksum(trama) {
     return checksum.toString(16).toUpperCase().padStart(4, '0');
 }
 
-// Arma el paquete: STX + Seq + Cmd + Separadores + Campos + ETX + Checksum
+
 function prepararPaquete(comando, campos = []) {
     const STX = '\x02';
     const ETX = '\x03';
-    const FS = '\x1C'; // Separador de campos (ASCII 28)
-    const SEQ = '\x20'; // Secuencia (Espacio)
+    const FS = '\x1C'; 
+    const SEQ = '\x20'; 
 
     let cuerpo = SEQ + comando;
     if (campos.length > 0) {
@@ -2659,122 +2873,18 @@ function prepararPaquete(comando, campos = []) {
 
     const tramaParaCheck = cuerpo + ETX;
     const check = calcularChecksum(tramaParaCheck);
-    
-    // Retornamos el Buffer listo para el puerto serial
     return Buffer.from(STX + tramaParaCheck + check, 'ascii');
 }
-
-ipcMain.handle('imprimir-factura-fiscal', async (event, saleData) => {
-    let configFactura = { puerto: 'COM2', modelo: 'PNP' };
-    try {
-        // Buscamos la configuración en la tabla correcta 'configuracion'
-        const row = db.prepare("SELECT valor FROM configuracion WHERE clave = 'config_factura'").get();
-        if (row) {
-            const data = JSON.parse(row.valor);
-            configFactura.puerto = data.puerto_com_fiscal || 'COM2';
-            configFactura.modelo = data.tipo_emision || 'PNP';
-        }
-    } catch (e) { 
-        console.error("Error al leer configuración de DB:", e); 
-    }
-
-    return new Promise(async (resolve) => {
-        try {
-            const puerto = configFactura.puerto;
-            
-            // Gestión dinámica del puerto serie
-            if (!printerPort || printerPort.path !== puerto) {
-                if (printerPort && printerPort.isOpen) await new Promise(r => printerPort.close(r));
-                printerPort = new SerialPort({ path: puerto, baudRate: 9600, autoOpen: false });
-            }
-            if (!printerPort.isOpen) {
-                await new Promise((res, rej) => printerPort.open((err) => err ? rej(err) : res()));
-            }
-
-            console.log(`🚀 Iniciando impresión [MODO: ${configFactura.modelo}] en ${puerto}`);
-
-            if (configFactura.modelo === 'FISCAL_HASAR') {
-                // --- PROTOCOLO HASAR (COMANDOS LARGOS) ---
-                
-                // 1. Cancelar cualquier estado previo para limpiar el buffer
-                printerPort.write(prepararPaqueteHasar('@CANCEL', []));
-                await new Promise(r => setTimeout(r, 600));
-
-                // 2. Abrir Ticket Fiscal (C = Tique)
-                printerPort.write(prepararPaqueteHasar('@TIQUEABRE', ['C']));
-                await new Promise(r => setTimeout(r, 600));
-
-                // 3. Enviar Items
-                for (const it of saleData.items) {
-                    printerPort.write(prepararPaqueteHasar('@TIQUEITEM', [
-                        limpiarTexto(it.nombre).substring(0, 26),
-                        fH(it.cantidad, 3), // Cantidad con 3 decimales (ej: 1.000)
-                        fH(it.precio, 2),   // Precio con 2 decimales (ej: 100.00)
-                        '16.0',             // Tasa IVA
-                        'M',                // Calificador de monto
-                        '0.0',              // Impuestos internos
-                        '0'                 // Display
-                    ]));
-                    await new Promise(r => setTimeout(r, 500));
-                }
-
-                // 4. Pago (T = Paga todo el saldo)
-                const total = fH(saleData.monto_total, 2);
-                printerPort.write(prepararPaqueteHasar('@TIQUEPAGO', ['EFECTIVO', total, 'T']));
-                await new Promise(r => setTimeout(r, 600));
-
-                // 5. Cierre de Ticket (Sin parámetros para evitar error de comando inválido)
-                printerPort.write(prepararPaqueteHasar('@TIQUECIERRA', []));
-
-            } else {
-                // --- PROTOCOLO PNP / BIXOLON (COMANDOS CORTOS) ---
-                
-                // Abrir factura
-                printerPort.write(prepararPaquete('@', [
-                    limpiarTexto(saleData.cliente_nombre).substring(0, 30), 
-                    saleData.cliente_rif, 
-                    "VENTA", 
-                    "T"
-                ]));
-                await new Promise(r => setTimeout(r, 500));
-
-                // Items (PNP usa céntimos sin puntos decimales)
-                for (const it of saleData.items) {
-                    const p = Math.round(parseFloat(it.precio) * 100).toString();
-                    const c = Math.round(parseFloat(it.cantidad) * 1000).toString();
-                    printerPort.write(prepararPaquete('B', [
-                        limpiarTexto(it.nombre).substring(0, 20), 
-                        c, p, "1", "M", "0", "0"
-                    ]));
-                    await new Promise(r => setTimeout(r, 300));
-                }
-
-                // Pago y Cierre
-                const totalCents = Math.round(parseFloat(saleData.monto_total) * 100).toString();
-                printerPort.write(prepararPaquete('D', ["EFECTIVO", totalCents]));
-                await new Promise(r => setTimeout(r, 400));
-                printerPort.write(prepararPaquete('E', []));
-            }
-
-            resolve({ success: true, msg: "Factura enviada exitosamente" });
-
-        } catch (error) {
-            console.error("❌ Fallo en impresión fiscal:", error.message);
-            resolve({ success: false, msg: error.message });
-        }
-    });
-});
-
 function getIpServidor() {
     try {
         const configLocal = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        return configLocal.isServer ? 'localhost' : (configLocal.serverIP || 'localhost'); 
+        const esMaestro = (configLocal.isServer === true || configLocal.isServer === 'true');      
+        return esMaestro ? '127.0.0.1' : (configLocal.serverIP || '127.0.0.1'); 
     } catch (e) {
-        return 'localhost';
+        return '127.0.0.1';
     }
 }
 
-// 1. Obtener Borradores
 ipcMain.handle('obtener-borradores-maestro', async (event, { sucursalId, companyId }) => {
     try {
         const ip = getIpServidor();
@@ -2788,8 +2898,9 @@ ipcMain.handle('obtener-borradores-maestro', async (event, { sucursalId, company
 });
 
 ipcMain.handle('obtener-ip-maestro', () => {
-    return getIpServidor(); // Usamos la misma función que arreglamos antes
+    return getIpServidor(); 
 });
+
 
 
 
@@ -2862,37 +2973,13 @@ function limpiarTexto(texto) {
 
 
 
-// En main.js
-// main.js - Handler de consulta reforzado
-ipcMain.handle('consultar-estado-fiscal', async () => {
-    // 1. Buscamos el puerto configurado igual que antes
-    let puertoConfigurado = 'COM2'; 
-    try {
-        const row = db.prepare("SELECT valor FROM configuraciones WHERE clave = 'config_factura'").get();
-        if (row) { puertoConfigurado = JSON.parse(row.valor).puerto_com_fiscal || 'COM2'; }
-    } catch (e) {}
-
-    return new Promise((resolve) => {
-        // 2. Si no existe la instancia, la creamos DE UNA VEZ
-        if (!printerPort || printerPort.path !== puertoConfigurado) {
-            printerPort = new SerialPort({
-                path: puertoConfigurado,
-                baudRate: 9600,
-                autoOpen: false
-            });
-        }
-
-        // 3. Si está cerrado, intentamos abrirlo antes de consultar
-        if (!printerPort.isOpen) {
-            printerPort.open((err) => {
-                if (err) return resolve({ success: false, msg: "No se pudo abrir el puerto" });
-                enviarConsulta(resolve); // Función interna para mandar el byte 0x05
-            });
-        } else {
-            enviarConsulta(resolve);
-        }
-    });
-});
+function enviarConsulta(resolve) {
+    console.log(`[FISCAL] ⚠️ El puerto abrió bien. Saltando el saludo 0x05 porque el emulador exige tramas completas.`);
+    console.log(`[FISCAL] ✅ Dando LUZ VERDE para probar la facturación real.`);
+    
+    // Le decimos al frontend que todo está OK para que nos deje facturar
+    resolve({ success: true, msg: "Puerto abierto y listo para comandos" });
+}
 
 function enviarConsulta(resolve) {
     console.log(`[FISCAL] ⚠️ El puerto abrió bien. Saltando el saludo 0x05 porque el emulador exige tramas completas.`);

@@ -11,6 +11,8 @@ const Database = require('better-sqlite3');
 const dbDir = path.join(process.env.APPDATA, 'nexus-pos', 'data');
 const configPath = path.join(dbDir, 'config.json');
 const serverDbPath = path.join(dbDir, 'nexus-local-server.db');
+const localDbPath = path.join(dbDir, 'nexus_pos.db');
+const localDb = new Database(localDbPath);
 
 if (!fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true });
@@ -355,20 +357,30 @@ server.get('/api/maestro/buscar-factura/:criterio', (req, res) => {
     }
 });
 
-// 3. Ruta para LEER una configuración (Usada por las cajeras)
 server.get('/api/maestro/configuracion/:clave', (req, res) => {
     try {
-        const { clave } = req.params;
-        const stmt = serverDb.prepare(`SELECT valor FROM configuraciones_maestras WHERE clave = ?`);
-        const resultado = stmt.get(clave);
-        res.json({ exito: true, valor: resultado ? resultado.valor : null });
+        // La clave será "isSujetoEspecial" según la URL que consultes
+        const clave = req.params.clave;
+        
+        // Consultamos la tabla correcta de la base de datos local
+        const query = `SELECT valor FROM configuracion WHERE clave = ?`;
+        
+        // Usamos localDb (que apunta a nexus_pos.db)
+        const registro = localDb.prepare(query).get(clave);
+
+        if (registro) {
+            res.json({ exito: true, valor: registro.valor });
+        } else {
+            res.json({ exito: true, valor: null }); 
+        }
+
     } catch (error) {
-        console.error("❌ Error al leer configuración maestra:", error.message);
+        console.error("❌ Error leyendo config desde nexus_pos.db:", error.message);
         res.status(500).json({ exito: false, error: error.message });
     }
 });
 
-    // --- 2. ENDPOINT: SINCRONIZAR DESDE XEON (Nube a Maestro) ---
+
     server.post('/api/sincronizar-desde-xeon', (req, res) => {
         const productos = req.body; 
         try {
