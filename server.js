@@ -229,20 +229,17 @@ const checkPagos = serverDb.prepare("SELECT COUNT(*) as count FROM metodos_pago_
 if (checkPagos.count === 0) {
     console.log("⚠️ Inicializando métodos de pago por defecto...");
     const defaultMethods = [
-        { id: '1000001', nombre: 'Efectivo', tecla: 'F5', tipo_moneda: 'BS' },
-        { id: '1000002', nombre: 'Débito', tecla: 'F6', tipo_moneda: 'BS' },
-        { id: '1000003', nombre: 'Pago Móvil', tecla: 'F7', tipo_moneda: 'BS' },
-        { id: '1000004', nombre: 'Biopago', tecla: 'F8', tipo_moneda: 'BS' },
-        { id: '1000005', nombre: 'Dólares Físicos', tecla: 'F9', tipo_moneda: 'USD' },
-        { id: '1000006', nombre: 'Transferencia BS', tecla: 'F10', tipo_moneda: 'BS' },
-        { id: '1000007', nombre: 'Depósito BS', tecla: 'F11', tipo_moneda: 'BS' },
-        { id: '1000008', nombre: 'Crédito', tecla: 'F12', tipo_moneda: 'BS' },
-        { id: '1000009', nombre: 'Tarjeta Crédito', tecla: 'J', tipo_moneda: 'BS' }
+        { id: '1000001', nombre: 'Efectivo', tecla: 'F5', tipo_moneda: 'BS', activo: 1, flag_impresora: '01' },
+        { id: '1000002', nombre: 'Débito', tecla: 'F6', tipo_moneda: 'BS', activo: 1, flag_impresora: '12' },
+        { id: '1000003', nombre: 'Pago Móvil', tecla: 'F7', tipo_moneda: 'BS', activo: 1, flag_impresora: '07' },
+        { id: '1000004', nombre: 'Biopago', tecla: 'F8', tipo_moneda: 'BS', activo: 1, flag_impresora: '08' },
+        { id: '1000005', nombre: 'Dólares Físicos', tecla: 'F9', tipo_moneda: 'USD', activo: 1, flag_impresora: '20' },
+        { id: '1000008', nombre: 'Crédito', tecla: 'F12', tipo_moneda: 'BS', activo: 1, flag_impresora: '08' }
     ];
-    const stmtPagos = serverDb.prepare(`INSERT INTO metodos_pago_maestro (id, nombre, tecla, tipo_moneda) VALUES (?, ?, ?, ?)`);
+    const stmtPagos = serverDb.prepare(`INSERT INTO metodos_pago_maestro (id, nombre, tecla, tipo_moneda, activo, flag_impresora) VALUES (?, ?, ?, ?, ?, ?)`);
     serverDb.transaction(() => {
         for (const m of defaultMethods) {
-            stmtPagos.run(m.id, m.nombre, m.tecla, m.tipo_moneda);
+            stmtPagos.run(m.id, m.nombre, m.tecla, m.tipo_moneda, m.activo, m.flag_impresora);
         }
     })();
 }

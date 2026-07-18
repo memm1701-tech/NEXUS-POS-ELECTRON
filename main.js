@@ -1475,11 +1475,44 @@ ipcMain.handle('guardar-venta-local', async (event, v) => {
             v.fecha_factura_afectada || null
         );
 
-        // 2. SINCRONIZACIÃ“N CON EL SERVIDOR MAESTRO (Red Local)
+        // 2. ENCOLAMIENTO PARA SINCRONIZACIÓN VPS (No bloquea a la cajera)
+        try {
+            let parsedDatos = JSON.parse(v.datos_json);
+            let productosVenta = parsedDatos.productos || [];
+            
+            // Payload ultra-ligero: solo IDs y cantidades de productos físicos
+            let itemsDescuento = productosVenta
+                .filter(p => {
+                    const nombre = String(p.nombre || '').toUpperCase();
+                    return !nombre.includes('ABONO') && !nombre.includes('DEUDA') && !nombre.includes('SERVICIO');
+                })
+                .map(p => ({
+                    id: p.id,
+                    cantidad: parseFloat(p.cantidad || p.quantity || 1)
+                }));
+
+            if (itemsDescuento.length > 0) {
+                const payloadDescuento = {
+                    company_id: v.company_id,
+                    sucursal_id: v.branch_id,
+                    items: itemsDescuento,
+                    tipo_movimiento: 'VENTA',
+                    factura_ref: v.numero_factura
+                };
+                
+                db.prepare('INSERT INTO sync_queue (operacion, tabla, datos) VALUES (?, ?, ?)')
+                    .run('CREAR', 'ventas_descuento_vps', JSON.stringify(payloadDescuento));
+                console.log(`📦 Venta ${v.numero_factura} encolada para sync VPS (${itemsDescuento.length} productos).`);
+            }
+        } catch (eQueue) {
+            console.warn(`⚠️ No se pudo encolar venta para VPS:`, eQueue.message);
+        }
+
+        // 3. SINCRONIZACIÓN CON EL SERVIDOR MAESTRO (Red Local)
         try {
             const ipMaestro = config.isServer ? 'localhost' : config.serverIP;
             await axios.post(`http://${ipMaestro}:3000/api/maestro/registrar-venta`, v, { timeout: 3000 });
-            console.log(`ðŸ“¡ Venta ${v.numero_factura} sincronizada con Maestro.`);
+            console.log(`📡 Venta ${v.numero_factura} sincronizada con Maestro.`);
         } catch (errSync) {
             console.warn(`âš ï¸  Maestro no disponible. Venta ${v.numero_factura} guardada solo local.`);
         }
@@ -1831,6 +1864,7 @@ ipcMain.handle('leer-impresoras', async (event) => {
 
 
 try { db.exec("ALTER TABLE ventas_locales ADD COLUMN ganancia_venta REAL DEFAULT 0"); } catch(e) {}
+try { masterDbDirect.exec("ALTER TABLE movimientos_stock_maestro ADD COLUMN estado_sync INTEGER DEFAULT 0"); } catch(e) {}
 
 
 
@@ -2177,6 +2211,9 @@ ipcMain.handle('marcar-como-sincronizado', async (event, tabla, idElemento) => {
             db.prepare('UPDATE productos_locales SET estado_sync = 1 WHERE id = ?').run(idElemento);
         } else if (tabla === 'categorias') {
             db.prepare('UPDATE categorias_locales SET estado_sync = 1 WHERE id = ?').run(idElemento);
+        } else if (tabla === 'movimientos_stock') {
+            try { db.prepare('UPDATE salidas_inventario SET estado_sync = 1 WHERE product_id = ? AND estado_sync = 0').run(idElemento); } catch(e) {}
+            try { if (masterDbDirect) masterDbDirect.prepare('UPDATE movimientos_stock_maestro SET estado_sync = 1 WHERE producto_id = ? AND estado_sync = 0').run(idElemento); } catch(e) {}
         }
         
         // Avisar a la pantalla de inventario que refresque la tabla
@@ -2620,8 +2657,10 @@ ipcMain.handle('verificar-y-descontar-stock-maestro', async (event, datos) => {
                 cantidad REAL NOT NULL,
                 tipo_movimiento TEXT NOT NULL,
                 fecha_movimiento DATETIME DEFAULT CURRENT_TIMESTAMP,
-                referencia_id TEXT
+                referencia_id TEXT,
+                estado_sync INTEGER DEFAULT 0
             )`).run();
+            try { masterDbDirect.prepare("ALTER TABLE movimientos_stock_maestro ADD COLUMN estado_sync INTEGER DEFAULT 0").run(); } catch(e) {}
 
             const transaccion = masterDbDirect.transaction((productos) => {
                 for (const item of productos) {
@@ -2639,7 +2678,7 @@ ipcMain.handle('verificar-y-descontar-stock-maestro', async (event, datos) => {
                 
                 const stmtConSucursal = masterDbDirect.prepare('UPDATE stock_maestro SET cantidad_real = cantidad_real - ?, ultima_sincronizacion = CURRENT_TIMESTAMP WHERE producto_id = ? AND sucursal_id = ?');
                 const stmtSinSucursal = masterDbDirect.prepare('UPDATE stock_maestro SET cantidad_real = cantidad_real - ?, ultima_sincronizacion = CURRENT_TIMESTAMP WHERE producto_id = ?');
-                const stmtKardex = masterDbDirect.prepare(`INSERT INTO movimientos_stock_maestro (company_id, sucursal_id, producto_id, cantidad, tipo_movimiento) VALUES (?, ?, ?, ?, ?)`);
+                const stmtKardex = masterDbDirect.prepare(`INSERT INTO movimientos_stock_maestro (company_id, sucursal_id, producto_id, cantidad, tipo_movimiento, estado_sync) VALUES (?, ?, ?, ?, ?, ?)`);
                 
                 for (const item of productos) { 
                     // Obtener company_id
@@ -2648,10 +2687,10 @@ ipcMain.handle('verificar-y-descontar-stock-maestro', async (event, datos) => {
 
                     if (sucursalId) {
                         stmtConSucursal.run(item.cantidad, item.id, sucursalId);
-                        try { stmtKardex.run(compId, sucursalId, item.id, -Math.abs(item.cantidad), 'VENTA'); } catch(e) {}
+                        try { stmtKardex.run(compId, sucursalId, item.id, -Math.abs(item.cantidad), 'VENTA', 1); } catch(e) {}
                     } else {
                         stmtSinSucursal.run(item.cantidad, item.id);
-                        try { stmtKardex.run(compId, 'GLOBAL', item.id, -Math.abs(item.cantidad), 'VENTA'); } catch(e) {}
+                        try { stmtKardex.run(compId, 'GLOBAL', item.id, -Math.abs(item.cantidad), 'VENTA', 1); } catch(e) {}
                     }
                 }
             });
@@ -2674,7 +2713,7 @@ ipcMain.handle('verificar-y-descontar-stock-maestro', async (event, datos) => {
 });
 
 
-ipcMain.handle('guardar-stock-sucursal', async (event, { productoId, sucursalId, companyId, cantidad, operacion }) => {
+ipcMain.handle('guardar-stock-sucursal', async (event, { productoId, sucursalId, companyId, cantidad, operacion, datosStock }) => {
     try {
         if (config.isServer && masterDbDirect) {
             // ðŸ”¥ SOLUCIÃ“N: Escribimos directamente en el Cerebro Maestro (stock_maestro) saltÃ¡ndonos el puerto 3000
@@ -2718,11 +2757,13 @@ ipcMain.handle('guardar-stock-sucursal', async (event, { productoId, sucursalId,
                         cantidad REAL NOT NULL,
                         tipo_movimiento TEXT NOT NULL,
                         fecha_movimiento DATETIME DEFAULT CURRENT_TIMESTAMP,
-                        referencia_id TEXT
+                        referencia_id TEXT,
+                        estado_sync INTEGER DEFAULT 0
                     )`).run();
 
-                    masterDbDirect.prepare(`INSERT INTO movimientos_stock_maestro (company_id, sucursal_id, producto_id, cantidad, tipo_movimiento) VALUES (?, ?, ?, ?, ?)`)
-                            .run(companyId, sucursalId, productoId, diferencia, tipoMov);
+                    const estadoSyncParam = operacion === 'FIJAR' ? 1 : (datosStock && datosStock.estado_sync !== undefined ? datosStock.estado_sync : 0);
+                    masterDbDirect.prepare(`INSERT INTO movimientos_stock_maestro (company_id, sucursal_id, producto_id, cantidad, tipo_movimiento, estado_sync) VALUES (?, ?, ?, ?, ?, ?)`)
+                            .run(companyId, sucursalId, productoId, diferencia, tipoMov, estadoSyncParam);
                 } catch(e) { console.error("Error guardando movimiento Kardex IPC local:", e.message); }
             }
             return { success: true, msg: "Stock de sucursal actualizado correctamente." };
@@ -4126,8 +4167,9 @@ ipcMain.handle('guardar-salida-local', async (event, salida) => {
         const motivo = salida.motivo || 'Salida';
         const observacion = salida.observacion || '';
         const usuarioId = salida.usuarioId || 'admin';
+        const estado_sync = salida.estado_sync || 0;
 
-        const query = "INSERT INTO salidas_inventario (id, company_id, branch_id, product_id, cantidad, unidad, motivo, observacion, usuario_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        const query = "INSERT INTO salidas_inventario (id, company_id, branch_id, product_id, cantidad, unidad, motivo, observacion, usuario_id, estado_sync) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         db.prepare(query).run(
             id,
@@ -4138,7 +4180,8 @@ ipcMain.handle('guardar-salida-local', async (event, salida) => {
             unidad,
             motivo,
             observacion,
-            usuarioId
+            usuarioId,
+            estado_sync
         );
 
         return { success: true };

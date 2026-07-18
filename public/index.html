@@ -528,6 +528,7 @@
 
     let app, auth, db;
     let esLoginManual = false; // MAGIA: Esta variable evita la carrera de eventos
+    let invalidLoginAttempts = 0; // Para rastrear intentos fallidos de login
 
     async function ensureFirebaseInit() {
         if (navigator.onLine && !initializeApp) {
@@ -817,7 +818,17 @@
                         // SI ES OTRO ERROR (Ej. Contraseña incorrecta), LO MOSTRAMOS
                         esLoginManual = false; 
                         console.error("Detalle del error:", err);
-                        showMessage("Error al entrar: " + err.message, "error");
+                        
+                        if (err.message && err.message.includes('auth/invalid-credential')) {
+                            invalidLoginAttempts++;
+                            if (invalidLoginAttempts >= 4) {
+                                mostrarAlertaCredencialesInvalidas();
+                            } else {
+                                showMessage("Error de autenticación. Por favor valide la clave y el correo que está introduciendo", "error");
+                            }
+                        } else {
+                            showMessage("Error al entrar: " + err.message, "error");
+                        }
                     }
                 } finally {
                     const loginBtn = document.getElementById('login-btn');
@@ -888,7 +899,16 @@
                             showMessage("Lamentablemente no tienes internet y tampoco tienes la sesión guardada en la base de datos local.", "error");
                         }
                     } else {
-                        showMessage("Error de autenticación.", "error");
+                        if (err.message && err.message.includes('auth/invalid-credential')) {
+                            invalidLoginAttempts++;
+                            if (invalidLoginAttempts >= 4) {
+                                mostrarAlertaCredencialesInvalidas();
+                            } else {
+                                showMessage("Error de autenticación. Por favor valide la clave y el correo que está introduciendo porque algún dato está mal.", "error");
+                            }
+                        } else {
+                            showMessage("Error al entrar: " + err.message, "error");
+                        }
                     }
                 } finally {
                     const cashierBtn = document.getElementById('cashier-login-btn');
@@ -968,6 +988,34 @@
         }
 
         // --- 3. FUNCIONES AUXILIARES DE INTERFAZ ---
+        function mostrarAlertaCredencialesInvalidas() {
+            const modalSaaS = document.createElement('div');
+            modalSaaS.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+                background: rgba(0,0,0,0.5); display: flex; align-items: center; 
+                justify-content: center; z-index: 99999; backdrop-filter: blur(4px);
+            `;
+            
+           modalSaaS.innerHTML = `
+                <div style="background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+                    <i class="material-icons" style="font-size: 50px; color: #ef4444;">error_outline</i>
+                    <h2 style="font-size: 20px; color: #1f2937; margin: 15px 0 10px; font-weight: bold;">Error de Autenticación</h2>
+                    <p style="color: #4b5563; font-size: 15px; line-height: 1.5;">
+                        Por favor valide bien su información.<br><br>
+                        Si necesita cambiar la contraseña porque la acuerda, haga clic en el botón de <b>¿Olvidaste tu correo o tu contraseña?</b> y siga los pasos.<br><br>
+                        Si necesita cambiar el correo, contacte a su proveedor de servicios o directamente a <b>soporte@nexusposgobal.com</b>
+                    </p>
+                    <button id="cerrarModalCredenciales" style="margin-top: 20px; background: #2563eb; color: white; border: none; padding: 10px 25px; border-radius: 8px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold;">Entendido</button>
+                </div>
+            `;
+            
+            document.body.appendChild(modalSaaS);
+            
+            document.getElementById('cerrarModalCredenciales').onclick = () => {
+                modalSaaS.remove();
+            };
+        }
+
         function mostrarAlertaSuspension() {
             const modalSaaS = document.createElement('div');
             modalSaaS.style.cssText = `

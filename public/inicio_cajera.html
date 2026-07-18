@@ -223,6 +223,7 @@
                             <li><a href="#" onclick="sessionStorage.setItem('pendingConfigTarget', 'index_cajera/configuracion/configuracion_fiscal.html')" data-page="index_cajera/login.html"><i class="material-icons">receipt</i> Fiscal</a></li>
                         </ul>
                     </li>
+                    <li><a href="#" onclick="document.getElementById('zoom-modal').classList.remove('hidden'); return false;"><i class="material-icons">aspect_ratio</i> Apariencia</a></li>
                     <li><a href="#" data-page="ayuda.html"><i class="material-icons">help_outline</i> Ayuda</a></li>
                     <li><a href="#" data-page="index_cajera/acerca_de.html"><i class="material-icons">info</i> Acerca de</a></li>
                     <li><a id="logout-btn" href="javascript:void(0)" role="button"><i class="material-icons">exit_to_app</i> Cerrar sesión</a></li>
@@ -417,10 +418,22 @@ window.descargandoFondo = false;
                 dynamicContentArea.innerHTML = html;
                 const scripts = dynamicContentArea.querySelectorAll('script');
                 scripts.forEach(oldScript => {
-                    const newScript = document.createElement('script');
-                    Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-                    newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-                    oldScript.parentNode.replaceChild(newScript, oldScript);
+                    if (oldScript.src) {
+                        const newScript = document.createElement('script');
+                        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                        if (oldScript.parentNode) {
+                            oldScript.parentNode.replaceChild(newScript, oldScript);
+                        }
+                    } else {
+                        try {
+                            const scriptContent = oldScript.text || oldScript.textContent || oldScript.innerHTML || "";
+                            if (scriptContent.trim()) {
+                                window.eval(scriptContent);
+                            }
+                        } catch (e) {
+                            console.error("SyntaxError in dynamically loaded script:", e);
+                        }
+                    }
                 });
             })
             .catch(err => {
@@ -432,16 +445,72 @@ window.descargandoFondo = false;
 
     let sincronizando = false;
     
+    // 🔥 RUTAS VPS PARA CAJERA: Solo ventas (descuento de stock por venta)
+    const RUTAS_VPS_CAJERA = {
+        'ventas_descuento_vps': '/api/maestro/inventario/descontar-stock-venta',
+        'movimientos_stock': '/api/maestro/inventario/registrar-entrada'
+    };
+
 async function iniciarSincronizacionSilenciosa() {
-        // Optimizada: Como el Ojeador ya revisa el internet, solo enviamos la orden al puente
-        if (sincronizando || !estadoConexion) return;
+        if (sincronizando || !estadoConexion || !respaldoActivo || !SERVER_URL) return;
         sincronizando = true;
         try {
-            if (window.nexusAPI && typeof window.nexusAPI.procesarColaSync === 'function') {
-                await window.nexusAPI.procesarColaSync();
+            const api = window.nexusAPI;
+            if (api && typeof api.obtenerColaSincronizacion === 'function') {
+                const cola = await api.obtenerColaSincronizacion();
+
+                if (cola && cola.length > 0) {
+                    // Ping a Google con timeout de 3s para confirmar internet real
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 3000);
+                    let ping;
+                    try {
+                        ping = await fetch('https://www.google.com/favicon.ico', { 
+                            mode: 'no-cors', cache: 'no-store', signal: controller.signal 
+                        });
+                    } catch (fetchError) {
+                        throw fetchError;
+                    } finally {
+                        clearTimeout(timeoutId);
+                    }
+
+                    if (ping) {
+                        let procesadosConExito = 0;
+
+                        for (const registro of cola) {
+                            const rutaParcial = RUTAS_VPS_CAJERA[registro.tabla];
+                            if (!rutaParcial) continue;
+
+                            const endpointCompleto = `${SERVER_URL}${rutaParcial}`;
+
+                            try {
+                                const datosJSON = typeof registro.datos === 'string' ? JSON.parse(registro.datos) : registro.datos;
+
+                                const response = await fetch(endpointCompleto, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(datosJSON)
+                                });
+
+                                if (response.ok) {
+                                    await api.eliminarDeCola(registro.id);
+                                    procesadosConExito++;
+                                    console.log(`✅ [CAJERA SYNC] Registro ${registro.id} (${registro.tabla}) sincronizado con VPS.`);
+                                }
+                            } catch (uploadErr) {
+                                console.error(`❌ [CAJERA SYNC] Falló subida al VPS. Pausando.`);
+                                break;
+                            }
+                        }
+
+                        if (procesadosConExito > 0) {
+                            console.log(`📡 [CAJERA SYNC] ${procesadosConExito} registros subidos al VPS exitosamente.`);
+                        }
+                    }
+                }
             }
         } catch (error) {
-            console.warn("⏸️ Error procesando la cola de ventas/movimientos.");
+            // Fallo silencioso - se reintentará en el próximo ciclo
         } finally {
             sincronizando = false;
         }
@@ -978,6 +1047,73 @@ async function inicializarDashboard() {
     } else {
         inicializarDashboard();
     }
+</script>
+
+<!-- MODAL DE APARIENCIA (ZOOM) -->
+<div id="zoom-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg p-6 shadow-xl w-80 relative">
+        <button onclick="document.getElementById('zoom-modal').classList.add('hidden')" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700">
+            <i class="material-icons">close</i>
+        </button>
+        <h3 class="text-xl font-bold mb-4 text-gray-800 flex items-center">
+            <i class="material-icons mr-2">aspect_ratio</i> Apariencia
+        </h3>
+        <p class="text-sm text-gray-600 mb-4">Ajusta el tamaño de la interfaz de toda la aplicación.</p>
+        
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-semibold">Zoom:</span>
+            <span id="zoom-percentage-text" class="text-sm font-bold text-blue-600">100%</span>
+        </div>
+        <input type="range" id="zoom-slider" min="-3" max="3" step="0.5" value="0" class="w-full mb-4">
+        
+        <div class="flex justify-between">
+            <button id="btn-reset-zoom" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-md w-full transition-colors">
+                Restablecer a 100%
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const zoomModal = document.getElementById('zoom-modal');
+        const zoomSlider = document.getElementById('zoom-slider');
+        const zoomText = document.getElementById('zoom-percentage-text');
+        const btnReset = document.getElementById('btn-reset-zoom');
+
+        // Inicializar nivel de zoom desde local storage
+        let savedZoom = localStorage.getItem('nexus_zoom_level');
+        if (savedZoom !== null) {
+            savedZoom = parseFloat(savedZoom);
+            zoomSlider.value = savedZoom;
+            aplicarZoom(savedZoom);
+        } else {
+            zoomSlider.value = 0;
+            aplicarZoom(0);
+        }
+
+        zoomSlider.addEventListener('input', (e) => {
+            const level = parseFloat(e.target.value);
+            aplicarZoom(level);
+        });
+
+        btnReset.addEventListener('click', () => {
+            zoomSlider.value = 0;
+            aplicarZoom(0);
+        });
+
+        function aplicarZoom(level) {
+            if(window.nexusAPI && window.nexusAPI.setZoomLevel) {
+                window.nexusAPI.setZoomLevel(level);
+            }
+            localStorage.setItem('nexus_zoom_level', level);
+            
+            // Calcular porcentaje aproximado: 1.2 ^ level
+            const factor = Math.pow(1.2, level);
+            const percentage = Math.round(factor * 100);
+            zoomText.textContent = percentage + '%';
+        }
+    });
 </script>
 </body>
 </html>

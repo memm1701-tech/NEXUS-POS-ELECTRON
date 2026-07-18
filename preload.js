@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
 contextBridge.exposeInMainWorld('nexusAPI', {
     sincronizarProductoServidor: (productData) => ipcRenderer.invoke('sincronizar-producto-servidor', productData),
@@ -200,6 +200,9 @@ contextBridge.exposeInMainWorld('nexusAPI', {
     onSolicitarVerificacionCierre: (callback) => ipcRenderer.on('solicitar-verificacion-cierre', (event) => callback()),
     confirmarCierreSeguro: () => ipcRenderer.send('confirmar-cierre-seguro'),
     
+    // CONTROL DE APARIENCIA (ZOOM)
+    setZoomLevel: (level) => webFrame.setZoomLevel(level),
+    getZoomLevel: () => webFrame.getZoomLevel()
 });
 
 console.log('✅ Puente NexusAPI establecido correctamente.');

@@ -391,6 +391,7 @@
                             <li><a href="#" onclick="sessionStorage.setItem('pendingFiscalTarget', 'auditoria_fiscal.html')" data-page="index_inicio_admin/configuracion/login_fiscal.html">Auditoría Fiscal</a></li>
                         </ul>
                     </li>
+                    <li><a href="#" onclick="document.getElementById('zoom-modal').classList.remove('hidden'); return false;"><i class="material-icons">aspect_ratio</i> Apariencia</a></li>
 
                     <li><a href="#" data-page="help.html"><i class="material-icons">help_outline</i> Ayuda</a></li>
                     <li><a href="#" data-page="index_inicio_admin/acerca_de.html"><i class="material-icons">info</i> Acerca de</a></li>
@@ -739,7 +740,8 @@
     const RUTAS_VPS = {
         'productos':  '/api/maestro/inventario/sincronizar',
         'categorias': '/api/maestro/categorias/sincronizar',
-        'configuracion_tienda': '/api/maestro/configuracion_tienda/sincronizar'
+        'configuracion_tienda': '/api/maestro/configuracion_tienda/sincronizar',
+        'movimientos_stock': '/api/maestro/inventario/registrar-entrada'
     };
 
     let SERVER_URL = null;
@@ -844,50 +846,59 @@
         }
     }
 
-// Definimos la función como parte de 'window' para que sea accesible desde el onclick del HTML
-window.loadPageContent = function(pageUrl) {
-    const mainContent = document.getElementById('dynamic-content-area');
-    if (!mainContent) {
-        console.error("No se encontró el contenedor 'dynamic-content-area'");
-        return;
-    }
+    // Definimos la función como parte de 'window' para que sea accesible desde el onclick del HTML
+    window.loadPageContent = function(pageUrl) {
+        const mainContent = document.getElementById('dynamic-content-area');
+        if (!mainContent) {
+            console.error("No se encontró el contenedor 'dynamic-content-area'");
+            return;
+        }
 
-    if (typeof mostrarLoading === 'function') mostrarLoading();
+        if (typeof mostrarLoading === 'function') mostrarLoading();
 
-    fetch(pageUrl)
-        .then(response => {
-            if (!response.ok) throw new Error(`Error cargando: ${pageUrl}`);
-            return response.text();
-        })
-        .then(html => {
-            // 1. Inyectamos el HTML
-            mainContent.innerHTML = html;
-            
-            // 2. Reiniciamos el scroll arriba para la nueva vista
-            mainContent.scrollTop = 0;
-            
-            // 3. Ejecutar scripts internos de la vista cargada
-            const scripts = mainContent.querySelectorAll("script");
-            scripts.forEach(oldScript => {
-                const newScript = document.createElement("script");
-                // Copiamos atributos (src, type, etc)
-                Array.from(oldScript.attributes).forEach(attr => {
-                    newScript.setAttribute(attr.name, attr.value);
+        fetch(pageUrl)
+            .then(response => {
+                if (!response.ok) throw new Error(`Error cargando: ${pageUrl}`);
+                return response.text();
+            })
+            .then(html => {
+                // 1. Inyectamos el HTML
+                mainContent.innerHTML = html;
+                
+                // 2. Reiniciamos el scroll arriba para la nueva vista
+                mainContent.scrollTop = 0;
+                
+                // 3. Ejecutar scripts internos de la vista cargada
+                const scripts = mainContent.querySelectorAll("script");
+                scripts.forEach(oldScript => {
+                    if (oldScript.src) {
+                        const newScript = document.createElement("script");
+                        Array.from(oldScript.attributes).forEach(attr => {
+                            newScript.setAttribute(attr.name, attr.value);
+                        });
+                        if (oldScript.parentNode) {
+                            oldScript.parentNode.replaceChild(newScript, oldScript);
+                        }
+                    } else {
+                        try {
+                            const scriptContent = oldScript.text || oldScript.textContent || oldScript.innerHTML || "";
+                            if (scriptContent.trim()) {
+                                window.eval(scriptContent);
+                            }
+                        } catch (e) {
+                            console.error("SyntaxError in dynamically loaded script:", e);
+                        }
+                    }
                 });
-                // Copiamos el contenido del script
-                newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-                // Reemplazamos para forzar la ejecución
-                oldScript.parentNode.replaceChild(newScript, oldScript);
-            });
 
-            if (typeof ocultarLoading === 'function') ocultarLoading();
-        })
-        .catch(error => {
-            console.error('Error de navegación:', error);
-            mainContent.innerHTML = `<div class="p-10 text-red-500">Error al cargar la página: ${error.message}</div>`;
-            if (typeof ocultarLoading === 'function') ocultarLoading();
-        });
-}
+                if (typeof ocultarLoading === 'function') ocultarLoading();
+            })
+            .catch(error => {
+                console.error('Error de navegación:', error);
+                mainContent.innerHTML = `<div class="p-10 text-red-500">Error al cargar la página: ${error.message}</div>`;
+                if (typeof ocultarLoading === 'function') ocultarLoading();
+            });
+    }
 
     function listenForBranches(companyId) {
         if (!companyId || !sidebarBranchSelect || companyId === 'nexus_pos_id' || !navigator.onLine) return;
@@ -980,7 +991,7 @@ async function iniciarSincronizacionSilenciosa() {
 
                             if (response.ok) {
                                 await api.eliminarDeCola(registro.id);
-                                const idReal = datosJSON.id || datosJSON.producto_ID || datosJSON.empresa_ID;
+                                const idReal = datosJSON.id || datosJSON.producto_ID || datosJSON.empresa_ID || (datosJSON.items && datosJSON.items.length > 0 ? datosJSON.items[0].id : null);
                                 if (idReal) {
                                     await window.nexusAPI.marcarComoSincronizado(registro.tabla, idReal);
                                 }
@@ -1449,6 +1460,73 @@ async function descargarYValidarInventarioGlobal(companyId) {
                 }
             });
         }
+</script>
+
+<!-- MODAL DE APARIENCIA (ZOOM) -->
+<div id="zoom-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg p-6 shadow-xl w-80 relative">
+        <button onclick="document.getElementById('zoom-modal').classList.add('hidden')" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700">
+            <i class="material-icons">close</i>
+        </button>
+        <h3 class="text-xl font-bold mb-4 text-gray-800 flex items-center">
+            <i class="material-icons mr-2">aspect_ratio</i> Apariencia
+        </h3>
+        <p class="text-sm text-gray-600 mb-4">Ajusta el tamaño de la interfaz de toda la aplicación.</p>
+        
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-semibold">Zoom:</span>
+            <span id="zoom-percentage-text" class="text-sm font-bold text-blue-600">100%</span>
+        </div>
+        <input type="range" id="zoom-slider" min="-3" max="3" step="0.5" value="0" class="w-full mb-4">
+        
+        <div class="flex justify-between">
+            <button id="btn-reset-zoom" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-md w-full transition-colors">
+                Restablecer a 100%
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const zoomModal = document.getElementById('zoom-modal');
+        const zoomSlider = document.getElementById('zoom-slider');
+        const zoomText = document.getElementById('zoom-percentage-text');
+        const btnReset = document.getElementById('btn-reset-zoom');
+
+        // Inicializar nivel de zoom desde local storage
+        let savedZoom = localStorage.getItem('nexus_zoom_level');
+        if (savedZoom !== null) {
+            savedZoom = parseFloat(savedZoom);
+            zoomSlider.value = savedZoom;
+            aplicarZoom(savedZoom);
+        } else {
+            zoomSlider.value = 0;
+            aplicarZoom(0);
+        }
+
+        zoomSlider.addEventListener('input', (e) => {
+            const level = parseFloat(e.target.value);
+            aplicarZoom(level);
+        });
+
+        btnReset.addEventListener('click', () => {
+            zoomSlider.value = 0;
+            aplicarZoom(0);
+        });
+
+        function aplicarZoom(level) {
+            if(window.nexusAPI && window.nexusAPI.setZoomLevel) {
+                window.nexusAPI.setZoomLevel(level);
+            }
+            localStorage.setItem('nexus_zoom_level', level);
+            
+            // Calcular porcentaje aproximado: 1.2 ^ level
+            const factor = Math.pow(1.2, level);
+            const percentage = Math.round(factor * 100);
+            zoomText.textContent = percentage + '%';
+        }
+    });
 </script>
 </body>
 </html>

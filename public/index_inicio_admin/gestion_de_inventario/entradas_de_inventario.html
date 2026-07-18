@@ -634,42 +634,51 @@
 
         try {
             botonRegistrar.disabled = true;
-            botonRegistrar.textContent = "Sincronizando...";
+            botonRegistrar.textContent = 'Guardando...';
 
-            // 1Ô∏è‚É£ Guardado Local usando IPC (Ahora apunta directo a stock_maestro)
-            const resLocal = await window.nexusAPI.guardarStockSucursal(payloadLocal);
-            let exitoLocal = resLocal && resLocal.success;
-
-            // 2Ô∏è‚É£ Guardado en el VPS (Intacto)
             let exitoVPS = false;
-            if (navigator.onLine && respaldoActivo && SERVER_URL) {
+            
+            if (respaldoActivo && SERVER_URL && navigator.onLine) {
+                botonRegistrar.textContent = 'Sincronizando con VPS...';
                 try {
-                    const resVPS = await fetch(`${SERVER_URL}/api/maestro/inventario/registrar-entrada`, {
+                    const resVPS = await fetch("${SERVER_URL}/api/maestro/inventario/registrar-entrada", {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payloadVPS)
                     });
-                    
                     if (resVPS.ok) {
                         const jsonVPS = await resVPS.json();
                         if (jsonVPS.exito || jsonVPS.success) exitoVPS = true;
                     }
                 } catch (vpsError) {
-                    console.error("‚ö†Ô∏è Sincronizaci√≥n VPS fallida:", vpsError.message);
+                    console.error('VPS Sincro fallida (se ignorar· para mantener flujo local):', vpsError.message);
                 }
             }
 
-            if (exitoLocal) {
-                if (respaldoActivo && SERVER_URL && !exitoVPS) {
-                    mostrarAlerta("‚ö†Ô∏è Registrado localmente. Error conectando al VPS.", "warning");
-                } else {
-                    mostrarAlerta("‚úÖ Stock registrado correctamente en ambos servidores.", "success");
-                }
-                limpiarFormulario();
-                await window.cargarInventarioEntradas();
-            } else {
-                mostrarAlerta("Error al procesar el inventario local.", "error");
+            payloadLocal.datosStock = { estado_sync: exitoVPS ? 1 : 0 };
+            const resLocal = await window.nexusAPI.guardarStockSucursal(payloadLocal);
+            let exitoLocal = resLocal && resLocal.success;
+
+            if (!exitoLocal) throw new Error(resLocal.error || 'Error crÌtico al registrar la entrada en disco local.');
+
+            if (!exitoVPS && payloadVPS && window.nexusAPI.encolarSincronizacion) {
+                await window.nexusAPI.encolarSincronizacion({ 
+                    operacion: 'UPSERT', 
+                    tabla: 'movimientos_stock', 
+                    datos: payloadVPS 
+                });
             }
+
+            if (exitoVPS) {
+                mostrarAlerta('? …XITO: Stock registrado y sincronizado en la nube.', 'success');
+            } else if (respaldoActivo && SERVER_URL) {
+                mostrarAlerta('? GUARDADO LOCAL: AÒadido a la cola de sincronizaciÛn (Sin conexiÛn/VPS fallÛ).', 'warning');
+            } else {
+                mostrarAlerta('? …XITO: Stock registrado (Modo 100% Local).', 'success');
+            }
+
+            limpiarFormulario();
+            await window.cargarInventarioEntradas();
 
         } catch (e) { 
             mostrarAlerta("Error general en el registro.", "error"); 

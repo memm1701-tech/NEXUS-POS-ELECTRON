@@ -644,13 +644,13 @@
         try {
             window.bloqueoSalidaEnProceso = true; // ACTIVAMOS EL CERROJO
             btnSubmit.disabled = true;
-            btnSubmit.textContent = "Sincronizando...";
+            btnSubmit.textContent = "Guardando...";
 
-            // 🔥 1. Guardado Historial en BD Local
+            // 🔥 1. GUARDADO OFFLINE-FIRST: Historial en BD Local
             const resultado = await window.nexusAPI.guardarSalidaLocal(datosSalidaHistorial);
             let exitoLocal = resultado && resultado.success;
 
-            // 🔥 2. Descuento en el Stock Maestro Local (SQLite)
+            // 🔥 2. GUARDADO OFFLINE-FIRST: Descuento en el Stock Maestro Local (SQLite)
             const payloadStockLocal = {
                 productoId: idProductoSeleccionado,
                 sucursalId: idSucursalSeleccionada,
@@ -664,9 +664,14 @@
                 exitoLocal = false;
             }
 
-            // 🔥 DESCUENTO EN EL SERVIDOR VPS MAESTRO (Xeon / PostgreSQL)
+            if (!exitoLocal) {
+                throw new Error(resultado.error || "Error crítico al registrar la salida en disco local.");
+            }
+
+            // 🔥 3. INTENTO DE SINCRONIZACIÓN CON EL VPS EN SEGUNDO PLANO
             let exitoVPS = false;
             if (navigator.onLine && respaldoActivo && SERVER_URL) {
+                btnSubmit.textContent = "Sincronizando con VPS...";
                 const payloadVPS = {
                     sucursalId: idSucursalSeleccionada,
                     companyId: idEmpresa,
@@ -686,29 +691,33 @@
                     
                     if (resVPS.ok) {
                         const jsonVPS = await resVPS.json();
-                        if (jsonVPS.exito || jsonVPS.success) exitoVPS = true;
+                        if (jsonVPS.exito || jsonVPS.success) {
+                            exitoVPS = true;
+                        }
                     }
                 } catch (vpsError) {
-                    console.error("⚠️ Sincronización VPS fallida:", vpsError.message);
+                    console.error("⚠️ Error VPS (se ignorará para mantener flujo local):", vpsError);
                 }
             }
 
-            if (exitoLocal) {
-                if (respaldoActivo && SERVER_URL && !exitoVPS) {
-                    mostrarToast("Registrado localmente, pero falló en la nube (VPS).", "error");
-                } else {
-                    mostrarToast("Salida registrada correctamente.", "success");
-                }
-                
-                formulario.reset();
-                idProductoSeleccionado = null;
-                unidadActual = 'UN';
-                visorTotal.value = "0.00 unidad(es)";
-                
-                await prepararEntornoSucursal(); 
+            // 🔥 4. CONFIRMACIÓN FINAL AL USUARIO Y RECARGA
+            if (exitoVPS) {
+                mostrarToast("✅ ÉXITO: Salida registrada y stock sincronizado en la nube.", "success");
+            } else if (respaldoActivo && SERVER_URL) {
+                mostrarToast("✅ GUARDADO LOCAL: Sincronización con nube pendiente (Sin conexión/VPS falló).", "warning");
             } else {
-                throw new Error(resultado.error || "Error al registrar la salida.");
+                mostrarToast("✅ ÉXITO: Salida registrada (Modo 100% Local).", "success");
             }
+            
+            formulario.reset();
+            idProductoSeleccionado = null;
+            unidadActual = 'UN';
+            visorTotal.value = "0.00 unidad(es)";
+            
+            // ACTUALIZAR ENTORNO VISUAL
+            await prepararEntornoSucursal(); // Trae stock fresco de SQLite
+            await cargarHistorialSalidas();  // Trae historial fresco de SQLite
+            
         } catch (error) {
             console.error("❌ Error en salida:", error);
             mostrarToast("Error: " + error.message, "error");
