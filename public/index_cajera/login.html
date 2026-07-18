@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso de Administrador</title>
+    
+    <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <script src="tailwindcss.js"></script> 
+    <link href="../node_modules/material-icons/iconfont/material-icons.css" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f3f4f6;
+            margin: 0;
+            padding: 0;
+            /* Asegura que el cuerpo ocupe al menos el 100% de la altura de la ventana */
+            min-height: 100vh; 
+        }
+
+        .login-container {
+            box-sizing: border-box;
+            text-align: center;
+            /* Añadir una ligera transición al contenedor para un efecto más suave */
+            transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+        }
+
+        /* Efecto de "Levitación" al pasar el ratón */
+        .login-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+        }
+        
+        .custom-alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            opacity: 0; /* Inicia invisible */
+            transition: opacity 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center"> 
+    <main class="main-content flex justify-center items-center p-8 w-full">
+        <div class="login-container bg-white p-10 rounded-2xl shadow-xl w-full max-w-sm">
+            <h1 class="text-3xl font-bold text-gray-800 text-center mb-8 flex items-center justify-center">
+                <span id="key-icon" class="material-icons text-red-600 mr-3 text-4xl transition duration-300 ease-in-out">vpn_key</span>
+                Acceso de Administrador
+            </h1>
+            
+            <p id="auth-status" class="text-blue-600 mb-6 font-medium text-sm">
+                Cargando autenticación...
+            </p>
+
+            <div class="form-group mb-6 text-left">
+                <label for="admin-code-input" class="block text-sm font-medium text-gray-700 mb-2">Clave de Seguridad:</label>
+                <input type="password" id="admin-code-input" placeholder="Clave de 4+ caracteres" required minlength="4"
+                       class="block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-2 focus:ring-red-500 sm:text-base p-2.5 border transition duration-150 ease-in-out">
+            </div>
+
+            <button class="btn-submit w-full bg-red-600 text-white py-3 px-6 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition duration-150 ease-in-out text-lg font-semibold shadow-md" 
+                    id="btn-submit" disabled>
+                Desbloquear Funcionalidad
+            </button>
+        </div>
+    </main>
+
+<script type="module">
+        // --- 1. ESTADO GLOBAL Y REFERENCIAS AL DOM ---
+        let companyId = null;
+        
+        const adminCodeInput = document.getElementById('admin-code-input');
+        const btnSubmit = document.getElementById('btn-submit');
+        const authStatus = document.getElementById('auth-status');
+        const keyIcon = document.getElementById('key-icon'); 
+
+        // --- 2. INICIALIZACIÓN LOCAL ---
+        async function initLoginModule() {
+            try {
+                // Obtenemos la sesión actual guardada en SQLite
+                const sesion = await window.nexusAPI.obtenerSesionLocal();
+                
+                if (sesion && sesion.companyId) {
+                    companyId = sesion.companyId;
+                    authStatus.textContent = "Sistema local conectado. Listo para login.";
+                    if (btnSubmit) btnSubmit.disabled = false;
+                } else {
+                    authStatus.textContent = "Error: Sesión de sistema no detectada. Reinicie la aplicación.";
+                    if (btnSubmit) btnSubmit.disabled = true;
+                }
+            } catch (error) {
+                authStatus.textContent = "Error al conectar con la base de datos local.";
+                console.error("Fallo de inicialización:", error);
+            }
+
+            // Asignación de eventos
+            if (btnSubmit) {
+                btnSubmit.addEventListener('click', checkAdminCode);
+            }
+
+            // Iniciar Sesión con la tecla Enter
+            adminCodeInput?.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault(); 
+                    if (!btnSubmit.disabled) checkAdminCode();
+                }
+            });
+
+            // Efecto interactivo en el ícono
+            adminCodeInput?.addEventListener('focus', () => {
+                if(keyIcon) keyIcon.style.transform = 'rotate(-10deg) scale(1.1)';
+            });
+            adminCodeInput?.addEventListener('blur', () => {
+                if(keyIcon) keyIcon.style.transform = 'rotate(0deg) scale(1)';
+            });
+        }
+
+
+        async function checkAdminCode() {
+            if (!companyId) { 
+                showCustomAlert('Error: El ID de la empresa no está cargado.', 'warning'); 
+                return; 
+            }
+            
+            const inputCode = adminCodeInput.value.trim(); 
+            if (!inputCode || inputCode.length < 4) { 
+                showCustomAlert('Por favor, introduce la clave completa (mínimo 4 caracteres).', 'warning'); 
+                return; 
+            }
+            
+            try {
+                btnSubmit.disabled = true;
+                btnSubmit.textContent = 'Verificando...';
+                if(keyIcon) keyIcon.style.color = '#F59E0B'; // Ámbar (Verificando)
+
+                // 1. Obtenemos todas las claves desencriptadas desde el Servidor Maestro
+                const clavesGuardadas = await window.nexusAPI.obtenerClavesAdminMaestro(companyId);
+                
+                // 2. Buscamos si la clave ingresada coincide con alguna clave válida
+                const esClaveValida = clavesGuardadas.some(clave => clave.plainCode === inputCode);
+
+                if (esClaveValida) { 
+                    // ÉXITO: Generar y almacenar el token de acceso
+                    const accessKey = generateSecureToken(32); 
+                    sessionStorage.setItem('adminAccessKey', accessKey); 
+                    
+                    showCustomAlert('Acceso concedido. Redirigiendo...', 'success');
+                    if(keyIcon) keyIcon.style.color = '#10B981'; // Verde (Éxito)
+                    
+                    // Redirección Dinámica (Inyección en la sección derecha sin recargar la app)
+                    setTimeout(() => {
+                        const target = sessionStorage.getItem('pendingConfigTarget') || 'index_cajera/configuracion/configuracion.html';
+                        sessionStorage.removeItem('pendingConfigTarget'); // Limpiar después de usar
+                        if (typeof window.loadContent === 'function') {
+                            window.loadContent(target);
+                        } else {
+                            window.location.href = target;
+                        }
+                    }, 1000); 
+                    
+                } else {
+                    // FALLO: Clave incorrecta
+                    showCustomAlert('Clave de seguridad incorrecta. Acceso denegado.', 'error');
+                    adminCodeInput.value = '';
+                    if(keyIcon) keyIcon.style.color = '#EF4444'; // Rojo (Fallo)
+                    
+                    // Restablecer botón
+                    setTimeout(() => {
+                        if(keyIcon) keyIcon.style.color = '#DC2626'; 
+                        btnSubmit.disabled = false;
+                        btnSubmit.textContent = 'Desbloquear Funcionalidad';
+                    }, 500); 
+                }
+                
+            } catch (e) {
+                console.error("Error al verificar clave en el Servidor Maestro: ", e);
+                showCustomAlert("Error de comunicación con el Servidor Central.", 'error'); 
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = 'Desbloquear Funcionalidad';
+                if(keyIcon) keyIcon.style.color = '#DC2626'; 
+            }
+        }
+        
+        // --- 4. UTILIDADES ---
+        function generateSecureToken(length) {
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            const randomValues = window.crypto.getRandomValues(new Uint8Array(length));
+            for (let i = 0; i < length; i++) {
+                result += characters.charAt(randomValues[i] % characters.length);
+            }
+            return result;
+        }
+
+        function showCustomAlert(message, type = 'success') {
+            const alertDiv = document.createElement('div');
+            alertDiv.textContent = message;
+            alertDiv.classList.add('custom-alert'); 
+            
+            let backgroundColor = '#10B981'; // success
+            if (type === 'error') backgroundColor = '#EF4444';
+            else if (type === 'warning') backgroundColor = '#F59E0B';
+            
+            alertDiv.style.cssText = `
+                position: fixed; top: 20px; right: 20px;
+                background-color: ${backgroundColor};
+                color: white; padding: 15px; border-radius: 5px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 1000;
+                opacity: 0; transition: opacity 0.3s ease;
+            `;
+            
+            document.body.appendChild(alertDiv);
+            
+            setTimeout(() => { alertDiv.style.opacity = '1'; }, 50); 
+            setTimeout(() => {
+                alertDiv.style.opacity = '0';
+                setTimeout(() => alertDiv.remove(), 300);
+            }, 3000);
+        }
+
+        // Arrancar el módulo
+        initLoginModule();
+    </script>
+</body>
+</html>

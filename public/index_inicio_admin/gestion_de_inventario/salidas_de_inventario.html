@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salida de Inventario - Nexus POS</title>
+    <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <script src="tailwindcss.js"></script>
+<style>
+    body {
+        font-family: 'Roboto', sans-serif;
+        background-color: #f3f4f6;
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+    }
+
+    /* --- ESTILO EXPANSIVO NEXUS (100% + 1rem de margen) --- */
+    #app-container {
+        background-color: transparent !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 20px 1rem !important; 
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+    }
+
+    @media (min-width: 768px) {
+        #app-container { padding: 30px 1rem !important; }
+    }
+
+    h1 {
+        color: #333;
+        margin-bottom: 25px;
+        font-size: 2.2em; 
+        font-weight: 700;
+        letter-spacing: -1px;
+        text-align: center;
+    }
+
+    h2 {
+        color: #333;
+        margin-bottom: 20px;
+        font-size: 1.5em; 
+        font-weight: 700;
+        letter-spacing: -1px;
+        text-align: center;
+    }
+
+    /* --- FORMULARIO --- */
+    .form-section {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 25px;
+        text-align: left;
+    }
+
+    .input-group-item {
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        flex: 1;
+    }
+
+    .form-section label {
+        font-weight: bold;
+        color: #4a5568;
+        margin-bottom: 6px;
+        font-size: 0.95em;
+    }
+
+    .form-section input, .form-section select, .form-section textarea {
+        width: 100%;
+        padding: 14px;
+        border: 1px solid #cbd5e0;
+        border-radius: 8px;
+        box-sizing: border-box;
+        font-size: 1em;
+        background-color: white;
+    }
+
+    .form-section input:focus, .form-section select:focus, .form-section textarea:focus {
+        outline: none;
+        border-color: #ef4444;
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+    }
+
+    #final-stock-display {
+        background-color: #fee2e2;
+        cursor: default;
+        font-weight: 800;
+        color: #991b1b;
+        border: 1px solid #fca5a5;
+    }
+
+    .btn-submit {
+        background-color: #ef4444;
+        color: white;
+        padding: 18px 30px;
+        border: none;
+        border-radius: 8px;
+        font-size: 1.1em;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        margin-top: 10px;
+        width: 100%;
+    }
+
+    .btn-submit:hover { background-color: #dc2626; }
+
+    /* --- TABLA DE HISTORIAL (ESTILO ENTRADAS) --- */
+    .table-container {
+        margin-top: 30px;
+        overflow-x: auto;
+    }
+
+    .table-scroll-wrapper {
+        max-height: 600px;
+        overflow-y: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        background-color: white;
+    }
+
+    table {
+        width: 100%;
+        min-width: 700px;
+        border-collapse: collapse;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    th, td {
+        border: 1px solid #e2e8f0;
+        padding: 14px;
+        text-align: left;
+        font-size: 0.9em;
+    }
+
+    th {
+        background-color: #ef4444; 
+        color: white;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    tr:nth-child(even) { background-color: #f7fafc; }
+    tr:hover { background-color: #fff5f5; }
+
+    /* --- BUSCADOR --- */
+    #product-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: white;
+        border-radius: 0 0 8px 8px;
+        max-height: 250px;
+        overflow-y: auto;
+        z-index: 9999;
+        display: none; 
+        border: 1px solid #cbd5e0;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+    #product-results.activo { display: block !important; }
+    .result-item { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #edf2f7; text-align: left; }
+    .result-item.autocomplete-active { background-color: #fee2e2 !important; border-left: 4px solid #ef4444 !important; color: #991b1b; }
+    .no-results-msg { padding: 12px 15px; color: #718096; font-style: italic; text-align: center; }
+</style>
+</head>
+<body>
+<div id="toast-container" class="fixed top-5 right-5 z-[10000] flex flex-col gap-3"></div>
+    <div id="app-container">
+        <h1>Salida de Inventario</h1>
+        
+        <form id="inventory-form" class="form-section">
+            <div class="input-group-item">
+                <label for="storage-location">Sucursal de Retiro:</label>
+                <select id="storage-location" required>
+                    <option value="" disabled selected>Cargando sucursales...</option>
+                </select>
+            </div>
+
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="input-group-item md:w-1/2">
+                    <label for="product-search">Producto a Retirar:</label>
+                    <input type="text" id="product-search" placeholder="Selecciona una sucursal primero..." autocomplete="off" required disabled>
+                    <div id="product-results"></div>
+                </div>
+
+                <div class="input-group-item md:w-1/2">
+                    <label for="packaging-unit-select">Unidad de Empaque (Conversión):</label>
+                    <select id="packaging-unit-select" disabled>
+                        <option value="1" selected>Unidad Individual (x1)</option> 
+                    </select>
+                </div>
+            </div>
+            
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="input-group-item md:w-1/2">
+                    <label for="quantity-input">Cantidad de Paquetes/Unidades:</label>
+                    <input type="number" id="quantity-input" placeholder="Ej: 5" step="0.01" required min="0.01">
+                </div>
+
+                <div class="input-group-item md:w-1/2">
+                    <label>Total de Stock a Restar:</label>
+                    <input type="text" id="final-stock-display" value="0.00" readonly>
+                </div>
+            </div>
+
+            <div class="input-group-item">
+                <label for="exit-reason">Motivo de Salida:</label>
+                <select id="exit-reason" required>
+                    <option value="" disabled selected>Selecciona el motivo...</option>
+                    <option value="Venta">Venta</option>
+                    <option value="Desperdicio">Desperdicio</option>
+                    <option value="Devolución">Devolución</option>
+                    <option value="Caducidad">Caducidad</option>
+                    <option value="Merma">Merma</option>
+                    <option value="Uso Interno">Uso Interno</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="observation">Observación:</label>
+                <textarea id="observation" rows="2" placeholder="Añade una nota opcional sobre este retiro..."></textarea>
+            </div>
+            
+            <button type="submit" id="btn-submit-exit" class="btn-submit">
+                Registrar Salida de Inventario
+            </button>
+        </form>
+
+        <hr class="my-8">
+
+        <div class="table-container">
+            <div class="flex flex-col xl:flex-row justify-between items-center mb-4 gap-4">
+                <h2 style="margin: 0;">Historial de Últimas Salidas</h2>
+                <div class="flex flex-col md:flex-row items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <label class="font-bold text-sm text-gray-600">Desde:</label>
+                        <input type="date" id="filtro-desde" class="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-red-500">
+                        
+                        <label class="font-bold text-sm ml-2 text-gray-600">Hasta:</label>
+                        <input type="date" id="filtro-hasta" class="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-red-500">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="font-bold text-sm text-gray-600">Filas:</label>
+                        <select id="filtro-limite" class="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-red-500">
+                            <option value="50">50</option>
+                            <option value="100" selected>100</option>
+                            <option value="200">200</option>
+                            <option value="500">500</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="table-scroll-wrapper">
+                <table id="transaction-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha / Hora</th>
+                            <th>Producto</th>
+                            <th>Cantidad</th>
+                            <th>Motivo</th>
+                            <th>Sucursal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transaction-log-body">
+                        <tr><td colspan="5" class="text-center py-4 text-gray-500 italic">No hay transacciones recientes.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+    // --- 1. VARIABLES DE ESTADO ---
+    let idEmpresa = null;
+    let idSucursalSeleccionada = null;
+    let idUsuario = null;
+    let listaProductosSucursal = []; 
+    let catalogoProductosGlobal = []; 
+    let historialSalidasCompleto = []; 
+    let idProductoSeleccionado = null;
+    let factorEmpaque = 1;
+    let focoProducto = -1; 
+    let estaProcesandoSalida = false;
+    let unidadActual = 'UN';
+    let SERVER_URL = null;
+    let respaldoActivo = false;
+
+    // --- 2. REFERENCIAS DOM ---
+    const selectSucursal = document.getElementById('storage-location');
+    const inputBusqueda = document.getElementById('product-search');
+    const contenedorResultados = document.getElementById('product-results');
+    const selectEmpaque = document.getElementById('packaging-unit-select');
+    const inputCantidad = document.getElementById('quantity-input');
+    const visorTotal = document.getElementById('final-stock-display');
+    const formulario = document.getElementById('inventory-form');
+    const cuerpoHistorial = document.getElementById('transaction-log-body');
+    const appContenedor = document.getElementById('app-container');
+    const cargandoMensaje = document.getElementById('loading-message');
+
+    // --- 3. INICIALIZACIÓN MAESTRA ---
+    async function inicializar() {
+        try {
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
+            if (sesion && sesion.companyId) {
+                idEmpresa = sesion.companyId;
+                idUsuario = sesion.uid || sesion.id;
+
+                try {
+                    if (window.nexusAPI.obtenerConfigServer) {
+                        const config = await window.nexusAPI.obtenerConfigServer();
+                        respaldoActivo = config.respaldo_datos === 'true' || config.respaldo_datos === true;
+                        if (respaldoActivo) {
+                            SERVER_URL = `http://${config.serverIp || config.SERVER_IP}:${config.serverPort || config.SERVER_PORT}`;
+                        }
+                    }
+                } catch (configError) {}
+
+                // ACTIVAR INTERFAZ: Asegura que el contenedor se vea de inmediato
+                if(cargandoMensaje) cargandoMensaje.style.display = 'none';
+                if(appContenedor) appContenedor.style.display = 'flex';
+
+                await cargarSucursales();
+                catalogoProductosGlobal = await window.nexusAPI.obtenerProductosLocal() || [];
+
+                // Si hay sucursal en la sesión, cargar entorno automáticamente
+                if (sesion.branchId) {
+                    selectSucursal.value = sesion.branchId;
+                    idSucursalSeleccionada = sesion.branchId;
+                    await prepararEntornoSucursal();
+                }
+            }
+        } catch (e) { 
+            console.error("❌ [NEXUS] Error al inicializar:", e); 
+        }
+    }
+
+    async function cargarSucursales() {
+        const sucursales = await window.nexusAPI.obtenerSucursalesLocal(idEmpresa);
+        selectSucursal.innerHTML = '<option value="" disabled selected>Selecciona sucursal de retiro...</option>';
+        if(sucursales && sucursales.length > 0) {
+            sucursales.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.nombre;
+                selectSucursal.appendChild(opt);
+            });
+        }
+    }
+
+    // --- 4. FLUJO DE TRABAJO ---
+
+    async function prepararEntornoSucursal() {
+        if (!idSucursalSeleccionada) return;
+
+        inputBusqueda.disabled = false;
+        inputBusqueda.placeholder = "Buscando stock en el Maestro...";
+        
+        const servidorIP = await window.nexusAPI.obtenerIpMaestro() || '127.0.0.1';
+        const URL_BASE = `http://${servidorIP}:3000`;
+
+        try {
+            const todosLosProductos = await window.nexusAPI.obtenerProductosLocal(); 
+            const productosBase = todosLosProductos.filter(p => p.company_id === idEmpresa);
+            
+            const params = new URLSearchParams({
+                sucursalId: idSucursalSeleccionada,
+                companyId: idEmpresa
+            });
+
+            const respuesta = await fetch(`${URL_BASE}/api/maestro/stock?${params.toString()}`);
+            const stockCentral = await respuesta.json();
+
+            // Cruzamos datos para el buscador y EXTRAEMOS LA UNIDAD REAL
+            listaProductosSucursal = productosBase.map(prod => {
+                const servidorData = stockCentral.find(s => s.producto_id === prod.id);
+                
+                // Extraer datos_json de forma segura para obtener la unidad
+                let datosParsed = {};
+                try {
+                    datosParsed = typeof prod.datos_json === 'string' ? JSON.parse(prod.datos_json) : (prod.datos_json || {});
+                } catch(e) {}
+
+                const unidadReal = datosParsed.unit || datosParsed.unidad || prod.unit || prod.unidad || 'UN';
+
+                return {
+                    ...prod,
+                    unit: unidadReal, // <-- Guardamos la unidad real aquí (KG, L, UN, etc)
+                    stock_sucursal: servidorData ? servidorData.cantidad_real : 0 
+                };
+            });
+
+            await cargarHistorialSalidas();
+
+            console.log(`✅ [NEXUS] Entorno listo: Stock desde Maestro e Historial desde Local.`);
+        } catch (error) {
+            console.error("❌ Error al preparar entorno:", error);
+            mostrarToast("Error de conexión con el servidor local", "error");
+        }
+    }
+
+    async function seleccionarProducto(p) {
+        idProductoSeleccionado = p.id;
+        inputBusqueda.value = p.nombre;
+        unidadActual = p.unit || 'UN'; // <--- CAPTURAMOS LA UNIDAD DEL PRODUCTO
+        
+        contenedorResultados.innerHTML = "";
+        contenedorResultados.classList.remove('activo');
+        
+        // Obtener empaques del Cerebro
+        const empaques = await window.nexusAPI.obtenerEmpaquePorProducto(p.id);
+        
+        // Colocamos la unidad dinámica en la opción por defecto
+        selectEmpaque.innerHTML = `<option value="1">Unidad Base (x1.00 ${unidadActual})</option>`;
+        selectEmpaque.disabled = false;
+        
+        if (empaques && empaques.length > 0) {
+            empaques.forEach(emp => {
+                const opt = document.createElement('option');
+                opt.value = emp.factor_cantidad;
+                opt.textContent = `${emp.nombre_unidad} (x${emp.factor_cantidad} ${emp.tipo_medida || unidadActual})`;
+                selectEmpaque.appendChild(opt);
+            });
+        }
+        
+        factorEmpaque = 1;
+        recalcular();
+        inputCantidad.focus();
+    }
+
+    function recalcular() {
+        const cant = parseFloat(inputCantidad.value) || 0;
+        const total = cant * factorEmpaque;
+        
+        // ¡Adiós al "unidad(es)" quemado en código! Ahora muestra "5.00 KG", "2.00 L", etc.
+        visorTotal.value = `${total.toFixed(2)} ${unidadActual}`; 
+    }
+
+    // --- 5. GESTIÓN DE TABLA Y SINCRONIZACIÓN ---
+
+    async function cargarHistorialSalidas() {
+        try {
+            // Carga local inmediata
+            let historialLocal = await window.nexusAPI.obtenerSalidasLocal({
+                companyId: idEmpresa,
+                branchId: idSucursalSeleccionada
+            });
+            historialSalidasCompleto = historialLocal;
+            renderizarHistorial();
+        } catch (error) {
+            console.error("❌ Error leyendo historial local:", error);
+        }
+    }
+
+    function renderizarHistorial() {
+        cuerpoHistorial.innerHTML = '';
+        
+        let lista = [...historialSalidasCompleto];
+        
+        // Aplicar Filtros de Fecha
+        const fechaDesde = document.getElementById('filtro-desde').value;
+        const fechaHasta = document.getElementById('filtro-hasta').value;
+        const limite = parseInt(document.getElementById('filtro-limite').value) || 100;
+
+        if (fechaDesde) {
+            const msDesde = new Date(fechaDesde).getTime();
+            lista = lista.filter(h => new Date(h.fecha_modificacion).getTime() >= msDesde);
+        }
+        if (fechaHasta) {
+            const dtHasta = new Date(fechaHasta);
+            dtHasta.setHours(23, 59, 59, 999);
+            lista = lista.filter(h => new Date(h.fecha_modificacion).getTime() <= dtHasta.getTime());
+        }
+
+        // Ordenar más recientes primero
+        lista.sort((a,b) => new Date(b.fecha_modificacion) - new Date(a.fecha_modificacion));
+
+        // Aplicar límite
+        lista = lista.slice(0, limite);
+
+        if (!lista || lista.length === 0) {
+            cuerpoHistorial.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500 italic">No hay transacciones registradas.</td></tr>';
+            return;
+        }
+
+        lista.forEach(h => {
+            const fila = document.createElement('tr');
+            
+            let nombreCruce = h.product_id;
+            if (catalogoProductosGlobal && catalogoProductosGlobal.length > 0) {
+                const prod = catalogoProductosGlobal.find(p => p.id === h.product_id);
+                if (prod) nombreCruce = prod.nombre;
+            }
+            const nombreProd = h.nombre_producto || nombreCruce || 'Producto Desconocido';
+            
+            const unidadLimpia = h.unidad ? h.unidad.split(' ')[0] : 'UN';
+
+            fila.innerHTML = `
+                <td class="px-6 py-4 text-xs text-gray-500">${new Date(h.fecha_modificacion).toLocaleString()}</td>
+                <td class="px-6 py-4 text-sm font-bold text-gray-900">${nombreProd}</td>
+                <td class="px-6 py-4 text-sm font-bold text-red-600">-${h.cantidad} ${unidadLimpia}</td>
+                <td class="px-6 py-4 text-sm text-gray-600">${h.motivo}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">${h.branch_id}</td>
+            `;
+            cuerpoHistorial.appendChild(fila);
+        });
+    }
+
+    // --- 6. EVENT LISTENERS ---
+
+    // Cambio de Sucursal
+    selectSucursal.onchange = async (e) => {
+        idSucursalSeleccionada = e.target.value;
+        await prepararEntornoSucursal();
+    };
+
+    // Buscador: Escritura
+    inputBusqueda.oninput = (e) => {
+        const termino = e.target.value.toLowerCase().trim();
+        focoProducto = -1;
+        contenedorResultados.innerHTML = "";
+
+        // Cambiado de < 2 a < 1 para que busque con una sola letra/número
+        if (termino.length < 1) {
+            contenedorResultados.classList.remove('activo');
+            return;
+        }
+
+        const filtrados = listaProductosSucursal.filter(p => 
+            p.nombre.toLowerCase().includes(termino) || (p.codigo && p.codigo.includes(termino))
+        );
+
+        if (filtrados.length > 0) {
+            contenedorResultados.classList.add('activo');
+            
+            // Limitamos los resultados a un máximo de 6 opciones
+            const resultadosLimitados = filtrados.slice(0, 6);
+            
+            resultadosLimitados.forEach((p, index) => {
+                const item = document.createElement('div');
+                item.className = "result-item";
+                item.innerHTML = `
+                    <div class="flex justify-between">
+                        <strong>${p.nombre}</strong>
+                        <span class="text-red-600 font-bold">Stock: ${p.stock_sucursal} ${p.unit || 'UN'}</span>
+                    </div>
+                `;
+                item.onclick = () => seleccionarProducto(p);
+                contenedorResultados.appendChild(item);
+            });
+        } else {
+            contenedorResultados.classList.add('activo');
+            contenedorResultados.innerHTML = `<div class="no-results-msg px-4 py-3 italic text-gray-500">Producto sin stock en esta sucursal</div>`;
+        }
+    };
+
+    // Buscador: Teclado (Navegación Flechas y Enter)
+    inputBusqueda.addEventListener('keydown', (e) => {
+        const items = contenedorResultados.querySelectorAll('.result-item');
+        if (items.length === 0) return;
+
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            focoProducto++;
+            if (focoProducto >= items.length) focoProducto = 0;
+            aplicarResaltado(items);
+        } 
+        else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            focoProducto--;
+            if (focoProducto < 0) focoProducto = items.length - 1;
+            aplicarResaltado(items);
+        } 
+        else if (e.key === "Enter") {
+            e.preventDefault();
+            if (focoProducto > -1) items[focoProducto].click();
+            else if (items.length > 0) items[0].click();
+        }
+    });
+
+    function aplicarResaltado(items) {
+        items.forEach(el => el.classList.remove("autocomplete-active"));
+        if (focoProducto > -1) {
+            items[focoProducto].classList.add("autocomplete-active");
+            items[focoProducto].scrollIntoView({ block: "nearest" });
+        }
+    }
+
+    inputCantidad.oninput = recalcular;
+   selectEmpaque.onchange = (e) => {
+        factorEmpaque = parseFloat(e.target.value) || 1;
+        recalcular();
+    };
+
+    // ... [Tu código anterior permanece igual hasta llegar a selectEmpaque.onchange] ...
+    
+    formulario.onsubmit = async (e) => {
+        e.preventDefault();
+        e.stopImmediatePropagation(); 
+
+        // 🛡️ CERROJO GLOBAL ANTI-DUPLICADOS
+        if (window.bloqueoSalidaEnProceso) {
+            console.warn("⚠️ [NEXUS] Intento de envío duplicado bloqueado por el cerrojo global.");
+            return;
+        }
+
+        if (!idProductoSeleccionado) return mostrarToast("Selecciona un producto.", "error");
+
+        // Calculamos el total en positivo
+        const totalARestar = (parseFloat(inputCantidad.value) || 0) * factorEmpaque;
+        
+        const btnSubmit = document.getElementById('btn-submit-exit');
+
+        const datosSalidaHistorial = {
+            id: `OUT-${Date.now()}`,
+            companyId: idEmpresa, // Para main.js
+            company_id: idEmpresa,
+            branchId: idSucursalSeleccionada, // Para main.js
+            branch_id: idSucursalSeleccionada,
+            productId: idProductoSeleccionado, // Para main.js
+            product_id: idProductoSeleccionado,
+            nombre_producto: inputBusqueda.value,
+            cantidad: totalARestar,
+            unidad: selectEmpaque.options[selectEmpaque.selectedIndex].text,
+            motivo: document.getElementById('exit-reason').value,
+            observacion: document.getElementById('observation').value,
+            usuarioId: idUsuario, // Para main.js
+            usuario_id: idUsuario,
+            fecha_modificacion: new Date().toISOString()
+        };
+
+        try {
+            window.bloqueoSalidaEnProceso = true; // ACTIVAMOS EL CERROJO
+            btnSubmit.disabled = true;
+            btnSubmit.textContent = "Sincronizando...";
+
+            // 🔥 1. Guardado Historial en BD Local
+            const resultado = await window.nexusAPI.guardarSalidaLocal(datosSalidaHistorial);
+            let exitoLocal = resultado && resultado.success;
+
+            // 🔥 2. Descuento en el Stock Maestro Local (SQLite)
+            const payloadStockLocal = {
+                productoId: idProductoSeleccionado,
+                sucursalId: idSucursalSeleccionada,
+                companyId: idEmpresa,
+                cantidad: -totalARestar, // Negativo para descontar
+                operacion: 'SUMAR'
+            };
+            const resultadoStock = await window.nexusAPI.guardarStockSucursal(payloadStockLocal);
+            if (!resultadoStock || !resultadoStock.success) {
+                console.error("Fallo al descontar stock local.");
+                exitoLocal = false;
+            }
+
+            // 🔥 DESCUENTO EN EL SERVIDOR VPS MAESTRO (Xeon / PostgreSQL)
+            let exitoVPS = false;
+            if (navigator.onLine && respaldoActivo && SERVER_URL) {
+                const payloadVPS = {
+                    sucursalId: idSucursalSeleccionada,
+                    companyId: idEmpresa,
+                    items: [{ 
+                        id: idProductoSeleccionado, 
+                        cantidad: -totalARestar, // <--- CANTIDAD NEGATIVA PARA RESTAR
+                        operacion: 'SUMAR' 
+                    }]
+                };
+
+                try {
+                    const resVPS = await fetch(`${SERVER_URL}/api/maestro/inventario/registrar-entrada`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payloadVPS)
+                    });
+                    
+                    if (resVPS.ok) {
+                        const jsonVPS = await resVPS.json();
+                        if (jsonVPS.exito || jsonVPS.success) exitoVPS = true;
+                    }
+                } catch (vpsError) {
+                    console.error("⚠️ Sincronización VPS fallida:", vpsError.message);
+                }
+            }
+
+            if (exitoLocal) {
+                if (respaldoActivo && SERVER_URL && !exitoVPS) {
+                    mostrarToast("Registrado localmente, pero falló en la nube (VPS).", "error");
+                } else {
+                    mostrarToast("Salida registrada correctamente.", "success");
+                }
+                
+                formulario.reset();
+                idProductoSeleccionado = null;
+                unidadActual = 'UN';
+                visorTotal.value = "0.00 unidad(es)";
+                
+                await prepararEntornoSucursal(); 
+            } else {
+                throw new Error(resultado.error || "Error al registrar la salida.");
+            }
+        } catch (error) {
+            console.error("❌ Error en salida:", error);
+            mostrarToast("Error: " + error.message, "error");
+        } finally {
+            window.bloqueoSalidaEnProceso = false; // LIBERAMOS EL CERROJO
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = "Registrar Salida de Inventario";
+        }
+    };
+
+    function mostrarToast(mensaje, tipo = "success") {
+        const contenedor = document.getElementById('toast-container');
+        if(!contenedor) return;
+        const toast = document.createElement('div');
+        const colorBase = tipo === "success" ? "bg-green-500" : "bg-red-500";
+        toast.className = `${colorBase} text-white px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-300 translate-x-full opacity-0 flex items-center gap-3 font-bold`;
+        toast.innerHTML = `<span>${tipo === "success" ? '✅' : '❌'}</span><span>${mensaje}</span>`;
+        contenedor.appendChild(toast);
+        setTimeout(() => toast.classList.remove('translate-x-full', 'opacity-0'), 10);
+        setTimeout(() => {
+            toast.classList.add('translate-x-full', 'opacity-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    }
+
+    // Eventos Filtros
+    document.getElementById('filtro-desde').addEventListener('change', renderizarHistorial);
+    document.getElementById('filtro-hasta').addEventListener('change', renderizarHistorial);
+    document.getElementById('filtro-limite').addEventListener('change', renderizarHistorial);
+
+    // Arrancar el sistema
+    inicializar();
+</script>
+</body>
+</html>

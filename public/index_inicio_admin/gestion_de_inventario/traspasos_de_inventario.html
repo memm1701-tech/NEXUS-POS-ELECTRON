@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traspaso de Inventario - Nexus POS</title>
+    <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <script src="tailwindcss.js"></script>
+<style>
+    body {
+        font-family: 'Roboto', sans-serif;
+        background-color: #f3f4f6;
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+    }
+
+    /* --- ESTILO EXPANSIVO NEXUS (100% + 1rem de margen) --- */
+    .container {
+        background-color: transparent !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 20px 1rem !important; 
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+    }
+
+    @media (min-width: 768px) {
+        .container { padding: 30px 40px !important; }
+    }
+
+    h1 {
+        color: #333;
+        margin-bottom: 25px;
+        font-size: 2.2em; 
+        font-weight: 700;
+        letter-spacing: -1px;
+        text-align: center;
+    }
+
+    h2 {
+        color: #333;
+        margin-bottom: 20px;
+        font-size: 1.5em; 
+        font-weight: 700;
+        letter-spacing: -1px;
+        text-align: center;
+    }
+
+    /* --- FORMULARIO --- */
+    .form-section {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 25px;
+        text-align: left;
+    }
+
+    .input-group-item {
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        flex: 1;
+    }
+
+    .form-section label {
+        font-weight: bold;
+        color: #4a5568;
+        margin-bottom: 6px;
+        font-size: 0.95em;
+    }
+
+    .form-section input, .form-section select, .form-section textarea {
+        width: 100%;
+        padding: 14px;
+        border: 1px solid #cbd5e0;
+        border-radius: 8px;
+        box-sizing: border-box;
+        font-size: 1em;
+        background-color: white;
+    }
+
+    /* Usaremos un tema Morado/Violeta para Traspasos para diferenciarlo de Entradas(Azul) y Salidas(Rojo) */
+    .form-section input:focus, .form-section select:focus, .form-section textarea:focus {
+        outline: none;
+        border-color: #8b5cf6; /* Violeta */
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+    }
+
+    #final-stock-display {
+        background-color: #ede9fe;
+        cursor: default;
+        font-weight: 800;
+        color: #5b21b6;
+        border: 1px solid #c4b5fd;
+    }
+
+    .btn-submit {
+        background-color: #8b5cf6; /* Violeta 500 */
+        color: white;
+        padding: 18px 30px;
+        border: none;
+        border-radius: 8px;
+        font-size: 1.1em;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        margin-top: 10px;
+        width: 100%;
+    }
+
+    .btn-submit:hover { background-color: #7c3aed; /* Violeta 600 */ }
+    .btn-submit:disabled { background-color: #a78bfa; cursor: not-allowed; }
+
+    /* --- TABLA DE HISTORIAL --- */
+    .table-container {
+        margin-top: 30px;
+        overflow-x: auto;
+    }
+
+    .table-scroll-wrapper {
+        max-height: 600px;
+        overflow-y: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        background-color: white;
+    }
+
+    table {
+        width: 100%;
+        min-width: 700px;
+        border-collapse: collapse;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    th, td {
+        border: 1px solid #e2e8f0;
+        padding: 14px;
+        text-align: left;
+        font-size: 0.9em;
+    }
+
+    th {
+        background-color: #8b5cf6; 
+        color: white;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    tr:nth-child(even) { background-color: #f7fafc; }
+    tr:hover { background-color: #f5f3ff; }
+
+    /* --- BUSCADOR --- */
+    #product-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: white;
+        border-radius: 0 0 8px 8px;
+        max-height: 250px;
+        overflow-y: auto;
+        z-index: 9999;
+        display: none; 
+        border: 1px solid #cbd5e0;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+    #product-results.activo { display: block !important; }
+    .result-item { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #edf2f7; text-align: left; }
+    .result-item.autocomplete-active { background-color: #ede9fe !important; border-left: 4px solid #8b5cf6 !important; color: #5b21b6; }
+    .no-results-msg { padding: 12px 15px; color: #718096; font-style: italic; text-align: center; }
+</style>
+</head>
+<body>
+<div id="toast-container" class="fixed top-5 right-5 z-[10000] flex flex-col gap-3"></div>
+    <div class="container">
+        <h1>Traspaso de Inventario</h1>
+        
+        <form id="inventory-form" class="form-section">
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="input-group-item md:w-1/2">
+                    <label for="storage-origin">1. Sucursal Origen (Retiro):</label>
+                    <select id="storage-origin" required>
+                        <option value="" disabled selected>Cargando sucursales...</option>
+                    </select>
+                </div>
+                <div class="input-group-item md:w-1/2">
+                    <label for="storage-destination">2. Sucursal Destino (Entrada):</label>
+                    <select id="storage-destination" required disabled>
+                        <option value="" disabled selected>Selecciona origen primero...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex flex-col md:flex-row gap-4 mt-2">
+                <div class="input-group-item md:w-1/2">
+                    <label for="product-search">3. Producto a Traspasar:</label>
+                    <input type="text" id="product-search" placeholder="Selecciona origen primero..." autocomplete="off" required disabled>
+                    <div id="product-results"></div>
+                </div>
+
+                <div class="input-group-item md:w-1/2">
+                    <label for="packaging-unit-select">Unidad de Empaque:</label>
+                    <select id="packaging-unit-select" disabled>
+                        <option value="1" selected>Unidad Individual (x1)</option> 
+                    </select>
+                </div>
+            </div>
+            
+            <div class="flex flex-col md:flex-row gap-4 mt-2">
+                <div class="input-group-item md:w-1/2">
+                    <label for="quantity-input">Cantidad de Paquetes/Unidades:</label>
+                    <input type="number" id="quantity-input" placeholder="Ej: 5" step="0.01" required min="0.01" disabled>
+                </div>
+
+                <div class="input-group-item md:w-1/2">
+                    <label>Total de Stock a Traspasar:</label>
+                    <input type="text" id="final-stock-display" value="0.00" readonly>
+                </div>
+            </div>
+
+            <div class="mt-2">
+                <label for="observation">Observación (Opcional):</label>
+                <textarea id="observation" rows="2" placeholder="Añade una nota o motivo sobre este traspaso..."></textarea>
+            </div>
+            
+            <button type="submit" id="btn-submit-transfer" class="btn-submit">
+                Ejecutar Traspaso de Inventario
+            </button>
+        </form>
+
+        <hr class="my-8">
+
+        <div class="table-container">
+            <div class="flex flex-col xl:flex-row justify-between items-center mb-4 gap-4">
+                <h2 style="margin: 0;">Historial de Traspasos Recientes</h2>
+                <div class="flex flex-col md:flex-row items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <label class="font-bold text-sm text-gray-600">Desde:</label>
+                        <input type="date" id="filtro-desde" class="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-purple-500">
+                        
+                        <label class="font-bold text-sm ml-2 text-gray-600">Hasta:</label>
+                        <input type="date" id="filtro-hasta" class="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-purple-500">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="font-bold text-sm text-gray-600">Filas:</label>
+                        <select id="filtro-limite" class="p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-purple-500">
+                            <option value="50">50</option>
+                            <option value="100" selected>100</option>
+                            <option value="200">200</option>
+                            <option value="500">500</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="table-scroll-wrapper">
+                <table id="transaction-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha / Hora</th>
+                            <th>Producto</th>
+                            <th>Cantidad Traspasada</th>
+                            <th>Desde (Origen)</th>
+                            <th>Hacia (Destino)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transaction-log-body">
+                        <tr><td colspan="5" class="text-center py-4 text-gray-500 italic">No hay traspasos recientes.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+    // --- 1. VARIABLES DE ESTADO ---
+    let idEmpresa = null;
+    let idUsuario = null;
+    let sucursalesDisponibles = [];
+    
+    let idSucursalOrigen = null;
+    let idSucursalDestino = null;
+    let listaProductosOrigen = []; 
+    let catalogoProductosGlobal = [];
+    let historialTraspasosCompleto = [];
+    let idProductoSeleccionado = null;
+    let factorEmpaque = 1;
+    let focoProducto = -1; 
+
+    // --- 2. REFERENCIAS DOM ---
+    const selectOrigen = document.getElementById('storage-origin');
+    const selectDestino = document.getElementById('storage-destination');
+    const inputBusqueda = document.getElementById('product-search');
+    const contenedorResultados = document.getElementById('product-results');
+    const selectEmpaque = document.getElementById('packaging-unit-select');
+    const inputCantidad = document.getElementById('quantity-input');
+    const visorTotal = document.getElementById('final-stock-display');
+    const formulario = document.getElementById('inventory-form');
+    const cuerpoHistorial = document.getElementById('transaction-log-body');
+    const btnSubmit = document.getElementById('btn-submit-transfer');
+
+    // --- 3. INICIALIZACIÓN ---
+    async function inicializar() {
+        try {
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
+            if (sesion && sesion.companyId) {
+                idEmpresa = sesion.companyId;
+                idUsuario = sesion.uid || sesion.id;
+                await cargarSucursales();
+                catalogoProductosGlobal = await window.nexusAPI.obtenerProductosLocal() || [];
+            } else {
+                mostrarToast("No hay sesión activa.", "error");
+            }
+        } catch (e) { 
+            console.error("❌ [NEXUS] Error al inicializar:", e); 
+        }
+    }
+
+    async function cargarSucursales() {
+        sucursalesDisponibles = await window.nexusAPI.obtenerSucursalesLocal(idEmpresa);
+        
+        selectOrigen.innerHTML = '<option value="" disabled selected>Selecciona sucursal origen...</option>';
+        selectDestino.innerHTML = '<option value="" disabled selected>Selecciona sucursal destino...</option>';
+        
+        if(sucursalesDisponibles && sucursalesDisponibles.length > 0) {
+            sucursalesDisponibles.forEach(s => {
+                const optOrigen = document.createElement('option');
+                optOrigen.value = s.id;
+                optOrigen.textContent = s.nombre;
+                selectOrigen.appendChild(optOrigen);
+
+                const optDestino = document.createElement('option');
+                optDestino.value = s.id;
+                optDestino.textContent = s.nombre;
+                selectDestino.appendChild(optDestino);
+            });
+        }
+        selectDestino.disabled = false;
+    }
+
+    // --- 4. PREPARACIÓN DEL ENTORNO (STOCK ORIGEN) ---
+    async function prepararEntornoOrigen() {
+        if (!idSucursalOrigen) return;
+
+        inputBusqueda.disabled = false;
+        inputBusqueda.placeholder = "Buscando stock en el Maestro...";
+        inputCantidad.disabled = false;
+        
+        const servidorIP = localStorage.getItem('serverIP') || '192.168.0.111';
+        const URL_BASE = `http://${servidorIP}:3000`;
+
+        try {
+            // 1. Catálogo local
+            const todosLosProductos = await window.nexusAPI.obtenerProductosLocal(); 
+            const productosBase = todosLosProductos.filter(p => p.company_id === idEmpresa);
+            
+            // 2. Stock del maestro para el ORIGEN
+            const params = new URLSearchParams({
+                sucursalId: idSucursalOrigen,
+                companyId: idEmpresa
+            });
+            const respuesta = await fetch(`${URL_BASE}/api/maestro/stock?${params.toString()}`);
+            const stockCentral = await respuesta.json();
+
+            // 3. Cruzar datos (solo productos con stock > 0 para agilizar)
+            listaProductosOrigen = productosBase.map(prod => {
+                const servidorData = stockCentral.find(s => s.producto_id === prod.id);
+                return {
+                    ...prod,
+                    stock_sucursal: servidorData ? servidorData.cantidad_real : 0 
+                };
+            }).filter(p => p.stock_sucursal > 0);
+
+            inputBusqueda.placeholder = "Escribe el producto a traspasar...";
+            
+            // 4. Cargar Historial de Traspasos Local
+            await cargarHistorialTraspasos();
+
+        } catch (error) {
+            console.error("❌ Error cargando origen:", error);
+            mostrarToast("Error de conexión con el servidor", "error");
+        }
+    }
+
+    // --- 5. LÓGICA DE AUTOCOMPLETADO Y SELECCIÓN ---
+    async function seleccionarProducto(p) {
+        idProductoSeleccionado = p.id;
+        inputBusqueda.value = p.nombre;
+        contenedorResultados.innerHTML = "";
+        contenedorResultados.classList.remove('activo');
+        
+        // Cargar Empaques
+        const empaques = await window.nexusAPI.obtenerEmpaquePorProducto(p.id);
+        selectEmpaque.innerHTML = `<option value="1">Unidad Individual (1.00 ${p.unit || 'UN'})</option>`;
+        selectEmpaque.disabled = false;
+        
+        if (empaques && empaques.length > 0) {
+            empaques.forEach(emp => {
+                const opt = document.createElement('option');
+                opt.value = emp.factor_cantidad;
+                opt.textContent = `${emp.nombre_unidad} (x${emp.factor_cantidad} ${emp.tipo_medida})`;
+                selectEmpaque.appendChild(opt);
+            });
+        }
+        
+        factorEmpaque = 1;
+        recalcular();
+        inputCantidad.focus();
+    }
+
+    function recalcular() {
+        const cant = parseFloat(inputCantidad.value) || 0;
+        const total = cant * factorEmpaque;
+        visorTotal.value = `${total.toFixed(2)} unidad(es)`;
+    }
+
+    // --- 6. HISTORIAL DE TRASPASOS ---
+    async function cargarHistorialTraspasos() {
+        try {
+            // Reutilizamos tu API de salidas para leer el historial local
+            let historialLocal = await window.nexusAPI.obtenerSalidasLocal({
+                companyId: idEmpresa,
+                branchId: idSucursalOrigen
+            });
+
+            // Filtramos solo los movimientos que contengan "Traspaso" en el motivo
+            const traspasos = historialLocal.filter(h => (h.motivo || '').toLowerCase().includes('traspaso'));
+            historialTraspasosCompleto = traspasos;
+            renderizarHistorial();
+        } catch (error) {
+            console.error("❌ Error leyendo historial:", error);
+        }
+    }
+
+    function renderizarHistorial() {
+        cuerpoHistorial.innerHTML = '';
+        
+        let lista = [...historialTraspasosCompleto];
+        
+        // Filtros
+        const fechaDesde = document.getElementById('filtro-desde').value;
+        const fechaHasta = document.getElementById('filtro-hasta').value;
+        const limite = parseInt(document.getElementById('filtro-limite').value) || 100;
+
+        if (fechaDesde) {
+            const msDesde = new Date(fechaDesde).getTime();
+            lista = lista.filter(h => new Date(h.fecha_modificacion).getTime() >= msDesde);
+        }
+        if (fechaHasta) {
+            const dtHasta = new Date(fechaHasta);
+            dtHasta.setHours(23, 59, 59, 999);
+            lista = lista.filter(h => new Date(h.fecha_modificacion).getTime() <= dtHasta.getTime());
+        }
+
+        // Ordenar y Limitar
+        lista.sort((a,b) => new Date(b.fecha_modificacion) - new Date(a.fecha_modificacion));
+        lista = lista.slice(0, limite);
+        
+        if (!lista || lista.length === 0) {
+            cuerpoHistorial.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500 italic">No hay traspasos recientes desde esta sucursal.</td></tr>';
+            return;
+        }
+
+        lista.forEach(h => {
+            const fila = document.createElement('tr');
+            
+            let nombreCruce = h.product_id;
+            if (catalogoProductosGlobal && catalogoProductosGlobal.length > 0) {
+                const prod = catalogoProductosGlobal.find(p => p.id === h.product_id);
+                if (prod) nombreCruce = prod.nombre;
+            }
+            
+            const nombreProd = h.nombre_producto || nombreCruce || 'Producto Desconocido';
+            const unidadLimpia = h.unidad ? h.unidad.split(' ')[0] : 'UN';
+            
+            // Extraer el nombre del destino del motivo (Ej: "Traspaso a Sucursal Centro")
+            const motivoTexto = h.motivo || '';
+            const destinoAprox = motivoTexto.replace('Traspaso a ', '');
+
+            fila.innerHTML = `
+                <td class="px-6 py-4 text-xs text-gray-500">${new Date(h.fecha_modificacion).toLocaleString()}</td>
+                <td class="px-6 py-4 text-sm font-bold text-gray-900">${nombreProd}</td>
+                <td class="px-6 py-4 text-sm font-bold text-purple-600">${h.cantidad} ${unidadLimpia}</td>
+                <td class="px-6 py-4 text-sm text-gray-600">${h.branch_id}</td>
+                <td class="px-6 py-4 text-sm text-gray-600">${destinoAprox}</td>
+            `;
+            cuerpoHistorial.appendChild(fila);
+        });
+    }
+
+    // --- 7. EVENT LISTENERS DOM ---
+    selectOrigen.onchange = async (e) => {
+        idSucursalOrigen = e.target.value;
+        if (idSucursalOrigen === idSucursalDestino) {
+            mostrarToast("Origen y Destino no pueden ser iguales.", "error");
+            selectOrigen.value = ""; idSucursalOrigen = null; return;
+        }
+        await prepararEntornoOrigen();
+    };
+
+    selectDestino.onchange = (e) => {
+        idSucursalDestino = e.target.value;
+        if (idSucursalOrigen === idSucursalDestino) {
+            mostrarToast("Destino y Origen no pueden ser iguales.", "error");
+            selectDestino.value = ""; idSucursalDestino = null;
+        }
+    };
+
+    // Buscador: Escritura
+    inputBusqueda.oninput = (e) => {
+        const termino = e.target.value.toLowerCase().trim();
+        focoProducto = -1;
+        contenedorResultados.innerHTML = "";
+
+        if (termino.length < 2) {
+            contenedorResultados.classList.remove('activo');
+            return;
+        }
+
+        const filtrados = listaProductosOrigen.filter(p => 
+            p.nombre.toLowerCase().includes(termino) || (p.codigo && p.codigo.includes(termino))
+        );
+
+        if (filtrados.length > 0) {
+            contenedorResultados.classList.add('activo');
+            filtrados.forEach((p) => {
+                const item = document.createElement('div');
+                item.className = "result-item";
+                item.innerHTML = `
+                    <div class="flex justify-between">
+                        <strong>${p.nombre}</strong>
+                        <span class="text-purple-600 font-bold">Disp: ${p.stock_sucursal} ${p.unit || 'UN'}</span>
+                    </div>
+                `;
+                item.onclick = () => seleccionarProducto(p);
+                contenedorResultados.appendChild(item);
+            });
+        } else {
+            contenedorResultados.classList.add('activo');
+            contenedorResultados.innerHTML = `<div class="no-results-msg px-4 py-3 italic text-gray-500">Sin stock disponible o no encontrado</div>`;
+        }
+    };
+
+    // Buscador: Navegación Teclado
+    inputBusqueda.addEventListener('keydown', (e) => {
+        const items = contenedorResultados.querySelectorAll('.result-item');
+        if (items.length === 0) return;
+
+        if (e.key === "ArrowDown") {
+            e.preventDefault(); focoProducto++; if (focoProducto >= items.length) focoProducto = 0; aplicarResaltado(items);
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault(); focoProducto--; if (focoProducto < 0) focoProducto = items.length - 1; aplicarResaltado(items);
+        } else if (e.key === "Enter") {
+            e.preventDefault();
+            if (focoProducto > -1) items[focoProducto].click();
+            else if (items.length > 0) items[0].click();
+        }
+    });
+
+    function aplicarResaltado(items) {
+        items.forEach(el => el.classList.remove("autocomplete-active"));
+        if (focoProducto > -1) {
+            items[focoProducto].classList.add("autocomplete-active");
+            items[focoProducto].scrollIntoView({ block: "nearest" });
+        }
+    }
+
+    inputCantidad.oninput = recalcular;
+    selectEmpaque.onchange = (e) => { factorEmpaque = parseFloat(e.target.value) || 1; recalcular(); };
+
+    // --- 8. EJECUCIÓN DEL TRASPASO (DOBLE PARTIDA) ---
+    formulario.onsubmit = async (e) => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+
+        if (window.bloqueoTraspaso) return;
+        if (!idSucursalOrigen || !idSucursalDestino) return mostrarToast("Faltan sucursales.", "error");
+        if (!idProductoSeleccionado) return mostrarToast("Selecciona un producto.", "error");
+
+        const cantidadRestar = parseFloat(inputCantidad.value) || 0;
+        const totalTraspaso = cantidadRestar * factorEmpaque;
+
+        // Validación visual rápida
+        const prod = listaProductosOrigen.find(p => p.id === idProductoSeleccionado);
+        if (prod && prod.stock_sucursal < totalTraspaso) {
+            return mostrarToast(`Stock insuficiente. Disponible: ${prod.stock_sucursal}`, "error");
+        }
+
+        const nombreDestino = selectDestino.options[selectDestino.selectedIndex].text;
+        const nombreOrigen = selectOrigen.options[selectOrigen.selectedIndex].text;
+        const obsAdicional = document.getElementById('observation').value;
+        const motivoFull = `Traspaso a ${nombreDestino}` + (obsAdicional ? ` | Obs: ${obsAdicional}` : '');
+
+        try {
+            window.bloqueoTraspaso = true;
+            btnSubmit.disabled = true;
+            btnSubmit.textContent = "Procesando Traspaso...";
+
+            // PASO 1: SALIDA DE LA SUCURSAL ORIGEN (usa tu API que descuenta del maestro y guarda historial)
+            const datosSalida = {
+                id: `TRANS-${Date.now()}`,
+                company_id: idEmpresa,
+                branch_id: idSucursalOrigen,
+                product_id: idProductoSeleccionado,
+                nombre_producto: inputBusqueda.value,
+                cantidad: totalTraspaso,
+                unidad: selectEmpaque.options[selectEmpaque.selectedIndex].text,
+                motivo: motivoFull,
+                observacion: `Traspasado desde ${nombreOrigen}`,
+                usuario_id: idUsuario,
+                fecha_modificacion: new Date().toISOString()
+            };
+
+            const resSalida = await window.nexusAPI.guardarSalidaLocal(datosSalida);
+            if (!resSalida || !resSalida.success) {
+                throw new Error(resSalida.error || "Fallo al descontar del origen.");
+            }
+
+            // PASO 2: ENTRADA EN LA SUCURSAL DESTINO (Inyección directa al Maestro)
+            const servidorIP = localStorage.getItem('serverIP') || '192.168.0.111';
+            const resEntrada = await fetch(`http://${servidorIP}:3000/api/maestro/registrar-entrada`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sucursalId: idSucursalDestino,
+                    companyId: idEmpresa,
+                    items: [{
+                        id: idProductoSeleccionado,
+                        cantidad: totalTraspaso,
+                        operacion: 'SUMAR'
+                    }]
+                })
+            });
+            
+            const jsonEntrada = await resEntrada.json();
+            if (!jsonEntrada.exito) {
+                throw new Error("El origen se descontó, pero falló la entrada al destino.");
+            }
+
+            mostrarToast("¡Traspaso exitoso!", "success");
+            
+            // Reset y Recarga
+            idProductoSeleccionado = null;
+            inputBusqueda.value = "";
+            inputCantidad.value = "";
+            visorTotal.value = "0.00 unidad(es)";
+            document.getElementById('observation').value = "";
+            selectEmpaque.innerHTML = '<option value="1">Unidad Individual (x1)</option>';
+            
+            await prepararEntornoOrigen();
+
+        } catch (error) {
+            console.error("❌ Error en traspaso:", error);
+            mostrarToast(error.message, "error");
+        } finally {
+            window.bloqueoTraspaso = false;
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = "Ejecutar Traspaso de Inventario";
+        }
+    };
+
+    function mostrarToast(mensaje, tipo = "success") {
+        const contenedor = document.getElementById('toast-container');
+        if(!contenedor) return;
+        const toast = document.createElement('div');
+        const colorBase = tipo === "success" ? "bg-green-500" : "bg-red-500";
+        toast.className = `${colorBase} text-white px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-300 translate-x-full opacity-0 flex items-center gap-3 font-bold`;
+        toast.innerHTML = `<span>${tipo === "success" ? '✅' : '❌'}</span><span>${mensaje}</span>`;
+        contenedor.appendChild(toast);
+        setTimeout(() => toast.classList.remove('translate-x-full', 'opacity-0'), 10);
+        setTimeout(() => {
+            toast.classList.add('translate-x-full', 'opacity-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    }
+
+    // Eventos Filtros
+    document.getElementById('filtro-desde').addEventListener('change', renderizarHistorial);
+    document.getElementById('filtro-hasta').addEventListener('change', renderizarHistorial);
+    document.getElementById('filtro-limite').addEventListener('change', renderizarHistorial);
+
+    // Arrancar el sistema
+    inicializar();
+</script>
+</body>
+</html>

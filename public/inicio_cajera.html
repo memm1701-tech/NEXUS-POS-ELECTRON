@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://fonts.googleapis.com https://fonts.gstatic.com https://www.gstatic.com https://api.github.com https://*.firebaseio.com https://*.googleapis.com; connect-src 'self' http://*:* https://*:* ws://*:* wss://*:* http://localhost:* http://127.0.0.1:* https://*.nexusposgobal.com https://api.github.com https://ve.dolarapi.com https://www.bcv.org.ve https://demoemision.thefactoryhka.com.ve https://www.google.com; img-src 'self' data: https:;">
+    <title>NEXUS POS - Cajera Dashboard</title>
+    <link rel="icon" type="image/png" href="logo_nexus.png">
+    <link href="../node_modules/material-icons/iconfont/material-icons.css" rel="stylesheet">
+    <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <script src="tailwindcss.js"></script>
+    <style>
+        /* === TUS ESTILOS ORIGINALES INTACTOS === */
+        body { font-family: 'Roboto', sans-serif; }
+        h1, h2, h3, p, span { font-family: inherit; }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #2563eb;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+        #app-loading {
+            position: fixed; inset: 0; background-color: #f3f4f6;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 9999;
+        }
+        .app-container { display: none; min-height: 100vh; width: 100%; display: flex; }
+        .main-content { 
+            flex-grow: 1;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            overflow-y: auto; 
+            min-width: 0; /* Previene que contenido ancho expanda este contenedor */
+        }
+        .sidebar {
+            width: 250px; background-color: #2d3748; color: #fff; padding: 1rem;
+            display: flex; flex-direction: column; min-height: 100vh; box-shadow: 2px 0 5px rgba(0,0,0,0.2);
+            position: sticky; top: 0; left: 0; overflow-y: auto;
+            transition: transform 0.3s ease-in-out;
+            transform: translateX(0); /* Estado por defecto en escritorio */
+            flex-shrink: 0; /* Previene que el sidebar sea aplastado por el contenido principal */
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+        .sidebar::-webkit-scrollbar {
+            display: none; /* Chrome, Safari and Opera */
+        }
+        .sidebar-header { text-align: center; margin-bottom: 2rem; }
+        .sidebar-header h3 { font-size: 1.5rem; font-weight: bold; margin-bottom: 0.5rem; color: #fff; }
+        .sidebar-header p { font-size: 0.875rem; color: #fff; }
+        .sidebar-dollar-rate-input { margin: 1.5rem 0; padding: 0 0.5rem; }
+        .sidebar-dollar-rate-input label { color: #fff; font-size: 0.875rem; font-weight: bold; margin-bottom: 0.25rem; display: block; }
+        .sidebar-dollar-rate-input input {
+            width: 100%; padding: 0.5rem; border-radius: 0.375rem; border: 1px solid #4a5568;
+            background-color: #4a5568; color: #fff; font-size: 0.875rem; outline: none;
+        }
+        .sidebar-nav ul { list-style: none; padding: 0; }
+        .sidebar-nav li { margin-bottom: 0.5rem; }
+        .sidebar-nav a {
+            display: flex; align-items: center; padding: 0.75rem 1rem; color: #fff; text-decoration: none;
+            border-radius: 0.375rem; transition: background-color 0.2s ease; font-weight: 500;
+        }
+        
+        .sidebar-nav > ul > li > a:hover { 
+            background-color: rgba(99, 179, 237, 0.4); 
+            color: #fff; 
+        }
+        
+        .sidebar-nav li.active > a { 
+            background-color: rgba(99, 179, 237, 0.4); 
+            border-left: 4px solid #63B3ED; 
+            padding-left: calc(1rem - 4px); 
+            border-top-left-radius: 0; 
+            border-bottom-left-radius: 0; 
+        }
+        
+        .sidebar-nav a .material-icons { margin-right: 0.75rem; font-size: 1.25rem; color: #fff; }
+        .sidebar-nav .dropdown > a { position: relative; padding-right: 2.5rem; }
+        .sidebar-nav .dropdown > a::after {
+            content: 'expand_more'; font-family: 'Material Icons'; position: absolute; right: 1rem; top: 50%;
+            transform: translateY(-50%); transition: transform 0.2s ease; font-size: 1.25rem; color: #fff;
+        }
+        .sidebar-nav .dropdown.open > a::after { content: 'expand_less'; transform: translateY(-50%) rotate(0deg); }
+        .sidebar-nav .dropdown ul {
+            max-height: 0; overflow: hidden; transition: max-height 0.3s ease-in-out;
+            background-color: #2d3748; 
+            border-radius: 0.375rem; margin-top: 0.25rem;
+        }
+        .sidebar-nav .dropdown.open ul { max-height: 500px; }
+        
+        .sidebar-nav .dropdown ul li a { 
+            padding-left: 2.5rem; font-size: 0.9rem; color: #fff; 
+            background-color: transparent; border-left: none;
+        }
+        .sidebar-nav .dropdown ul li a:hover { background-color: #4a5568; color: #fff; }
+
+        #menu-toggle-btn {
+            position: fixed; top: 1rem; left: 1rem; z-index: 10000;
+            display: none; 
+            background-color: #2d3748; color: #fff; padding: 0.5rem;
+            border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        #mobile-menu-backdrop {
+            position: fixed; inset: 0; z-index: 9998;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .app-container { flex-direction: column; }
+            .sidebar {
+                position: fixed; top: 0; left: 0; z-index: 9999;
+                transform: translateX(-100%); 
+                height: 100vh;
+            }
+            .sidebar.open { transform: translateX(0); }
+            #menu-toggle-btn { display: block; }
+            #mobile-menu-backdrop.visible { display: block; }
+        }
+
+        /* === LO NUEVO: EFECTO DE COLAPSO === */
+        /* Hacemos que la sidebar original sea animable en anchura */
+        .sidebar {
+            transition: width 0.3s ease, transform 0.3s ease-in-out;
+            overflow-x: hidden;
+            white-space: nowrap;
+        }
+        
+        /* Botón de PC (3 rayas) */
+        .sidebar-toggle-btn {
+            position: absolute; top: 15px; left: 15px;
+            background: none; border: none; cursor: pointer; color: #fff; z-index: 100;
+        }
+        .sidebar-header { position: relative; } /* Para que el botón se ubique bien */
+
+        /* Estado Colapsado */
+        .sidebar.collapsed { width: 80px; padding: 1rem 0.5rem; }
+        .sidebar.collapsed .sidebar-toggle-btn { left: 50%; transform: translateX(-50%); }
+
+        /* Ocultar elementos suavemente */
+        .sidebar-header h3, #rif-text, .sidebar-header .flex, .sidebar-dollar-rate-input {
+            transition: opacity 0.3s ease; opacity: 1;
+        }
+        .sidebar.collapsed .sidebar-header h3,
+        .sidebar.collapsed #rif-text,
+        .sidebar.collapsed .sidebar-header .flex,
+        .sidebar.collapsed .sidebar-dollar-rate-input,
+        .sidebar.collapsed .dropdown ul {
+            opacity: 0; visibility: hidden; pointer-events: none; height: 0; margin: 0; padding: 0;
+        }
+        
+        /* Ajustar Logo e Iconos */
+        .sidebar.collapsed .sidebar-header img { width: 45px !important; height: 45px !important; margin-top: 35px; }
+        .sidebar.collapsed .sidebar-nav ul li a { font-size: 0; justify-content: center; padding-left: 0; }
+        .sidebar.collapsed .sidebar-nav ul li a i.material-icons { margin-right: 0; font-size: 24px; transition: margin 0.3s ease;}
+        .sidebar.collapsed .sidebar-nav .dropdown > a::after { display: none; }
+        .sidebar.collapsed .sidebar-nav li.active > a { padding-left: 0; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div id="app-loading">
+        <div class="spinner mb-4"></div>
+        <p class="text-gray-600">Cargando...</p>
+    </div>
+
+    <button id="menu-toggle-btn" class="text-white">
+        <i class="material-icons">menu</i>
+    </button>
+    <div id="mobile-menu-backdrop"></div>
+
+    <div id="app-container" class="app-container">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <button id="desktop-menu-toggle" class="sidebar-toggle-btn focus:outline-none hidden md:block">
+                    <i id="menu-icon-dynamic" class="material-icons">menu</i>
+                </button>
+
+                <img src="logo_nexus.png" alt="Logo NEXUS POS" class="rounded-full mx-auto mb-2" style="display: block; width: 120px; height: 120px; object-fit: cover; transition: all 0.3s ease;">
+                <h3>NEXUS POS</h3>
+                
+                <p id="rif-text" class="text-sm font-bold text-gray-400 mb-2">RIF: J-50807000-3</p>
+
+                <div class="flex items-center justify-center ml-3 mt-1 text-xs font-medium text-gray-400">
+                    <span id="status-circle" class="w-2.5 h-2.5 rounded-full bg-green-500 mr-2 shadow-[0_0_5px_rgba(34,197,94,0.6)] transition-colors duration-300"></span>
+                    <span id="status-text">Conectado (Online)</span>
+                </div>
+            </div>
+
+            <div class="sidebar-dollar-rate-input">
+                <label for="dollar-exchange-rate">Precio del Dólar (Bs)</label>
+                <input type="number" id="dollar-exchange-rate" value="0.00" min="0.01" step="0.01" readonly>
+                <p id="last-updated-timestamp" class="text-xs text-gray-400 mt-1"></p>
+            </div>
+
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="#" id="home-link" data-page="index_cajera/inicio/home_cashier_content.html"><i class="material-icons">home</i> Inicio</a></li>
+                    <li class="dropdown">
+                        <a href="#"><i class="material-icons">point_of_sale</i> Punto de venta</a>
+                        <ul>
+                            <li><a href="#" data-page="index_cajera/punto-de-venta/facturacion.html"><i class="material-icons">receipt_long</i> Facturación</a></li>
+                            <li><a href="#" data-page="index_cajera/punto-de-venta/login.html"><i class="material-icons">attach_money</i> Cierre de Caja</a></li>
+                        </ul>
+                    </li>
+                    <li class="dropdown">
+                        <a href="#"><i class="material-icons">payments</i> Movimientos de caja</a>
+                        <ul>
+                            <li><a href="#" data-page="index_cajera/movimientos_de_caja/gestion_de_ingresos.html"><i class="material-icons">add_circle</i> Gestion de Ingresos</a></li>
+                            <li><a href="#" data-page="index_cajera/movimientos_de_caja/gestion_de_gastos.html"><i class="material-icons">remove_circle</i> Gestión de Gastos</a></li>
+                            <li><a href="#" data-page="index_cajera/movimientos_de_caja/login.html"><i class="material-icons">list_alt</i> Anulación y Modificación</a></li>
+                            <li><a href="#" data-page="index_cajera/movimientos_de_caja/login_auditoria.html"><i class="material-icons">security</i> Auditoría</a></li>
+                        </ul>
+                    </li>
+                    <li class="dropdown">
+                        <a href="#"><i class="material-icons">settings</i> Configuración</a>
+                        <ul>
+                            <li><a href="#" onclick="sessionStorage.setItem('pendingConfigTarget', 'index_cajera/configuracion/configuracion.html')" data-page="index_cajera/login.html"><i class="material-icons">settings_applications</i> General</a></li>
+                            <li><a href="#" onclick="sessionStorage.setItem('pendingConfigTarget', 'index_cajera/configuracion/configuracion_fiscal.html')" data-page="index_cajera/login.html"><i class="material-icons">receipt</i> Fiscal</a></li>
+                        </ul>
+                    </li>
+                    <li><a href="#" data-page="ayuda.html"><i class="material-icons">help_outline</i> Ayuda</a></li>
+                    <li><a href="#" data-page="index_cajera/acerca_de.html"><i class="material-icons">info</i> Acerca de</a></li>
+                    <li><a id="logout-btn" href="javascript:void(0)" role="button"><i class="material-icons">exit_to_app</i> Cerrar sesión</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main id="dynamic-content-area" class="main-content"></main>
+    </div>
+
+<script type="module">
+    console.log("🚀 Iniciando script de Cajera...");
+
+let SERVER_URL = null;
+let respaldoActivo = false;
+let currentCompanyId = null;
+let descargandoInventario = false;
+let estadoConexion = navigator.onLine;
+window.descargandoFondo = false; 
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDN9mZ1n-OkC-Qz52eTCOy4yJH7M0U9zYI",
+        authDomain: "nexus-pos-75593.firebaseapp.com",
+        projectId: "nexus-pos-75593",
+        storageBucket: "nexus-pos-75593.firebasestorage.app",
+        messagingSenderId: "626840984883",
+        appId: "1:626840984883:web:08d56544ee28bc8e637246",
+        measurementId: "G-K1EQVJWJHG"
+    };
+
+    let app = null;
+    let db = null;
+
+    async function activarVigilanteFirebase(companyId) {
+        if (!navigator.onLine) return;
+
+        console.log("👁️ Intentando conectar con Firebase en segundo plano...");
+        try {
+            await fetch('https://www.google.com/favicon.ico', { mode: 'no-cors', cache: 'no-store' });
+            
+            const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
+            const { getFirestore, doc, onSnapshot } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            const docRef = doc(db, "companies", companyId);
+
+            onSnapshot(docRef, async (docSnap) => {
+                if (docSnap.exists() && docSnap.data().plan) {
+                    const planNube = docSnap.data().plan;
+                    const planLocalFresco = await window.nexusAPI.obtenerPlanLocal(companyId);
+
+                    const esPlanDistinto = !planLocalFresco ||
+                        planLocalFresco.clave_producto !== planNube.clave_producto ||
+                        JSON.stringify(planLocalFresco.permisos) !== JSON.stringify(planNube.permisos);
+
+                    if (esPlanDistinto) {
+                        console.log("♻️ [NEXUS UPDATE] El plan cambió en la nube. Actualizando...");
+                        const datosParaGuardar = { ...planNube, companyId: companyId };
+                        await window.nexusAPI.guardarPlanLocal(datosParaGuardar);
+                        aplicarRestriccionesSaaS(planNube);
+                        mostrarModalReinicioPlan(planNube.nombre_plan);
+                    }
+                }
+            });
+        } catch (error) {
+            console.warn("⚠️ Vigilante Firebase omitido (Sin conexión a internet real).");
+        }
+    }
+
+    function aplicarRestriccionesSaaS(plan) {
+        const permisos = plan.permisos || [];
+
+        const bloquearEnlace = (enlace, nombreVisual) => {
+            enlace.removeAttribute('onclick');
+            enlace.removeAttribute('data-page');
+            
+            enlace.style.color = "#9ca3af"; 
+            enlace.style.backgroundColor = "transparent";
+            enlace.innerHTML = `<i class="material-icons" style="color:#9ca3af;">lock</i> <span style="text-decoration: line-through;">${nombreVisual}</span>`;
+            
+            const submenu = enlace.nextElementSibling;
+            if (submenu && (submenu.tagName === 'UL' || (submenu.id && submenu.id.includes('submenu')))) {
+                submenu.style.display = 'none';
+            }
+            
+            enlace.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation(); 
+                mostrarAlertaMejoraPlan(plan.nombre_plan);
+            };
+        };
+
+        const enlacesMenu = document.querySelectorAll('.sidebar-nav a');
+        
+        enlacesMenu.forEach(enlace => {
+            const textoEnlace = enlace.textContent.trim();
+
+            if (textoEnlace.includes("Facturación") || textoEnlace.includes("Punto de venta")) {
+                if (!permisos.includes("Punto de Venta (Completo)") && !permisos.includes("POS_FULL")) {
+                    const nombreVisual = textoEnlace.includes("Facturación") ? "Facturación" : "Punto de venta";
+                    bloquearEnlace(enlace, nombreVisual);
+                }
+            }
+        });
+    }
+
+    function mostrarAlertaMejoraPlan(nombrePlan) {
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            background: rgba(0,0,0,0.5); display: flex; align-items: center; 
+            justify-content: center; z-index: 9999; backdrop-filter: blur(4px);
+        `;
+        
+       modal.innerHTML = `
+            <div style="background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+                <i class="material-icons" style="font-size: 50px; color: #f59e0b;">workspace_premium</i>
+                <h2 style="font-size: 20px; color: #1f2937; margin: 15px 0 10px; font-weight: bold;">Función Premium</h2>
+                <p style="color: #4b5563; font-size: 15px; line-height: 1.5;">
+                    Tu plan actual (<strong>${nombrePlan}</strong>) no incluye esta sección.<br><br>
+                    ¡Cambia de plan para desbloquear esta función! Si tienes dudas, <strong>consulta con Soporte</strong>.
+                </p>
+                <button id="cerrarModalPlan" style="margin-top: 20px; background: #2563eb; color: white; border: none; padding: 10px 25px; border-radius: 8px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold;">Entendido</button>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        document.getElementById('cerrarModalPlan').onclick = () => {
+            modal.remove();
+        };
+    }
+
+    function mostrarModalReinicioPlan(nombrePlan) {
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            background: rgba(0,0,0,0.8); display: flex; align-items: center; 
+            justify-content: center; z-index: 9999; backdrop-filter: blur(5px);
+        `;
+        
+       modal.innerHTML = `
+            <div style="background: white; padding: 40px 30px; border-radius: 15px; text-align: center; max-width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
+                <i class="material-icons" style="font-size: 60px; color: #10b981; margin-bottom: 15px;">update</i>
+                <h2 style="font-size: 24px; color: #1f2937; margin: 0 0 15px; font-weight: bold;">¡Plan Actualizado!</h2>
+                <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+                    Tu sistema se ha sincronizado exitosamente al <strong>${nombrePlan}</strong>.<br><br>
+                    Para habilitar de forma segura las nuevas capacidades y conexiones, Nexus POS se reiniciará automáticamente en 10 segundos.
+                </p>
+                <div class="spinner" style="position: relative; top: 0; left: 0; transform: none; margin: 0 auto; border-left-color: #10b981;"></div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        setTimeout(() => {
+            if (window.nexusAPI && typeof window.nexusAPI.reiniciarAplicacion === 'function') {
+                window.nexusAPI.reiniciarAplicacion();
+            }
+        }, 10000);
+    }
+
+
+    function ocultarLoading() {
+        const loader = document.getElementById('app-loading');
+        if (loader) {
+            loader.style.display = 'none';
+            loader.classList.add('hidden');
+            console.log("✅ Pantalla de carga oculta.");
+        }
+    }
+
+    function mostrarLoading() {
+        const loader = document.getElementById('app-loading');
+        if (loader) {
+            loader.style.display = 'flex';
+            loader.classList.remove('hidden');
+        }
+    }
+
+    function loadContent(url) {
+        const dynamicContentArea = document.getElementById('dynamic-content-area');
+        if (!dynamicContentArea) return;
+
+        fetch(url)
+            .then(response => {
+                if (!response.ok) throw new Error('Error HTTP: ' + response.status);
+                return response.text();
+            })
+            .then(html => {
+                dynamicContentArea.innerHTML = html;
+                const scripts = dynamicContentArea.querySelectorAll('script');
+                scripts.forEach(oldScript => {
+                    const newScript = document.createElement('script');
+                    Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                    newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                    oldScript.parentNode.replaceChild(newScript, oldScript);
+                });
+            })
+            .catch(err => {
+                console.error("❌ Error al cargar contenido:", err);
+                dynamicContentArea.innerHTML = `<div class="p-8 text-red-500 font-bold">Error al cargar la vista: ${url}</div>`;
+            });
+    }
+    window.loadContent = loadContent;
+
+    let sincronizando = false;
+    
+async function iniciarSincronizacionSilenciosa() {
+        // Optimizada: Como el Ojeador ya revisa el internet, solo enviamos la orden al puente
+        if (sincronizando || !estadoConexion) return;
+        sincronizando = true;
+        try {
+            if (window.nexusAPI && typeof window.nexusAPI.procesarColaSync === 'function') {
+                await window.nexusAPI.procesarColaSync();
+            }
+        } catch (error) {
+            console.warn("⏸️ Error procesando la cola de ventas/movimientos.");
+        } finally {
+            sincronizando = false;
+        }
+    }
+
+    function actualizarUIConexion(isOnline) {
+        estadoConexion = isOnline; // 🔥 VITAL: Le avisa al Ojeador el estado real
+        
+        const statusCircle = document.getElementById('status-circle');
+        const statusText = document.getElementById('status-text');
+        if (!statusCircle || !statusText) return;
+
+        if (isOnline) {
+            statusCircle.className = "w-2.5 h-2.5 rounded-full bg-green-500 mr-2 shadow-[0_0_5px_rgba(34,197,94,0.6)]";
+            statusText.textContent = "Conectado (Online)";
+        } else {
+            statusCircle.className = "w-2.5 h-2.5 rounded-full bg-red-500 mr-2 shadow-[0_0_5px_rgba(239,68,68,0.6)]";
+            statusText.textContent = "Modo Offline";
+        }
+    }
+
+    async function fetchDollarRate() {
+    const dollarRateInput = document.getElementById('dollar-exchange-rate');
+    const lastUpdatedTimestamp = document.getElementById('last-updated-timestamp');
+    
+    if (!dollarRateInput || !lastUpdatedTimestamp) return;
+
+    let tasaParaMostrar = 0;
+    let esDeNube = false;
+
+    try {
+        // 1. Intentar descargar desde el Servidor Maestro en la Nube (VPS) si está Online
+        if (navigator.onLine && SERVER_URL && currentCompanyId && !window.descargandoTasa) {
+            window.descargandoTasa = true;
+            try {
+                const response = await fetch(`${SERVER_URL}/api/maestro/tasa/${currentCompanyId}`, {
+                    signal: AbortSignal.timeout(4000)
+                });
+                if (response.ok) {
+                    const dataTasa = await response.json();
+                    if (dataTasa && dataTasa.tasa) {
+                        tasaParaMostrar = parseFloat(dataTasa.tasa);
+                        // Guardamos la tasa fresca en el SQLite local automáticamente
+                        await window.nexusAPI.guardarConfiguracion('TASA_BCV', tasaParaMostrar.toString());
+                        esDeNube = true;
+                    }
+                }
+            } catch (e) {
+                console.log("⏸️ Sincronización de tasa en pausa (Red inestable), usando respaldo local.");
+            } finally {
+                window.descargandoTasa = false;
+            }
+        }
+
+        // 2. Si no se pudo obtener de la nube, leemos directamente del SQLite local
+        if (!esDeNube) {
+            const tasaSistema = await window.nexusAPI.obtenerConfiguracion('TASA_BCV');
+            if (tasaSistema) {
+                tasaParaMostrar = parseFloat(tasaSistema);
+                console.log("💾 [SYNC TASA] Cargada desde SQLite local:", tasaParaMostrar);
+            }
+        }
+
+        // 3. Renderizar en el Sidebar y propagar la tasa a las vistas hijas
+        if (tasaParaMostrar > 0) {
+            dollarRateInput.value = tasaParaMostrar.toFixed(2);
+            const fechaHoy = new Date().toLocaleDateString('es-VE');
+            lastUpdatedTimestamp.textContent = esDeNube 
+                ? `Sincronizada (Cloud VPS): ${fechaHoy}` 
+                : `Sincronizada (DB Local): ${fechaHoy}`;
+            
+            // Sincronizamos la variable global del entorno de ejecución
+            window.dolarExchangeRate = tasaParaMostrar;
+
+            // 🔥 ALARMA EN TIEMPO REAL: Notifica a facturacion.html para recalcular instantáneamente
+            window.dispatchEvent(new CustomEvent('tasaActualizadaBackground', { 
+                detail: { tasa: tasaParaMostrar } 
+            }));
+        } else {
+            dollarRateInput.value = "0.00";
+            lastUpdatedTimestamp.textContent = "Tasa no establecida";
+        }
+    } catch (error) {
+        console.error("❌ Error crítico al procesar la tasa de cambio:", error);
+        dollarRateInput.value = "0.00";
+        lastUpdatedTimestamp.textContent = "Error de lectura";
+    }
+}
+
+    async function descargarActualizacionesDeInventario() {
+        if (!navigator.onLine || !SERVER_URL || !currentCompanyId || window.descargandoFondo) return;
+
+        window.descargandoFondo = true;
+        try {
+            const claveStorage = `last_sync_inv_${currentCompanyId}_cajera`;
+            const ultimaRevision = localStorage.getItem(claveStorage) || '2000-01-01T00:00:00.000Z';
+
+            const response = await fetch(`${SERVER_URL}/api/maestro/inventario/${currentCompanyId}?desde=${encodeURIComponent(ultimaRevision)}`, {
+                signal: AbortSignal.timeout(30000) 
+            });
+
+            if (response.ok) {
+                const productosServidor = await response.json();
+                
+                if (productosServidor.length === 0) {
+                    localStorage.setItem(claveStorage, new Date().toISOString());
+                    return;
+                }
+                
+                const productosLocales = await window.nexusAPI.obtenerProductosLocal(currentCompanyId);
+                const estadosLocales = {};
+                if (productosLocales) {
+                    productosLocales.forEach(p => { estadosLocales[p.id] = p.estado_sync; });
+                }
+
+                let actualizados = 0;
+                let omitidos = 0;
+
+                for (const pServidor of productosServidor) {
+                    const idServidor = pServidor.producto_ID || pServidor.id || pServidor.producto_id;
+                    
+                    if (estadosLocales[idServidor] === 0) {
+                        omitidos++;
+                        continue; 
+                    }
+
+                    let datosParsed = {};
+                    try {
+                        datosParsed = typeof pServidor.datos_json === 'string' ? JSON.parse(pServidor.datos_json) : (pServidor.datos_json || {});
+                    } catch(e) {}
+
+                    const productoParaValidar = {
+                        id: idServidor,
+                        producto_ID: idServidor, 
+                        company_id: currentCompanyId,
+                        branch_id: datosParsed.branch_id || datosParsed.sucursal_ID || pServidor.sucursal_ID || 'sucursal_1',
+                        codigo: String(datosParsed.codigo || pServidor.codigo || ''),
+                        nombre: pServidor.nombre || datosParsed.nombre,
+                        precio: pServidor.precio_venta || datosParsed.precio_venta || datosParsed.precio || 0,
+                        precio_venta: pServidor.precio_venta || datosParsed.precio_venta || 0,
+                        precio_compra: datosParsed.precio_compra || 0,
+                        porcentaje_ganancia: datosParsed.porcentaje_ganancia || 0,
+                        ganancia: datosParsed.ganancia || 0,
+                        precios: pServidor.precios_json || datosParsed.precios || null,
+                        moneda: datosParsed.moneda || datosParsed.currency || pServidor.moneda || 'USD',
+                        currency: datosParsed.currency || datosParsed.moneda || 'USD',
+                        unit: datosParsed.unit || datosParsed.unidad || pServidor.unidad || 'UN',
+                        tipo_alicuota: datosParsed.tipo_alicuota || pServidor.tipo_alicuota || '16',
+                        categoria: datosParsed.categoria || pServidor.categoria_id || 'Sin Cat.',
+                        status: pServidor.status !== undefined ? pServidor.status : 1,
+                        imagen: datosParsed.imagen || pServidor.imagen || '',
+                        estado_sync: 1, 
+                        datos_json: JSON.stringify(datosParsed),
+                        fecha_modificacion: pServidor.ultima_sincronizacion || new Date().toISOString()
+                    };
+
+                    await window.nexusAPI.sincronizarProductoServidor(productoParaValidar);
+                    actualizados++;
+                }
+
+                if (actualizados > 0 || omitidos > 0) {
+                    console.log(`📦 [SYNC CAJERA] ${actualizados} actualizados, ${omitidos} omitidos.`);
+                    
+                    if (actualizados > 0) {
+                        // 1. Avisamos vía Puente de Electron
+                        if (window.nexusAPI && window.nexusAPI.notificarCambioProductos) {
+                            window.nexusAPI.notificarCambioProductos();
+                        }
+                        // 🔥 2. ALARMA GLOBAL: Le gritamos a la vista hija (Ej: facturacion.html) que despierte
+                        window.dispatchEvent(new CustomEvent('productosActualizadosBackground'));
+                    }
+                }
+
+                localStorage.setItem(claveStorage, new Date().toISOString());
+            }
+        } catch (error) {
+            console.log("⏸️ Sincronización de inventario en pausa (Red inestable o timeout).");
+        } finally {
+            window.descargandoFondo = false;
+        }
+    }
+
+    async function descargarActualizacionesDeCategorias() {
+        if (!navigator.onLine || !SERVER_URL || !currentCompanyId || window.descargandoCategorias) return;
+
+        window.descargandoCategorias = true;
+        try {
+            // Hacemos la petición a la ruta que me pasaste en tu backend
+            const response = await fetch(`${SERVER_URL}/api/maestro/categorias/${currentCompanyId}`, {
+                signal: AbortSignal.timeout(30000)
+            });
+
+            if (response.ok) {
+                const categoriasServidor = await response.json();
+                
+                if (categoriasServidor.length > 0) {
+                    // Usamos el puente existente de tu main.js para guardar todo en lote (transacción)
+                    if (window.nexusAPI && window.nexusAPI.sincronizarCategoriasLocal) {
+                        const resultado = await window.nexusAPI.sincronizarCategoriasLocal(categoriasServidor);
+                        
+                        if (resultado.success) {
+                            // 🔥 ALARMA GLOBAL: Despierta a las vistas hijas
+                            window.dispatchEvent(new CustomEvent('categoriasActualizadasBackground'));
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.log("⏸️ Sincronización de categorías en pausa (Red inestable o timeout).");
+        } finally {
+            window.descargandoCategorias = false;
+        }
+    }
+
+async function inicializarDashboard() {
+        console.log("⚙️ Ejecutando inicialización del Dashboard...");
+        try {
+            // --- NUEVO: Extraer configuración blindada del Servidor Maestro ---
+            if (window.nexusAPI && window.nexusAPI.obtenerConfigServer) {
+                const config = await window.nexusAPI.obtenerConfigServer();
+                
+                // 🔥 CAPTURA BLINDADA: Igual que en inicio.html
+                const ipSegura = config.serverIp || config.SERVER_IP;
+                const puertoSeguro = config.serverPort || config.SERVER_PORT;
+                
+                // 🔥 CORRECCIÓN DEL CANDADO: Acepta booleano o texto
+                respaldoActivo = config.respaldo_datos === true || config.respaldo_datos === 'true' || config.respaldoActivo === true || config.respaldoActivo === 'true';
+                
+                if (respaldoActivo && ipSegura) {
+                    SERVER_URL = `http://${ipSegura}:${puertoSeguro}`;
+                    console.log("📡 Servidor Maestro detectado en cajera:", SERVER_URL);
+                } else {
+                    console.log("🔌 Cajera operando en Modo Local estricto.");
+                }
+            }
+
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
+            console.log("👤 Sesión SQLite:", sesion);
+
+            if (sesion && sesion.role.toLowerCase() === 'cajera') {
+                currentCompanyId = sesion.companyId;
+                
+                // === APLICAR RESTRICCIONES SAAS ===
+                const planLocal = await window.nexusAPI.obtenerPlanLocal(sesion.companyId);
+                if (typeof aplicarRestriccionesSaaS === "function") {
+                    aplicarRestriccionesSaaS(planLocal || { nombre_plan: 'SIN PLAN', permisos: [] });
+                }
+
+                const appContainer = document.querySelector('.app-container') || document.getElementById('app-container');
+                if (appContainer) {
+                    appContainer.style.display = 'flex';
+                    appContainer.classList.remove('hidden');
+                }
+
+                if (sesion.company_data) {
+                    try {
+                        const data = JSON.parse(sesion.company_data);
+                        const companyDisplay = document.getElementById('company-name-display');
+                        if (companyDisplay) companyDisplay.textContent = data.nombre_empresa || data.name || "NEXUS POS";
+                    } catch (e) { console.error("Error parseando data de empresa:", e); }
+                }
+
+                console.log("Cargando vista local index_cajera...");
+                loadContent('index_cajera/inicio/home_cashier_content.html');
+                const homeLink = document.getElementById('home-link');
+                if (homeLink) homeLink.closest("li").classList.add("active");
+
+                // 🔥 ARRANQUE EN FRÍO INMEDIATO
+                iniciarSincronizacionSilenciosa();
+                fetchDollarRate();
+                descargarActualizacionesDeInventario();
+                descargarActualizacionesDeCategorias();
+                
+                // Activar conexión en tiempo real con el plan en Firebase
+                activarVigilanteFirebase(currentCompanyId);
+
+            } else {
+                console.warn("🚫 Sesión inválida o rol incorrecto. Volviendo al login.");
+                window.location.href = 'index.html';
+            }
+        } catch (error) {
+            console.error("❌ Error FATAL inicializando:", error);
+            window.location.href = 'index.html';
+        } finally {
+            ocultarLoading();
+        }
+
+
+        const sidebar = document.getElementById('sidebar') || document.querySelector('.sidebar');
+        const backdrop = document.getElementById('mobile-menu-backdrop') || document.querySelector('.sidebar-backdrop');
+        const menuToggleBtn = document.getElementById('menu-toggle-btn') || document.getElementById('menu-toggle');
+        const desktopMenuToggle = document.getElementById('desktop-menu-toggle');
+        const menuIconDynamic = document.getElementById('menu-icon-dynamic');
+        
+        if (menuToggleBtn && sidebar && backdrop) {
+            menuToggleBtn.addEventListener('click', () => {
+                sidebar.classList.toggle('open');
+                backdrop.classList.toggle('visible');
+            });
+            backdrop.addEventListener('click', () => {
+                sidebar.classList.remove('open');
+                backdrop.classList.remove('visible');
+            });
+        }
+
+        // === NUEVO EVENTO: COLAPSO DE PC ===
+        if (desktopMenuToggle && sidebar) {
+            desktopMenuToggle.addEventListener('click', (e) => {
+                e.preventDefault();
+                sidebar.classList.toggle('collapsed');
+                
+                if (sidebar.classList.contains('collapsed')) {
+                    if(menuIconDynamic) menuIconDynamic.textContent = 'chevron_right';
+                    document.querySelectorAll(".sidebar-nav .dropdown.open").forEach(el => el.classList.remove('open'));
+                } else {
+                    if(menuIconDynamic) menuIconDynamic.textContent = 'menu';
+                }
+            });
+        }
+
+        document.querySelectorAll(".sidebar-nav .dropdown > a").forEach((dropdownToggle) => {
+            dropdownToggle.addEventListener("click", (e) => {
+                e.preventDefault();
+                
+                // Expandir automáticamente si tocan un submenú
+                if (sidebar.classList.contains('collapsed')) {
+                    sidebar.classList.remove('collapsed');
+                    if(menuIconDynamic) menuIconDynamic.textContent = 'menu';
+                }
+
+                const parentLi = dropdownToggle.closest(".dropdown");
+                document.querySelectorAll(".sidebar-nav .dropdown.open").forEach(open => {
+                    if (open !== parentLi) open.classList.remove("open");
+                });
+                parentLi.classList.toggle("open");
+            });
+        });
+
+        document.querySelectorAll(".sidebar-nav a[data-page]").forEach((link) => {
+            link.addEventListener("click", (e) => {
+                e.preventDefault();
+                const anchor = e.target.closest("a");
+                if (!anchor) return;
+                
+                // === NUEVO: ESCUDO DE SEGURIDAD ANTI-EVASIÓN ===
+                // Si la configuración de pedir clave está activa, verificamos el carrito
+                if (window.validarEliminarProducto === true) {
+                    let cartLen = 0;
+                    // Llamamos a la función puente que crearemos en facturacion.html
+                    if (typeof window.getCartLength === 'function') {
+                        cartLen = window.getCartLength();
+                    }
+                    
+                    if (cartLen > 0) {
+                    // Evitar duplicados si hacen clics rápidos
+                    const oldWarning = document.getElementById('modal-seguridad-carrito-warning');
+                    if (oldWarning) oldWarning.remove();
+
+                    // Creación del contenedor con el mismo desenfoque (backdrop-blur-md)
+                    const modalWarning = document.createElement('div');
+                    modalWarning.id = 'modal-seguridad-carrito-warning';
+                    modalWarning.className = 'fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center z-[1000005] animate-in fade-in duration-200';
+                    modalWarning.innerHTML = `
+                        <div class="bg-white/90 p-8 rounded-[2rem] shadow-2xl w-full max-w-sm transform transition-all scale-100 border border-white/20 text-center animate-in zoom-in duration-200">
+                            <div class="w-16 h-16 bg-red-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-red-500/30">
+                                <i class="material-icons text-3xl">gpp_bad</i>
+                            </div>
+                            <h2 class="text-2xl font-black text-gray-800 mb-1">Acción Bloqueada</h2>
+                            <p class="text-xs font-bold tracking-widest uppercase mb-3 text-red-600">Control de Seguridad</p>
+                            <p class="text-gray-600 text-sm font-medium leading-relaxed mb-6">
+                                POR SEGURIDAD: No puedes cambiar de sección ni recargar la interfaz mientras tengas productos pendientes en el carrito.
+                            </p>
+                            <button id="btn-cerrar-warning-carrito" class="w-full py-3.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-all shadow-md shadow-red-500/20 active:scale-95 uppercase text-sm tracking-wide">
+                                Entendido
+                            </button>
+                        </div>
+                    `;
+                    document.body.appendChild(modalWarning);
+                    
+                    // Acción de cierre manual al presionar el botón de confirmación
+                    document.getElementById('btn-cerrar-warning-carrito').onclick = (e) => {
+                        e.preventDefault();
+                        modalWarning.remove();
+                    };
+                    return; // ⛔ Corta la ejecución, no carga la nueva página
+                }
+            }
+            // ===============================================
+            
+            // Expandir automáticamente si tocan un enlace
+            if (sidebar.classList.contains('collapsed')) {
+                sidebar.classList.remove('collapsed');
+                if(menuIconDynamic) menuIconDynamic.textContent = 'menu';
+            }
+
+            const pageToLoad = anchor.dataset.page;
+            document.querySelectorAll(".sidebar-nav > ul > li").forEach(item => item.classList.remove("active"));
+            const clickedLi = anchor.closest("li");
+            const topLevelLi = clickedLi.closest(".dropdown") || clickedLi;
+            topLevelLi.classList.add("active");
+
+            if (pageToLoad) loadContent(pageToLoad);
+
+            if (window.innerWidth < 768 && sidebar) sidebar.classList.remove('open');
+            if (window.innerWidth < 768 && backdrop) backdrop.classList.remove('visible');
+        });
+    });
+
+        // Logout Seguro
+        const logoutBtn = document.getElementById('logout-anchor') || document.getElementById('logout-menu-item') || document.getElementById('logout-btn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 bg-black bg-opacity-60 z-[9999] flex justify-center items-center backdrop-blur-sm transition-opacity';
+                modal.innerHTML = `
+                    <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
+                        <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-yellow-100 mb-4 border-4 border-yellow-50">
+                            <span class="material-icons text-4xl text-yellow-500">warning_amber</span>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Seguridad del Sistema</h3>
+                        <p class="text-sm text-gray-600 mb-6">Atención: ¿Estás seguro de que deseas salir de la sesión de este equipo?</p>
+                        <div class="flex justify-center gap-3">
+                            <button id="btn-cancelar-logout" class="flex-1 px-4 py-2.5 bg-gray-100 rounded-lg font-semibold">Cancelar</button>
+                            <button id="btn-confirmar-logout" class="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg font-semibold">Sí, Salir</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+
+                document.getElementById('btn-cancelar-logout').addEventListener('click', () => modal.remove());
+
+                document.getElementById('btn-confirmar-logout').addEventListener('click', async () => {
+                    modal.remove(); 
+                    if (typeof mostrarLoading === 'function') mostrarLoading();
+                    try {
+                        localStorage.setItem('explicit_logout', 'true');
+                        window.nexusAPI.cerrarYVolverAlLogin();
+                    } catch (error) {
+                        console.error("Error al cerrar sesión:", error);
+                        localStorage.setItem('explicit_logout', 'true');
+                        window.nexusAPI.cerrarYVolverAlLogin(); 
+                    }
+                });
+            });
+        }
+    }
+
+    actualizarUIConexion(navigator.onLine);
+    
+    window.addEventListener('online', () => actualizarUIConexion(true));
+    window.addEventListener('offline', () => actualizarUIConexion(false));
+
+    let contadorLatidos = 0; 
+    let contadorDescargas = 0; 
+
+    setInterval(async () => {
+        // console.log("💓 [Radar Cajera] Bucle activo...");
+        const redFisica = navigator.onLine;
+
+        if (!redFisica && estadoConexion) {
+            actualizarUIConexion(false); 
+        }
+        else if (redFisica && !estadoConexion) {
+            try {
+                const controller = new AbortController();
+                const id = setTimeout(() => controller.abort(), 2000); 
+                const ping = await fetch('https://www.google.com/favicon.ico', { mode: 'no-cors', cache: 'no-store', signal: controller.signal });
+                clearTimeout(id);
+                if (ping) actualizarUIConexion(true); 
+            } catch (e) {}
+        }
+        else if (redFisica && estadoConexion) {
+            contadorLatidos++;
+            if (contadorLatidos >= 5) {
+                contadorLatidos = 0; 
+                try {
+                    const controller = new AbortController();
+                    const id = setTimeout(() => controller.abort(), 2000);
+                    await fetch('https://www.google.com/favicon.ico', { mode: 'no-cors', cache: 'no-store', signal: controller.signal });
+                    clearTimeout(id);
+                } catch (e) {
+                    console.warn("⚠️ [Ojeador Cajera] Falso positivo de red detectado. Pasando a Modo Local.");
+                    actualizarUIConexion(false); 
+                }
+            }
+        }
+
+        if (estadoConexion) {
+            if (!sincronizando) {
+                iniciarSincronizacionSilenciosa();
+            }
+
+            // 🔥 SE REDUJO A 15 SEGUNDOS PARA QUE SE SIENTA "EN TIEMPO REAL"
+            contadorDescargas++;
+            if (contadorDescargas >= 5) {
+                contadorDescargas = 0;
+                descargarActualizacionesDeInventario();
+                descargarActualizacionesDeCategorias();
+                fetchDollarRate(); 
+            }
+        }
+    }, 1000);
+
+    // --- MANEJO CENTRALIZADO DE CIERRE DE VENTANA ---
+    if (window.nexusAPI && window.nexusAPI.onSolicitarVerificacionCierre) {
+        window.nexusAPI.onSolicitarVerificacionCierre(() => {
+            let cartLen = 0;
+            if (typeof window.getCartLength === 'function') {
+                cartLen = window.getCartLength();
+            }
+            
+            if (cartLen > 0) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Acción Bloqueada',
+                        text: 'Por seguridad, no puedes cerrar el sistema con productos en el carrito. Vacía el carrito con la autorización correspondiente o procesa la venta.',
+                        confirmButtonColor: '#d33',
+                        confirmButtonText: 'Entendido'
+                    });
+                } else {
+                    alert("Por seguridad, no puedes cerrar el sistema con productos en el carrito.");
+                }
+            } else {
+                window.nexusAPI.confirmarCierreSeguro();
+            }
+        });
+    }
+
+    // ARRANQUE DEL SISTEMA (Estas deben ser siempre tus últimas líneas)
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', inicializarDashboard);
+    } else {
+        inicializarDashboard();
+    }
+</script>
+</body>
+</html>

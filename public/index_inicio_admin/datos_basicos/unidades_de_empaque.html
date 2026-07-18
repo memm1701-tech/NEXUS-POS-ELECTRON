@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Unidades de Empaque</title>  
+    <link href="../../tailwindcss.css" rel="stylesheet">
+    <link href="../../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+
+<style>
+    body {
+        font-family: 'Roboto', sans-serif;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        background-color: #f3f4f6; /* Fondo gris claro consistente */
+        min-height: 100vh;
+    }
+    
+    /* --- ESTILO EXPANSIVO 100% CON MARGEN LATERAL DE 1 REM --- */
+    .container {
+        background-color: transparent !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box;
+        margin: 0;
+    }
+
+    /* AQUÍ ESTÁ LA MAGIA: Forzamos el margen interno (padding) directamente en el contenedor principal */
+    #app-container {
+        background-color: transparent !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 20px 1rem !important; /* 20px arriba/abajo, 1rem a los lados */
+        margin: 0 !important;
+        box-sizing: border-box;
+    }
+
+    /* Limpiamos el div interno para que no agregue fondos blancos ni sombras extra */
+    #app-container > div {
+        background-color: transparent !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-sizing: border-box;
+    }
+
+    @media (min-width: 768px) {
+        #app-container {
+            padding: 30px 1rem !important; /* Mantenemos 1rem lateral en PC, pero un poco más de espacio arriba/abajo */
+        }
+    }
+    /* ----------------------------------------------------------------------- */
+
+    .form-input, .form-select {
+        display: block;
+        width: 100%;
+        padding: 0.8rem; 
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        font-size: 1rem; 
+        background-color: #ffffff;
+        color: #111827;
+        transition: border-color 0.2s;
+        box-sizing: border-box;
+    }
+
+    .form-input:focus, .form-select:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+    }
+
+    #loading-message, #unauthorized-message {
+        font-size: 1.5rem;
+        color: #555;
+        text-align: center;
+        padding: 50px;
+        width: 100%;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .user-info-bar {
+        background-color: #ffffff;
+        color: #333;
+        padding: 15px 20px;
+        border-radius: 8px;
+        font-size: 1em;
+        width: 100%;
+        margin-bottom: 20px;
+        text-align: left;
+        border: 1px solid #e5e7eb;
+    }
+
+    .feedback-message {
+        padding: 10px;
+        margin-top: 15px;
+        border-radius: 4px;
+        text-align: center;
+        font-weight: bold;
+        display: none;
+    }
+
+    .feedback-message.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .feedback-message.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+    .search-container { position: relative; }
+    #product-search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: white;
+        border-radius: 0 0 8px 8px; 
+        max-height: 250px;
+        overflow-y: auto;
+        z-index: 9999; 
+        display: none; 
+        border: 1px solid #cbd5e0;
+        border-top: none;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        padding: 0;
+        margin: 0;
+        list-style: none;
+    }
+
+    #product-search-results.activo {
+        display: block !important;
+    }
+
+    .result-item {
+        padding: 12px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #edf2f7;
+        transition: background-color 0.2s;
+        text-align: left; 
+    }
+
+    .result-item.autocomplete-active {
+        background-color: #bfdbfe !important; /* Azul intenso resaltado */
+        border-left: 4px solid #2563eb !important; /* Franja azul oscuro */
+        outline: none !important;
+        color: #1e3a8a;
+    }
+
+    .result-item:hover {
+        background-color: #ebf8ff; 
+    }
+    /* --- Estilos de Tabla y Scroll --- */
+    #packing-units-table, 
+    #packing-units-table th, 
+    #packing-units-table td {
+        border: 1px solid #e5e7eb; 
+        border-collapse: collapse;
+    }
+    
+    #packing-units-scroll-container {
+        max-height: 450px; 
+        overflow-y: auto;
+        border: 1px solid #d1d5db; 
+        border-radius: 0.5rem;
+        background-color: white;
+    }
+    
+    #packing-units-table thead th {
+        position: sticky;
+        top: 0;
+        background-color: #f9fafb; 
+        z-index: 5;
+        box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+    }
+
+    .main-content { padding: 1rem; }
+    @media (max-width: 640px) {
+        .text-4xl { font-size: 1.75rem; }
+        .text-xl { font-size: 1rem; }
+    }
+
+    /* --- Estilos Modal y Toast --- */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: none; 
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+
+    .modal-content {
+        background-color: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        max-width: 450px;
+        width: 90%;
+        animation: fadeIn 0.3s ease-out;
+    }
+
+    .toast-container { position: fixed; top: 20px; right: 20px; z-index: 100; }
+    .toast {
+        padding: 15px 20px;
+        border-radius: 6px;
+        color: white;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+        transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+        opacity: 0; 
+        transform: translateX(100%);
+        font-size: 0.875rem;
+    }
+
+    .toast.show { opacity: 1; transform: translateX(0); }
+    .toast.success { background-color: #48bb78; }
+    .toast.error { background-color: #f56565; }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+    <script type="module" src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"></script>
+
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body class="bg-gray-100 flex items-center justify-center">
+
+    <div id="loading-message">Cargando...</div>
+    <div id="unauthorized-message" style="display: none;">No autorizado. Debes ser administrador para acceder.</div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+
+    <main class="main-content flex-grow p-8 flex items-start justify-start" id="app-container" style="display: none; flex-direction: column;">
+        
+        <div class="bg-white p-6 md:p-10 rounded-lg shadow-xl w-full max-w-6xl mx-0">
+            <h1 class="text-3xl font-bold text-gray-800 mb-6 flex items-center"><span class="material-icons text-blue-600 mr-3 text-4xl">straighten</span> Gestión de Unidades de Empaque</h1>
+            
+            <div id="userInfoBar" class="user-info-bar w-full mb-6" style="display: none;">
+            </div>
+            
+            <div id="successMessage" class="feedback-message success">Unidad de empaque guardada correctamente.</div>
+            <div id="errorMessage" class="feedback-message error">Error al guardar la unidad de empaque. Verifica la consola.</div>
+
+            <form id="packaging-form" class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                
+                <div class="space-y-6">
+                    <div class="search-container">
+                        <label for="product-type" class="block text-sm font-bold text-gray-700 mb-2">
+                            Producto: 
+                            <span class="text-xs font-normal text-gray-500 opacity-70">
+                                (búsqueda de productos)
+                            </span>
+                        </label>
+                        <input type="search" id="product-type" name="productType" required class="form-input" placeholder="Ej. Arroz, Harina, Agua">
+                        <ul id="product-search-results" class="autocomplete-results hidden"></ul>
+                    </div>
+
+                    <div>
+                        <label for="packaging-unit" class="block text-sm font-bold text-gray-700 mb-2">Unidad de Empaque:</label>
+                        <select id="packaging-unit" name="packagingUnit" required class="form-select">
+                            <option value="">Selecciona una opción</option>
+                            <option value="bulto">Bulto</option>
+                            <option value="cesta">Cesta</option>
+                            <option value="saco">Saco</option>
+                            <option value="unidad">Unidad</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
+
+                    <div id="other-unit-container" class="hidden">
+                        <label for="other-unit" class="block text-sm font-bold text-gray-700 mb-2">Especifica la Unidad:</label>
+                        <input type="text" id="other-unit" name="otherUnit" class="form-input" placeholder="Ej. Caja, Paquete">
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <div>
+                        <label for="measure-type" class="block text-sm font-bold text-gray-700 mb-2">Tipo de Medida:</label>
+                        <select id="measure-type" name="measureType" required class="form-select">
+                            <option value="">Selecciona una opción</option>
+                            <option value="kilos">Kilogramos (KG)</option>
+                            <option value="libras">Gramos (G)</option>
+                            <option value="unidades">Unidad (UN)</option>
+                            <option value="litros">Litros (L)</option>
+                            <option value="Metros">Metros (M)</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="quantity" class="block text-sm font-bold text-gray-700 mb-2">Cantidad por Empaque:</label>
+                        <input type="number" id="quantity" name="quantity" required min="0.1" step="any" class="form-input" placeholder="Ej. 25.0 (para Kilos) o 12.5 (para Litros)">
+                    </div>
+                </div>
+
+                <button type="submit" class="md:col-span-2 w-full py-3 mt-2 text-lg text-white font-bold rounded-lg shadow-md hover:shadow-lg transition-all" style="background-color: #007bff;">
+                    Añadir Unidad de Empaque
+                </button>
+            </form>
+
+            <div class="mt-12">
+                <h3 class="text-lg font-semibold text-gray-800 mb-6 ">Unidades Agregadas</h3>
+                
+                <div class="overflow-x-auto shadow-md rounded-lg">
+                    
+                    <div id="packing-units-scroll-container">
+                        <table id="packing-units-table" class="min-w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unidad</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Medida</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="packing-units-body" class="bg-white">
+                                <tr>
+                                    <td colspan="5" class="px-6 py-4  text-sm text-gray-500">Cargando unidades...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            </div>
+    </main>
+
+    <div id="delete-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                <svg class="w-6 h-6 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.398 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                Advertencia de Eliminación
+            </h4>
+            <p class="text-sm text-gray-600 mb-6">
+                ¿Está seguro de que desea eliminar esta unidad de empaque?
+                Esta acción es irreversible y podría afectar la consistencia de los datos en el sistema POS.
+            </p>
+            <div class="flex justify-end space-x-3">
+                <button id="cancel-delete" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition-colors">
+                    Cancelar
+                </button>
+                <button id="confirm-delete" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition-colors">
+                    Sí, Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+    // Lógica original del formulario (UI)
+    const packagingUnitSelect = document.getElementById('packaging-unit');
+    const otherUnitContainer = document.getElementById('other-unit-container');
+    const otherUnitInput = document.getElementById('other-unit');
+
+    packagingUnitSelect.addEventListener('change', (event) => {
+        if (event.target.value === 'otro') {
+            otherUnitContainer.classList.remove('hidden');
+            otherUnitInput.setAttribute('required', 'true');
+        } else {
+            otherUnitContainer.classList.add('hidden');
+            otherUnitInput.removeAttribute('required');
+            otherUnitInput.value = ''; 
+        }
+    });
+</script>
+
+<script type="module">
+    // --- 1. Variables de Estado Global ---
+    let idEmpresa = null;
+    let idUsuario = null;
+    let rolUsuario = null;
+    let listaProductos = [];
+    let focoProducto = -1;
+    let idProductoSeleccionado = null;
+    let tiempoEsperaBusqueda;
+
+    // --- 2. Referencias al DOM ---
+    const cargandoMensaje = document.getElementById('loading-message');
+    const appContenedor = document.getElementById('app-container');
+    const barraInfoUsuario = document.getElementById('userInfoBar');
+    const formularioEmpaque = document.getElementById('packaging-form');
+    const cuerpoTablaEmpaque = document.getElementById('packing-units-body');
+    const entradaBusquedaProducto = document.getElementById('product-type');
+    const resultadosBusquedaProducto = document.getElementById('product-search-results');
+    const contenedorToast = document.getElementById('toast-container');
+    const modalEliminar = document.getElementById('delete-modal');
+    const botonConfirmarEliminar = document.getElementById('confirm-delete');
+    const botonCancelarEliminar = document.getElementById('cancel-delete');
+    let idItemAEliminar = null;
+    
+
+    // --- 3. Inicialización del Módulo ---
+    async function inicializarModulo() {
+        console.log("🚀 [NEXUS] Inicializando Unidades de Empaque (Modo Local)...");
+        
+        cargandoMensaje.style.display = 'none';
+        appContenedor.style.display = 'flex';
+
+        try {
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
+
+            if (sesion && sesion.companyId) {
+                idEmpresa = sesion.companyId;
+                idUsuario = sesion.uid || sesion.id;
+                rolUsuario = sesion.role;
+
+                console.log(`✅ Sesión detectada para Empresa: ${idEmpresa}`);
+                
+                // Cargamos el catálogo de productos a la memoria apenas entra
+                await cargarCatalogoProductos();
+                await cargarUnidadesEmpaque();
+            } else {
+                console.warn("⚠️ No se encontró sesión local activa.");
+            }
+        } catch (error) {
+            console.error("❌ Error al inicializar sesión local:", error);
+        }
+    }
+
+    async function cargarCatalogoProductos() {
+        try {
+            console.log("📦 [NEXUS] Cargando catálogo de productos desde SQLite...");
+            const productosBrutos = await window.nexusAPI.obtenerProductosLocal(idEmpresa);
+            
+            if (productosBrutos && productosBrutos.length > 0) {
+                listaProductos = productosBrutos.map(p => {
+                    let info = {};
+                    try {
+                        info = typeof p.datos_json === 'string' ? JSON.parse(p.datos_json) : p.datos_json;
+                    } catch (e) { info = {}; }
+                    
+                    return {
+                        id: p.id || p.producto_ID,
+                        nombre: info.nombre || p.nombre || "Sin nombre",
+                        categoria: info.categoria || p.categoria || "General",
+                        unidad: info.unit || p.unit || "UN",
+                        codigo: info.codigo || p.codigo || ""
+                    };
+                });
+                console.log(`✅ [NEXUS] ${listaProductos.length} productos listos para búsqueda.`);
+            }
+        } catch (error) {
+            console.error("❌ Error al cargar catálogo local:", error);
+        }
+    }
+
+    function manejarBusquedaProducto(termino) {
+        resultadosBusquedaProducto.innerHTML = '';
+        
+        const query = termino.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+        if (query.length < 1) {
+            resultadosBusquedaProducto.classList.remove('activo');
+            return;
+        }
+
+        const resultados = listaProductos.filter(p => {
+            const nombreProd = (p.nombre || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const codigoProd = (p.codigo || "").toLowerCase();
+            
+            // Eliminamos la categoría de la ecuación de búsqueda para evitar resultados fantasma
+            // const categoriaProd = (p.categoria || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            
+            // Ahora SOLO busca coincidencias en el Nombre o en el Código del producto
+            return nombreProd.includes(query) || codigoProd.includes(query);
+        });
+
+        if (resultados.length > 0) {
+            resultadosBusquedaProducto.classList.add('activo');
+            
+            resultados.forEach(producto => {
+                const item = document.createElement('li'); 
+                item.className = "result-item"; 
+                item.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: bold; color: #2d3748; text-transform: uppercase; font-size: 0.9em;">${producto.nombre}</div>
+                            <div style="font-size: 0.7rem; color: #718096;">
+                                ${producto.categoria} | <span style="font-family: monospace;">Cod: ${producto.codigo || 'S/C'}</span>
+                            </div>
+                        </div>
+                        <div style="font-weight: bold; color: #3182ce; font-size: 0.8em;">
+                            ${producto.unidad}
+                        </div>
+                    </div>
+                `;
+                
+                item.onclick = () => seleccionarProducto(producto);
+                resultadosBusquedaProducto.appendChild(item);
+            });
+        } else {
+            resultadosBusquedaProducto.classList.remove('activo');
+        }
+    }
+
+    async function cargarUnidadesEmpaque() {
+        try {
+            // 1. CARGA INICIAL DESDE SQLITE (Velocidad)
+            let empaquesLocales = await window.nexusAPI.obtenerUnidadesEmpaqueLocal(idEmpresa);
+            renderizarTablaEmpaques(empaquesLocales);
+
+        } catch (error) {
+            console.error("❌ Error al cargar empaques:", error);
+            cuerpoTablaEmpaque.innerHTML = '<tr><td colspan="5" class="py-4  text-red-500">Error al conectar con la base de datos local.</td></tr>';
+        }
+    }
+
+    function renderizarTablaEmpaques(lista) {
+        cuerpoTablaEmpaque.innerHTML = '';
+        
+        if (!lista || lista.length === 0) {
+            cuerpoTablaEmpaque.innerHTML = '<tr><td colspan="5" class="py-4  text-gray-500">No hay unidades de empaque registradas.</td></tr>';
+            return;
+        }
+
+        lista.forEach(emp => {
+            const fila = document.createElement('tr');
+            fila.className = "hover:bg-gray-50 transition-colors";
+            fila.innerHTML = `
+                <td class="px-6 py-4 text-sm font-medium text-gray-900">${emp.nombre_producto || 'Producto desconocido'}</td>
+                <td class="px-6 py-4 text-sm text-gray-600">${emp.nombre_unidad}</td>
+                <td class="px-6 py-4 text-sm text-gray-600">${emp.tipo_medida}</td>
+                <td class="px-6 py-4 text-sm font-bold text-blue-600">${emp.factor_cantidad}</td>
+                <td class="px-6 py-4 text-sm">
+                    <button onclick="eliminarEmpaque('${emp.id}')" class="text-red-600 hover:text-red-900 font-bold">Eliminar</button>
+                </td>
+            `;
+            cuerpoTablaEmpaque.appendChild(fila);
+        });
+    }
+
+    async function buscarProductos(termino) {
+        // Aquí conectaremos con la búsqueda de productos de la empresa
+        console.log("Buscando producto localmente:", termino);
+    }
+
+    function seleccionarProducto(producto) {
+        idProductoSeleccionado = producto.id; // ¡Aquí guardamos el ID crucial!
+        entradaBusquedaProducto.value = producto.nombre;
+        
+        resultadosBusquedaProducto.innerHTML = '';
+        resultadosBusquedaProducto.classList.remove('activo');
+        
+        console.log(`🎯 Nexus POS: Seleccionado ${producto.nombre} (ID: ${producto.id})`);
+        
+        // Enfocamos el siguiente campo para agilizar el flujo
+        document.getElementById('packaging-unit').focus();
+    }
+
+    function aplicarResaltado(items) {
+        if (!items || items.length === 0) return;
+        items.forEach(el => el.classList.remove("autocomplete-active"));
+        if (focoProducto > -1 && items[focoProducto]) {
+            items[focoProducto].classList.add("autocomplete-active");
+            items[focoProducto].scrollIntoView({ block: "nearest" });
+        }
+    }
+
+    function mostrarToastEmpaque(mensaje, tipo = "success") {
+        const toast = document.createElement('div');
+        toast.className = `toast ${tipo}`;
+        toast.textContent = mensaje;
+        contenedorToast.appendChild(toast);
+
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            toast.addEventListener('transitionend', () => toast.remove());
+        }, 5000);
+    }
+
+    // --- 5. Utilidades (Toast y Modales) ---
+
+    function mostrarToast(mensaje, tipo = "success") {
+        const toast = document.createElement('div');
+        toast.className = `toast ${tipo}`;
+        toast.textContent = mensaje;
+        contenedorToast.appendChild(toast);
+
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            toast.addEventListener('transitionend', () => toast.remove());
+        }, 5000);
+    }
+
+// --- 6. Event Listeners (Control de Interfaz y Guardado) ---
+
+    // Evento de Escritura en el Buscador Inteligente
+    entradaBusquedaProducto.addEventListener('input', (e) => {
+        focoProducto = -1; // Reiniciamos el foco en cada nueva letra
+        manejarBusquedaProducto(e.target.value);
+    });
+
+    // Evento de Teclado (Navegación con Flechas y Enter)
+    entradaBusquedaProducto.addEventListener('keydown', (e) => {
+        const items = resultadosBusquedaProducto.querySelectorAll('.result-item');
+        if (items.length === 0) return;
+
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            focoProducto++;
+            if (focoProducto >= items.length) focoProducto = 0;
+            aplicarResaltado(items);
+        } 
+        else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            focoProducto--;
+            if (focoProducto < 0) focoProducto = items.length - 1;
+            aplicarResaltado(items);
+        } 
+        else if (e.key === "Enter") {
+            e.preventDefault();
+            if (focoProducto > -1 && items[focoProducto]) {
+                items[focoProducto].click();
+            } else if (items.length > 0) {
+                // Si no hay resaltado pero hay resultados, elige el primero
+                items[0].click();
+            }
+        }
+    });
+
+    // Cerrar menú de búsqueda al hacer clic fuera del contenedor
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.search-container')) {
+            resultadosBusquedaProducto.classList.remove('activo');
+        }
+    });
+
+    // Procesar el formulario: Guardado Local Exclusivo
+    formularioEmpaque.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        if (!idProductoSeleccionado) {
+            mostrarToastEmpaque("Error: Selecciona un producto de la lista.", "error");
+            return;
+        }
+
+        const nombreUnidad = document.getElementById('packaging-unit').value;
+        const unidadFinal = nombreUnidad === 'otro' ? document.getElementById('other-unit').value : nombreUnidad;
+
+        // Estructura de datos alineada con el Cerebro (main.js)
+        const datosEmpaque = {
+            id: `EMP-${Date.now()}`,
+            company_id: idEmpresa,
+            product_id: idProductoSeleccionado,
+            nombre_unidad: unidadFinal,
+            tipo_medida: document.getElementById('measure-type').value,
+            factor_cantidad: parseFloat(document.getElementById('quantity').value),
+            fecha_modificacion: new Date().toISOString()
+        };
+
+        try {
+            // 1. GUARDADO LOCAL (SQLite)
+            const resultadoLocal = await window.nexusAPI.guardarUnidadEmpaqueLocal(datosEmpaque);
+
+            if (resultadoLocal.success) {
+                mostrarToastEmpaque("✅ Guardado localmente", "success");
+                
+                // Limpieza de interfaz
+                formularioEmpaque.reset();
+                if(document.getElementById('other-unit-container')) {
+                    document.getElementById('other-unit-container').classList.add('hidden');
+                }
+                idProductoSeleccionado = null;
+                
+                // Refrescar la tabla visual
+                await cargarUnidadesEmpaque();
+            } else {
+                throw new Error(resultadoLocal.error);
+            }
+        } catch (error) {
+            console.error("❌ Error en proceso de guardado:", error);
+            mostrarToastEmpaque("Error al procesar la solicitud: " + error.message, "error");
+        }
+    });
+
+
+    // --- 7. Lógica de Eliminación (Globalizada para botones dinámicos) ---
+
+    window.eliminarEmpaque = (id) => {
+        idItemAEliminar = id;
+        modalEliminar.style.display = 'flex'; // Activamos modal de advertencia
+    };
+
+    botonCancelarEliminar.onclick = () => {
+        modalEliminar.style.display = 'none';
+        idItemAEliminar = null;
+    };
+
+    botonConfirmarEliminar.onclick = async () => {
+        if (!idItemAEliminar) return;
+
+        try {
+            // 1. ELIMINACIÓN LOCAL (SQLite)
+            const resultado = await window.nexusAPI.eliminarUnidadEmpaqueLocal(idItemAEliminar);
+
+            if (resultado.success) {
+
+                mostrarToastEmpaque("🗑️ Unidad eliminada correctamente", "success");
+                modalEliminar.style.display = 'none';
+                await cargarUnidadesEmpaque(); // Refrescamos la tabla de inmediato
+            }
+        } catch (error) {
+            console.error("❌ Error al eliminar:", error);
+            mostrarToastEmpaque("Error al eliminar la unidad", "error");
+        }
+    };
+
+    // Ejecutar inicio
+    inicializarModulo();
+</script>
+
+</body>
+</html>

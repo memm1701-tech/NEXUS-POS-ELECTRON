@@ -1,0 +1,180 @@
+<div class="max-w-7xl mx-auto animate-fade-in p-4 md:p-8">
+    <style>
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-800 italic">Resumen Financiero</h2>
+            <p class="text-sm text-gray-500">Estado de ingresos y egresos.</p>
+        </div>
+        
+        <div class="flex items-center bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
+            <input type="month" id="dashboard-period" 
+                   class="border-none focus:ring-0 text-sm font-medium text-gray-600 px-3 py-1 bg-transparent">
+            <button class="bg-gray-800 text-white p-2 rounded-md hover:bg-black transition-colors">
+                <i class="material-icons text-sm block">refresh</i>
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+        
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
+            <div class="absolute top-0 right-0 p-4 opacity-10">
+                <i class="material-icons text-5xl text-green-600">payments</i>
+            </div>
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Ganancia Neta</p>
+            <h3 class="text-3xl font-bold text-gray-900 mt-2" id="val-ganancia-neta">Bs. 0,00</h3>
+            <span class="inline-flex items-center text-xs font-medium text-gray-400 mt-2 bg-gray-50 px-2 py-1 rounded">
+                <i class="material-icons text-xs mr-1">trending_flat</i> 0%
+            </span>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Ventas Totales</p>
+            <h3 class="text-3xl font-bold text-gray-900 mt-2" id="val-ventas-totales">Bs. 0,00</h3>
+            <p class="text-xs text-gray-500 mt-3">Ingresos brutos registrados.</p>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Egresos</p>
+            <h3 class="text-3xl font-bold text-red-600 mt-2" id="val-egresos-totales">Bs. 0,00</h3>
+            <p class="text-xs text-gray-500 mt-3">Gastos y costos operativos.</p>
+        </div>
+
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        
+        <div class="xl:col-span-2 bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <div class="flex justify-between items-center mb-6">
+                <h4 class="font-bold text-gray-800 italic">Historial de Flujo (Bs.)</h4>
+                <div class="flex gap-2 text-[10px] text-gray-500 uppercase font-bold tracking-tighter">
+                    <span class="flex items-center"><span class="w-2 h-2 bg-blue-500 rounded-full mr-1"></span> Ventas</span>
+                    <span class="flex items-center"><span class="w-2 h-2 bg-green-500 rounded-full mr-1"></span> Ganancia</span>
+                </div>
+            </div>
+            <div class="relative h-[350px]">
+                <canvas id="mainFinanceChart"></canvas>
+            </div>
+        </div>
+
+        <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <h4 class="font-bold text-gray-800 mb-6 italic">Distribución de Gastos</h4>
+            <div class="space-y-6" id="egresos-list">
+                
+                <div>
+                    <div class="flex justify-between text-sm mb-2">
+                        <span class="text-gray-600 font-medium">Gastos de Personal</span>
+                        <span class="font-bold text-gray-900" id="val-gasto-personal">Bs. 0,00</span>
+                    </div>
+                    <div class="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                        <div class="bg-blue-500 h-full w-0 transition-all duration-1000"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-sm mb-2">
+                        <span class="text-gray-600 font-medium">Mercancía (CMV)</span>
+                        <span class="font-bold text-gray-900" id="val-gasto-mercancia">Bs. 0,00</span>
+                    </div>
+                    <div class="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                        <div class="bg-green-500 h-full w-0 transition-all duration-1000"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-sm mb-2">
+                        <span class="text-gray-600 font-medium">Operativos / Otros</span>
+                        <span class="font-bold text-gray-900" id="val-gasto-operativo">Bs. 0,00</span>
+                    </div>
+                    <div class="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                        <div class="bg-yellow-500 h-full w-0 transition-all duration-1000"></div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="mt-10 p-4 bg-gray-50 rounded-xl border border-gray-100 text-center">
+                <p class="text-xs text-gray-500 font-medium uppercase">Diferencia Neta</p>
+                <h4 class="text-xl font-black text-gray-800 mt-1" id="val-diferencia-final">Bs. 0,00</h4>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        (function() {
+            const chartCanvas = document.getElementById('mainFinanceChart');
+            if (!chartCanvas) return;
+
+            const ctx = chartCanvas.getContext('2d');
+            
+            const gradientGanancia = ctx.createLinearGradient(0, 0, 0, 400);
+            gradientGanancia.addColorStop(0, 'rgba(34, 197, 94, 0.2)');
+            gradientGanancia.addColorStop(1, 'rgba(34, 197, 94, 0)');
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4'],
+                    datasets: [
+                        {
+                            label: 'Ganancia (Bs.)',
+                            data: [0, 0, 0, 0], 
+                            borderColor: '#22c55e',
+                            borderWidth: 3,
+                            backgroundColor: gradientGanancia,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#fff'
+                        },
+                        {
+                            label: 'Ventas (Bs.)',
+                            data: [0, 0, 0, 0], 
+                            borderColor: '#3b82f6',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            fill: false,
+                            tension: 0.4,
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { 
+                            beginAtZero: true,
+                            grid: { color: '#f3f4f6' },
+                            ticks: {
+                                callback: function(value) {
+                                    return 'Bs. ' + value.toLocaleString('de-DE');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            const now = new Date();
+            const month = ("0" + (now.getMonth() + 1)).slice(-2);
+            const periodInput = document.getElementById('dashboard-period');
+            if (periodInput) periodInput.value = now.getFullYear() + "-" + month;
+        })();
+    </script>
+</div>

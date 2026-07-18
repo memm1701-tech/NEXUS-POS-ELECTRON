@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Categorías</title>
+
+    <link href="../../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <link href="../../tailwindcss.css" rel="stylesheet">
+<style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f9fafb; /* bg-gray-50 */
+            margin: 0;
+            padding: 0;
+            min-height: 100vh; 
+            overflow-y: auto; 
+        }
+
+        /* Envoltorio principal: Pantalla completa con márgenes (p-4) */
+        .main-content-wrapper {
+            display: flex;
+            flex-direction: column; 
+            gap: 16px; /* gap-4 */
+            width: 100%;
+            max-width: 100%; 
+            height: 100vh;
+            margin: 0; 
+            padding: 16px; 
+            box-sizing: border-box;
+        }
+
+        /* Contenedores genéricos simulando Tailwind (bg-white, shadow-sm, rounded-2xl, border) */
+        .container {
+            background-color: #ffffff;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: left;
+            border-radius: 16px; /* rounded-2xl */
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            padding: 24px; /* p-6 */
+        }
+
+        /* Panel Superior (Formulario) - Fijo arriba */
+        .container:first-of-type {
+            flex-shrink: 0;
+        }
+
+        /* Panel Inferior (Tabla) - Expansible hasta el fondo (flex-1) */
+        .container:last-of-type {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        h1 {
+            color: #1f2937;
+            margin-bottom: 20px;
+            font-size: 1.5rem; /* text-2xl */
+            font-weight: 700;
+            text-align: center;
+            letter-spacing: 0.025em; /* tracking-wide */
+        }
+        
+        h2 {
+            color: #1f2937;
+            margin-top: 0;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            font-size: 1.125rem; /* text-lg */
+            font-weight: 700;
+            border-bottom: 1px solid #e5e7eb;
+            border-left: 4px solid #2563eb; /* Línea de acento azul a la izquierda */
+            padding-left: 12px; /* Espacio para que el texto no toque la línea azul */
+            display: flex;
+            align-items: center;
+        }
+
+        /* --- Formulario --- */
+        .form-section {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .form-section label {
+            font-weight: 700;
+            color: #374151; /* text-gray-700 */
+            margin-bottom: 4px;
+            font-size: 0.875rem; /* text-sm */
+            display: block;
+        }
+
+        .form-section input[type="text"], .form-section select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db; /* border-gray-300 */
+            border-radius: 8px; /* rounded-lg */
+            box-sizing: border-box;
+            font-size: 1rem;
+            outline: none;
+            background-color: #ffffff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        
+        .form-section input[type="text"]:focus, .form-section select:focus {
+            border-color: #3b82f6; /* focus:ring-blue-500 */
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        .form-section input:disabled, .form-section select:disabled {
+            background-color: #f3f4f6;
+            cursor: not-allowed;
+        }
+
+        .btn-submit {
+            background-color: #2563eb; /* bg-blue-600 */
+            color: white;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 8px; /* rounded-lg */
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); /* shadow-md */
+        }
+
+        .btn-submit:hover:not(:disabled) {
+            background-color: #1d4ed8; /* hover:bg-blue-700 */
+        }
+
+        .btn-submit:disabled {
+            background-color: #9ca3af; /* bg-gray-400 */
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* --- Tabla Expansible con Scroll Interno --- */
+        .table-container {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 8px; /* pr-2 para el scroll */
+        }
+
+        table {
+            min-width: 100%;
+            border-collapse: collapse;
+            position: relative;
+        }
+
+        th, td {
+            border-bottom: 1px solid #e5e7eb; /* divide-y divide-gray-200 */
+            padding: 12px 24px; /* py-3 px-6 */
+            text-align: left;
+        }
+
+        th {
+            background-color: #eff6ff; /* Azul medio transparente (estilo cristal) */
+            color: #1e40af; /* Azul oscuro para que el texto resalte */
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 0.75rem; 
+            letter-spacing: 0.05em; 
+            position: sticky; 
+            top: 0;
+            z-index: 10;
+            box-shadow: inset 0 -2px 0 rgba(37, 99, 235, 0.2); /* Línea divisoria azul suave */
+        }   
+
+        td {
+            font-size: 0.875rem; /* text-sm */
+            color: #374151;
+        }
+
+        /* Efecto de iluminación azul al pasar el ratón por las filas */
+        tr:hover td {
+            background-color: #f8fafc; 
+            color: #1d4ed8; 
+            font-weight: 500;
+        }
+
+        .action-cell {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        /* Scrollbars Estilo Nexus POS */
+        .table-container::-webkit-scrollbar { width: 6px; }
+        .table-container::-webkit-scrollbar-track { background: transparent; }
+        .table-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .table-container::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* --- Listas y Autocompletado --- */
+        #selected-products-list {
+            min-height: 60px;
+            max-height: 100px;
+            overflow-y: auto;
+            background-color: #eff6ff; /* Fondo azul cristalino */
+            border: 1px dashed #93c5fd; /* Borde azul punteado */
+            border-radius: 8px;
+            padding: 8px;
+        }
+
+        .selected-product-tag {
+            display: inline-flex;
+            align-items: center;
+            background-color: #dbeafe; /* Azul un tono más fuerte que el fondo */
+            color: #1e40af; /* Texto azul oscuro */
+            padding: 5px 12px;
+            border-radius: 20px;
+            margin: 4px;
+            font-size: 0.85em;
+            font-weight: bold;
+            border: 1px solid #bfdbfe; /* Borde azul claro */
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .autocomplete-container {
+            position: relative;
+        }
+
+        #product-search-results {
+            position: absolute;
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            max-height: 160px;
+            overflow-y: auto;
+            width: 100%;
+            z-index: 20;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+
+        /* --- Modales Modernizados (Backdrop Blur y diseño centrado) --- */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); 
+            backdrop-filter: blur(4px); 
+            justify-content: center; 
+            align-items: center; 
+            padding: 16px;
+            box-sizing: border-box;
+        }
+
+        .modal-content {
+            background-color: #ffffff;
+            padding: 24px;
+            border: none;
+            width: 100%;
+            max-width: 400px; /* max-w-md */
+            border-radius: 16px; /* rounded-2xl */
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); /* shadow-xl */
+            text-align: center;
+        }
+        
+        .modal-content h3 {
+            color: #dc2626; /* text-red-600 */
+            margin-top: 16px;
+            margin-bottom: 8px;
+            border-bottom: none;
+            padding-bottom: 0;
+            font-size: 1.25rem; /* text-xl */
+            font-weight: 700;
+            display: block;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 12px; /* gap-3 */
+            margin-top: 24px;
+        }
+
+        .btn-cancel, .btn-confirm-delete {
+            padding: 12px 0;
+            border-radius: 12px; /* rounded-xl */
+            font-weight: 700;
+            flex: 1;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-cancel {
+            background-color: #e5e7eb; /* bg-gray-200 */
+            color: #1f2937; /* text-gray-800 */
+        }
+
+        .btn-cancel:hover { background-color: #d1d5db; /* hover:bg-gray-300 */ }
+
+        .btn-confirm-delete {
+            background-color: #dc2626; /* bg-red-600 */
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-confirm-delete:hover { background-color: #b91c1c; /* hover:bg-red-700 */ }
+    </style>
+
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body class="bg-gray-50 font-sans overflow-y-auto">
+    
+    <main class="flex flex-col w-full min-h-screen p-4 gap-4">
+        
+        <div class="text-center shrink-0 mb-2">
+            <h1 class="text-3xl font-bold text-gray-800 mb-6 flex items-center"><span class="material-icons text-blue-600 mr-3 text-4xl">category</span> Gestión de Categorías</h1>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 shrink-0">
+            
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col">
+                <div class="form-section flex-1">
+                    <label for="category-name" class="block text-sm font-medium text-gray-700 mb-2">Nombre de la Categoría:</label>
+                    <input type="text" id="category-name" class="w-full border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: Frutas, Lácteos..." required disabled>
+                    
+                    <button id="add-category-btn" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition shadow-md mt-6 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>
+                        Añadir Categoría
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col">
+                <h2 class="text-lg font-semibold mb-4 text-gray-800 border-b pb-2">CAMBIAR CATEGORÍAS DE PRODUCTOS</h2>
+                
+                <div class="form-section flex-1 flex flex-col gap-4">
+                    <div class="autocomplete-container relative">
+                        <label for="product-search-input" class="block text-sm font-medium text-gray-700 mb-2">Buscar y Seleccionar Productos:</label>
+                        <input type="text" id="product-search-input" class="w-full border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500" placeholder="Escribe el nombre o código del producto..." disabled>
+                        <div id="product-search-results" class="absolute w-full bg-white border border-gray-200 shadow-lg max-h-40 overflow-y-auto z-20 hidden rounded-b-lg"></div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Productos Seleccionados:</label>
+                        <div id="selected-products-list" class="min-h-[60px] max-h-[100px] overflow-y-auto bg-gray-50 border border-dashed border-gray-300 rounded-lg p-2">
+                            <span style="color: #6c757d; font-style: italic; font-size: 0.9em;">Ningún producto seleccionado.</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="new-category-select" class="block text-sm font-medium text-gray-700 mb-2">Selecciona la Nueva Categoría:</label>
+                        <select id="new-category-select" class="w-full border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500 bg-white" disabled>
+                            <option value="">Selecciona una categoría...</option>
+                        </select>
+                    </div>
+                    
+                    <button id="change-category-btn" class="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition shadow-md mt-auto disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>
+                        Aplicar Cambio de Categoría
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+       <div class="flex-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden mt-2 min-h-[320px]">
+            <h2 class="text-lg font-semibold mb-4 text-gray-800 border-b pb-3 shrink-0">CATEGORÍAS EXISTENTES</h2>
+            
+            <div class="flex-1 overflow-y-auto pr-2 table-container">
+                <table id="category-table" class="min-w-full divide-y divide-gray-200 relative">
+                    <thead class="bg-gray-50 sticky top-0 z-10">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre de la Categoría</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider action-cell">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="category-table-body" class="bg-white divide-y divide-gray-200">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+        
+    </main>
+
+    <div id="delete-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 text-center modal-content">
+            <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span class="text-3xl">⚠️</span>
+            </div>
+            <h3 class="text-xl font-bold text-red-600 mb-2">Advertencia de Eliminación</h3>
+            <p id="modal-message" class="text-gray-600 mb-6"></p>
+            <div class="flex gap-3 modal-buttons">
+                <button id="cancel-delete-btn" class="flex-1 py-3 bg-gray-200 text-gray-800 font-bold rounded-xl hover:bg-gray-300 transition btn-cancel">Cancelar</button>
+                <button id="confirm-delete-btn" class="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition shadow-md btn-confirm-delete">Sí, Eliminar</button>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module">
+    const LOCAL_URL = "http://localhost:3000";
+
+        let companyId = null;
+        let allProductsMap = {}; 
+        let allProducts = [];
+        let SERVER_URL = null; 
+        let respaldoActivo = false;
+        
+        // --- Elementos del Panel Izquierdo ---
+        const categoryInput = document.getElementById('category-name');
+        const addButton = document.getElementById('add-category-btn');
+        const deleteModal = document.getElementById('delete-modal');
+        const modalMessage = document.getElementById('modal-message');
+        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+        const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+        let categoryToDelete = { id: null, name: null };
+        let allCategories = {}; // { id: name, ... }
+        
+        // --- Elementos del Panel Derecho (Cambio Masivo) ---
+        const productSearchInput = document.getElementById('product-search-input');
+        const searchResultsDiv = document.getElementById('product-search-results');
+        const selectedProductsList = document.getElementById('selected-products-list');
+        const newCategorySelect = document.getElementById('new-category-select');
+        const changeCategoryBtn = document.getElementById('change-category-btn');
+        let selectedProductIds = new Set(); // Set para IDs únicos
+        
+        if (productSearchInput) {
+            productSearchInput.addEventListener('input', handleProductSearch);
+        }
+        if (changeCategoryBtn) {
+            changeCategoryBtn.addEventListener('click', handleChangeCategoryBatch);
+        }
+        
+        window.showDeleteModal = showDeleteModal;
+
+async function iniciarModuloCategorias() {
+    try {
+        const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+
+        if (!api) {
+            setTimeout(iniciarModuloCategorias, 100);
+            return;
+        }
+
+        if (api.obtenerConfigServer) {
+            const config = await api.obtenerConfigServer();
+            respaldoActivo = config.respaldo_datos === "true" || config.respaldo_datos === true;
+            
+            if (respaldoActivo) {
+                SERVER_URL = `http://${config.serverIp || config.SERVER_IP}:${config.serverPort || config.SERVER_PORT}`;
+            }
+        }
+
+        const session = await api.obtenerSesionLocal();
+
+        if (session) {
+            companyId = session.companyId;
+            window.currentCompanyId = companyId;
+
+            // Habilitar la interfaz
+            categoryInput.disabled = false;
+            addButton.disabled = false;
+            productSearchInput.disabled = false;
+            if (newCategorySelect) newCategorySelect.disabled = false;
+
+            // 1. CARGA RÁPIDA DESDE SQLITE
+            await cargarCategoriasDesdeLocal();
+            await cargarProductosDesdeLocal(); 
+
+            // 2. CICLO DE SINCRONIZACIÓN (Si hay red y plan activo)
+            if (navigator.onLine && respaldoActivo && SERVER_URL) {
+                console.log("🌐 Iniciando ciclo de sincronización de categorías...");
+                
+                // 🔥 PRIMERO: Subimos lo que está en estado 0
+                await iniciarSincronizacionSilenciosa();
+
+                // 🔥 SEGUNDO: Descargamos y validamos del servidor
+                await descargarYValidarCategorias(companyId);
+            }
+
+        } else {
+            window.location.href = 'login.html';
+        }
+    } catch (error) {
+        console.error("❌ Error en el arranque de categorías:", error);
+    }
+}
+
+window.addEventListener('categoriasActualizadasBackground', () => {
+    console.log("⚡ [GESTOR CATEGORÍAS] Actualización detectada desde el Servidor Maestro.");
+    if (typeof cargarCategorias === 'function') {
+        cargarCategorias();
+    }
+});
+
+async function iniciarSincronizacionSilenciosa() {
+    if (window.sincronizando) return; 
+    
+    const api = window.nexusAPI;
+    const RUTA_SYNC = '/api/maestro/categorias/sincronizar';
+
+    if (!navigator.onLine || !respaldoActivo || !SERVER_URL || !api) {
+        console.log("⏳ [SYNC-CAT] Sincronización silenciosa omitida (Falta red, respaldo inactivo, SERVER_URL no definido o sin API).");
+        return; 
+    }
+
+    window.sincronizando = true;
+    console.log(`⏳ [SYNC-CAT] Iniciando sincronización silenciosa (subida) hacia: ${SERVER_URL}${RUTA_SYNC}`);
+    try {
+        const cola = await api.obtenerColaSincronizacion();
+        const colaCategorias = cola ? cola.filter(r => r.tabla === 'categorias') : [];
+        console.log(`⏳ [SYNC-CAT] Encontradas ${colaCategorias.length} categorías locales pendientes de subir.`);
+
+        if (colaCategorias.length > 0) {
+            for (const registro of colaCategorias) {
+                try {
+                    const datosJSON = typeof registro.datos === 'string' ? JSON.parse(registro.datos) : registro.datos;
+                    console.log(`⏳ [SYNC-CAT] Subiendo categoría individual:`, datosJSON);
+
+                    const response = await fetch(`${SERVER_URL}${RUTA_SYNC}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(datosJSON),
+                        signal: AbortSignal.timeout(10000)
+                    });
+
+                    if (response.ok) {
+                        console.log(`✅ [SYNC-CAT] Categoría subida exitosamente.`);
+                        await api.eliminarDeCola(registro.id);                      
+                        const idReal = datosJSON.id || datosJSON.categoria_id || datosJSON.categoria_ID;   
+                        if (idReal) {
+                            await api.marcarComoSincronizado('categorias', idReal);
+                        }
+                    } else {
+                        console.error(`❌ [SYNC-CAT] Servidor respondió con error al subir categoría: Status ${response.status}`);
+                    }
+
+                } catch (e) {
+                    console.error("❌ [SYNC-CAT] Error subiendo categoría individual:", e);
+                    break; 
+                }
+            }
+            await cargarCategoriasDesdeLocal();
+        }
+    } catch (error) {
+        console.error("❌ [SYNC-CAT] Error en hilo de subida de Categorías:", error);
+    } finally {
+        window.sincronizando = false; 
+        console.log("⏳ [SYNC-CAT] Finalizada sincronización silenciosa (subida).");
+    }
+}
+
+async function descargarYValidarCategorias(idEmpresa) {
+    console.log(`⏳ [SYNC-CAT] Descargando categorías desde el servidor VPS (${SERVER_URL}) para la empresa: ${idEmpresa}`);
+    try {
+        const response = await fetch(`${SERVER_URL}/api/maestro/categorias/${idEmpresa}`, {
+            signal: AbortSignal.timeout(10000)
+        });
+        
+        console.log(`⏳ [SYNC-CAT] Respuesta del servidor VPS recibida. Status: ${response.status}`);
+        if (!response.ok) throw new Error(`Servidor VPS respondió con error: ${response.status}`);
+        
+        const categoriasServidor = await response.json();
+        console.log(`⏳ [SYNC-CAT] Obtenidas ${categoriasServidor.length} categorías desde el servidor VPS.`);
+        const api = window.nexusAPI;
+
+        // Obtener elementos de la cola de sincronización para evitar sobrescribir cambios locales reales
+        const cola = await api.obtenerColaSincronizacion();
+        const queueIds = new Set();
+        if (cola) {
+            cola.forEach(r => {
+                if (r.tabla === 'categorias') {
+                    try {
+                        const datos = typeof r.datos === 'string' ? JSON.parse(r.datos) : r.datos;
+                        const id = datos.id || datos.categoria_id || datos.categoria_ID;
+                        if (id) queueIds.add(id);
+                    } catch (e) {}
+                }
+            });
+        }
+
+        const categoriasLocales = await api.obtenerCategoriasLocal();
+        const estadosLocales = {};
+        categoriasLocales.forEach(c => estadosLocales[c.id] = c.estado_sync);
+
+        let procesados = 0;
+        for (const cat of categoriasServidor) {
+            const idCat = cat.categoria_id || cat.id || cat.categoria_ID;
+            
+            if (!idCat) {
+                console.warn("⚠️ Omitiendo categoría del servidor sin ID válido:", cat);
+                continue;
+            }
+
+            // Solo omitimos si tiene estado 0 Y realmente está en la cola de subida pendiente
+            if (estadosLocales[idCat] === 0 && queueIds.has(idCat)) {
+                console.log(`⏳ [SYNC-CAT] Omitiendo categoría ${idCat} porque tiene cambios locales pendientes en la cola.`);
+                continue;
+            }
+
+            console.log(`⏳ [SYNC-CAT] Guardando/Actualizando categoría localmente: ID=${idCat}, Nombre=${cat.nombre}`);
+            await api.sincronizarCategoriaServidor({
+                id: idCat, 
+                company_id: idEmpresa,
+                nombre: cat.nombre,
+                fecha_modificacion: cat.fecha_modificacion || new Date().toISOString()
+            });
+            procesados++;
+        }
+        
+        if (procesados > 0) {
+            console.log(`✅ [SYNC-CAT] ${procesados} categorías actualizadas desde el servidor.`);
+            await cargarCategoriasDesdeLocal();
+        } else {
+            console.log("⏳ [SYNC-CAT] No hubo categorías nuevas o modificadas para procesar localmente.");
+        }
+        
+    } catch (error) {
+        console.warn("⚠️ Fallo en descarga de categorías. Detalle:", error);
+    }
+}
+
+
+async function sincronizarConServidorXeon(idEmpresa) {
+    // 🛡️ Candado de seguridad: Evitar pedir "todo" si idEmpresa falla
+    if (!idEmpresa) {
+        console.warn("⚠️ Abortado: No hay ID de empresa para sincronizar con Xeon.");
+        return;
+    }
+
+    try {
+        console.log(`🌐 Sincronizando categorías con el servidor Xeon para la empresa ${idEmpresa}...`);
+        const response = await fetch(`${SERVER_URL}/api/categorias/${idEmpresa}`);
+        if (!response.ok) throw new Error("Servidor Xeon no alcanzable");
+        
+        const categoriasServidor = await response.json();
+        
+        const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+        for (const cat of categoriasServidor) {
+            await api.sincronizarCategoriaServidor({
+                id: cat.id || cat.categoria_ID,
+                company_id: idEmpresa,
+                nombre: cat.nombre,
+                fecha_modificacion: cat.fecha_modificacion || new Date().toISOString()
+            });
+        }
+        
+        // Refrescamos la vista con lo nuevo del servidor
+        await cargarCategoriasDesdeLocal();
+        
+    } catch (error) {
+        console.warn("⚠️ No se pudo sincronizar con el servidor. Modo local activo.");
+    }
+}
+
+// ¡Fuego! Arrancamos el motor
+iniciarModuloCategorias();
+
+async function cargarCategoriasDesdeLocal() {
+    const categoryTableBody = document.getElementById('category-table-body');
+    const newCategorySelect = document.getElementById('new-category-select'); 
+    
+    try {
+        const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+        const categoriasBrutas = await api.obtenerCategoriasLocal();
+
+        categoryTableBody.innerHTML = '';
+        // Reiniciamos el select de cambio masivo
+        if (newCategorySelect) {
+            newCategorySelect.innerHTML = '<option value="">Selecciona una categoría...</option>';
+        }
+        
+        allCategories = {}; // Resetear el mapa global (id: nombre)
+
+        if (!categoriasBrutas || categoriasBrutas.length === 0) {
+            categoryTableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:20px;">No hay categorías registradas localmente.</td></tr>';
+            return;
+        }
+
+        // 🔥 FILTRO DE SEGURIDAD: Aislar solo las categorías de ESTA empresa
+        const categorias = categoriasBrutas.filter(cat => 
+            cat.company_id == companyId || cat.empresa_ID == companyId
+        );
+
+        // Validamos si después del filtro quedó alguna categoría para esta empresa
+        if (categorias.length === 0) {
+            categoryTableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:20px;">No tienes categorías creadas para esta empresa.</td></tr>';
+            return;
+        }
+
+        categorias.forEach((cat) => {
+            // Llenamos el mapa global que usa el sistema
+            allCategories[cat.id] = cat.nombre;
+
+            // 1. Llenar la tabla de categorías
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${cat.nombre}</td>
+                <td class="action-cell">
+                    <button class="btn-delete" 
+                            onclick="showDeleteModal('${cat.id}', '${cat.nombre.replace(/'/g, "\\'")}')">
+                        Eliminar
+                    </button>
+                </td>
+            `;
+            categoryTableBody.appendChild(row);
+
+            // 2. Llenar el select de Cambio Masivo
+            if (newCategorySelect) {
+                const option = document.createElement('option');
+                option.value = cat.id; // Usamos el ID de la categoría
+                option.textContent = cat.nombre;
+                newCategorySelect.appendChild(option);
+            }
+        });
+
+        console.log(`✅ ${categorias.length} categorías renderizadas desde SQLite para la empresa ${companyId}.`);
+
+    } catch (error) {
+        console.error("Error al cargar categorías desde SQLite:", error);
+    }
+}
+
+
+
+        async function cargarProductosDesdeLocal() {
+            try {
+                const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+                if (!api) return;
+
+                // Obtenemos los productos desde el Cerebro (SQLite)
+                const productosLocal = await api.obtenerProductosLocal(companyId || window.currentCompanyId);
+                
+                // Filtrar por empresa para mayor seguridad
+                const productosFiltrados = productosLocal ? productosLocal.filter(p => 
+                    p.company_id == (companyId || window.currentCompanyId) || 
+                    p.empresa_ID == (companyId || window.currentCompanyId) || 
+                    p.empresa_id == (companyId || window.currentCompanyId)
+                ) : [];
+
+                // Los guardamos en un mapa para acceso ultra rápido por ID
+                allProductsMap = {};
+                productosFiltrados.forEach(p => {
+                    allProductsMap[p.id] = {
+                        docId: p.id,
+                        nombre: p.nombre,
+                        codigo: p.codigo,
+                        categoria: p.categoria,
+                        precio: p.precio
+                    };
+                });
+                console.log(`📦 ${productosFiltrados.length} productos cargados para búsqueda masiva.`);
+            } catch (error) {
+                console.error("Error al cargar productos para el buscador:", error);
+            }
+        }
+
+
+        function showDeleteModal(id, name) {
+            categoryToDelete.id = id;
+            categoryToDelete.name = name;
+            modalMessage.innerHTML = `
+                ¿Está seguro que desea eliminar la categoría <span class="highlight-text">"${name}"</span>?
+                Eliminar esta categoría podría causar problemas con los productos y con todo lo que conlleva el uso de ellos en este sistema POS.
+                <span class="highlight-text">Se recomienda editar el producto EN TAL CASO.</span>
+            `;
+            deleteModal.style.display = 'flex'; 
+        }
+
+        cancelDeleteBtn.addEventListener('click', () => {
+            deleteModal.style.display = 'none';
+            categoryToDelete = { id: null, name: null };
+        });
+
+        confirmDeleteBtn.addEventListener('click', async () => {
+    const { id, name } = categoryToDelete;
+    deleteModal.style.display = 'none';
+
+    if (!id) return;
+
+    try {
+        const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+        
+        // 1. ELIMINAR EN SQLITE (Local)
+        await api.eliminarCategoriaLocal(id);
+
+        // 🔥 MODIFICACIÓN: ELIMINAR EN EL SERVIDOR VPS (Si el plan premium está activo)
+        if (navigator.onLine && respaldoActivo && SERVER_URL) {
+            try {
+                const response = await fetch(`${SERVER_URL}/api/maestro/categorias/${id}`, {
+                    method: 'DELETE'
+                });
+                if (!response.ok) throw new Error("Error en servidor VPS");
+            } catch (srvErr) {
+                console.warn("Servidor offline, encolando eliminación.");
+                await api.encolarSincronizacion({
+                    operacion: 'DELETE',
+                    tabla: 'categorias',
+                    datos: { id: id }
+                });
+            }
+        } else if (respaldoActivo) {
+            await api.encolarSincronizacion({
+                operacion: 'DELETE',
+                tabla: 'categorias',
+                datos: { id: id } 
+            });
+        }
+
+        showCustomAlert(`Categoría "${name}" eliminada correctamente.`, 'success');
+        
+        await cargarCategoriasDesdeLocal();
+
+    } catch (error) {
+        console.error("Error al eliminar la categoría:", error);
+        showCustomAlert("Hubo un error al eliminar la categoría.", 'error');
+    }
+    categoryToDelete = { id: null, name: null };
+});
+
+addButton.addEventListener('click', async () => {
+    const categoryName = categoryInput.value.trim();
+    if (!companyId || !categoryName) {
+        showCustomAlert("Por favor, ingresa un nombre.", 'warning');
+        return;
+    }
+
+    const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+    const newId = `CAT-${Date.now()}`;
+    const fecha = new Date().toISOString();
+
+    const nuevaCategoria = {
+        id: newId,                
+        categoria_ID: newId,      
+        company_id: companyId,    
+        empresa_ID: companyId,    
+        nombre: categoryName,     
+        fecha_modificacion: fecha 
+    };
+
+    try {
+        // 1. Guardar localmente
+        await api.sincronizarCategoriaServidor(nuevaCategoria);
+
+        // 🔥 MODIFICACIÓN: Enviar al Servidor VPS (Protegido por el plan premium)
+        if (navigator.onLine && respaldoActivo && SERVER_URL) {
+            try {
+                // Apuntamos al nuevo endpoint de UPSERT
+                const response = await fetch(`${SERVER_URL}/api/maestro/categorias/sincronizar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(nuevaCategoria)
+                });
+                
+                if (!response.ok) throw new Error("Bad Request VPS");
+            } catch (srvErr) {
+                console.warn("Servidor VPS rechazó o está offline, encolando.");
+                await api.encolarSincronizacion({
+                    operacion: 'INSERT',
+                    tabla: 'categorias',
+                    datos: nuevaCategoria
+                });
+            }
+        } else if (respaldoActivo) {
+            await api.encolarSincronizacion({
+                operacion: 'INSERT',
+                tabla: 'categorias',
+                datos: nuevaCategoria
+            });
+        }
+
+        showCustomAlert(`Categoría "${categoryName}" añadida.`, 'success');
+        categoryInput.value = '';
+        
+        await cargarCategoriasDesdeLocal();
+
+    } catch (error) {
+        console.error("Error al añadir:", error);
+        showCustomAlert("Hubo un error al guardar la categoría.", "error");
+    }
+});
+
+
+        function handleProductSearch() {
+            const searchTerm = productSearchInput.value.trim().toLowerCase();
+            searchResultsDiv.innerHTML = '';
+
+            if (searchTerm.length < 1) {
+                searchResultsDiv.style.display = 'none';
+                return;
+            }
+
+            // Filtramos sobre el mapa de SQLite
+            const results = Object.values(allProductsMap).filter(product => {
+                const matchNombre = (product.nombre || '').toLowerCase().includes(searchTerm);
+                const matchCodigo = (product.codigo || '').toLowerCase().includes(searchTerm);
+                return matchNombre || matchCodigo;
+            }).slice(0, 10); // Limitamos a 10 resultados para no saturar la vista
+
+            if (results.length > 0) {
+                searchResultsDiv.style.display = 'block';
+                results.forEach(product => {
+                    // Si ya está seleccionado, no lo mostramos en la búsqueda
+                    if (selectedProductIds.has(product.docId)) return;
+
+                    const item = document.createElement('div');
+                    item.className = 'search-result-item';
+                    item.style.padding = '10px';
+                    item.style.cursor = 'pointer';
+                    item.style.borderBottom = '1px solid #eee';
+                    
+                    item.innerHTML = `
+                        <div style="font-weight: bold;">${product.nombre}</div>
+                        <div style="font-size: 0.8em; color: #666;">Cód: ${product.codigo || 'S/C'} | Cat: ${product.categoria || 'Sin Cat.'}</div>
+                    `;
+
+                    item.addEventListener('click', () => {
+                        selectProduct(product.docId);
+                    });
+                    searchResultsDiv.appendChild(item);
+                });
+            } else {
+                searchResultsDiv.style.display = 'block';
+                searchResultsDiv.innerHTML = '<div style="padding: 10px; color: #999;">No se encontraron productos</div>';
+            }
+        }
+
+
+function selectProduct(docId) {
+            // 1. Evitar duplicados en el Set
+            if (selectedProductIds.has(docId)) {
+                showCustomAlert("El producto ya está seleccionado", "warning");
+                return; 
+            }
+            
+            // 2. Agregar al Set de IDs
+            selectedProductIds.add(docId);
+
+            // 3. Limpieza inmediata de la barra de búsqueda y resultados
+            if (productSearchInput) productSearchInput.value = ''; 
+            if (searchResultsDiv) {
+                searchResultsDiv.innerHTML = '';
+                searchResultsDiv.style.display = 'none'; // Ocultamos el panel de resultados
+            }
+            
+            // 4. Actualizar la interfaz visual
+            renderSelectedProducts();
+            updateChangeButtonState();
+        }
+        
+        // Eliminar producto de la lista de seleccionados
+        function removeProduct(docId) {
+            // 1. Eliminamos el ID del Set
+            const deleted = selectedProductIds.delete(docId);
+            
+            if (deleted) {
+                // 2. Refrescamos la lista de etiquetas (Tags)
+                renderSelectedProducts();
+                // 3. Evaluamos si el botón de cambio debe deshabilitarse
+                updateChangeButtonState();
+            }
+        }
+
+        // Renderizar los tags de productos seleccionados
+function renderSelectedProducts() {
+            // 1. Limpiamos el contenedor visual
+            selectedProductsList.innerHTML = '';
+            
+            // 2. Si no hay nada seleccionado, mostramos el mensaje de estado vacío
+            if (selectedProductIds.size === 0) {
+                selectedProductsList.innerHTML = '<span style="color: #6c757d; font-style: italic; font-size: 0.9em;">Ningún producto seleccionado.</span>';
+                updateChangeButtonState(); // Actualizamos el botón de acción
+                return;
+            }
+
+            // 3. Recorremos los IDs seleccionados
+            selectedProductIds.forEach(docId => {
+                // Buscamos en el mapa que cargamos desde SQLite
+                const product = allProductsMap[docId];
+                
+                if (!product) {
+                    // Si el producto ya no existe en la base local, lo limpiamos del set
+                    selectedProductIds.delete(docId);
+                    return;
+                }
+                
+                // 4. Creamos la etiqueta visual (Tag)
+                const tag = document.createElement('span');
+                tag.className = 'selected-product-tag';
+                
+                // NOTA: Cambiado 'product.name' por 'product.nombre' para consistencia con SQLite
+                tag.innerHTML = `
+                    ${product.nombre || 'Sin nombre'}
+                    <button class="remove-product-btn" data-doc-id="${docId}">x</button>
+                `;
+                
+                // 5. Asignamos el evento para eliminar de la selección
+                const deleteBtn = tag.querySelector('.remove-product-btn');
+                deleteBtn.addEventListener('click', (e) => {
+                    // Evitamos propagación y llamamos a la función de remover
+                    const idToRemove = e.target.dataset.docId;
+                    if (typeof removeProduct === 'function') {
+                        removeProduct(idToRemove);
+                    } else {
+                        // Si no existe removeProduct, lo hacemos manual para no romper el flujo
+                        selectedProductIds.delete(idToRemove);
+                        renderSelectedProducts();
+                        updateChangeButtonState();
+                    }
+                });
+                
+                selectedProductsList.appendChild(tag);
+            });
+
+            // 6. Actualizamos el estado del botón principal de cambio de categoría
+            updateChangeButtonState();
+        }
+        
+        // Habilitar/Deshabilitar el botón de cambio de categoría
+function updateChangeButtonState() {
+            // 1. Verificamos que los elementos existan para evitar errores de consola
+            if (!newCategorySelect || !changeCategoryBtn) return;
+
+            // 2. Lógica de validación
+            const hasSelectedProducts = selectedProductIds && selectedProductIds.size > 0;
+            const hasSelectedCategory = newCategorySelect.value !== '' && newCategorySelect.value !== null;
+            
+            // 3. Aplicamos el estado y un estilo visual para que el usuario sepa que está bloqueado
+            const isDisabled = !(hasSelectedProducts && hasSelectedCategory);
+            changeCategoryBtn.disabled = isDisabled;
+
+            // Opcional: Cambio de opacidad para consistencia visual
+            changeCategoryBtn.style.opacity = isDisabled ? '0.5' : '1';
+            changeCategoryBtn.style.cursor = isDisabled ? 'not-allowed' : 'pointer';
+        }
+        
+        // Escuchador de eventos para el selector de categorías
+        if (newCategorySelect) {
+            newCategorySelect.addEventListener('change', updateChangeButtonState);
+        }
+
+async function handleChangeCategoryBatch() {
+    if (selectedProductIds.size === 0) {
+        showCustomAlert("Selecciona al menos un producto.", "warning");
+        return;
+    }
+    
+    const newCategoryId = newCategorySelect.value;
+    if (!newCategoryId) {
+        showCustomAlert("Selecciona una nueva categoría.", "warning");
+        return;
+    }
+
+    const newCategoryName = allCategories[newCategoryId] || "Sin nombre";
+
+    // 🔥 MODIFICACIÓN: Se elimina la constante quemada SERVER_PRODUCTOS_URL = "http://192.168.0.113:3000"
+
+    changeCategoryBtn.disabled = true; 
+
+    try {
+        let successfulUpdates = 0;
+        const productIdsArray = Array.from(selectedProductIds);
+        const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+
+        for (const docId of productIdsArray) {
+            const currentProduct = allProductsMap[docId];
+            if (!currentProduct) continue;
+
+            const now = new Date().toISOString();
+
+            // 1. Preparamos el objeto
+            const updatedDataForServer = {
+                ...currentProduct,
+                categoria: newCategoryId, 
+                empresa_ID: window.currentCompanyId,
+                producto_ID: docId,
+                fecha_modificacion: now
+            };
+
+            // 2. ACTUALIZAR EN SQLITE (Cerebro Local)
+            await api.sincronizarProductoServidor({
+                id: docId,
+                company_id: window.currentCompanyId,
+                codigo: currentProduct.codigo,
+                nombre: currentProduct.nombre,
+                precio: currentProduct.precio || 0,
+                categoria: newCategoryId, 
+                status: currentProduct.status !== undefined ? currentProduct.status : 1,
+                imagen: currentProduct.imagen || '',
+                datos_json: JSON.stringify(updatedDataForServer),
+                fecha_modificacion: now
+            });
+
+            // 3. 🔥 MODIFICACIÓN: ACTUALIZAR EN EL SERVIDOR VPS (Inventario)
+            if (navigator.onLine && respaldoActivo && SERVER_URL) {
+                try {
+                    // Apuntamos al endpoint de INVENTARIO porque estamos modificando un producto
+                    const response = await fetch(`${SERVER_URL}/api/maestro/inventario/sincronizar`, {
+                        method: 'POST', // Cambiado de PUT a POST para hacer match con tu Upsert
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(updatedDataForServer)
+                    });
+                    
+                    if (!response.ok) throw new Error("Fallo en servidor VPS");
+                    
+                } catch (srvErr) {
+                    console.warn(`Encolando producto ${docId}.`);
+                    await api.encolarSincronizacion({
+                        operacion: 'UPDATE',
+                        tabla: 'productos',
+                        datos: updatedDataForServer
+                    });
+                }
+            } else if (respaldoActivo) {
+                // 4. ENCOLAR SI NO HAY RED Y ES PREMIUM
+                await api.encolarSincronizacion({
+                    operacion: 'UPDATE',
+                    tabla: 'productos',
+                    datos: updatedDataForServer
+                });
+            }
+            
+            successfulUpdates++;
+        }
+
+        showCustomAlert(`Éxito: ${successfulUpdates} productos movidos a "${newCategoryName}".`, 'success');
+        
+        // Limpieza y refresco
+        selectedProductIds.clear();
+        if (typeof renderSelectedProducts === 'function') renderSelectedProducts();
+        await cargarProductosDesdeLocal(); 
+        
+        newCategorySelect.value = '';
+        if (typeof updateChangeButtonState === 'function') updateChangeButtonState();
+
+    } catch (e) {
+        console.error("Error en cambio masivo:", e);
+        showCustomAlert("Error al actualizar. Revisa la consola.", 'error');
+    } finally {
+        changeCategoryBtn.disabled = false;
+    }
+}
+        
+        // Función para mostrar alertas personalizadas
+function showCustomAlert(message, type = 'success') {
+            // 1. Crear el elemento de la alerta
+            const alertDiv = document.createElement('div');
+            alertDiv.textContent = message;
+            
+            // 2. Definir colores consistentes con Nexus POS Global
+            let backgroundColor = '#4CAF50'; // Éxito (Verde)
+            if (type === 'error') {
+                backgroundColor = '#f44336'; // Error (Rojo)
+            } else if (type === 'warning') {
+                backgroundColor = '#ff9800'; // Advertencia (Naranja)
+            } else if (type === 'info') {
+                backgroundColor = '#2196F3'; // Información (Azul)
+            }
+            
+            // 3. Aplicar estilos (Mantenemos la integridad del diseño original)
+            alertDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background-color: ${backgroundColor};
+                color: white;
+                padding: 16px 24px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 10000;
+                font-family: 'Roboto', sans-serif;
+                font-weight: 500;
+                min-width: 250px;
+                max-width: 400px;
+                opacity: 0;
+                transform: translateY(-20px);
+                transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            `;
+
+            document.body.appendChild(alertDiv);
+
+            // 4. Animación de entrada
+            requestAnimationFrame(() => {
+                alertDiv.style.opacity = '1';
+                alertDiv.style.transform = 'translateY(0)';
+            });
+
+            // 5. Animación de salida y limpieza
+            setTimeout(() => {
+                alertDiv.style.opacity = '0';
+                alertDiv.style.transform = 'translateY(-20px)';
+                setTimeout(() => alertDiv.remove(), 400);
+            }, 3500);
+        }
+    </script>
+</body>
+</html>

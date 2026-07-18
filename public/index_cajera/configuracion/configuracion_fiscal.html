@@ -1,0 +1,771 @@
+<div class="w-full min-h-screen bg-white p-6 md:p-10 flex justify-center items-start">
+    <div class="w-full space-y-8 text-center">
+        <h1 class="text-3xl font-bold text-gray-800">Configuración Fiscal y Métodos de Pago</h1>
+
+<div class="space-y-4 text-left p-6 border border-gray-200 bg-white rounded-none mb-6 ">
+            <div class="mb-2">
+                <h2 class="text-lg font-semibold text-gray-800">Modo de Emisión Fiscal (Providencia 0121)</h2>
+                <p class="text-sm text-gray-500">Seleccione el método legal con el que operará esta estación de facturación.</p>
+            </div>
+            <div class="space-y-2">
+                <label for="tipo-emision-select" class="block text-sm font-medium text-gray-700">Tipo de Documento:</label>
+                <select id="tipo-emision-select" class="mt-1 block w-full pl-3 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-none shadow-sm bg-white border">
+                    <option value="TICKET_NO_FISCAL">Ticket Interno / Nota de Entrega (No Fiscal)</option>
+                    <option value="FISCAL_HKA">Máquina Fiscal (Conexión Local Spooler HKA/Bematech)</option>
+                    <option value="FORMA_LIBRE">Forma Libre (Impresión sobre formato SENIAT)</option>
+                    <option value="ELECTRONICA">Facturación Electrónica (Conexión API Proveedor)</option>
+                </select>
+            </div>
+
+           <div id="section_electronica" style="display: none; border: 1px solid #e5e7eb; padding: 20px; border-radius: 0; margin-top: 15px; background-color: transparent;">
+                <h3 class="text-md font-bold mb-4 flex items-center" style="color: #00bcff;">
+                    <span class="material-icons mr-2">vpn_key</span>Credenciales API The Factory HKA
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Token Usuario:</label>
+                        <input type="text" id="configTokenUsuario" class="mt-1 block w-full border-gray-300 rounded-none shadow-sm p-2.5 border" placeholder="Usuario API">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Token Password:</label>
+                        <input type="password" id="configTokenPassword" class="mt-1 block w-full border-gray-300 rounded-none shadow-sm p-2.5 border" placeholder="Password API">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+                    <div class="space-y-2">
+                        <label for="hkaSucursal" class="block text-sm font-medium text-gray-700">Sucursal HKA (Ej: 0001):</label>
+                        <input type="text" id="hkaSucursal" class="mt-1 block w-full border-gray-300 rounded-none shadow-sm p-2.5 border" placeholder="0001">
+                    </div>
+                    <div class="space-y-2">
+                        <label for="hkaSerie" class="block text-sm font-medium text-gray-700">Serie HKA (EN MAYUSCULAS):</label>
+                        <input type="text" id="hkaSerie" class="mt-1 block w-full border-gray-300 rounded-none shadow-sm p-2.5 border" placeholder="NP">
+                    </div>
+                    <div class="space-y-2">
+                        <label for="hkaMoneda" class="block text-sm font-medium text-gray-700">Moneda Fiscal:</label>
+                        <select id="hkaMoneda" class="mt-1 block w-full border-gray-300 rounded-none shadow-sm p-2.5 border">
+                            <option value="VES">VES (Bolívares)</option>
+                            <option value="USD">USD (Dólares)</option>
+                        </select>
+                    </div>
+                </div>
+
+            </div>
+
+            <div id="config-puerto-serial" class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Puerto COM de la Impresora/maquina "FISCAL". En caso de ser selecionada la opcion "Máquina Fiscal" colocar en mayusculas "COM" seguido del numero del puerto:</label>
+                <input type="text" id="configPuertoCOM" class="border rounded-none p-2 w-full" placeholder="Ej: COM7">
+                <p id="puertos-detectados-ayuda" class="text-xs text-gray-500 mt-1">Escaneando puertos USB/COM...</p>
+                
+                <!-- Botón de identificación -->
+                <button id="btn-identificar-impresora" onclick="identificarImpresora()" 
+                    class="mt-3 flex items-center px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700 font-medium shadow-sm">
+                    <span class="material-icons mr-2">search</span>
+                    Identificar Impresora Fiscal
+                </button>
+
+                <!-- Panel de resultado de identificación -->
+                <div id="panel-identificacion" style="display:none" 
+                     class="mt-4 p-4 rounded-none border border-blue-200 bg-blue-50 text-sm">
+                    <p class="font-bold text-blue-800 mb-2">📟 Impresora Identificada</p>
+                    <p>Serial: <strong id="id-serial">-</strong></p>
+                    <p>Último N° Factura: <strong id="id-nrofac">-</strong></p>
+                    <p>Modo Monto (Flag 21): <strong id="id-flag21">-</strong></p>
+                    <p id="id-flag21-warning" style="display:none" class="text-red-700 mt-2 font-semibold">
+                        ⚠️ El Flag 21 de esta impresora NO es 00. Nexus POS puede generar tramas incorrectas. Contacte a su técnico HKA para configurar la impresora en modo estándar (Flag 21 = 00).
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-4 text-left p-6 border border-gray-200 bg-white rounded-none mb-6 ">
+            <div class="mb-2">
+                <h2 class="text-lg font-semibold text-gray-800">Programación de Encabezado y Pie de Página (Máquina Fiscal)</h2>
+                <p class="text-sm text-gray-500">Configure los textos de encabezado y pie directamente en la memoria de la máquina fiscal. Asegúrese de guardar localmente si desea mantenerlos en esta pantalla.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-2">
+                    <h3 class="text-md font-bold text-gray-700">Encabezado (Máx 8 líneas)</h3>
+                    <input type="text" id="fiscalPH1" class="w-full border p-2 rounded-none" placeholder="Línea 1">
+                    <input type="text" id="fiscalPH2" class="w-full border p-2 rounded-none" placeholder="Línea 2">
+                    <input type="text" id="fiscalPH3" class="w-full border p-2 rounded-none" placeholder="Línea 3">
+                    <input type="text" id="fiscalPH4" class="w-full border p-2 rounded-none" placeholder="Línea 4">
+                    <input type="text" id="fiscalPH5" class="w-full border p-2 rounded-none" placeholder="Línea 5">
+                    <input type="text" id="fiscalPH6" class="w-full border p-2 rounded-none" placeholder="Línea 6">
+                    <input type="text" id="fiscalPH7" class="w-full border p-2 rounded-none" placeholder="Línea 7">
+                    <input type="text" id="fiscalPH8" class="w-full border p-2 rounded-none" placeholder="Línea 8">
+                </div>
+                <div class="space-y-2">
+                    <h3 class="text-md font-bold text-gray-700">Pie de Página (Máx 8 líneas)</h3>
+                    <input type="text" id="fiscalPF1" class="w-full border p-2 rounded-none" placeholder="Línea 1">
+                    <input type="text" id="fiscalPF2" class="w-full border p-2 rounded-none" placeholder="Línea 2">
+                    <input type="text" id="fiscalPF3" class="w-full border p-2 rounded-none" placeholder="Línea 3">
+                    <input type="text" id="fiscalPF4" class="w-full border p-2 rounded-none" placeholder="Línea 4">
+                    <input type="text" id="fiscalPF5" class="w-full border p-2 rounded-none" placeholder="Línea 5">
+                    <input type="text" id="fiscalPF6" class="w-full border p-2 rounded-none" placeholder="Línea 6">
+                    <input type="text" id="fiscalPF7" class="w-full border p-2 rounded-none" placeholder="Línea 7">
+                    <input type="text" id="fiscalPF8" class="w-full border p-2 rounded-none" placeholder="Línea 8">
+                </div>
+            </div>
+            
+            <button id="btn-programar-encabezado" class="mt-4 bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded-none font-bold shadow transition">
+                <span class="material-icons align-middle mr-1">print</span>Programar Encabezado / Pie en Máquina Fiscal
+            </button>
+        </div>
+
+        <div class="space-y-4 text-left p-6 border border-gray-200 bg-white rounded-none mb-6 ">
+            <div class="mb-2">
+                <h2 class="text-lg font-semibold text-gray-800">Mantenimiento y Programación de Máquina Fiscal</h2>
+                <p class="text-sm text-gray-500">Programación de Alícuotas (Tasas de IVA) y Ajuste de Fecha/Hora. (Requiere Reporte Z previo).</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-b pb-4">
+                <div class="space-y-3">
+                    <h3 class="text-md font-bold text-gray-700">Tasas de IVA (Alícuotas)</h3>
+                    <div class="flex items-center space-x-2">
+                        <label class="w-24 font-medium text-sm">General (%):</label>
+                        <input type="number" id="fiscalIvaGeneral" class="w-full border p-2 rounded-none" placeholder="Ej: 16.00">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <label class="w-24 font-medium text-sm">Reducido (%):</label>
+                        <input type="number" id="fiscalIvaReducido" class="w-full border p-2 rounded-none" placeholder="Ej: 8.00">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <label class="w-24 font-medium text-sm">Adicional (%):</label>
+                        <input type="number" id="fiscalIvaAdicional" class="w-full border p-2 rounded-none" placeholder="Ej: 31.00">
+                    </div>
+                    <button id="btn-programar-iva" class="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-none font-bold shadow transition mt-2 w-full">
+                        <span class="material-icons align-middle mr-1">percent</span>Programar Tasas de IVA
+                    </button>
+                </div>
+                
+                <div class="space-y-3">
+                    <h3 class="text-md font-bold text-gray-700">Ajuste de Reloj Fiscal</h3>
+                    <div class="flex items-center space-x-2">
+                        <label class="w-16 font-medium text-sm">Fecha:</label>
+                        <input type="date" id="fiscalFecha" class="w-full border p-2 rounded-none">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <label class="w-16 font-medium text-sm">Hora:</label>
+                        <input type="time" step="1" id="fiscalHora" class="w-full border p-2 rounded-none">
+                    </div>
+                    <div class="flex space-x-2 mt-2">
+                        <button id="btn-reloj-actual" class="bg-gray-600 hover:bg-gray-700 text-white py-2 px-3 rounded-none shadow transition w-1/2">
+                            <span class="material-icons align-middle text-sm">schedule</span> Hora PC
+                        </button>
+                        <button id="btn-programar-reloj" class="bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded-none font-bold shadow transition w-1/2">
+                            Programar Reloj
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="panel-resultados-prog" style="display:none" class="mt-4 p-4 rounded-none border border-gray-300 bg-white text-sm">
+                 <p class="font-bold text-gray-800 mb-2">📋 Resultado de la Programación</p>
+                 <pre id="log-programacion" class="whitespace-pre-wrap text-xs bg-gray-100 p-2 border rounded-none max-h-40 overflow-y-auto"></pre>
+            </div>
+        </div>
+
+        
+        <div class="space-y-4 text-left p-6 border border-gray-200 bg-white rounded-none mb-6 ">
+            <div class="mb-2 flex justify-between items-center flex-wrap gap-4">
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-800">Mapeo de Métodos de Pago (Comandos PE y PJ)</h2>
+                    <p class="text-sm text-gray-500">Asocie los métodos de pago globales a los Flags de la impresora fiscal.</p>
+                </div>
+                <button type="button" onclick="window.toggleManualMapeo()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2 px-3 rounded-none shadow transition flex items-center">
+                    <span class="material-icons text-sm mr-1">help_outline</span> Manual de Uso / Guía de Configuración
+                </button>
+            </div>
+            
+            <div id="manual-mapeo-container" class="hidden border border-indigo-200 bg-indigo-50 p-4 rounded-none text-sm text-gray-700 mb-4 transition-all duration-300">
+                <h4 class="font-bold text-indigo-800 mb-2 flex items-center">
+                    <span class="material-icons text-base mr-1">menu_book</span> Guía de Configuración Fiscal (Venezuela - HKA)
+                </h4>
+                <p class="mb-3">
+                    La máquina fiscal procesa los pagos usando códigos internos de fábrica. Para que la máquina calcule correctamente los impuestos (como el <strong>IGTF del 3%</strong>) y registre adecuadamente la naturaleza del cobro, configure la columna <strong>"Flag PJ"</strong> de cada casilla con la siguiente guía:
+                </p>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-xs border border-indigo-200 bg-white mb-2">
+                        <thead>
+                            <tr class="bg-indigo-100 text-indigo-900">
+                                <th class="px-2 py-1 border text-left">Método de Pago Común</th>
+                                <th class="px-2 py-1 border text-center">Código Flag (PJ) sugerido</th>
+                                <th class="px-2 py-1 border text-left">Comportamiento Fiscal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="px-2 py-1 border font-semibold">Efectivo Bs.</td>
+                                <td class="px-2 py-1 border text-center font-mono font-bold">01</td>
+                                <td class="px-2 py-1 border">Moneda Nacional. Efectivo físico estándar.</td>
+                            </tr>
+                            <tr class="bg-gray-50">
+                                <td class="px-2 py-1 border font-semibold">Tarjeta de Débito</td>
+                                <td class="px-2 py-1 border text-center font-mono font-bold">13 <span class="text-gray-400 font-sans">(ó 04)</span></td>
+                                <td class="px-2 py-1 border">Moneda Nacional. Transacciones electrónicas.</td>
+                            </tr>
+                            <tr>
+                                <td class="px-2 py-1 border font-semibold">Pago Móvil / Transf.</td>
+                                <td class="px-2 py-1 border text-center font-mono font-bold">07 <span class="text-gray-400 font-sans">(ó 03)</span></td>
+                                <td class="px-2 py-1 border">Moneda Nacional. Canales de transferencia.</td>
+                            </tr>
+                            <tr class="bg-gray-50">
+                                <td class="px-2 py-1 border font-semibold">Biopago</td>
+                                <td class="px-2 py-1 border text-center font-mono font-bold">08</td>
+                                <td class="px-2 py-1 border">Moneda Nacional. Identificador electrónico.</td>
+                            </tr>
+                            <tr class="bg-yellow-50 text-yellow-900">
+                                <td class="px-2 py-1 border font-semibold text-red-700">Dólares Físicos / Euros / Zelle</td>
+                                <td class="px-2 py-1 border text-center font-mono font-bold text-red-700">20</td>
+                                <td class="px-2 py-1 border font-medium">Moneda Extranjera. Aplica el 3% de IGTF (requiere Flag 50 activo).</td>
+                            </tr>
+                            <tr class="bg-gray-50">
+                                <td class="px-2 py-1 border font-semibold">Crédito</td>
+                                <td class="px-2 py-1 border text-center font-mono font-bold">12</td>
+                                <td class="px-2 py-1 border">Cuentas por cobrar (Créditos a clientes).</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-xs text-indigo-700 italic mt-2">
+                    *Nota: Una vez colocados los flags, haga clic en <strong>"Programar Nombres (PE)"</strong> para guardar y sincronizar los nombres con la memoria del equipo fiscal.
+                </p>
+            </div>
+            <div class="overflow-x-auto mt-4">
+                <table class="min-w-full divide-y divide-gray-200 table-auto border">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comando PE (01-16)</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Flag PJ</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Atajo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-mapeo-pagos" class="bg-white divide-y divide-gray-200">
+                        <tr><td colspan="5" class="text-center py-4">Cargando métodos de pago...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-4 flex gap-4">
+                <button id="btn-actualizar-nombres-pagos" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-none font-bold shadow transition">
+                    <span class="material-icons align-middle mr-1">sync</span> Programar Nombres (PE)
+                </button>
+            </div>
+        </div>
+    <div class="pt-4 pb-10">
+            <button id="saveConfigBtn" class="w-full md:w-auto md:min-w-[300px] mx-auto block bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-none shadow-lg transition duration-300 ease-in-out text-lg">
+                Guardar Configuración
+            </button>
+            <p id="messageBox" class="text-center mt-6 font-semibold text-lg"></p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal genérico para alertas y confirmaciones -->
+<div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-none shadow-xl p-6 w-full max-w-md mx-4">
+        <h3 id="custom-modal-title" class="text-lg font-bold text-gray-800 mb-2">Mensaje</h3>
+        <p id="custom-modal-message" class="text-gray-600 mb-6 whitespace-pre-line"></p>
+        <div class="flex justify-end gap-3">
+            <button id="custom-modal-cancel" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-none hover:bg-gray-300 hidden">Cancelar</button>
+            <button id="custom-modal-ok" class="px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700">Aceptar</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+
+    let userId = null;
+    let companyId = null;
+    let branchId = null; 
+    let cashierId = null; 
+
+    const saveConfigBtn = document.getElementById('saveConfigBtn');
+    const messageBox = document.getElementById('messageBox');
+    
+    const tipoEmisionSelect = document.getElementById('tipo-emision-select');
+    const configTokenUsuario = document.getElementById('configTokenUsuario');
+    const configTokenPassword = document.getElementById('configTokenPassword');
+    const configPuertoCOM = document.getElementById('configPuertoCOM');
+    const hkaSucursal = document.getElementById('hkaSucursal');
+    const hkaSerie = document.getElementById('hkaSerie');
+    const hkaMoneda = document.getElementById('hkaMoneda');
+
+    window.metodosMaestros = [];
+
+    window.showCustomAlert = function(message, title = "Atención") {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('custom-modal');
+            document.getElementById('custom-modal-title').textContent = title;
+            document.getElementById('custom-modal-message').textContent = message;
+            document.getElementById('custom-modal-cancel').style.display = 'none';
+            const btnOk = document.getElementById('custom-modal-ok');
+            btnOk.onclick = () => {
+                modal.classList.add('hidden');
+                resolve(true);
+            };
+            modal.classList.remove('hidden');
+            btnOk.focus();
+        });
+    }
+
+    window.showCustomConfirm = function(message, title = "Confirmación") {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('custom-modal');
+            document.getElementById('custom-modal-title').textContent = title;
+            document.getElementById('custom-modal-message').textContent = message;
+            const btnCancel = document.getElementById('custom-modal-cancel');
+            const btnOk = document.getElementById('custom-modal-ok');
+            btnCancel.style.display = 'inline-block';
+            btnCancel.onclick = () => {
+                modal.classList.add('hidden');
+                resolve(false);
+            };
+            btnOk.onclick = () => {
+                modal.classList.add('hidden');
+                resolve(true);
+            };
+            modal.classList.remove('hidden');
+            btnOk.focus();
+        });
+    }
+
+    function showMessage(message, color) {
+        if (!messageBox) return;
+        messageBox.textContent = message;
+        messageBox.style.color = color;
+    }
+
+    async function getPuertosCOM() {
+        try {
+            if (!window.nexusAPI || typeof window.nexusAPI.leerPuertos !== 'function') return [];
+            const ports = await window.nexusAPI.leerPuertos();
+            const ayuda = document.getElementById('puertos-detectados-ayuda');
+            if (ports && ports.length > 0) {
+                const nombres = ports.map(p => p.path).join(', ');
+                if (ayuda) ayuda.textContent = "Puertos detectados en el equipo: " + nombres;
+                return ports.map(p => p.path);
+            } else {
+                if (ayuda) ayuda.textContent = 'No se detectaron puertos seriales activos.';
+                return [];
+            }
+        } catch (error) {
+            console.error("Error al leer puertos COM:", error);
+            return [];
+        }
+    }
+    
+    async function loadAllConfigs(puertosCOMValidos) {
+        if (!companyId || !branchId || !cashierId) {
+            showMessage("Error de sesión. No se puede cargar la configuración.", 'red');
+            return;
+        }
+
+        let facturaLoaded = false;
+
+        try {
+            const facturaDataRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
+            if (facturaDataRaw) {
+                const data = JSON.parse(facturaDataRaw);
+                
+                if (configPuertoCOM && data.puerto_com_fiscal) {
+                    configPuertoCOM.value = data.puerto_com_fiscal;
+                }
+                
+                const savedTipoEmision = data.tipo_emision;
+                if (tipoEmisionSelect && savedTipoEmision) {
+                    tipoEmisionSelect.value = savedTipoEmision;
+                    const sectionElectronica = document.getElementById('section_electronica');
+                    if (sectionElectronica) {
+                        sectionElectronica.style.display = (savedTipoEmision === 'ELECTRONICA') ? 'block' : 'none';
+                    }
+                }
+
+                if (configTokenUsuario) configTokenUsuario.value = data.token_usuario || '';
+                if (configTokenPassword) configTokenPassword.value = data.token_password || '';
+
+                if (hkaSucursal) hkaSucursal.value = data.hka_sucursal || '0001';
+                if (hkaSerie) hkaSerie.value = data.hka_serie || '';
+                if (hkaMoneda) hkaMoneda.value = data.hka_moneda || 'VES';
+
+                if (data.programacionFiscal) {
+                    for (let i = 1; i <= 8; i++) {
+                        if (document.getElementById('fiscalPH'+i)) document.getElementById('fiscalPH'+i).value = data.programacionFiscal['PH'+i] || '';
+                        if (document.getElementById('fiscalPF'+i)) document.getElementById('fiscalPF'+i).value = data.programacionFiscal['PF'+i] || '';
+                    }
+                    if (document.getElementById('fiscalIvaGeneral')) document.getElementById('fiscalIvaGeneral').value = data.programacionFiscal.ivaGeneral || '';
+                    if (document.getElementById('fiscalIvaReducido')) document.getElementById('fiscalIvaReducido').value = data.programacionFiscal.ivaReducido || '';
+                    if (document.getElementById('fiscalIvaAdicional')) document.getElementById('fiscalIvaAdicional').value = data.programacionFiscal.ivaAdicional || '';
+                }
+                
+                facturaLoaded = true;
+            }
+        } catch (error) {
+            console.error("Error al cargar Factura:", error);
+        }
+        
+        if (facturaLoaded) {
+            showMessage(`✅ Configuración fiscal cargada correctamente.`, 'green');
+        } else {
+            showMessage("Ajuste los parámetros y presione Guardar.", 'blue');
+        }
+    }
+ 
+    async function verificarAutenticacionLocal() {
+        try {
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
+            if (sesion && sesion.companyId) {
+                userId = sesion.uid;
+                companyId = sesion.companyId;
+                branchId = sesion.branchId; 
+                cashierId = sesion.uid; 
+
+                showMessage("Escaneando hardware...", 'blue');
+                const puertos = await getPuertosCOM();
+                await loadAllConfigs(puertos); 
+                await cargarMetodosPagoMapeo();
+            } else {
+                userId = null;
+                companyId = null;
+                branchId = null; 
+                cashierId = null; 
+            }
+        } catch (error) {
+            console.error("Error de sesión:", error);
+            showMessage("Error de lectura local. Revisa la consola.", 'red');
+        }
+    }
+
+    verificarAutenticacionLocal();
+
+    window.toggleManualMapeo = function() {
+        const container = document.getElementById('manual-mapeo-container');
+        if (container) {
+            container.classList.toggle('hidden');
+        }
+    };
+
+    async function saveFacturaConfiguration() {
+        try {
+            const existingDataRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
+            let facturaData = existingDataRaw ? JSON.parse(existingDataRaw) : {};
+
+            facturaData.ultimoCambio = new Date().toISOString();
+            facturaData.modificadoPor = userId;
+            
+            if (tipoEmisionSelect) facturaData.tipo_emision = tipoEmisionSelect.value;
+            if (configTokenUsuario) facturaData.token_usuario = configTokenUsuario.value.trim();
+            if (configTokenPassword) facturaData.token_password = configTokenPassword.value.trim();
+            if (configPuertoCOM) facturaData.puerto_com_fiscal = configPuertoCOM.value;
+            
+            if (hkaSucursal) facturaData.hka_sucursal = hkaSucursal.value.trim();
+            if (hkaSerie) facturaData.hka_serie = hkaSerie.value.trim().toUpperCase();
+            if (hkaMoneda) facturaData.hka_moneda = hkaMoneda.value;
+
+            facturaData.programacionFiscal = {
+                PH1: document.getElementById('fiscalPH1') ? document.getElementById('fiscalPH1').value.trim() : '',
+                PH2: document.getElementById('fiscalPH2') ? document.getElementById('fiscalPH2').value.trim() : '',
+                PH3: document.getElementById('fiscalPH3') ? document.getElementById('fiscalPH3').value.trim() : '',
+                PH4: document.getElementById('fiscalPH4') ? document.getElementById('fiscalPH4').value.trim() : '',
+                PH5: document.getElementById('fiscalPH5') ? document.getElementById('fiscalPH5').value.trim() : '',
+                PH6: document.getElementById('fiscalPH6') ? document.getElementById('fiscalPH6').value.trim() : '',
+                PH7: document.getElementById('fiscalPH7') ? document.getElementById('fiscalPH7').value.trim() : '',
+                PH8: document.getElementById('fiscalPH8') ? document.getElementById('fiscalPH8').value.trim() : '',
+                PF1: document.getElementById('fiscalPF1') ? document.getElementById('fiscalPF1').value.trim() : '',
+                PF2: document.getElementById('fiscalPF2') ? document.getElementById('fiscalPF2').value.trim() : '',
+                PF3: document.getElementById('fiscalPF3') ? document.getElementById('fiscalPF3').value.trim() : '',
+                PF4: document.getElementById('fiscalPF4') ? document.getElementById('fiscalPF4').value.trim() : '',
+                PF5: document.getElementById('fiscalPF5') ? document.getElementById('fiscalPF5').value.trim() : '',
+                PF6: document.getElementById('fiscalPF6') ? document.getElementById('fiscalPF6').value.trim() : '',
+                PF7: document.getElementById('fiscalPF7') ? document.getElementById('fiscalPF7').value.trim() : '',
+                PF8: document.getElementById('fiscalPF8') ? document.getElementById('fiscalPF8').value.trim() : '',
+                ivaGeneral: document.getElementById('fiscalIvaGeneral') ? document.getElementById('fiscalIvaGeneral').value : '',
+                ivaReducido: document.getElementById('fiscalIvaReducido') ? document.getElementById('fiscalIvaReducido').value : '',
+                ivaAdicional: document.getElementById('fiscalIvaAdicional') ? document.getElementById('fiscalIvaAdicional').value : ''
+            };
+
+            if (tipoEmisionSelect && tipoEmisionSelect.value === 'FISCAL_HKA' && (!facturaData.puerto_com_fiscal || facturaData.puerto_com_fiscal.trim() === '')) {
+                showMessage("⚠️ Debes asignar un puerto COM a la Máquina Fiscal.", 'red');
+                return false;
+            }
+
+            await window.nexusAPI.guardarConfiguracion('config_factura', JSON.stringify(facturaData));
+            return true;
+        } catch (e) {
+            console.error("Error al guardar config fiscal:", e);
+            return false;
+        }
+    }
+
+    async function saveConfiguration() {
+        if (!userId || !companyId || !branchId || !cashierId) {
+            showMessage("Error: Sesión no válida, no se puede guardar.", 'red');
+            return;
+        }
+
+        showMessage("Guardando configuración...", 'blue');
+        let facturaSuccess = await saveFacturaConfiguration();
+
+        if (facturaSuccess) {
+            showMessage("✅ Configuración guardada correctamente en el equipo.", 'green');
+        } else {
+            showMessage("❌ Hubo un problema al guardar. Revisa la consola.", 'red');
+        }
+    }
+
+    saveConfigBtn.addEventListener('click', saveConfiguration);
+
+    const sectionElectronica = document.getElementById('section_electronica');
+    if (tipoEmisionSelect && sectionElectronica) {
+        tipoEmisionSelect.addEventListener('change', function() {
+            sectionElectronica.style.display = (this.value === 'ELECTRONICA') ? 'block' : 'none';
+        });
+        if (tipoEmisionSelect.value === 'ELECTRONICA') {
+            sectionElectronica.style.display = 'block';
+        }
+    }
+
+    window.identificarImpresora = async function() {
+        const puerto = document.getElementById('configPuertoCOM') ? document.getElementById('configPuertoCOM').value.trim() : '';
+        if (!puerto) {
+            await showCustomAlert('Ingrese el Puerto COM antes de identificar.', 'Puerto Requerido');
+            return;
+        }
+        const btn = document.getElementById('btn-identificar-impresora');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-icons mr-2">sync</span>Conectando...';
+
+        try {
+            const resultado = await window.nexusAPI.consultarEstadoFiscal(puerto);
+            const panel = document.getElementById('panel-identificacion');
+            
+            if (resultado && resultado.success) {
+                panel.style.display = 'block';
+                document.getElementById('id-serial').textContent = resultado.serial || 'No leído';
+                document.getElementById('id-nrofac').textContent = resultado.nroFactura || 'N/A';
+
+                const flag21 = resultado.flag21 ?? 'No detectado';
+                const flag21Elem = document.getElementById('id-flag21');
+                const warnElem = document.getElementById('id-flag21-warning');
+                flag21Elem.textContent = flag21;
+
+                if (flag21 !== '00' && flag21 !== 'No detectado') {
+                    warnElem.style.display = 'block';
+                } else {
+                    warnElem.style.display = 'none';
+                }
+            } else {
+                await showCustomAlert(`❌ No se pudo conectar: ${resultado?.msg || 'Error desconocido'}`, 'Error de Conexión');
+            }
+        } catch (e) {
+            await showCustomAlert('Error de comunicación: ' + e.message, 'Error Interno');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<span class="material-icons mr-2">search</span>Identificar Impresora Fiscal';
+        }
+    }
+
+    function logProgramacion(msg) {
+        const panel = document.getElementById('panel-resultados-prog');
+        const log = document.getElementById('log-programacion');
+        if (panel) panel.style.display = 'block';
+        if (log) {
+            log.textContent += `[${new Date().toLocaleTimeString()}] ${msg}\n`;
+            log.scrollTop = log.scrollHeight;
+        }
+    }
+
+    async function ejecutarComandosFiscales(comandos) {
+        const puerto = document.getElementById('configPuertoCOM') ? document.getElementById('configPuertoCOM').value.trim() : '';
+        if (!puerto) {
+            await showCustomAlert('Por favor ingrese el Puerto COM primero.', 'Puerto Requerido');
+            return false;
+        }
+
+        const btns = [
+            document.getElementById('btn-programar-encabezado'),
+            document.getElementById('btn-programar-iva'),
+            document.getElementById('btn-programar-reloj')
+        ];
+        btns.forEach(b => { if (b) { b.disabled = true; b.style.opacity = '0.5'; } });
+
+        logProgramacion(`Iniciando envío de ${comandos.length} comando(s) a ${puerto}...`);
+        
+        try {
+            const res = await window.nexusAPI.programarMaquinaFiscal(comandos, puerto);
+            if (res && res.success) {
+                logProgramacion(`✅ ÉXITO: ${res.msg}`);
+                return true;
+            } else {
+                logProgramacion(`❌ ERROR/ADVERTENCIA: ${res ? res.msg : 'Desconocido'}`);
+                return false;
+            }
+        } catch(e) {
+            logProgramacion(`❌ ERROR de Excepción: ${e.message}`);
+            return false;
+        } finally {
+            btns.forEach(b => { if (b) { b.disabled = false; b.style.opacity = '1'; } });
+        }
+    }
+
+    document.getElementById('btn-programar-encabezado')?.addEventListener('click', async () => {
+        let comandos = [];
+        for (let i = 1; i <= 8; i++) {
+            const el = document.getElementById('fiscalPH' + i);
+            const headerTxt = el ? el.value.trim() : '';
+            if (headerTxt) {
+                comandos.push(`PH0${i}${headerTxt}`);
+            }
+        }
+        for (let i = 1; i <= 8; i++) {
+            const el = document.getElementById('fiscalPF' + i);
+            const footerTxt = el ? el.value.trim() : '';
+            if (footerTxt) {
+                comandos.push(`PF0${i}${footerTxt}`);
+            }
+        }
+        
+        if (comandos.length === 0) {
+            await showCustomAlert("No hay líneas de encabezado ni pie de página para programar.", "Campos Vacíos");
+            return;
+        }
+        await ejecutarComandosFiscales(comandos);
+    });
+
+    document.getElementById('btn-programar-iva')?.addEventListener('click', async () => {
+        const eg = document.getElementById('fiscalIvaGeneral');
+        const er = document.getElementById('fiscalIvaReducido');
+        const ea = document.getElementById('fiscalIvaAdicional');
+        const g = eg ? (parseFloat(eg.value) || 0) : 0;
+        const r = er ? (parseFloat(er.value) || 0) : 0;
+        const a = ea ? (parseFloat(ea.value) || 0) : 0;
+        
+        const pad = (num) => Math.round(num * 100).toString().padStart(4, '0');
+        const cmd = `PJ${pad(g)}${pad(r)}${pad(a)}`;
+        
+        const confirmacion = await showCustomConfirm(`Se programará IVA:\nGeneral: ${g}%\nReducido: ${r}%\nAdicional: ${a}%\n\nTrama: ${cmd}\n\n¿Estás seguro? Asegúrate de haber emitido un Reporte Z antes.`, "Programar IVA");
+        if (!confirmacion) return;
+        
+        await ejecutarComandosFiscales([cmd]);
+    });
+
+    document.getElementById('btn-reloj-actual')?.addEventListener('click', () => {
+        const now = new Date();
+        const ef = document.getElementById('fiscalFecha');
+        const eh = document.getElementById('fiscalHora');
+        if (ef) ef.value = now.toISOString().split('T')[0];
+        if (eh) eh.value = now.toTimeString().split(' ')[0];
+    });
+
+    document.getElementById('btn-programar-reloj')?.addEventListener('click', async () => {
+        const ef = document.getElementById('fiscalFecha');
+        const eh = document.getElementById('fiscalHora');
+        const f = ef ? ef.value : '';
+        const h = eh ? eh.value : '';
+        if (!f || !h) {
+            await showCustomAlert("Por favor seleccione la fecha y hora a programar.", "Datos incompletos");
+            return;
+        }
+        
+        const partesF = f.split('-'); 
+        const partesH = h.split(':'); 
+        
+        const d = partesF[2];
+        const m = partesF[1];
+        const y = partesF[0].substring(2, 4); 
+        const hh = partesH[0];
+        const mm = partesH[1];
+        const ss = partesH[2] || '00';
+        
+        const cmd1 = `PG${d}${m}${y}`;
+        const cmd2 = `PF${hh}${mm}${ss}`;
+        
+        const confirmacion = await showCustomConfirm(`Se ajustará el reloj a:\nFecha: ${d}/${m}/${y}\nHora: ${hh}:${mm}:${ss}\n\n¿Desea continuar? (Recuerde emitir un Reporte Z previo)`, "Programar Reloj Fiscal");
+        if (!confirmacion) return;
+        
+        await ejecutarComandosFiscales([cmd1, cmd2]);
+    });
+
+    async function cargarMetodosPagoMapeo() {
+        const tbody = document.getElementById('tabla-mapeo-pagos');
+        if (!tbody) return;
+        try {
+            const resp = await fetch('http://localhost:3000/api/maestro/metodos-pago');
+            if (!resp.ok) throw new Error("Error HTTP " + resp.status);
+            const metodos = await resp.json();
+            
+            tbody.innerHTML = '';
+            window.metodosMaestros = metodos.data || [];
+
+            if (window.metodosMaestros.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">No hay métodos configurados</td></tr>';
+                return;
+            }
+            
+            window.metodosMaestros.forEach((m, idx) => {
+                const fNumber = 5 + idx;
+                const fKey = fNumber <= 12 ? 'F' + fNumber : 'N/A';
+                const flagValue = m.flag_impresora || '00';
+                const peIndex = (idx + 1).toString().padStart(2, '0');
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="px-4 py-2 text-sm text-gray-500">${m.id}</td>
+                    <td class="px-4 py-2 text-sm font-medium text-gray-900">${m.nombre}</td>
+                    <td class="px-4 py-2 text-sm text-gray-500">
+                        <span class="font-mono bg-gray-100 px-2 py-1 rounded">PE${peIndex}</span>
+                    </td>
+                    <td class="px-4 py-2 text-sm text-gray-500">
+                        <input type="text" class="border w-16 p-1 flag-input" data-id="${m.id}" data-pe="${peIndex}" value="${flagValue}" maxlength="2" placeholder="00">
+                    </td>
+                    <td class="px-4 py-2 text-sm font-bold text-gray-700">${fKey}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+        } catch(e) {
+            console.error("Error al cargar métodos:", e);
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-red-500">Error al cargar métodos</td></tr>';
+        }
+    }
+    
+    document.getElementById('btn-actualizar-nombres-pagos')?.addEventListener('click', async () => {
+        const rows = document.querySelectorAll('#tabla-mapeo-pagos tr');
+        let comandos = [];
+        let actualizacionesFlags = [];
+        
+        rows.forEach(tr => {
+            const input = tr.querySelector('.flag-input');
+            if (!input) return;
+            const peIndex = input.getAttribute('data-pe');
+            const id = input.getAttribute('data-id');
+            const nombre = tr.children[1].textContent.trim();
+            const flag = input.value.trim().padStart(2, '0');
+            
+            comandos.push(`PE${peIndex}${nombre.substring(0, 20)}`);
+            actualizacionesFlags.push({id: parseInt(id), flag: flag});
+        });
+        
+        if (comandos.length > 0) {
+            const confirmacion = await showCustomConfirm("Se enviarán " + comandos.length + " comandos PE a la impresora y se actualizarán los Flags en el servidor. ¿Desea continuar?");
+            if (!confirmacion) return;
+            
+            const exito = await ejecutarComandosFiscales(comandos);
+            if (exito) {
+                for (const act of actualizacionesFlags) {
+                    await fetch(`http://localhost:3000/api/maestro/metodos-pago/${act.id}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ flag_impresora: act.flag })
+                    });
+                }
+                await showCustomAlert("Métodos de pago programados correctamente.");
+                await cargarMetodosPagoMapeo();
+            }
+        }
+    });
+
+</script>

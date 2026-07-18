@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { margin: 0; background: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    video { width: 100%; height: 100%; object-fit: contain; }
+  </style>
+</head>
+<body>
+  <video id="introVideo" autoplay style="width: 100%; height: 100%;">
+      <source src="assets/intro.mp4" type="video/mp4">
+  </video>
+
+  <script>
+    const video = document.getElementById('introVideo');
+    
+    
+    video.volume = 0; 
+
+    video.onerror = () => {
+      console.error("No se pudo cargar el video intro.mp4");
+    };
+  </script>
+</body>
+</html>

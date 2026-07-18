@@ -1,0 +1,569 @@
+<style>
+    .autocomplete-container { position: relative; }
+    .autocomplete-results { position: absolute; border: 1px solid #d4d4d4; border-bottom: none; border-top: none; z-index: 99; top: 100%; left: 0; right: 0; max-height: 200px; overflow-y: auto; background-color: #fff; box-shadow: 0px 4px 6px rgba(0,0,0,0.1); border-radius: 0 0 6px 6px; }
+    .autocomplete-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #d4d4d4; }
+    .autocomplete-item:hover, .autocomplete-active { background-color: #e9e9e9; }
+</style>
+<div class="w-full min-h-screen p-4 md:p-6 bg-gray-50 flex flex-col">
+
+    
+        <!-- HEADER -->
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800 flex items-center">
+                    <span class="material-icons mr-2 text-red-600">account_balance_wallet</span>
+                    Cuentas por Pagar
+                </h1>
+                <p class="text-sm text-gray-500 mt-1">Gestión y control de deudas a proveedores</p>
+            </div>
+            <button onclick="init()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 p-2 rounded-full transition-colors flex items-center justify-center shadow-sm" title="Actualizar datos">
+                <i class="material-icons text-xl">refresh</i>
+            </button>
+        </div>
+
+        <!-- SUMMARY CARDS -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 w-full">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                <p class="text-sm text-gray-500 font-medium">Deuda Total Global</p>
+                <h3 class="text-2xl font-bold text-gray-800" id="total-deuda">$0.00</h3>
+            </div>
+        </div>
+
+        <div class="flex-1 flex flex-col gap-6">
+            
+            <!-- FORMULARIO DE REGISTRO -->
+            <div class="w-full">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h2 class="text-lg font-bold mb-6 text-gray-800 border-b pb-2">NUEVA FACTURA DE PROVEEDOR</h2>
+                    
+                    <form id="cxp-form" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                        
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Proveedor</label>
+                            
+                            <div class="autocomplete-container">
+                                <input type="text" id="cxp-prov-search" placeholder="Buscar proveedor (Nombre o RIF)..." autocomplete="off" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm text-gray-700 bg-white" required>
+                                <div id="cxp-prov-results" class="autocomplete-results hidden"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">N° Factura / Recibo</label>
+                            <input type="text" id="cxp-comprobante" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm text-gray-700 bg-white font-mono" placeholder="Ej. F-0001" required>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Nota / Razón</label>
+                            <input type="text" id="cxp-nota" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm placeholder-gray-400" placeholder="Ej. Factura #1020 o Abono..." required>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Monto ($)</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-bold">$</span>
+                                <input type="text" id="cxp-monto" class="w-full border border-gray-300 rounded-md py-2.5 pl-8 pr-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm text-right font-bold" placeholder="0,00" required>
+                            </div>
+                        </div>
+
+                        <div class="pt-0">
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md shadow-sm transition-colors flex items-center justify-center">
+                                <span class="material-icons mr-2">save</span>
+                                Aplicar Movimiento
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- TABLA DE MOVIMIENTOS -->
+            <div class="flex-1 flex flex-col w-full">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex-1 flex flex-col w-full">
+                    
+                    
+                    <div class="flex-1 overflow-auto">
+                        <table class="w-full text-sm text-left relative">
+                            <thead class="text-xs text-gray-600 uppercase bg-gray-100 sticky top-0 z-10 shadow-sm">
+                                <tr>
+                                    <th class="px-4 py-3">ID / Fecha</th>
+                                    <th class="px-4 py-3">Proveedor</th>
+                                    <th class="px-4 py-3">Comprobante</th>
+                                    <th class="px-4 py-3 text-right">Monto Total</th>
+                                    <th class="px-4 py-3 text-right">Abonado</th>
+                                    <th class="px-4 py-3 text-right">Restante</th>
+                                    <th class="px-4 py-3 text-center">Estado</th>
+                                    <th class="px-4 py-3 text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cxp-table-body" class="divide-y divide-gray-100">
+                                <!-- Filas dinámicas -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script type="module">
+        let companyId = null;
+
+        const form = document.getElementById('cxp-form');
+        
+        const tableBody = document.getElementById('cxp-table-body');
+        const totalDeudaEl = document.getElementById('total-deuda');
+
+        function showCustomAlert(message, type = 'success', duration = 3000) {
+            const div = document.createElement('div');
+            div.textContent = message;
+            div.style.cssText = `position:fixed; top:20px; right:20px; background:${type==='error'?'#f44336': (type==='warning'?'#ff9800':'#4CAF50')}; color:white; padding:15px; border-radius:5px; z-index:1000; box-shadow: 0 4px 6px rgba(0,0,0,0.1); font-family: 'Roboto', sans-serif;`;
+            document.body.appendChild(div);
+            if (duration > 0) setTimeout(() => {
+                div.style.opacity = '0';
+                div.style.transition = 'opacity 0.5s';
+                setTimeout(() => div.remove(), 500);
+            }, duration);
+            return div;
+        }
+
+        
+        let proveedoresList = [];
+        let selectedProveedorRif = null;
+
+        
+        function formatNumberToLocal(value) {
+            let val = String(value).replace(/[^0-9]/g, '');
+            if (val === '') return '';
+            let number = parseInt(val, 10) / 100;
+            return number.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function parseLocalNumber(value) {
+            if (!value) return 0;
+            return parseFloat(String(value).replace(/\./g, '').replace(',', '.'));
+        }
+
+
+        const provSearch = document.getElementById('cxp-prov-search');
+        const provResults = document.getElementById('cxp-prov-results');
+        const montoInput = document.getElementById('cxp-monto');
+
+        if(montoInput) {
+            montoInput.addEventListener('input', (e) => {
+                e.target.value = formatNumberToLocal(e.target.value);
+            });
+        }
+
+        function closeAllLists(elmnt) {
+            if (elmnt !== provSearch) {
+                provResults.innerHTML = "";
+                provResults.classList.add('hidden');
+            }
+        }
+
+        if(provSearch) {
+            provSearch.addEventListener('input', function(e) {
+                let val = this.value;
+                closeAllLists();
+                if (!val) { selectedProveedorRif = null; return; }
+                
+                let count = 0;
+                provResults.classList.remove('hidden');
+                
+                for (let i = 0; i < proveedoresList.length; i++) {
+                    let p = proveedoresList[i];
+                    if (count >= 5) break;
+                    
+                    if (p.nombre.toUpperCase().includes(val.toUpperCase()) || p.rif.toUpperCase().includes(val.toUpperCase())) {
+                        let b = document.createElement("div");
+                        b.className = "autocomplete-item text-sm";
+                        b.innerHTML = "<strong>" + p.nombre + "</strong> (" + p.rif + ")<br><span class='text-xs text-gray-500'>Deuda: $" + (p.saldo_deuda||0).toFixed(2) + "</span>";
+                        b.innerHTML += "<input type='hidden' value='" + p.rif + "'>";
+                        b.addEventListener("click", function(e) {
+                            provSearch.value = p.nombre;
+                            selectedProveedorRif = p.rif;
+                            closeAllLists();
+                        });
+                        provResults.appendChild(b);
+                        count++;
+                    }
+                }
+            });
+
+            provSearch.addEventListener("keydown", function(e) {
+                let x = provResults.querySelectorAll('.autocomplete-item');
+                let currentFocus = Array.from(x).findIndex(item => item.classList.contains('autocomplete-active'));
+                if (e.key === "ArrowDown") {
+                    currentFocus++;
+                    addActive(x, currentFocus);
+                } else if (e.key === "ArrowUp") {
+                    currentFocus--;
+                    addActive(x, currentFocus);
+                } else if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (currentFocus > -1) {
+                        if (x) x[currentFocus].click();
+                    }
+                }
+            });
+        }
+
+        function addActive(x, currentFocus) {
+            if (!x || x.length === 0) return;
+            removeActive(x);
+            if (currentFocus >= x.length) currentFocus = 0;
+            if (currentFocus < 0) currentFocus = (x.length - 1);
+            x[currentFocus].classList.add("autocomplete-active");
+        }
+
+        function removeActive(x) {
+            for (let i = 0; i < x.length; i++) {
+                x[i].classList.remove("autocomplete-active");
+            }
+        }
+
+        document.addEventListener("click", function(e) {
+            closeAllLists(e.target);
+        });
+
+        function generarIdMovimiento() {
+            return 'CXP-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+        }
+
+        async function init() {
+            try {
+                const sesion = await window.nexusAPI.obtenerSesionLocal();
+                if (sesion) {
+                    companyId = sesion.companyId;
+                }
+                await fetchProveedores();
+                await fetchMovimientos();
+                await fetchResumen();
+            } catch(e) {
+                console.error("Init Error:", e);
+            }
+        }
+
+        
+        async function fetchProveedores() {
+            try {
+                proveedoresList = await window.nexusAPI.obtenerProveedoresLocal();
+            } catch (err) {
+                console.error("Error obteniendo proveedores:", err);
+            }
+        }
+
+        async function fetchResumen() {
+            try {
+                const resumen = await window.nexusAPI.obtenerResumenCxpLocal();
+                totalDeudaEl.textContent = `$${resumen.total_deuda.toFixed(2)}`;
+            } catch(e) {
+                console.error("Error obteniendo resumen:", e);
+            }
+        }
+
+        async function fetchMovimientos() {
+            try {
+                const movimientos = await window.nexusAPI.obtenerMovimientosCxpLocal();
+                renderTable(movimientos);
+            } catch (err) {
+                console.error("Error obteniendo movimientos:", err);
+            }
+        }
+
+        function renderTable(movimientos) {
+            tableBody.innerHTML = '';
+            
+            // Filtrar solo facturas para la vista principal
+            const facturas = movimientos.filter(m => m.motivo.toUpperCase() === 'FACTURA' || m.motivo.toUpperCase() === 'COMPRA');
+
+            if (!facturas || facturas.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="px-6 py-10 text-center text-gray-500">
+                            <div class="flex flex-col items-center justify-center">
+                                <span class="material-icons text-4xl mb-2 text-gray-300">receipt_long</span>
+                                <p>No hay facturas registradas.</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                const countSpan = document.getElementById('cxp-contador-registros');
+                if(countSpan) countSpan.textContent = `Mostrando 0 registros`;
+                return;
+            }
+
+            facturas.forEach(m => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-blue-50 transition-colors group";
+                
+                const dateObj = new Date(m.fecha);
+                const fechaFormat = isNaN(dateObj.getTime()) ? m.fecha : dateObj.toLocaleString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+
+                const montoTotal = parseFloat(m.monto || 0);
+                const montoAbonado = parseFloat(m.monto_abonado || 0);
+                const restante = montoTotal - montoAbonado;
+                
+                let estado = m.estado || 'PENDIENTE';
+                let badgeClass = '';
+                if (estado === 'PENDIENTE') badgeClass = 'bg-yellow-100 text-yellow-800 border-yellow-200';
+                else if (estado === 'ABONADO') badgeClass = 'bg-blue-100 text-blue-800 border-blue-200';
+                else badgeClass = 'bg-green-100 text-green-800 border-green-200';
+
+                tr.innerHTML = `
+                    <td class="px-4 py-3 whitespace-nowrap">
+                        <div class="font-semibold text-gray-700 text-xs">#${m.id.split('-')[1] || m.id}</div>
+                        <div class="text-xs text-gray-500">${fechaFormat}</div>
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="font-semibold text-gray-900">${m.proveedor_nombre || m.proveedor_rif}</div>
+                    </td>
+                    <td class="px-4 py-3">
+                        <span class="font-mono text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded">${m.comprobante || 'S/N'}</span>
+                    </td>
+                    <td class="px-4 py-3 text-right font-medium text-gray-800">
+                        ${montoTotal.toFixed(2)}
+                    </td>
+                    <td class="px-4 py-3 text-right font-medium text-green-600">
+                        ${montoAbonado.toFixed(2)}
+                    </td>
+                    <td class="px-4 py-3 text-right font-bold text-red-600">
+                        ${restante.toFixed(2)}
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-bold rounded-full border ${badgeClass}">
+                            ${estado}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                        ${estado !== 'PAGADO' ? `
+                        <button onclick="abrirModalPagoCxp('${m.id}', '${(m.proveedor_nombre || m.proveedor_rif).replace(/'/g, "\\'")}', ${restante}, '${m.comprobante || 'S/N'}')" class="text-gray-400 hover:text-green-600 transition-colors p-1" title="Registrar Pago">
+                            <i class="material-icons text-xl">payments</i>
+                        </button>
+                        ` : ''}
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+
+                // --- BUSCAR Y RENDERIZAR PAGOS (ABONOS) DE ESTA FACTURA ---
+                const pagos = movimientos.filter(p => p.motivo.toUpperCase() === 'PAGO' && p.comprobante === m.comprobante && p.proveedor_rif === m.proveedor_rif);
+                if (pagos && pagos.length > 0) {
+                    pagos.forEach((p, index) => {
+                        const trPago = document.createElement('tr');
+                        // Un diseño sutíl, con línea verde a la izquierda para indicar jerarquía
+                        const isLast = index === pagos.length - 1;
+                        trPago.className = "bg-green-50/30 border-b border-gray-100 hover:bg-green-50/60 transition-colors";
+                        
+                        const datePObj = new Date(p.fecha);
+                        const fechaPFormat = isNaN(datePObj.getTime()) ? p.fecha : datePObj.toLocaleString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+                        
+                        trPago.innerHTML = `
+                            <td class="px-4 py-2 border-l-4 border-l-green-400 ${isLast ? '' : 'border-b-0'} text-right">
+                                <span class="material-icons text-green-500 text-sm align-middle">subdirectory_arrow_right</span>
+                            </td>
+                            <td colspan="7" class="px-4 py-2 text-xs text-green-800">
+                                <span class="font-semibold text-green-700">ABONO:</span> 
+                                Se abonó <strong class="text-green-600 bg-green-100 px-1 rounded">${parseFloat(p.monto).toFixed(2)}</strong> 
+                                el ${fechaPFormat} vía <strong>${(p.metodo_pago || 'Desconocido').replace('_', ' ')}</strong>. 
+                                ${p.referencia ? `<span class="text-gray-600 ml-1">Ref: ${p.referencia}</span>` : ''} 
+                                ${p.nota && p.nota !== 'Abono a factura ' + p.comprobante ? `<span class="text-gray-500 italic ml-1">(${p.nota})</span>` : ''}
+                            </td>
+                        `;
+                        tableBody.appendChild(trPago);
+                    });
+                }
+            });
+
+            const countSpan = document.getElementById('cxp-contador-registros');
+            if(countSpan) countSpan.textContent = `Mostrando ${facturas.length} registros`;
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const proveedorRif = selectedProveedorRif;
+            if (!proveedorRif) {
+                showCustomAlert("Por favor seleccione un proveedor", "warning");
+                return;
+            }
+
+            const movData = {
+                id: generarIdMovimiento(),
+                company_id: companyId,
+                proveedor_rif: proveedorRif,
+                motivo: 'FACTURA',
+                comprobante: document.getElementById('cxp-comprobante').value.trim(),
+                nota: document.getElementById('cxp-nota').value.trim(),
+                monto: parseLocalNumber(document.getElementById('cxp-monto').value)
+            };
+
+            const res = await window.nexusAPI.guardarMovimientoCxpLocal(movData);
+            if (res.success || res.exito) {
+                showCustomAlert("Factura registrada exitosamente", "success");
+                document.getElementById('cxp-comprobante').value = '';
+                document.getElementById('cxp-nota').value = '';
+                document.getElementById('cxp-monto').value = '';
+                
+                await fetchMovimientos();
+                await fetchResumen();
+            } else {
+                showCustomAlert("Error: " + (res.mensaje || res.error), "error");
+            }
+        });
+
+        // --- LOGICA MODAL PAGO CXP ---
+        let cxpMaxAbono = 0;
+
+        // Necesario que este en el scope global (window) porque los html se cargan de forma dinamica 
+        // O si ya está en el archivo y funciona como onclick, no importa, pero la vista dinámica puede afectar
+        window.abrirModalPagoCxp = function(facturaId, proveedorNombre, restante, comprobante) {
+            document.getElementById('modal-pago-cxp').classList.remove('hidden');
+            document.getElementById('cxp-factura-id').value = facturaId;
+            document.getElementById('cxp-modal-subtitle').textContent = `Abonar a Proveedor: ${proveedorNombre}`;
+            document.getElementById('cxp-modal-comprobante').textContent = `Factura ${comprobante}`;
+            document.getElementById('cxp-modal-deuda-usd').textContent = `$${parseFloat(restante).toFixed(2)}`;
+            
+            cxpMaxAbono = parseFloat(restante);
+            document.getElementById('cxp-abono-monto').value = formatNumberToLocal(cxpMaxAbono.toFixed(2));
+            
+            // Añadir listener para formatear y limitar el monto
+            const inputAbono = document.getElementById('cxp-abono-monto');
+            // Remove previous listeners using clone node if necessary, or just a simple input handler 
+            // Since it's injected we just use an inline function that's okay because we don't attach multiple
+            inputAbono.oninput = function(e) {
+                let val = this.value.replace(/[^0-9]/g, '');
+                if(val !== '') {
+                    let number = parseInt(val, 10) / 100;
+                    if(number > cxpMaxAbono) number = cxpMaxAbono;
+                    this.value = number.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+            };
+        };
+
+        window.cerrarModalCxp = function() {
+            document.getElementById('modal-pago-cxp').classList.add('hidden');
+            document.getElementById('cxp-form-abono').reset();
+        };
+
+        // Asignar el listener al botón del modal si existe
+        const btnProcesarAbono = document.getElementById('btn-procesar-abono-cxp');
+        if (btnProcesarAbono) {
+            btnProcesarAbono.addEventListener('click', async () => {
+                const facturaId = document.getElementById('cxp-factura-id').value;
+                const montoRaw = document.getElementById('cxp-abono-monto').value;
+                const metodoPago = document.getElementById('cxp-abono-metodo').value;
+                const referencia = document.getElementById('cxp-abono-referencia').value;
+
+                const monto = parseLocalNumber(montoRaw);
+
+                if (!monto || monto <= 0 || monto > cxpMaxAbono) {
+                    showCustomAlert("Por favor ingrese un monto válido.", "error");
+                    return;
+                }
+
+                const originalText = btnProcesarAbono.innerHTML;
+                btnProcesarAbono.innerHTML = '<i class="material-icons animate-spin mr-2">sync</i>Procesando...';
+                btnProcesarAbono.disabled = true;
+
+                try {
+                    const pago = {
+                        factura_id: facturaId,
+                        monto: monto,
+                        metodo_pago: metodoPago,
+                        referencia: referencia
+                    };
+
+                    const res = await window.nexusAPI.registrarAbonoCxpLocal(pago);
+                    
+                    if (res.exito || res.success) {
+                        showCustomAlert("Pago registrado con éxito");
+                        cerrarModalCxp();
+                        fetchMovimientos(); 
+                        fetchResumen(); 
+                    } else {
+                        showCustomAlert("Error: " + (res.mensaje || res.error), "error");
+                    }
+                } catch(e) {
+                    console.error("Error en pago cxp:", e);
+                    showCustomAlert("Error de conexión", "error");
+                } finally {
+                    btnProcesarAbono.innerHTML = originalText;
+                    btnProcesarAbono.disabled = false;
+                }
+            });
+        }
+
+        init();
+    </script>
+
+<!-- MODAL DE PAGO A PROVEEDOR -->
+<div id="modal-pago-cxp" class="fixed inset-0 bg-black bg-opacity-50 hidden z-[9999] flex justify-center items-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all">
+        <!-- Header -->
+        <div class="bg-gray-50 border-b border-gray-100 px-6 py-4 flex justify-between items-center">
+            <div>
+                <h3 class="text-xl font-bold text-gray-800 flex items-center">
+                    <i class="material-icons text-green-600 mr-2">payments</i>
+                    Registrar Pago a Proveedor
+                </h3>
+                <p class="text-sm text-gray-500 mt-1" id="cxp-modal-subtitle">Abonar a Factura</p>
+            </div>
+            <button onclick="cerrarModalCxp()" class="text-gray-400 hover:text-red-500 transition-colors">
+                <i class="material-icons">close</i>
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6">
+            <div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-sm font-semibold text-blue-800">Monto Restante a Pagar</span>
+                    <span class="text-sm font-mono text-blue-600 bg-white px-2 py-1 rounded" id="cxp-modal-comprobante"></span>
+                </div>
+                <div class="text-3xl font-black text-blue-700" id="cxp-modal-deuda-usd">$0.00</div>
+            </div>
+
+            <form id="cxp-form-abono" class="space-y-4">
+                <input type="hidden" id="cxp-factura-id">
+                
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Monto a Pagar ($)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-bold">$</span>
+                        <input type="text" id="cxp-abono-monto" class="w-full border border-gray-300 rounded-lg py-3 pl-8 pr-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-lg font-bold text-right" placeholder="0,00" required>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Método de Pago</label>
+                        <select id="cxp-abono-metodo" class="w-full border border-gray-300 rounded-lg py-3 px-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm bg-white" required>
+                            <option value="EFECTIVO_USD">Efectivo ($)</option>
+                            <option value="EFECTIVO_BS">Efectivo (Bs)</option>
+                            <option value="ZELLE">Zelle</option>
+                            <option value="TRANSFERENCIA_BS">Transferencia (Bs)</option>
+                            <option value="PAGO_MOVIL">Pago Móvil</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Referencia / Nota</label>
+                        <input type="text" id="cxp-abono-referencia" class="w-full border border-gray-300 rounded-lg py-3 px-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm placeholder-gray-400" placeholder="Opcional">
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Footer -->
+        <div class="bg-gray-50 border-t border-gray-100 px-6 py-4 flex justify-end space-x-3">
+            <button type="button" onclick="cerrarModalCxp()" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-100 transition-colors">
+                Cancelar
+            </button>
+            <button type="button" id="btn-procesar-abono-cxp" class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center">
+                <i class="material-icons mr-2 text-sm">check_circle</i>
+                Procesar Pago
+            </button>
+        </div>
+    </div>
+</div>
+
+</div>

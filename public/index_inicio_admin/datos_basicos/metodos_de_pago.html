@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS POS - Métodos de Pago</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="../../tailwindcss.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../node_modules/@fortawesome/fontawesome-free/css/all.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="../../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Roboto', sans-serif; }
+        
+        /* Asegura que el encabezado sea sólido al desplazar la tabla */
+        thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: #f9fafb;
+            box-shadow: inset 0 -1px 0 #e5e7eb;
+        }
+
+        /* Scrollbar estilo Nexus POS */
+        .overflow-y-auto::-webkit-scrollbar { width: 6px; }
+        .overflow-y-auto::-webkit-scrollbar-track { background: #f1f1f1; }
+        .overflow-y-auto::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        .spinner { border: 4px solid rgba(0,0,0,0.1); border-left-color: #0288D1; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-white overflow-hidden w-full h-full m-0 p-0"> 
+    <main class="flex flex-col w-full h-screen bg-white"> 
+        
+        <div class="p-6 pb-2 shrink-0">
+            <div class="flex justify-between items-end mb-6">
+                <h1 class="text-3xl font-bold text-gray-800 flex items-center">
+                    <span class="material-icons text-blue-600 mr-3 text-4xl">payments</span>
+                    Gestión de Métodos de Pago
+                </h1>
+                <button onclick="window.abrirModalPago(null)" class="bg-blue-600 text-white py-2 px-6 rounded-md hover:bg-blue-700 font-bold transition duration-150 shadow-sm flex items-center">
+                    <span class="material-icons mr-2 text-sm">add</span> Nuevo Método
+                </button>
+            </div>
+        </div>
+        
+        <div class="flex-1 overflow-hidden px-6 pb-6 flex flex-col">
+            <!-- Contenedor de la tabla -->
+            <div class="flex-1 bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col overflow-hidden relative z-10">
+                <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                    <h3 class="text-lg font-semibold text-gray-800">Directorio de Métodos de Pago</h3>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID Interno</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre del Método</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo Moneda</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-pagos" class="bg-white divide-y divide-gray-200">
+                            <tr><td colspan="4" class="text-center py-10"><div class="flex justify-center"><div class="spinner"></div></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal Formulario -->
+    <div id="modal-pago" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md border border-gray-200 shadow-xl">
+            <h2 id="modal-titulo" class="text-2xl font-bold mb-6 text-gray-800 flex items-center">
+                <span class="material-icons mr-2 text-blue-600">edit</span> Editar Método de Pago
+            </h2>
+            <form id="form-pago">
+                <input type="hidden" id="pago-id">
+                <div class="mb-5">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Nombre del Método</label>
+                    <input type="text" id="pago-nombre" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none uppercase sm:text-sm placeholder-gray-400" required placeholder="Ej. TARJETA, ZELLE, EFECTIVO">
+                </div>
+                <div class="mb-8">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Tipo de Moneda</label>
+                    <select id="pago-moneda" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm text-gray-700">
+                        <option value="BS">Bolívares (BS)</option>
+                        <option value="USD">Dólares (USD)</option>
+                    </select>
+                </div>
+                <div class="flex items-center justify-end gap-3">
+                    <button type="button" onclick="window.cerrarModalPago()" class="bg-gray-500 text-white py-2 px-6 rounded-md hover:bg-gray-600 font-bold transition duration-150">
+                        <span class="material-icons align-middle text-sm mr-1">close</span> Cancelar
+                    </button>
+                    <button type="submit" class="bg-blue-600 text-white py-2 px-8 rounded-md hover:bg-blue-700 font-bold transition duration-150 shadow-sm">
+                        <span class="material-icons align-middle text-sm mr-1">save</span> Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        window.metodosData = window.metodosData || [];
+        
+        window.cargarMetodos = async function() {
+            try {
+                const baseUrl = window.location.hostname === '' ? 'http://localhost:3000' : '';
+                const response = await fetch(`${baseUrl}/api/maestro/metodos-pago`);
+                const result = await response.json();
+                
+                const tbody = document.getElementById('tabla-pagos');
+                if(!tbody) return;
+                tbody.innerHTML = '';
+                
+                if (result.exito) {
+                    window.metodosData = result.data;
+                    if(window.metodosData.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-10 text-center text-gray-500"><div class="flex flex-col items-center justify-center"><span class="material-icons text-4xl mb-2 text-gray-300">payments</span><p>No hay métodos registrados aún.</p></div></td></tr>';
+                        return;
+                    }
+                    
+                    window.metodosData.forEach(pago => {
+                        tbody.innerHTML += `
+                            <tr class="hover:bg-blue-50 border-b border-gray-100 transition-colors">
+                                <td class="px-6 py-4 text-sm font-medium text-blue-700 whitespace-no-wrap">#${pago.id}</td>
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900">${pago.nombre}</td>
+                                <td class="px-6 py-4 text-sm font-medium text-gray-600">
+                                    <span class="relative inline-block px-3 py-1 font-semibold ${pago.tipo_moneda === 'USD' ? 'text-green-900 bg-green-200' : 'text-blue-900 bg-blue-200'} rounded-full">
+                                        ${pago.tipo_moneda}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex flex-row gap-2 justify-end items-center">
+                                        <button onclick="window.abrirModalPago('${pago.id}')" class="bg-[#ffc107] hover:bg-[#e0a800] text-[#333] font-bold py-2 px-4 rounded text-xs transition-colors shadow-sm">
+                                            Editar
+                                        </button>
+                                        <button onclick="window.eliminarMetodo('${pago.id}')" class="bg-[#dc2626] hover:bg-[#b91c1c] text-white font-bold py-2 px-4 rounded text-xs transition-colors shadow-sm">
+                                            Eliminar
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+            } catch (error) {
+                console.error("Error al cargar métodos:", error);
+                alert("Error de conexión al cargar métodos de pago");
+            }
+        };
+
+        window.abrirModalPago = function(id) {
+            const modal = document.getElementById('modal-pago');
+            const titulo = document.getElementById('modal-titulo');
+            const inputId = document.getElementById('pago-id');
+            const inputNombre = document.getElementById('pago-nombre');
+            const inputMoneda = document.getElementById('pago-moneda');
+
+            if (id) {
+                const pago = window.metodosData.find(m => m.id === id);
+                if(titulo) titulo.innerHTML = '<span class="material-icons mr-2 text-blue-600">edit</span> Editar Método de Pago';
+                if(inputId) inputId.value = pago.id;
+                if(inputNombre) inputNombre.value = pago.nombre;
+                if(inputMoneda) inputMoneda.value = pago.tipo_moneda;
+            } else {
+                if(titulo) titulo.innerHTML = '<span class="material-icons mr-2 text-blue-600">add_circle</span> Nuevo Método de Pago';
+                if(inputId) inputId.value = "";
+                if(inputNombre) inputNombre.value = "";
+                if(inputMoneda) inputMoneda.value = "BS";
+            }
+            if(modal) modal.classList.remove('hidden');
+        };
+
+        window.cerrarModalPago = function() {
+            const modal = document.getElementById('modal-pago');
+            if(modal) modal.classList.add('hidden');
+        };
+
+        window.guardarPago = async function(e) {
+            e.preventDefault();
+            const inputId = document.getElementById('pago-id');
+            const inputNombre = document.getElementById('pago-nombre');
+            const inputMoneda = document.getElementById('pago-moneda');
+            
+            if(!inputNombre || !inputMoneda) return;
+
+            const id = inputId ? inputId.value : '';
+            const nombre = inputNombre.value.toUpperCase(); // Forzar mayúscula
+            const moneda = inputMoneda.value;
+
+            try {
+                const baseUrl = window.location.hostname === '' ? 'http://localhost:3000' : '';
+                const response = await fetch(`${baseUrl}/api/maestro/metodos-pago`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: id || undefined, nombre, tipo_moneda: moneda, activo: 1 })
+                });
+                
+                const result = await response.json();
+                if (result.exito) {
+                    window.cerrarModalPago();
+                    window.cargarMetodos();
+                } else {
+                    alert("Error al guardar: " + result.error);
+                }
+            } catch (error) {
+                alert("Error de conexión");
+            }
+        };
+
+        window.eliminarMetodo = async function(id) {
+            if (confirm("¿Estás seguro de eliminar este método de pago? Podría afectar el historial de las facturas.")) {
+                try {
+                    const baseUrl = window.location.hostname === '' ? 'http://localhost:3000' : '';
+                    const response = await fetch(`${baseUrl}/api/maestro/metodos-pago/${id}`, {
+                        method: 'DELETE'
+                    });
+                    const result = await response.json();
+                    if (result.exito) {
+                        window.cargarMetodos();
+                    } else {
+                        alert("Error al eliminar");
+                    }
+                } catch (error) {
+                    alert("Error de conexión");
+                }
+            }
+        };
+
+        if (document.getElementById('form-pago')) {
+            document.getElementById('form-pago').onsubmit = window.guardarPago;
+        }
+
+        window.cargarMetodos();
+    </script>
+</body>
+</html>

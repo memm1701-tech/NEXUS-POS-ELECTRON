@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entrada de Inventario Móvil</title>
+    <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <script src="tailwindcss.js"></script>
+<style>
+    body {
+        font-family: 'Roboto', sans-serif;
+        background-color: #f3f4f6;
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+    }
+
+    .container {
+        background-color: transparent;
+        padding: 20px;
+        border-radius: 0;
+        box-shadow: none;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box;
+        text-align: center;
+        margin: 0;
+    }
+
+    @media (min-width: 768px) {
+        .container {
+            padding: 20px 40px;
+            width: 100%;
+        }
+    }
+
+    h1 {
+        color: #333;
+        margin-bottom: 25px;
+        font-size: 2.2em; /* Aproximadamente 35px */
+        font-weight: 700;
+        letter-spacing: -1px;
+    }
+
+    h2 {
+        color: #333;
+        margin-bottom: 20px;
+        /* Reducido para que sea ~11px más pequeño que el H1 */
+        font-size: 1.5em; 
+        font-weight: 700;
+        letter-spacing: -1px;
+        text-align: center; /* Mantiene la simetría con el contenedor */
+    }
+
+    .form-section {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 25px;
+        text-align: left;
+    }
+
+    .input-group-item {
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        flex: 1;
+    }
+
+    .form-section label {
+        font-weight: bold;
+        color: #4a5568;
+        margin-bottom: 6px;
+        font-size: 0.95em;
+    }
+
+    .form-section input[type="text"],
+    .form-section input[type="number"],
+    .form-section select {
+        width: 100%;
+        padding: 14px;
+        border: 1px solid #cbd5e0;
+        border-radius: 8px;
+        box-sizing: border-box;
+        font-size: 1em;
+        appearance: none;
+        background-color: white;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%234a5568'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 1rem center;
+        background-size: 1.5em;
+    }
+
+    .form-section input:focus,
+    .form-section select:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        outline: none;
+    }
+
+    #final-stock-display {
+        background-color: #edf2f7;
+        cursor: default;
+        font-weight: 800;
+        color: #2d3748;
+        border: 1px solid #cbd5e0;
+    }
+
+    .btn-submit {
+        background-color: #007bff;
+        color: white;
+        padding: 18px 30px;
+        border: none;
+        border-radius: 8px;
+        font-size: 1.1em;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.3s, transform 0.1s;
+        margin-top: 10px;
+        width: 100%;
+    }
+
+    .btn-submit:hover {
+        background-color: #0056b3;
+    }
+
+    .btn-submit:active {
+        transform: scale(0.99);
+    }
+
+    .table-container {
+        margin-top: 30px;
+        overflow-x: auto;
+    }
+
+    table {
+        width: 100%;
+        min-width: 700px;
+        border-collapse: collapse;
+        background-color: white;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    th, td {
+        border: 1px solid #e2e8f0;
+        padding: 14px;
+        text-align: left;
+        font-size: 0.9em;
+    }
+
+    th {
+        background-color: #007bff;
+        color: white;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    tr:nth-child(even) {
+        background-color: #f7fafc;
+    }
+
+    tr:hover {
+        background-color: #edf2f7;
+    }
+
+    #product-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: white;
+        border-radius: 0 0 8px 8px; /* Redondeado solo abajo */
+        max-height: 250px;
+        overflow-y: auto;
+        z-index: 9999; /* Prioridad máxima sobre otros inputs */
+        display: none; 
+        border: 1px solid #cbd5e0;
+        border-top: none;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    #product-results.activo {
+        display: block !important;
+    }
+
+    .result-item {
+        padding: 12px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #edf2f7;
+        transition: background-color 0.2s;
+        text-align: left; /* Asegura alineación a la izquierda */
+    }
+
+    .result-item.autocomplete-active {
+        background-color: #bfdbfe !important; /* Azul intenso */
+        border-left: 4px solid #2563eb !important; /* Franja azul oscuro */
+        outline: none !important;
+        color: #1e3a8a;
+    }
+
+    .result-item:hover {
+        background-color: #ebf8ff; /* Azul Nexus */
+    }
+
+    .placeholder-message {
+        text-align: center;
+        padding: 30px;
+        color: #a0aec0;
+        font-style: italic;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+
+    .edit-stock-btn, .delete-stock-btn {
+        padding: 8px 14px;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.85em;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+    .edit-stock-btn {
+        background-color: #ecc94b;
+        color: #744210;
+    }
+
+    .edit-stock-btn:hover {
+        background-color: #d69e2e;
+    }
+
+    .delete-stock-btn {
+        background-color: #f56565;
+        color: white;
+    }
+
+    .delete-stock-btn:hover {
+        background-color: #c53030;
+    }
+
+    .table-scroll-wrapper {
+        max-height: 600px;
+        overflow-y: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    #entrada-inventory-table th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    #entrada-inventory-search-input {
+        padding: 14px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e0;
+        width: 100%;
+        margin-bottom: 15px;
+        box-sizing: border-box;
+    }
+
+    .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.6);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .modal-backdrop.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .modal-content {
+        background-color: #fff;
+        padding: 30px;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 480px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        transform: translateY(-20px);
+        transition: transform 0.3s ease;
+    }
+
+    .modal-backdrop.active .modal-content {
+        transform: translateY(0);
+    }
+
+    .modal-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+        border-bottom: 1px solid #edf2f7;
+        padding-bottom: 15px;
+    }
+
+    .warning-icon {
+        color: #ed8936;
+        font-size: 2.2em;
+        margin-right: 15px;
+    }
+
+    .warning-icon::before {
+        content: "\26A0";
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.3em;
+        font-weight: 800;
+        color: #2d3748;
+    }
+
+    .modal-body p {
+        font-size: 1.05em;
+        color: #4a5568;
+        line-height: 1.6;
+        margin-bottom: 25px;
+        text-align: left;
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+
+    .modal-btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 700;
+        transition: filter 0.2s;
+    }
+
+    .modal-btn:hover {
+        filter: brightness(0.9);
+    }
+
+    #modal-btn-cancel {
+        background-color: #edf2f7;
+        color: #4a5568;
+    }
+
+    #modal-btn-confirm {
+        background-color: #e53e3e;
+        color: white;
+    }
+</style>
+</head>
+<body>
+    <div class="container">
+        <h1>Entrada de Inventario</h1>
+        
+        <div class="form-section">
+            <div class="input-group-item">
+                <label for="branch-select">Sucursal de Destino:</label>
+                <select id="branch-select" class="w-full text-left">
+                    <option value="" disabled selected>Cargando sucursales...</option>
+                </select>
+            </div>
+            
+            <div class="flex flex-col md:flex-row gap-4">
+                
+                <div class="input-group-item md:w-1/2">
+                    <label for="entrada-product-search">Producto a Añadir:</label>
+                    <input type="text" id="entrada-product-search" placeholder="Escribe para buscar el producto..." autocomplete="off">
+                    <div id="product-results"></div>
+                </div>
+
+                <div class="input-group-item md:w-1/2">
+                    <label for="packaging-unit-select">Unidad de Empaque (Conversión):</label>
+                    <select id="packaging-unit-select" class="w-full text-left" disabled>
+                        <option value="" selected>Selecciona un producto primero...</option> 
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="input-group-item md:w-1/2">
+                    <label for="quantity-input">Cantidad de Paquetes/Unidades:</label>
+                    <input type="number" id="quantity-input" placeholder="Ej: 10 (solo números)" required min="1" inputmode="numeric">
+                </div>
+                
+                <div class="input-group-item md:w-1/2">
+                    <label>Stock Total a Sumar:</label>
+                    <input type="text" id="final-stock-display" placeholder="0" readonly>
+                </div>
+            </div>
+            
+            <button id="add-stock-btn" class="btn-submit">
+                Registrar Entrada de Inventario
+            </button>
+        </div>
+        <hr>
+        <div class="table-container">
+            <h2>Inventario Actual (Sucursal)</h2>
+            
+            <div id="entrada-inventory-search-group" class="mb-4 text-left">
+                <label for="entrada-inventory-search-input" class="font-bold text-sm block mb-1">Buscar Producto en Inventario:</label>
+                <input type="text" id="entrada-inventory-search-input" placeholder="Escribe el nombre del producto..." class="w-full p-2 border border-gray-300 rounded-md">
+            </div>
+
+            <div style="overflow-x: auto;">
+                <div class="table-scroll-wrapper"> 
+                    <table id="entrada-inventory-table">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th>Categoría</th>
+                                <th>Unidad Base</th>
+                                <th>Stock (Unidad/Empaque)</th>
+                                <th>Acción</th> 
+                            </tr>
+                        </thead>
+                        <tbody id="entrada-inventory-table-body">
+                            <tr><td colspan="5" class="placeholder-message">Selecciona una sucursal para ver el inventario.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="custom-delete-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="warning-icon"></span>
+                <h3>Advertencia de Eliminación</h3>
+            </div>
+            <div class="modal-body">
+                <p id="modal-text-message"></p>
+            </div>
+            <div class="modal-footer">
+                <button id="modal-btn-cancel" class="modal-btn">Cancelar</button>
+                <button id="modal-btn-confirm" class="modal-btn">Sí, Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+
+<script type="module">
+    // --- 1. Variables de Estado Global ---
+    let idEmpresa = null;
+    let idSucursalSeleccionada = null;
+    let idUsuario = null;
+    let rolUsuario = null;
+    let focoProducto = -1;
+    let listaProductos = [];
+    let idProductoSeleccionado = null;
+    let factorEmpaqueSeleccionado = 1;
+    let datosInventarioActual = [];
+    let mapaCategorias = {};
+    let modoEdicion = false;
+    
+    // Variables para el servidor VPS (Xeon)
+    let SERVER_URL = null;
+    let respaldoActivo = false;
+
+    // --- 2. Referencias al DOM ---
+    const selectorSucursal = document.getElementById('branch-select');
+    const entradaBusquedaProducto = document.getElementById('entrada-product-search');
+    const selectorEmpaque = document.getElementById('packaging-unit-select');
+    const visorStockFinal = document.getElementById('final-stock-display');
+    const contenedorResultadosBusqueda = document.getElementById('product-results');
+    const entradaCantidad = document.getElementById('quantity-input');
+    const botonRegistrar = document.getElementById('add-stock-btn');
+    const cuerpoTablaInventario = document.getElementById('entrada-inventory-table-body');
+    const entradaBusquedaInventario = document.getElementById('entrada-inventory-search-input');
+
+    // --- 3. Inicialización ---
+    async function inicializarModulo() {
+        console.log("🚀 [NEXUS] Inicializando Entradas de Inventario...");
+        try {
+            const api = window.nexusAPI;
+            const sesion = await api.obtenerSesionLocal();
+            if (sesion && sesion.companyId) {
+                idEmpresa = sesion.companyId;
+                idUsuario = sesion.uid || sesion.id;
+                rolUsuario = sesion.role;
+
+                // --- Extraer configuración del servidor en la nube (.env) ---
+                try {
+                    if (api.obtenerConfigServer) {
+                        const config = await api.obtenerConfigServer();
+                        respaldoActivo = config.respaldo_datos === 'true' || config.respaldo_datos === true;
+
+                        if (respaldoActivo) {
+                            SERVER_URL = `http://${config.serverIp || config.SERVER_IP}:${config.serverPort || config.SERVER_PORT}`;
+                            console.log("🧠 Servidor VPS (PostgreSQL/Xeon) detectado en:", SERVER_URL);
+                        } else {
+                            SERVER_URL = null;
+                            console.log("🔒 Respaldo en la nube inactivo.");
+                        }
+                    }
+                } catch (configError) {
+                    console.error("❌ Error al obtener configuración externa:", configError);
+                }
+
+                const categorias = await api.obtenerCategoriasLocal();
+                categorias.forEach(cat => { mapaCategorias[cat.id] = cat.nombre; });
+
+                await cargarSucursalesLocal();
+                await cargarCatalogoProductos();
+            } else {
+                mostrarAlerta("Sesión no válida.", "error");
+            }
+        } catch (error) {
+            console.error("❌ Error inicialización:", error);
+        }
+    }
+
+    // --- 4. Gestión de Datos ---
+    async function cargarSucursalesLocal() {
+        const sucursales = await window.nexusAPI.obtenerSucursalesLocal(idEmpresa);
+        selectorSucursal.innerHTML = '<option value="" disabled selected>Seleccione sucursal</option>';
+        sucursales.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.nombre;
+            selectorSucursal.appendChild(opt);
+        });
+    }
+
+    async function cargarCatalogoProductos() {
+        const brutos = await window.nexusAPI.obtenerProductosLocal(idEmpresa);
+        listaProductos = brutos.map(p => {
+            let info = typeof p.datos_json === 'string' ? JSON.parse(p.datos_json) : (p.datos_json || {});
+            return {
+                id: p.id || p.producto_ID,
+                nombre: info.nombre || p.nombre || "Sin nombre",
+                categoria: info.categoria || p.categoria || "General",
+                unidad: info.unit || p.unit || "UN",
+                codigo: info.codigo || p.codigo || ""
+            };
+        });
+    }
+
+    window.cargarInventarioEntradas = async function() {
+        if (!idSucursalSeleccionada) return;
+        try {
+            const todos = await window.nexusAPI.obtenerProductosLocal(idEmpresa);
+            const productosBase = todos.filter(p => p.company_id === idEmpresa);
+            
+            // 🛡️ Utilizamos el puente IPC puro para evitar la colisión de puertos
+            const stockCentral = await window.nexusAPI.obtenerInventarioSucursal({
+                companyId: idEmpresa,
+                sucursalId: idSucursalSeleccionada
+            });
+
+            const inventarioFinal = productosBase.map(prod => {
+                const servidorData = stockCentral.find(s => s.producto_id === prod.id);
+                return { ...prod, stock_sucursal: servidorData ? servidorData.cantidad_real : 0 };
+            });
+
+            inventarioFinal.sort((a, b) => {
+                return (a.nombre || "").localeCompare((b.nombre || ""), undefined, { numeric: true, sensitivity: 'base' });
+            });
+
+            datosInventarioActual = inventarioFinal;
+            window.renderizarTablaEntradas(datosInventarioActual);
+        } catch (e) { console.error("❌ Error carga stock:", e); }
+    };
+
+    window.renderizarTablaEntradas = function(lista) {
+        cuerpoTablaInventario.innerHTML = '';
+
+        if (lista.length === 0) {
+            cuerpoTablaInventario.innerHTML = '<tr><td colspan="5" class="placeholder-message">Sin productos vinculados.</td></tr>';
+            return;
+        }
+
+        lista.forEach(item => {
+            const fila = document.createElement('tr');
+            const stock = item.stock_sucursal || 0;
+            const cat = mapaCategorias[item.categoria] || item.categoria || "General";
+            const nombreMayuscula = (item.nombre || '').toUpperCase();
+
+            fila.innerHTML = `
+                <td style="font-weight: bold; color: #2c3e50;">${nombreMayuscula}</td>
+                <td class="text-gray-600">${cat}</td> 
+                <td class="text-center">${item.unit || 'UN'}</td>
+                <td class="text-center font-bold text-blue-600">${stock}</td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="edit-stock-btn" onclick="prepararEdicionStockEntrada('${item.id}', '${item.nombre}', ${stock})">EDITAR</button>
+                    </div>
+                </td>
+            `;
+            cuerpoTablaInventario.appendChild(fila);
+        });
+    }
+
+    // --- 6. Registro de Entrada (USANDO IPC LOCAL Y FETCH AL VPS) ---
+    window.registrarEntradaStock = async function() {
+        const cantInput = parseFloat(entradaCantidad.value);
+        if (!idProductoSeleccionado || isNaN(cantInput)) return mostrarAlerta("Datos incompletos.", "warning");
+
+        const cantFinal = modoEdicion ? cantInput : (cantInput * factorEmpaqueSeleccionado);
+
+        // 📦 Payload estructurado para DB Local
+        const payloadLocal = {
+            productoId: idProductoSeleccionado,
+            sucursalId: idSucursalSeleccionada,
+            companyId: idEmpresa,
+            cantidad: cantFinal,
+            operacion: modoEdicion ? 'FIJAR' : 'SUMAR'
+        };
+
+        // 📦 Payload estructurado para Servidor VPS
+        const payloadVPS = {
+            sucursalId: idSucursalSeleccionada,
+            companyId: idEmpresa,
+            items: [{ id: idProductoSeleccionado, cantidad: cantFinal, operacion: modoEdicion ? 'FIJAR' : 'SUMAR' }]
+        };
+
+        try {
+            botonRegistrar.disabled = true;
+            botonRegistrar.textContent = "Sincronizando...";
+
+            // 1️⃣ Guardado Local usando IPC (Ahora apunta directo a stock_maestro)
+            const resLocal = await window.nexusAPI.guardarStockSucursal(payloadLocal);
+            let exitoLocal = resLocal && resLocal.success;
+
+            // 2️⃣ Guardado en el VPS (Intacto)
+            let exitoVPS = false;
+            if (navigator.onLine && respaldoActivo && SERVER_URL) {
+                try {
+                    const resVPS = await fetch(`${SERVER_URL}/api/maestro/inventario/registrar-entrada`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payloadVPS)
+                    });
+                    
+                    if (resVPS.ok) {
+                        const jsonVPS = await resVPS.json();
+                        if (jsonVPS.exito || jsonVPS.success) exitoVPS = true;
+                    }
+                } catch (vpsError) {
+                    console.error("⚠️ Sincronización VPS fallida:", vpsError.message);
+                }
+            }
+
+            if (exitoLocal) {
+                if (respaldoActivo && SERVER_URL && !exitoVPS) {
+                    mostrarAlerta("⚠️ Registrado localmente. Error conectando al VPS.", "warning");
+                } else {
+                    mostrarAlerta("✅ Stock registrado correctamente en ambos servidores.", "success");
+                }
+                limpiarFormulario();
+                await window.cargarInventarioEntradas();
+            } else {
+                mostrarAlerta("Error al procesar el inventario local.", "error");
+            }
+
+        } catch (e) { 
+            mostrarAlerta("Error general en el registro.", "error"); 
+        } finally {
+            botonRegistrar.disabled = false;
+            modoEdicion = false;
+            botonRegistrar.textContent = "Registrar Entrada de Inventario";
+            botonRegistrar.classList.replace('bg-amber-500', 'bg-blue-600');
+        }
+    };
+
+    window.prepararEdicionStockEntrada = (id, nombre, stock) => {
+        idProductoSeleccionado = id;
+        modoEdicion = true;
+        entradaBusquedaProducto.value = nombre;
+        entradaCantidad.value = stock;
+        visorStockFinal.value = stock;
+        botonRegistrar.textContent = "Actualizar Stock Total (Fijar)";
+        botonRegistrar.classList.replace('bg-blue-600', 'bg-amber-500');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    // --- 7. Event Listeners ---
+    entradaBusquedaProducto.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        if (query.length < 2) return contenedorResultadosBusqueda.classList.remove('activo');
+        
+        const filtered = listaProductos.filter(p => p.nombre.toLowerCase().includes(query) || p.codigo.includes(query)).slice(0, 10);
+        contenedorResultadosBusqueda.innerHTML = '';
+        if (filtered.length > 0) {
+            contenedorResultadosBusqueda.classList.add('activo');
+            filtered.forEach(p => {
+                const div = document.createElement('div');
+                div.className = "result-item";
+                div.innerHTML = `<b>${p.nombre}</b> <br> <small>${p.categoria} | ${p.codigo}</small>`;
+                div.onclick = () => {
+                    idProductoSeleccionado = p.id;
+                    entradaBusquedaProducto.value = p.nombre;
+                    contenedorResultadosBusqueda.classList.remove('activo');
+                    actualizarSelectEmpaques(p.id, p.unidad);
+                };
+                contenedorResultadosBusqueda.appendChild(div);
+            });
+        }
+    });
+
+    selectorSucursal.addEventListener('change', (e) => {
+        idSucursalSeleccionada = e.target.value;
+        window.cargarInventarioEntradas();
+    });
+
+    botonRegistrar.addEventListener('click', window.registrarEntradaStock);
+
+    entradaBusquedaInventario.addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase();
+        const filtrados = datosInventarioActual.filter(i => i.nombre.toLowerCase().includes(term));
+        window.renderizarTablaEntradas(filtrados);
+    });
+
+    // --- 8. Helpers ---
+    async function actualizarSelectEmpaques(id, unidad) {
+        const empaques = await window.nexusAPI.obtenerEmpaquePorProducto(id);
+        selectorEmpaque.innerHTML = `<option value="1">Unidad (1.00 ${unidad})</option>`;
+        selectorEmpaque.disabled = false;
+        empaques.forEach(e => {
+            const opt = document.createElement('option');
+            opt.value = e.factor_cantidad;
+            opt.textContent = `${e.nombre_unidad} (x${e.factor_cantidad})`;
+            selectorEmpaque.appendChild(opt);
+        });
+        factorEmpaqueSeleccionado = 1;
+        recalcular();
+    }
+
+    function recalcular() {
+        const total = (parseFloat(entradaCantidad.value) || 0) * factorEmpaqueSeleccionado;
+        visorStockFinal.value = total.toFixed(2);
+    }
+
+    selectorEmpaque.addEventListener('change', (e) => { factorEmpaqueSeleccionado = parseFloat(e.target.value); recalcular(); });
+    entradaCantidad.addEventListener('input', recalcular);
+
+    function limpiarFormulario() {
+        entradaBusquedaProducto.value = '';
+        entradaCantidad.value = '';
+        visorStockFinal.value = '0';
+        idProductoSeleccionado = null;
+    }
+
+    function mostrarAlerta(m, t) {
+        const a = document.createElement('div');
+        a.textContent = m;
+        a.style.cssText = `position:fixed; top:20px; right:20px; background:${t==='error'?'#EF4444':t==='warning'?'#F59E0B':'#10B981'}; color:white; padding:15px; border-radius:8px; z-index:10000; font-weight:bold;`;
+        document.body.appendChild(a);
+        setTimeout(() => a.remove(), 3000);
+    }
+
+    inicializarModulo();
+</script>
+</body>
+</html>

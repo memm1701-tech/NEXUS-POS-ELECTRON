@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS POS - Gestión de Proveedores</title>
+    <link href="../../tailwindcss.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../node_modules/@fortawesome/fontawesome-free/css/all.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="../../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Roboto', sans-serif; }
+        
+        /* Asegura que el encabezado sea sólido al desplazar la tabla */
+        thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: #f9fafb;
+            box-shadow: inset 0 -1px 0 #e5e7eb;
+        }
+
+        /* Scrollbar estilo Nexus POS */
+        .overflow-y-auto::-webkit-scrollbar { width: 6px; }
+        .overflow-y-auto::-webkit-scrollbar-track { background: #f1f1f1; }
+        .overflow-y-auto::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-white overflow-hidden w-full h-full m-0 p-0"> 
+    <main class="flex flex-col w-full h-screen bg-white"> 
+        
+        <div class="p-6 pb-2 shrink-0">
+            <div class="flex justify-between items-end mb-6">
+                <h1 class="text-3xl font-bold text-gray-800 flex items-center">
+                    <span class="material-icons text-blue-600 mr-3 text-4xl">local_shipping</span>
+                    Gestión de Proveedores
+                </h1>
+            </div>
+
+            <!-- Formulario de Proveedores (Mismo orden que Clientes, estilo Cuentas por Cobrar) -->
+            <form id="provider-form" class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-6 rounded-xl border border-gray-200 mb-4 shadow-sm relative z-20">
+                
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Cédula / RIF</label>
+                    <input type="text" id="prov-rif" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none uppercase sm:text-sm placeholder-gray-400 sm:text-sm placeholder-gray-400" placeholder="J-12345678" required>
+                </div>
+                
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Nombre o Razón Social</label>
+                    <input type="text" id="prov-name" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none uppercase sm:text-sm placeholder-gray-400" placeholder="Ej. Distribuidora XYZ C.A." required>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Teléfono</label>
+                    <input type="text" id="prov-phone" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm placeholder-gray-400" placeholder="Ej. 0414-1234567">
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Persona de Contacto</label>
+                    <input type="text" id="prov-contact" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm placeholder-gray-400" placeholder="Ej. Carlos Vendedor" required>
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Dirección Fiscal</label>
+                    <input type="text" id="prov-address" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm placeholder-gray-400" placeholder="Dirección detallada del proveedor...">
+                </div>
+
+                <div class="md:col-span-4 flex justify-end gap-3 mt-2">
+                    <button type="button" id="btn-cancelar" class="hidden bg-gray-500 text-white py-2 px-6 rounded-md hover:bg-gray-600 font-bold transition duration-150">
+                        <span class="material-icons align-middle text-sm mr-1">close</span> Cancelar
+                    </button>
+                    <button type="submit" id="btn-guardar" class="bg-blue-600 text-white py-2 px-8 rounded-md hover:bg-blue-700 font-bold transition duration-150 shadow-sm">
+                        <span class="material-icons align-middle text-sm mr-1">save</span> Guardar Proveedor
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <div class="flex-1 overflow-hidden px-6 pb-6 flex flex-col">
+            <!-- Contenedor de la tabla, estilo Cuentas por Cobrar -->
+            <div class="flex-1 bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col overflow-hidden relative z-10">
+                <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                    <h3 class="text-lg font-semibold text-gray-800">Directorio de Proveedores</h3>
+                    <div class="relative w-64">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                            <i class="material-icons text-sm">search</i>
+                        </span>
+                        <input type="text" id="search-prov" placeholder="Buscar proveedor..." class="w-full pl-9 pr-3 py-1.5 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm outline-none">
+                    </div>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">RIF / C.I.</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Razón Social</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teléfono</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contacto</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="prov-table-body" class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td colspan="5" class="px-6 py-10 text-center text-gray-500">
+                                    <div class="flex flex-col items-center justify-center">
+                                        <span class="material-icons text-4xl mb-2 text-gray-300">inventory_2</span>
+                                        <p>No hay proveedores registrados aún.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script type="module">
+
+        function showCustomAlert(message, type = 'success', duration = 3000) {
+            const div = document.createElement('div');
+            div.textContent = message;
+            div.style.cssText = `position:fixed; top:20px; right:20px; background:${type==='error'?'#f44336': (type==='warning'?'#ff9800':'#4CAF50')}; color:white; padding:15px; border-radius:5px; z-index:1000; box-shadow: 0 4px 6px rgba(0,0,0,0.1); font-family: 'Roboto', sans-serif;`;
+            document.body.appendChild(div);
+            if (duration > 0) setTimeout(() => {
+                div.style.opacity = '0';
+                div.style.transition = 'opacity 0.5s';
+                setTimeout(() => div.remove(), 500);
+            }, duration);
+            return div;
+        }
+    
+        let companyId = null;
+
+        const rifInput = document.getElementById('prov-rif');
+        const form = document.getElementById('provider-form');
+        const tableBody = document.getElementById('prov-table-body');
+        const searchInput = document.getElementById('search-prov');
+
+        async function init() {
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
+            if (sesion) {
+                companyId = sesion.companyId;
+                fetchProveedores();
+            }
+        }
+
+        rifInput.addEventListener('input', function(e) {
+            let rawValue = this.value.replace(/[^0-9]/g, '');
+            if (rawValue.length > 10) rawValue = rawValue.slice(0, 10);
+            if (rawValue.length > 0) {
+                if (rawValue.length < 9) {
+                    this.value = 'V-' + rawValue;
+                } else {
+                    this.value = 'J-' + rawValue;
+                }
+            } else {
+                this.value = '';
+            }
+        });
+
+        async function fetchProveedores() {
+            try {
+                const proveedores = await window.nexusAPI.obtenerProveedoresLocal();
+                renderTable(proveedores);
+            } catch (err) {
+                console.error("Error obteniendo proveedores:", err);
+            }
+        }
+
+        function renderTable(proveedores) {
+            tableBody.innerHTML = '';
+            
+            if (!proveedores || proveedores.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-6 py-10 text-center text-gray-500">
+                            <div class="flex flex-col items-center justify-center">
+                                <span class="material-icons text-4xl mb-2 text-gray-300">inventory_2</span>
+                                <p>No hay proveedores registrados aún.</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            const filterText = searchInput.value.toLowerCase();
+            const filtered = proveedores.filter(p => 
+                p.rif.toLowerCase().includes(filterText) ||
+                p.nombre.toLowerCase().includes(filterText) ||
+                (p.contacto && p.contacto.toLowerCase().includes(filterText))
+            );
+
+            filtered.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-blue-50 border-b border-gray-100 transition-colors";
+                tr.innerHTML = `
+                    <td class="px-6 py-4 text-sm font-medium text-blue-700">${p.rif}</td>
+                    <td class="px-6 py-4 text-sm font-medium text-gray-900">${p.nombre}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">${p.telefono || 'N/A'}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${p.contacto || 'N/A'}</td>
+                    <td class="px-6 py-4 text-right space-x-3">
+                        <button class="delete-btn bg-red-600 hover:bg-red-700 text-white py-1.5 px-3 rounded-md text-xs font-bold transition-colors shadow-sm"><i class="fas fa-trash-alt"></i> Borrar</button>
+                    </td>
+                `;
+
+                tr.querySelector('.delete-btn').onclick = () => deleteProveedor(p.rif, p.nombre);
+                tableBody.appendChild(tr);
+            });
+        }
+
+        async function saveProveedor(e) {
+            e.preventDefault();
+            const provData = {
+                company_id: companyId,
+                rif: document.getElementById('prov-rif').value.trim(),
+                nombre: document.getElementById('prov-name').value.trim().toUpperCase(),
+                telefono: document.getElementById('prov-phone').value.trim(),
+                contacto: document.getElementById('prov-contact').value.trim(),
+                direccion: document.getElementById('prov-address').value.trim()
+            };
+
+            const res = await window.nexusAPI.guardarProveedorLocal(provData);
+            if (res.success) {
+                showCustomAlert("Proveedor guardado correctamente", "success");
+                form.reset();
+                fetchProveedores();
+            } else {
+                showCustomAlert("Error al guardar: " + res.error, "error");
+            }
+        }
+
+        async function deleteProveedor(rif, nombre) {
+            if (confirm(`¿Seguro que deseas eliminar al proveedor ${nombre} (${rif})?`)) {
+                const res = await window.nexusAPI.eliminarProveedorLocal(rif);
+                if (res.success) {
+                    fetchProveedores();
+                } else {
+                    showCustomAlert("Error eliminando: " + res.error, "error");
+                }
+            }
+        }
+
+        form.addEventListener('submit', saveProveedor);
+        searchInput.addEventListener('input', fetchProveedores);
+
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS POS - Gestión de Sucursales</title>
+    <link rel="icon" type="image/png" href="https://via.placeholder.com/16x16/f8fafc/000000?text=NP">
+    <link href="../../tailwindcss.css" rel="stylesheet">
+    <link href="../node_modules/material-icons/iconfont/material-icons.css" rel="stylesheet">
+    <link href="../../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+
+<style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f3f4f6; /* gray-100 */
+            margin: 0;
+            padding: 0;
+            width: 100%;
+        }
+
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #3b82f6; /* blue-500 */
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Estilo expansivo 100% sin recuadro (Igual a inventario.html) */
+        .inventory-container {
+            background-color: transparent;
+            padding: 20px;
+            border-radius: 0;
+            box-shadow: none;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box;
+            text-align: center;
+            margin: 0;
+        }
+
+        .loader {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+        }
+
+        /* Estilos para el Tooltip del Teléfono */
+        .tooltip-container {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            margin-left: 6px;
+            cursor: help;
+        }
+
+        .help-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            background-color: #6366f1; /* Indigo-500 */
+            color: white;
+            border-radius: 50%;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .tooltip-text {
+            visibility: hidden;
+            width: 220px;
+            background-color: #1f2937; /* Gray-800 */
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 50;
+            bottom: 150%; 
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 11px;
+            font-weight: normal;
+            line-height: 1.4;
+            pointer-events: none;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #1f2937 transparent transparent transparent;
+        }
+
+        .tooltip-container:hover .tooltip-text,
+        .tooltip-container:active .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Estilos para el modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            visibility: hidden;
+            opacity: 0;
+            transition: visibility 0s, opacity 0.3s ease-in-out;
+        }
+
+        .modal-overlay.visible {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 400px;
+            transform: scale(0.9);
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .modal-overlay.visible .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-content.success {
+            border-top: 5px solid #10B981; /* green-500 */
+        }
+
+        .modal-content.error {
+            border-top: 5px solid #EF4444; /* red-500 */
+        }
+    </style>
+
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div id="modal-overlay" class="modal-overlay">
+        <div id="modal-content" class="modal-content">
+            <h3 id="modal-title" class="text-xl font-bold mb-2"></h3>
+            <p id="modal-message" class="mb-4 text-gray-700"></p>
+            <button id="modal-close-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Cerrar</button>
+        </div>
+    </div>
+
+    <div id="confirm-modal-overlay" class="modal-overlay">
+        <div id="confirm-modal-content" class="modal-content">
+            <h3 class="text-xl font-bold mb-2">Confirmar Eliminación</h3>
+            <p id="confirm-modal-message" class="mb-4 text-gray-700">¿Estás seguro de que deseas eliminar esta sucursal?</p>
+            <div class="flex justify-center space-x-4">
+                <button id="confirm-yes-btn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Sí, eliminar</button>
+                <button id="confirm-no-btn" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <main class="w-full h-full flex justify-center items-start py-4"> 
+        <div class="inventory-container">
+            <h1 class="text-3xl font-bold mb-8 text-gray-800 flex items-center">
+                <span class="material-icons text-purple-600 mr-3 text-4xl">storefront</span>
+                Gestión de Sucursales
+            </h1>
+
+            <div id="branch-form-container" class="mb-8 p-6 border border-gray-200 rounded-lg shadow-sm">
+                <h3 class="text-2xl font-semibold mb-6 text-gray-700 text-center">Registrar Nueva Sucursal</h3>
+                
+                <div id="form-content">
+                    <form id="branch-form" class="space-y-6">
+                        <div>
+                            <label for="branch-name" class="block text-sm font-medium text-gray-700 mb-2">Nombre de la Sucursal:</label>
+                            <input type="text" id="branch-name" name="name" required
+                                   class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm placeholder-gray-400"
+                                   placeholder="ej. Sucursal Principal">
+                        </div>
+                        <div>
+                            <label for="branch-address" class="block text-sm font-medium text-gray-700 mb-2">Dirección:</label>
+                            <input type="text" id="branch-address" name="address" required
+                                   class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm placeholder-gray-400"
+                                   placeholder="ej. Calle 123, Ciudad">
+                        </div>
+                        <div>
+                            <label for="branch-phone" class="block text-sm font-medium text-gray-700 mb-2 flex items-center justify-center">
+                                Número de Teléfono:
+                                <div class="tooltip-container">
+                                    <span class="help-icon">?</span>
+                                    <span class="tooltip-text">
+                                        Este número puede ser del encargado de dicha sucursal para tener una conexión directa en caso de pérdida de contacto.
+                                    </span>
+                                </div>
+                            </label>
+                            <input type="text" id="branch-phone" name="phone"
+                                   class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm placeholder-gray-400"
+                                   placeholder="ej. 0412-1234567">
+                        </div>
+                        <div>
+                            <button type="submit" id="register-branch-btn"
+                                    class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out">
+                                <span id="register-branch-text">Registrar Sucursal</span>
+                                <div id="register-branch-spinner" class="spinner ml-2 hidden"></div>
+                            </button>
+                        </div>
+                    </form>
+                    <p id="form-error-message" class="mt-4 text-center text-red-600 font-semibold hidden"></p>
+                </div>
+            </div>
+
+            <div class="p-6 border border-gray-200 rounded-lg shadow-sm">
+                <h3 class="text-2xl font-semibold mb-6 text-gray-700 text-center">Sucursales Registradas</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Dirección</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Teléfono</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="branches-table-body" class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td colspan="4" class="px-6 py-10 text-center text-gray-500 italic">
+                                    <span class="material-icons align-middle mr-2">storefront</span>
+                                    Cargando sucursales...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+    
+<script type="module">
+    // --- Referencias a la UI ---
+    const branchForm = document.getElementById('branch-form');
+    const branchNameInput = document.getElementById('branch-name');
+    const branchAddressInput = document.getElementById('branch-address');
+    const branchPhoneInput = document.getElementById('branch-phone'); 
+    const branchesTableBody = document.getElementById('branches-table-body');
+    const registerBtn = document.getElementById('register-branch-btn');
+    const registerText = document.getElementById('register-branch-text');
+    const registerSpinner = document.getElementById('register-branch-spinner');
+    const formErrorMessage = document.getElementById('form-error-message');
+
+    // --- Referencias a Modales ---
+    const modalOverlay = document.getElementById('modal-overlay');
+    const modalContent = document.getElementById('modal-content');
+    const modalTitle = document.getElementById('modal-title');
+    const modalMessage = document.getElementById('modal-message');
+    const modalCloseBtn = document.getElementById('modal-close-btn');
+
+    // --- Referencias al Modal de Confirmación ---
+    const confirmModalOverlay = document.getElementById('confirm-modal-overlay');
+    const confirmYesBtn = document.getElementById('confirm-yes-btn');
+    const confirmNoBtn = document.getElementById('confirm-no-btn');
+    let currentDocIdToDelete = null;
+
+    // --- Variables de Estado Global ---
+    let userCompanyId = null;
+    let userRole = null;
+    let editingBranchId = null;
+    
+    // --- VARIABLES DINÁMICAS PARA NEXUS POS GLOBAL ---
+    let SERVER_URL = "";
+    let respaldoActivo = false;
+
+    // --- Lógica de Modales ---
+    function mostrarAlertaLimiteSaaS(nombrePlan, limite, tipo) {
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            background: rgba(0,0,0,0.5); display: flex; align-items: center; 
+            justify-content: center; z-index: 9999; backdrop-filter: blur(4px);
+        `;
+        
+       modal.innerHTML = `
+            <div style="background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+                <i class="material-icons" style="font-size: 50px; color: #f59e0b;">workspace_premium</i>
+                <h2 style="font-size: 20px; color: #1f2937; margin: 15px 0 10px; font-weight: bold;">Límite Alcanzado</h2>
+                <p style="color: #4b5563; font-size: 15px; line-height: 1.5;">
+                    Tu plan actual (<strong>${nombrePlan}</strong>) permite un máximo de <strong>${limite} ${tipo}</strong>.<br><br>
+                    ¡Cambia de plan para ampliar tu capacidad! Si tienes dudas, <strong>consulta con Soporte</strong>.
+                </p>
+                <button id="cerrarModalPlan" style="margin-top: 20px; background: #2563eb; color: white; border: none; padding: 10px 25px; border-radius: 8px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold;">Entendido</button>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        document.getElementById('cerrarModalPlan').onclick = () => {
+            modal.remove();
+        };
+    }
+
+    function showModal(title, message, isSuccess) {
+        modalTitle.textContent = title;
+        modalMessage.textContent = message;
+        modalContent.classList.remove('success', 'error');
+        if (isSuccess) modalContent.classList.add('success');
+        else modalContent.classList.add('error');
+        modalOverlay.classList.add('visible');
+    }
+
+    function showConfirmModal(docId) {
+        currentDocIdToDelete = docId;
+        confirmModalOverlay.classList.add('visible');
+    }
+
+    modalCloseBtn.onclick = () => modalOverlay.classList.remove('visible');
+    modalOverlay.onclick = (e) => { if (e.target === modalOverlay) modalOverlay.classList.remove('visible'); };
+    confirmNoBtn.onclick = () => { confirmModalOverlay.classList.remove('visible'); currentDocIdToDelete = null; };
+
+    confirmYesBtn.onclick = async () => {
+        if (currentDocIdToDelete) {
+            confirmModalOverlay.classList.remove('visible');
+            await deleteBranch(currentDocIdToDelete);
+            currentDocIdToDelete = null;
+        }
+    };
+
+    // --- 1. Inicialización y Autenticación Local ---
+    async function inicializarModulo() {
+        if(registerBtn) registerBtn.disabled = true;
+        try {
+            // --- OBTENER CONFIGURACIÓN DEL SERVIDOR MAESTRO ---
+            if (window.nexusAPI && window.nexusAPI.obtenerConfigServer) {
+                const config = await window.nexusAPI.obtenerConfigServer();
+                respaldoActivo = config.respaldo_datos === 'true' || config.respaldo_datos === true;
+
+                if (respaldoActivo) {
+                    SERVER_URL = `http://${config.serverIp || config.SERVER_IP}:${config.serverPort || config.SERVER_PORT}`;
+                    console.log("🧠 Cerebro PostgreSQL detectado en:", SERVER_URL);
+                } else {
+                    SERVER_URL = null;
+                    console.log("🔒 Respaldo en la nube desactivado (Plan de Datos Local).");
+                }
+            }
+
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
+            if (sesion && sesion.companyId) {
+                userCompanyId = sesion.companyId;
+                userRole = sesion.role;
+                
+                if(registerBtn) registerBtn.disabled = false;   
+                await cargarSucursalesLocales();            
+                if (navigator.onLine && respaldoActivo && SERVER_URL) {                
+                    await sincronizarConXeon();
+                }
+            } else {
+                showModal('Sesión Requerida', 'Por favor, inicia sesión para continuar.', false);
+            }
+        } catch (error) {
+        }
+    }
+
+    // --- 2. Cargar Datos de SQLite (Local) ---
+    async function cargarSucursalesLocales() {
+        
+        try {
+            const sucursales = await window.nexusAPI.obtenerSucursalesLocal(userCompanyId);
+            
+            
+            renderizarTabla(sucursales);
+            return sucursales;
+        } catch (error) {
+            
+            return [];
+        }
+    }
+
+    // --- 3. Sincronización (Ley: El más reciente gana) ---
+    async function sincronizarConXeon() {
+        if (!SERVER_URL) return;
+        try {
+            const response = await fetch(`${SERVER_URL}/api/maestro/sucursales/${userCompanyId}`);
+            if (!response.ok) throw new Error('Fallo al conectar con Servidor Maestro');
+            const sucursalesNube = await response.json();
+            
+            const sucursalesLocales = await window.nexusAPI.obtenerSucursalesLocal(userCompanyId);
+            
+            // CORRECCIÓN: Si sucursalesLocales retorna error (ej. tabla vacía/ausente), convertir a array vacío
+            const listaLocalesSegura = Array.isArray(sucursalesLocales) ? sucursalesLocales : [];
+
+            // Bajar de la nube lo nuevo o actualizado
+            for (const sNube of sucursalesNube) {
+                const sLocal = listaLocalesSegura.find(l => l.id === sNube.id);
+                if (!sLocal || new Date(sNube.fecha_modificacion) > new Date(sLocal.fecha_modificacion)) {
+                    
+                    await window.nexusAPI.guardarSucursalLocal({...sNube, estado_sync: 1});
+                }
+            }
+
+            // Subir lo que se creó en offline (estado_sync = 0)
+            const localesRefrescadas = await window.nexusAPI.obtenerSucursalesLocal(userCompanyId);
+            const localesRefrescadasSeguras = Array.isArray(localesRefrescadas) ? localesRefrescadas : [];
+            
+            for (const sLocal of localesRefrescadasSeguras) {
+                if (sLocal.estado_sync === 0) {
+                    
+                    await subirAXeon(sLocal);
+                }
+            }
+
+            await cargarSucursalesLocales();
+        } catch (error) {
+            
+        }
+    }
+
+    // --- 4. Comunicación con Servidor Xeon (Maestro) ---
+    async function subirAXeon(datos) {
+        if (!SERVER_URL) return;
+        try {
+            const res = await fetch(`${SERVER_URL}/api/maestro/sucursales/sincronizar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(datos)
+            });
+            if (res.ok) {
+                
+                datos.estado_sync = 1;
+                await window.nexusAPI.guardarSucursalLocal(datos);
+            }
+        } catch (e) {
+            
+        }
+    }
+
+    // --- 5. Renderizar Tabla (Con soporte para 4 columnas) ---
+    function renderizarTabla(sucursales) {
+        
+        branchesTableBody.innerHTML = '';
+        
+        if (!sucursales || !Array.isArray(sucursales) || sucursales.length === 0) {
+            if (sucursales && sucursales.error) {
+                console.error("⚠️ [DEBUG-8] Base de datos indicó error local:", sucursales.error);
+            } else {
+                
+            }
+            branchesTableBody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="px-6 py-10 text-center text-gray-500 italic">
+                        <span class="material-icons align-middle mr-2">storefront</span>
+                        Aún no hay sucursales. Crea una sucursal para que se muestre aquí.
+                    </td>
+                </tr>`;
+            return;
+        }
+
+       
+        sucursales.forEach((branch) => {
+            const row = document.createElement('tr');
+            row.className = "hover:bg-gray-50 transition-all duration-200";
+            row.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">${branch.nombre}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">${branch.direccion}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">${branch.telefono || 'N/A'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                    <button type="button" class="text-blue-600 hover:text-blue-900 font-bold edit-branch-btn mr-4" 
+                        data-id="${branch.id}" 
+                        data-nombre="${branch.nombre}" 
+                        data-direccion="${branch.direccion}" 
+                        data-telefono="${branch.telefono}">
+                        EDITAR
+                    </button>
+                    <button type="button" class="text-red-600 hover:text-red-900 font-bold delete-branch-btn" data-doc-id="${branch.id}">
+                        ELIMINAR
+                    </button>
+                </td>
+            `;
+            branchesTableBody.appendChild(row);
+        });
+       
+    }
+
+    // --- 6. Formulario de Registro (Blindado) ---
+    branchForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        // Verificación de integridad de sesión
+        if (!userCompanyId) {
+            const reCheck = await window.nexusAPI.obtenerSesionLocal();
+            if (reCheck) userCompanyId = reCheck.companyId;
+            else {
+                showModal('Error', 'No se pudo identificar la empresa. Reinicia sesión.', false);
+                return;
+            }
+        }
+
+        registerBtn.disabled = true;
+        registerText.classList.add('hidden');
+        registerSpinner.classList.remove('hidden');
+
+        // === NUEVO: VERIFICACIÓN DEL PLAN SAAS PARA SUCURSALES ===
+        if (!editingBranchId) {
+            try {
+                const planLocal = await window.nexusAPI.obtenerPlanLocal(userCompanyId);
+                const nombrePlan = planLocal?.nombre_plan || 'SIN PLAN';
+                const maxBranches = parseInt(planLocal?.MULTI_BRANCH_MAX) || 1;
+                
+                const sucursalesLocales = await window.nexusAPI.obtenerSucursalesLocal(userCompanyId);
+                const listaLocalesSegura = Array.isArray(sucursalesLocales) ? sucursalesLocales : [];
+                
+                if (listaLocalesSegura.length >= maxBranches) {
+                    mostrarAlertaLimiteSaaS(nombrePlan, maxBranches, 'sucursales');
+                    registerBtn.disabled = false;
+                    registerText.classList.remove('hidden');
+                    registerSpinner.classList.add('hidden');
+                    return; // Bloquear la creación
+                }
+            } catch (error) {
+                console.error("Error validando límites del plan SaaS:", error);
+            }
+        }
+        // =========================================================
+
+        try {
+            const sucursalData = {
+                // Si editingBranchId tiene valor, usamos ese. Si no, creamos uno nuevo.
+                id: editingBranchId || `BR-${Date.now()}`, 
+                company_id: userCompanyId,
+                nombre: branchNameInput.value.trim(),
+                direccion: branchAddressInput.value.trim(),
+                telefono: branchPhoneInput.value.trim() || 'N/A',
+                fecha_modificacion: new Date().toISOString(),
+                estado_sync: 0 
+            };
+
+            await window.nexusAPI.guardarSucursalLocal(sucursalData);
+            
+            if (navigator.onLine && respaldoActivo && SERVER_URL) {
+                await subirAXeon(sucursalData);
+            }
+
+            showModal('¡Éxito!', editingBranchId ? 'Sucursal actualizada.' : 'Sucursal registrada.', true);
+            
+            // Resetear Formulario y Estado
+            branchForm.reset();
+            editingBranchId = null; 
+            registerText.textContent = "Registrar Sucursal";
+            registerBtn.classList.replace('bg-amber-500', 'bg-blue-600');
+            registerBtn.classList.replace('hover:bg-amber-600', 'hover:bg-blue-700');
+            
+            await cargarSucursalesLocales();
+            
+        } catch (error) {
+            showModal('Error', 'No se pudo procesar: ' + error.message, false);
+        } finally {
+            registerBtn.disabled = false;
+            registerText.classList.remove('hidden');
+            registerSpinner.classList.add('hidden');
+        }
+    });
+
+    // --- 7. Lógica de Eliminación ---
+    branchesTableBody.onclick = (e) => {
+        if (e.target.classList.contains('delete-branch-btn')) {
+            showConfirmModal(e.target.dataset.docId);
+        }
+        
+        if (e.target.classList.contains('edit-branch-btn')) {
+            const btn = e.target;
+            editingBranchId = btn.dataset.id; // Activamos modo edición
+            
+            // Rellenar campos
+            branchNameInput.value = btn.dataset.nombre;
+            branchAddressInput.value = btn.dataset.direccion;
+            branchPhoneInput.value = btn.dataset.telefono === 'N/A' ? '' : btn.dataset.telefono;
+            
+            // Cambiar aspecto del botón
+            registerText.textContent = "Actualizar Sucursal";
+            registerBtn.classList.replace('bg-blue-600', 'bg-amber-500');
+            registerBtn.classList.replace('hover:bg-blue-700', 'hover:bg-amber-600');
+            
+            // Hacer scroll hacia el formulario
+            document.getElementById('branch-form-container').scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+
+    async function deleteBranch(id) {
+        try {
+            console.log(`🗑️ [DEBUG] Solicitando eliminación de ID: ${id}`);
+            
+            // Intentar borrar en la nube si hay conexión
+            if (navigator.onLine && respaldoActivo && SERVER_URL) {
+                await fetch(`${SERVER_URL}/api/maestro/sucursales/${id}`, { method: 'DELETE' }).catch(() => console.warn("Servidor maestro offline durante borrado"));
+            }
+
+            // Borrado local en SQLite
+            if (window.nexusAPI.eliminarSucursalLocal) {
+                await window.nexusAPI.eliminarSucursalLocal(id);
+                showModal('¡Éxito!', 'Sucursal eliminada permanentemente.', true);
+                await cargarSucursalesLocales();
+            } else {
+                showModal('Aviso', 'Sucursal marcada para borrar en la próxima limpieza de base de datos.', true);
+            }
+        } catch (error) {
+            showModal('Error', 'No se pudo procesar la eliminación: ' + error.message, false);
+        }
+    }
+
+    // Inicialización al cargar el DOM
+    inicializarModulo();
+</script>
+</body>
+</html>

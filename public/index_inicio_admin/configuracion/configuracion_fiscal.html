@@ -1,0 +1,236 @@
+<style>
+    .nexus-card {
+        background-color: #FFFFFF;
+        border-radius: 0;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+    .nexus-input {
+        border: 1px solid #E0E0E0;
+        border-radius: 0;
+        padding: 0.75rem;
+        width: 100%;
+        transition: border-color 0.2s;
+    }
+    .nexus-input:focus {
+        border-color: #0288D1;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(2, 136, 209, 0.1);
+    }
+</style>
+
+<div class="p-6 flex flex-col w-full h-full">
+    <div id="auth-guard" class="w-full px-4 text-center hidden">
+        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <strong class="font-bold">Acceso Denegado!</strong>
+            <span class="block sm:inline">No tiene permisos para ver esta página. Por favor, autentíquese primero.</span>
+        </div>
+    </div>
+    <div id="main-content" class="w-full px-4 space-y-6 hidden">
+        
+        <div class="flex items-center space-x-3 mb-2">
+            <i class="material-icons text-3xl text-red-700">account_balance</i>
+            <h2 class="text-2xl font-bold text-gray-800">Configuración Fiscal</h2>
+        </div>
+
+        <!-- Módulo de Sujeto Pasivo Especial (Migrado desde general_y_otros) -->
+        <div class="nexus-card p-6 mt-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800 flex items-center">
+                        <i class="material-icons mr-2 text-purple-500">star</i>
+                        Sujeto Pasivo Especial (SENIAT)
+                    </h3>
+                    <p class="text-sm text-gray-500 mt-1">Habilita el cobro obligatorio del IGTF al recibir pagos en divisas, Habilita la barra de cobro de percepción en %. (Se sincronizará con todas las Cajas).</p>
+                </div>
+                <input type="checkbox" id="local-sujeto-especial" class="h-6 w-6 cursor-pointer">
+            </div>
+            <div class="mt-4 bg-purple-50 p-3 rounded text-xs text-purple-700 italic font-medium">
+                * Active esta opción ÚNICAMENTE si la empresa ha sido designada oficialmente por el SENIAT como Agente de Percepción del IGTF.
+            </div>
+        </div>
+
+        <!-- Módulo de Tasas Fiscales -->
+        <div class="nexus-card p-8 space-y-6">
+            <div class="border-b pb-4">
+                <h3 class="text-lg font-bold text-gray-800 flex items-center">
+                    <i class="material-icons mr-2 text-red-600">receipt_long</i>
+                    Tasas e Impuestos
+                </h3>
+                <p class="text-sm text-gray-500 mt-1">Defina los porcentajes de impuestos aplicables según la normativa vigente.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">IVA Exento (E) %</label>
+                    <input type="number" id="iva-exento" class="nexus-input" step="0.01" value="0" readonly title="El IVA Exento siempre es 0%">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">IVA General (G) %</label>
+                    <input type="number" id="iva-general" class="nexus-input" step="0.01" placeholder="Ej: 16">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">IVA Reducida (R) %</label>
+                    <input type="number" id="iva-reducido" class="nexus-input" step="0.01" placeholder="Ej: 8">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">IVA Añadida (A) %</label>
+                    <input type="number" id="iva-anadida" class="nexus-input" step="0.01" placeholder="Ej: 31">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">IGTF %</label>
+                    <input type="number" id="igtf-porcentaje" class="nexus-input" step="0.01" placeholder="Ej: 3">
+                </div>
+            </div>
+        </div>
+
+        <button id="saveBtn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-none shadow-md transition-all flex items-center justify-center uppercase tracking-widest">
+            <i class="material-icons mr-2">save</i> Guardar Configuración Fiscal
+        </button>
+
+        <p id="statusMsg" class="text-center font-bold text-sm h-6"></p>
+    </div>
+
+<script>
+        (function() {
+            // Validación de seguridad en el frontend
+            if (sessionStorage.getItem('fiscalAccessKey') !== 'GRANTED') {
+                document.getElementById('auth-guard').classList.remove('hidden');
+                return;
+            }
+            document.getElementById('main-content').classList.remove('hidden');
+
+            const sujetoEspecialCb = document.getElementById('local-sujeto-especial');
+            const ivaExentoInput = document.getElementById('iva-exento');
+            const ivaGeneralInput = document.getElementById('iva-general');
+            const ivaReducidoInput = document.getElementById('iva-reducido');
+            const ivaAnadidaInput = document.getElementById('iva-anadida');
+            const igtfInput = document.getElementById('igtf-porcentaje');
+            
+            const saveBtn = document.getElementById('saveBtn'); 
+            const statusMsg = document.getElementById('statusMsg'); 
+
+            let configOriginal = {};
+
+            const parseBool = (val) => val === true || val === "true";
+
+            async function init() {
+                try {
+                    if (!window.nexusAPI) return;
+                    
+                    // 1. Cargar Sujeto Pasivo Especial
+                    const isSujetoEspecial = await window.nexusAPI.obtenerConfiguracion('isSujetoEspecial');
+                    sujetoEspecialCb.checked = parseBool(isSujetoEspecial);
+
+                    // 2. Cargar Tasas
+                    const tasas = await window.nexusAPI.obtenerConfiguracionFiscal();
+                    if (tasas) {
+                        ivaExentoInput.value = tasas.iva_exento;
+                        ivaGeneralInput.value = tasas.iva_general;
+                        ivaReducidoInput.value = tasas.iva_reducido;
+                        ivaAnadidaInput.value = tasas.iva_anadida;
+                        igtfInput.value = tasas.igtf_porcentaje;
+                    }
+
+                    // Guardar snapshot para la auditoría
+                    configOriginal = {
+                        sujetoEspecial: sujetoEspecialCb.checked,
+                        tasas: tasas ? { ...tasas } : null
+                    };
+
+                } catch (e) {
+                    console.error("Error al leer config fiscal:", e);
+                }
+            }
+
+            saveBtn.addEventListener('click', async () => {
+                statusMsg.textContent = "⏳ Guardando...";
+                statusMsg.className = "text-center font-bold text-[#0288D1]";
+                saveBtn.disabled = true;
+
+                try {
+                    // 1. Guardar Sujeto Especial
+                    await window.nexusAPI.guardarConfiguracion('isSujetoEspecial', sujetoEspecialCb.checked);
+
+                    // 2. Sincronizar Sujeto Especial con Servidor Maestro
+                    try {
+                        await window.nexusAPI.guardarConfiguracionMaestra({ 
+                            clave: 'isSujetoEspecial', 
+                            valor: sujetoEspecialCb.checked.toString() 
+                        });
+                    } catch(e) {
+                        console.warn("No se pudo sincronizar IGTF con el maestro");
+                    }
+
+                    // 3. Guardar Tasas
+                    const nuevasTasas = {
+                        iva_exento: parseFloat(ivaExentoInput.value) || 0,
+                        iva_general: parseFloat(ivaGeneralInput.value) || 0,
+                        iva_reducido: parseFloat(ivaReducidoInput.value) || 0,
+                        iva_anadida: parseFloat(ivaAnadidaInput.value) || 0,
+                        igtf_porcentaje: parseFloat(igtfInput.value) || 0
+                    };
+
+                    const guardadoTasas = await window.nexusAPI.guardarConfiguracionFiscal(nuevasTasas);
+
+                    if (guardadoTasas) {
+                        try {
+                            await window.nexusAPI.guardarConfiguracionMaestra({ 
+                                clave: 'tasas_fiscales', 
+                                valor: JSON.stringify(nuevasTasas) 
+                            });
+                        } catch(e) {
+                            console.warn("No se pudo sincronizar tasas fiscales con el maestro");
+                        }
+                    }
+
+                    // 4. Registrar en Auditoría Fiscal
+                    if (guardadoTasas) {
+                        const detalles = `Sujeto Especial: ${configOriginal.sujetoEspecial} -> ${sujetoEspecialCb.checked} | Tasas: IVA_G ${configOriginal.tasas?.iva_general} -> ${nuevasTasas.iva_general}, IGTF ${configOriginal.tasas?.igtf_porcentaje} -> ${nuevasTasas.igtf_porcentaje}`;
+                               try {
+                            // Get admin user from session if available, else generic
+                            const session = await window.nexusAPI.obtenerSesionLocal();
+                            const adminUser = session?.usuario || session?.email || "Administrador Local";
+                            
+                            const payload = {
+                                usuario: adminUser,
+                                accion: "MODIFICACIÓN DE PARÁMETROS FISCALES",
+                                valores: detalles
+                            };
+                            
+                            const res = await window.nexusAPI.guardarAuditoriaFiscal(payload);
+                            
+                            if (res && res.success) {
+                                console.log("Auditoría fiscal registrada exitosamente vía IPC.");
+                            } else {
+                                console.error("No se pudo registrar en la auditoría del servidor local:", res ? res.message : "Error desconocido");
+                            }
+                        } catch (err) {
+                            console.error("Excepción al contactar IPC para auditoría fiscal:", err);
+                        }
+
+                        statusMsg.textContent = "✅ Configuración fiscal guardada. El sistema auditó el cambio.";
+                        statusMsg.className = "text-center font-bold text-green-600";
+                        
+                        // Actualizar snapshot
+                        configOriginal = {
+                            sujetoEspecial: sujetoEspecialCb.checked,
+                            tasas: { ...nuevasTasas }
+                        };
+                    } else {
+                        throw new Error("No se pudo guardar en SQLite");
+                    }
+
+                } catch (e) {
+                    console.error(e);
+                    statusMsg.textContent = "❌ Error crítico al guardar la configuración fiscal.";
+                    statusMsg.className = "text-center font-bold text-red-600";
+                } finally {
+                    saveBtn.disabled = false;
+                    setTimeout(() => { if (statusMsg.className.includes('green')) statusMsg.textContent = ""; }, 4000);
+                }
+            });
+
+            init();
+        })();
+    </script>
+</div>

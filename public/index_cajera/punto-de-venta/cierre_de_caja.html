@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="logo_nexus.png">
+    <title>NEXUS POS - Cierre de Caja Detallado</title>
+    <script src="../../tailwindcss.js"></script>
+    
+    <link href="../../../node_modules/material-icons/iconfont/material-icons.css" rel="stylesheet">
+    
+    <link href="../../../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 0;
+            border-top: 4px solid #fff;
+            width: 30px;
+            height: 30px;
+            -webkit-animation: spin 1s linear infinite; 
+            animation: spin 1s linear infinite;
+        }
+
+        
+        @-webkit-keyframes spin {
+            0% { -webkit-transform: rotate(0deg); }
+            100% { -webkit-transform: rotate(360deg); }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-white font-roboto">
+
+    <div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="spinner"></div>
+    </div>
+    
+    <main class="main-content w-full max-w-8xl mx-auto">
+        
+            
+            <div class="relative mb-6 border-b pb-4">
+                
+                <button onclick="history.back()" 
+                        class="absolute top-1 left-0 text-gray-600 hover:text-gray-900 transition duration-150 ease-in-out p-2 rounded-none hover:bg-gray-100 focus:outline-none"
+                        title="Regresar a la página anterior">
+                    <span class="material-icons text-3xl">arrow_back</span>
+                </button>
+                
+                <div class="flex items-center justify-center">
+                    
+                    <h1 class="text-3xl font-bold text-gray-800">Cierre de Caja Detallado</h1>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="bg-gray-100 p-4 rounded-none border border-gray-300">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2 flex items-center">
+                        <span class="material-icons text-red-500 mr-2">trending_down</span>
+                        Gestión de Gastos
+                    </h3>
+                    <div class="flex justify-between items-center text-xl font-bold text-gray-800 mb-1">
+                        <span>Total Gastos (Bs):</span>
+                        <span id="total-expenses-bs">Bs. 0.00</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xl font-bold text-gray-800">
+                        <span>Total Gastos ($):</span>
+                        <span id="total-expenses-dollars">$. 0.00</span>
+                    </div>
+                    <div class="mt-3 text-right border-t border-gray-200 pt-2">
+                        <button onclick="window.abrirModalMovimientos('GASTO')" class="text-sm font-bold text-red-600 hover:text-red-800 hover:underline transition-all tracking-wide">
+                            MOSTRAR GASTOS 
+                        </button>
+                    </div>
+                </div>
+                <div class="bg-gray-100 p-4 rounded-none border border-gray-300">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2 flex items-center">
+                        <span class="material-icons text-green-500 mr-2">trending_up</span>
+                        Gestión de Ingresos
+                    </h3>
+                    <div class="flex justify-between items-center text-xl font-bold text-gray-800 mb-1">
+                        <span>Total Ingresos (Bs):</span>
+                        <span id="total-incomes-bs">Bs. 0.00</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xl font-bold text-gray-800">
+                        <span>Total Ingresos ($):</span>
+                        <span id="total-incomes-dollars">$. 0.00</span>
+                    </div>
+                    <div class="mt-3 text-right border-t border-gray-200 pt-2">
+                        <button onclick="window.abrirModalMovimientos('INGRESO')" class="text-sm font-bold text-green-600 hover:text-green-800 hover:underline transition-all tracking-wide">
+                            MOSTRAR INGRESOS 
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+                    <span class="material-icons text-yellow-500 mr-2">account_balance_wallet</span>
+                    Conciliación de Pagos
+                </h2>
+                <div class="grid grid-cols-4 gap-4 p-2 font-semibold text-sm text-gray-600 border-b border-gray-300 sticky top-0 bg-white md:hidden">
+                    <div class="col-span-1">Método de Pago</div>
+                    <div class="text-right">Monto Registrado</div>
+                    <div class="text-right">Monto Contado</div>
+                    <div class="text-right">Diferencia</div>
+                </div>
+                <div id="dynamic-cierre-payments-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+            </div>
+
+            <div class="bg-blue-600 rounded-none p-6 text-white text-center shadow-lg">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-4 border-b border-blue-400 pb-4">
+                    <span class="text-xl font-semibold">Total Ventas Registradas (Bs)</span>
+                    <span id="total-sales-bs" class="text-3xl font-bold">Bs. 0.00</span>
+                </div>
+                <div class="flex flex-col md:flex-row justify-between items-center mb-4 border-b border-blue-400 pb-4">
+                    <span class="text-xl font-semibold">Total Ventas Registradas ($)</span>
+                    <span id="total-sales-dollars" class="text-3xl font-bold">$. 0.00</span>
+                </div>
+                
+                <div class="flex flex-col md:flex-row justify-between items-center mb-4 border-b border-blue-400 pb-4">
+                    <span class="text-xl font-semibold">Diferencia Total en Caja (Bs)</span>
+                    <span id="total-difference-bs" class="text-3xl font-bold text-white">Bs. 0.00</span>
+                </div>
+                 <div class="flex flex-col md:flex-row justify-between items-center">
+                    <span class="text-xl font-semibold">Diferencia Total en Caja ($)</span>
+                    <span id="total-difference-dollars" class="text-3xl font-bold text-white">$. 0.00</span>
+                </div>
+            </div>
+
+            <div class="flex justify-end mt-6 space-x-4">
+                <!-- Botones Fiscales (solo visibles en modo FISCAL_HKA) -->
+                <button id="btn-reporte-x" onclick="window.ejecutarReporteX()" style="display:none" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-none transition duration-300 shadow-md flex items-center">
+                    <span class="material-icons mr-2">assessment</span>
+                    Reporte X
+                </button>
+                <button id="btn-cierre-z" onclick="window.ejecutarCierreZ()" style="display:none" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-none transition duration-300 shadow-md flex items-center">
+                    <span class="material-icons mr-2">summarize</span>
+                    Cierre Z Fiscal
+                </button>
+                <button id="btn-memoria-fiscal" onclick="window.abrirModalMemoriaFiscal()" style="display:none" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-none transition duration-300 shadow-md flex items-center">
+                    <span class="material-icons mr-2">history</span>
+                    Memoria Fiscal
+                </button>
+                <button id="close-cash-button" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-none transition duration-300 shadow-md">
+                    Cerrar Caja
+                </button>
+                <div class="flex items-center space-x-2">
+                    <input type="text" id="test-comando-input" placeholder="Comando HKA" class="border border-gray-300 rounded-none px-3 py-2 w-32 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                    <button onclick="window.enviarComandoLibre()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-none transition duration-300 shadow-md flex items-center">
+                        <span class="material-icons">build</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal: Reporte de Memoria Fiscal -->
+            <div id="modal-memoria-fiscal" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 hidden">
+                <div class="bg-white rounded-none p-6 shadow-2xl max-w-md w-full">
+                    <h3 class="text-lg font-bold mb-4 text-purple-700 flex items-center">
+                        <span class="material-icons mr-2">history</span>
+                        Reporte de Memoria Fiscal
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Reporte:</label>
+                            <select id="memoria-tipo-reporte" class="w-full border rounded-none p-2">
+                                <option value="fecha">Por Rango de Fechas</option>
+                                <option value="numero">Por Rango de Números de Z</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Formato:</label>
+                            <select id="memoria-formato" class="w-full border rounded-none p-2">
+                                <option value="X">Formato Resumido (X)</option>
+                                <option value="Z">Formato Detallado (Z)</option>
+                            </select>
+                        </div>
+                        <div id="campos-fecha">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Inicio:</label>
+                            <input type="date" id="memoria-fecha-inicio" class="w-full border rounded-none p-2 mb-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Fin:</label>
+                            <input type="date" id="memoria-fecha-fin" class="w-full border rounded-none p-2">
+                        </div>
+                        <div id="campos-numero" class="hidden">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Z Inicial:</label>
+                            <input type="number" id="memoria-z-inicio" min="1" class="w-full border rounded-none p-2 mb-2" placeholder="Ej: 1">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Z Final:</label>
+                            <input type="number" id="memoria-z-fin" min="1" class="w-full border rounded-none p-2" placeholder="Ej: 50">
+                        </div>
+                    </div>
+                    <div class="flex justify-end mt-6 space-x-3">
+                        <button onclick="window.cerrarModalMemoriaFiscal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-none transition">Cancelar</button>
+                        <button onclick="window.ejecutarMemoriaFiscal()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-none transition">Imprimir</button>
+                    </div>
+                </div>
+            </div>
+
+    </main>
+
+    <div id="info-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-none p-6 shadow-xl max-w-sm w-full">
+            <h3 id="modal-title" class="text-lg font-bold mb-4"></h3>
+            <p id="modal-message" class="text-gray-700 mb-4 whitespace-pre-line"></p>
+            <div class="flex justify-end">
+                <button id="close-modal-button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-none">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación -->
+    <div id="confirm-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-none p-6 shadow-xl max-w-md w-full">
+            <h3 id="confirm-modal-title" class="text-lg font-bold mb-4">Confirmación</h3>
+            <p id="confirm-modal-message" class="text-gray-700 mb-6 whitespace-pre-line text-sm"></p>
+            <div class="flex justify-end space-x-4">
+                <button id="confirm-modal-cancel" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-none transition duration-300">Cancelar</button>
+                <button id="confirm-modal-accept" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-none transition duration-300">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+    // --- ESTADO GLOBAL ---
+    let userId = null; 
+    let companyId = null;
+    let role = null;
+    let branchId = null;
+    let printerName = null;
+    let printerSize = "58";
+    let encabezadoFactura = { line1: "", line2: "", line3: "" };
+    let salesPaymentTotals = {}; 
+    let incomePaymentTotals = {};
+    let expensePaymentTotals = {};
+    let currentEmissionMode = 'TICKET_NO_FISCAL';
+    let puertoFiscal = ''; 
+
+    let currentReportData = {
+        totalSalesBs: 0,
+        totalSalesDollars: 0,
+        totalExpensesBs: 0, 
+        totalExpensesDollars: 0,
+        totalIncomes: 0,
+        totalIncomesDollars: 0,
+        totalDifferenceBs: 0,
+        totalDifferenceDollars: 0,
+        paymentDetails: {} 
+    };
+
+    // --- REFERENCIAS AL DOM ---
+    const userIdDisplay = document.getElementById('user-id');
+    const companyIdDisplay = document.getElementById('company-id');
+    const roleDisplay = document.getElementById('role-display');
+    const totalExpensesBsDisplay = document.getElementById('total-expenses-bs'); 
+    const totalExpensesDollarsDisplay = document.getElementById('total-expenses-dollars'); 
+    const totalIncomesBsDisplay = document.getElementById('total-incomes-bs'); 
+    const totalIncomesDollarsDisplay = document.getElementById('total-incomes-dollars'); 
+    const totalSalesBsDisplay = document.getElementById('total-sales-bs');
+    const totalSalesDollarsDisplay = document.getElementById('total-sales-dollars');
+    const totalDifferenceBsDisplay = document.getElementById('total-difference-bs');
+    const totalDifferenceDollarsDisplay = document.getElementById('total-difference-dollars');
+    
+    let countedInputs = document.querySelectorAll('.counted-input');
+    const closeCashButton = document.getElementById('close-cash-button');
+    window.metodosCierre = [];
+    
+    async function fetchMetodosCierre() {
+        try {
+            const resp = await fetch('http://localhost:3000/api/maestro/metodos-pago');
+            const resData = await resp.json();
+            window.metodosCierre = resData.data || [];
+        } catch(e) {
+            console.error("Error al cargar métodos globales:", e);
+        }
+    }
+    
+    function renderCierreInputs() {
+        const container = document.getElementById('dynamic-cierre-payments-container');
+        if (!container) return;
+        container.innerHTML = '';
+        
+        const leftCol = document.createElement('div');
+        leftCol.className = 'space-y-4';
+        const rightCol = document.createElement('div');
+        rightCol.className = 'space-y-4';
+        
+        const icons = ['payments', 'credit_card', 'phone_iphone', 'fingerprint', 'attach_money', 'account_balance', 'receipt_long', 'wallet'];
+        const colors = ['green', 'blue', 'purple', 'red', 'emerald', 'cyan', 'yellow', 'indigo'];
+
+        window.metodosCierre.forEach((m, idx) => {
+            const icon = icons[idx % icons.length];
+            const color = colors[idx % colors.length];
+            const symbol = m.tipo_moneda === 'USD' ? '$.' : 'Bs.';
+            
+            // Si es Pago Móvil, agregamos botón de visualización de detalles
+            const isPM = m.nombre.toLowerCase().includes('movil') || m.nombre.toLowerCase().includes('móvil');
+            let labelExtra = '';
+            if (isPM) {
+                labelExtra = `
+                    <button onclick="window.abrirModalPagoMovil()" class="ml-1 text-gray-400 hover:text-purple-600 hover:bg-purple-100 p-1 rounded-none transition-all flex items-center" title="Ver detalles de Pago Móvil del turno">
+                        <span class="material-icons text-[18px]">visibility</span>
+                    </button>
+                `;
+            }
+            
+            const rowHtml = `
+                <div class="grid grid-cols-4 items-center gap-4 p-2 bg-gray-50 rounded-none">
+                    <div class="col-span-1 flex items-center text-gray-700 font-medium">
+                        <span class="material-icons text-${color}-600 mr-2">${icon}</span>
+                        ${m.nombre}
+                        ${labelExtra}
+                    </div>
+                    <div class="text-right font-semibold text-gray-800" id="registered-${m.id}">${symbol} 0.00</div>
+                    <input type="number" step="0.01" class="text-right p-2 border rounded-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow counted-input" data-payment-type="${m.id}" placeholder="0.00">
+                    <div class="text-right font-bold text-lg text-gray-800" id="diff-${m.id}">${symbol} 0.00</div>
+                </div>
+            `;
+            
+            if (idx % 2 === 0) {
+                leftCol.innerHTML += rowHtml;
+            } else {
+                rightCol.innerHTML += rowHtml;
+            }
+        });
+        
+        container.appendChild(leftCol);
+        container.appendChild(rightCol);
+        
+        // Volver a enlazar los inputs de conteo
+        countedInputs = document.querySelectorAll('.counted-input');
+        countedInputs.forEach(input => {
+            input.addEventListener('input', updateDifferencesAndTotals);
+            input.addEventListener('change', updateDifferencesAndTotals);
+        });
+    }
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const infoModal = document.getElementById('info-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalMessage = document.getElementById('modal-message');
+    const closeModalButton = document.getElementById('close-modal-button');
+
+    // --- INICIALIZACIÓN ---
+    async function inicializarCierre() {
+        if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+
+        try {
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
+            
+            if (sesion) {
+                userId = sesion.uid;
+                companyId = sesion.companyId;
+                branchId = sesion.branchId;
+                role = sesion.role;
+                
+                updateUserInfoDisplay();
+
+                await fetchPrinterConfig();
+                await fetchMetodosCierre();
+                renderCierreInputs();
+                await loadCajaData();
+            } else {
+                showInfoMessage("No hay sesión activa. Por favor, vuelva a iniciar sesión.", "error");
+            }
+        } catch (error) {
+            console.error("Error inicializando cierre:", error);
+            showInfoMessage("Fallo al conectar con la base de datos local.", "error");
+        } finally {
+            if (loadingOverlay) loadingOverlay.classList.add('hidden');
+        }
+    }
+
+    // --- CARGA DE DATOS LOCALES ---
+    async function loadCajaData() {
+        resetTotals();
+
+        try {
+            // 1. CARGAR INGRESOS PENDIENTES
+            const ingresos = await window.nexusAPI.obtenerMovimientosCaja({ tipo: 'INGRESO', companyId });
+            (ingresos || []).forEach(mov => {
+                currentReportData.totalIncomes += mov.monto;
+                currentReportData.totalIncomesDollars += mov.monto_usd; 
+                
+                const metodoEncontrado = window.metodosCierre.find(m => m.nombre.toLowerCase().replace(/\s/g, '') === (mov.metodo_pago || '').toLowerCase().replace(/\s/g, ''));
+                if (metodoEncontrado) {
+                    const code = metodoEncontrado.id;
+                    const amountToSum = metodoEncontrado.tipo_moneda === 'USD' ? (mov.monto_usd > 0 ? mov.monto_usd : mov.monto) : mov.monto;
+                    incomePaymentTotals[code] = (incomePaymentTotals[code] || 0) + amountToSum;
+                }
+            });
+
+            // 2. CARGAR GASTOS PENDIENTES
+            const gastos = await window.nexusAPI.obtenerMovimientosCaja({ tipo: 'GASTO', companyId });
+            (gastos || []).forEach(mov => {
+                currentReportData.totalExpensesBs += mov.monto;
+                currentReportData.totalExpensesDollars += mov.monto_usd;
+                
+                const metodoEncontrado = window.metodosCierre.find(m => m.nombre.toLowerCase().replace(/\s/g, '') === (mov.metodo_pago || '').toLowerCase().replace(/\s/g, ''));
+                if (metodoEncontrado) {
+                    const code = metodoEncontrado.id;
+                    const amountToSum = metodoEncontrado.tipo_moneda === 'USD' ? (mov.monto_usd > 0 ? mov.monto_usd : mov.monto) : mov.monto;
+                    expensePaymentTotals[code] = (expensePaymentTotals[code] || 0) + amountToSum;
+                }
+            });
+
+            // 3. CARGAR VENTAS PENDIENTES
+            const ventas = await window.nexusAPI.obtenerVentasPendientesCaja({ companyId, branchId, cashierId: userId });
+            
+            (ventas || []).forEach(sale => {
+                let payments = {};
+                try {
+                    payments = JSON.parse(sale.metodo_pago || '{}');
+                } catch (e) { return; }
+
+                for (let method in payments) {
+                    let amount = parseFloat(payments[method]) || 0;
+                    
+                    if (amount > 0) {
+                        let isVuelto = method.startsWith('vuelto_');
+                        let baseMethod = isVuelto ? method.replace('vuelto_', '') : method;
+                        
+                        let metodo = window.metodosCierre.find(m => m.nombre.toLowerCase().replace(/\s/g, '') === baseMethod.toLowerCase().replace(/\s/g, ''));
+                        if (!metodo) {
+                            metodo = window.metodosCierre.find(m => m.nombre.toLowerCase() === baseMethod.toLowerCase());
+                        }
+
+                        if (metodo) {
+                            let code = metodo.id;
+                            if (isVuelto) {
+                                salesPaymentTotals[code] = (salesPaymentTotals[code] || 0) - amount;
+                                if (metodo.tipo_moneda === 'USD') currentReportData.totalSalesDollars -= amount;
+                                else currentReportData.totalSalesBs -= amount;
+                            } else {
+                                salesPaymentTotals[code] = (salesPaymentTotals[code] || 0) + amount;
+                                if (metodo.tipo_moneda === 'USD') currentReportData.totalSalesDollars += amount;
+                                else currentReportData.totalSalesBs += amount;
+                            }
+                        }
+                    }
+                }
+            });
+
+            // ACTUALIZAR PANTALLA
+            if (totalIncomesBsDisplay) totalIncomesBsDisplay.textContent = formatCurrency(currentReportData.totalIncomes, 'Bs.');
+            if (totalIncomesDollarsDisplay) totalIncomesDollarsDisplay.textContent = formatCurrency(currentReportData.totalIncomesDollars, '$.');
+            if (totalExpensesBsDisplay) totalExpensesBsDisplay.textContent = formatCurrency(currentReportData.totalExpensesBs, 'Bs.');
+            if (totalExpensesDollarsDisplay) totalExpensesDollarsDisplay.textContent = formatCurrency(currentReportData.totalExpensesDollars, '$.');
+            if (totalSalesBsDisplay) totalSalesBsDisplay.textContent = formatCurrency(currentReportData.totalSalesBs, 'Bs.');
+            if (totalSalesDollarsDisplay) totalSalesDollarsDisplay.textContent = formatCurrency(currentReportData.totalSalesDollars, '$.');
+
+            updateConciliationDisplay();
+
+        } catch (e) {
+            console.error("Error procesando los datos de la caja:", e);
+        }
+    }
+
+    // --- PROCESAMIENTO DEL CIERRE ---
+    async function handleCloseCash() {
+        if (!companyId || !branchId || !userId) {
+            showInfoMessage("ERROR: Faltan datos de sesión. No se puede completar el cierre.", 'error');
+            return;
+        }
+
+        if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+        updateDifferencesAndTotals();
+
+        try {
+            const reportData = {
+                id: `Z-${Date.now()}`,
+                companyId: companyId,
+                branchId: branchId,
+                cashierId: userId,
+                role: role,
+                fecha: new Date().toISOString(),
+                totalSalesBs: currentReportData.totalSalesBs,
+                totalSalesDollars: currentReportData.totalSalesDollars,
+                totalExpensesBs: currentReportData.totalExpensesBs, 
+                totalExpensesDollars: currentReportData.totalExpensesDollars,
+                totalIncomes: currentReportData.totalIncomes,
+                totalDifferenceBs: currentReportData.totalDifferenceBs,
+                totalDifferenceDollars: currentReportData.totalDifferenceDollars,
+                paymentsConciliation: JSON.stringify(currentReportData.paymentDetails) 
+            };
+
+            // Ejecuta el guardado del Cierre Z y marca las ventas/movimientos como procesados
+            const cierreResult = await window.nexusAPI.procesarCierreCajaLocal(reportData);
+            
+            if (cierreResult && !cierreResult.error) {
+                const printSuccess = await printCashClosingReport(currentReportData, {userId, companyId, role, branchId}); 
+                
+                if (printSuccess) {
+                    showInfoMessage(`¡Cierre de caja completado con éxito! Se han reiniciado los totales para el próximo turno.`, 'success');
+                } else {
+                    showInfoMessage(`¡Cierre de caja completado en sistema! Pero falló la impresión.`, 'success');
+                }
+                
+                countedInputs.forEach(input => input.value = '');
+                await loadCajaData(); // Refresca en blanco
+            } else {
+                throw new Error(cierreResult.error);
+            }
+
+        } catch (error) {
+            console.error("Error CRÍTICO al cerrar la caja:", error);
+            showInfoMessage("ERROR: Falló el cierre local: " + error.message, 'error');
+        } finally {
+            if (loadingOverlay) loadingOverlay.classList.add('hidden');
+        }
+    }
+
+    // --- LÓGICA DE IMPRESIÓN DIRECTA (NATIVA) ---
+    async function printCashClosingReport(data, session) {
+        // Ajuste dinámico de 58mm (32 caracteres) o 80mm (48 caracteres)
+        const LINE_WIDTH = (printerSize === "80") ? 48 : 32;
+        const CRLF = "\r\n";
+        const SEPARATOR = "-".repeat(LINE_WIDTH) + CRLF;
+
+        // 🔥 NUEVO: Obtener el nombre de la caja de forma inteligente
+        let nombreCaja = session.userId; 
+        try {
+            const sesionLocal = await window.nexusAPI.obtenerSesionLocal();
+            if (sesionLocal && sesionLocal.email) {
+                // Toma el correo y le quita el "@..." para dejar solo el nombre (Ej: caja1@gmail.com -> CAJA1)
+                nombreCaja = sesionLocal.email.split('@')[0]; 
+            }
+        } catch (e) {
+            console.warn("No se pudo obtener el nombre de la caja, usando ID.");
+        }
+
+        let t = "\x1B\x40"; // Inicializar impresora
+        
+        // Encabezado fiscal de la empresa
+        if (encabezadoFactura.line1) t += centerText(encabezadoFactura.line1.toUpperCase(), LINE_WIDTH) + CRLF;
+        if (encabezadoFactura.line3) t += centerText(`RIF: ${encabezadoFactura.line3.toUpperCase()}`, LINE_WIDTH) + CRLF;
+        if (encabezadoFactura.line2) t += centerText(encabezadoFactura.line2, LINE_WIDTH) + CRLF;
+        t += SEPARATOR;
+        
+        t += centerText("REPORTE DE CIERRE DE CAJA", LINE_WIDTH) + CRLF;
+        t += SEPARATOR;
+        t += `CAJA/CAJERO: ${nombreCaja.toUpperCase()}` + CRLF; // 🔥 Se imprime el nombre de la caja
+        t += `FECHA: ${new Date().toLocaleString('es-VE')}` + CRLF;
+        t += SEPARATOR;
+        
+        t += centerText("--- RESUMEN GENERAL ---", LINE_WIDTH) + CRLF;
+        t += formatLR("INGRESOS (Bs)", data.totalIncomes.toFixed(2), LINE_WIDTH) + CRLF;
+        t += formatLR("INGRESOS ($)", data.totalIncomesDollars.toFixed(2), LINE_WIDTH) + CRLF;
+        t += formatLR("GASTOS (Bs)", data.totalExpensesBs.toFixed(2), LINE_WIDTH) + CRLF;
+        t += formatLR("GASTOS ($)", data.totalExpensesDollars.toFixed(2), LINE_WIDTH) + CRLF;
+        t += formatLR("VENTAS (Bs)", data.totalSalesBs.toFixed(2), LINE_WIDTH) + CRLF;
+        t += formatLR("VENTAS ($)", data.totalSalesDollars.toFixed(2), LINE_WIDTH) + CRLF;
+        t += SEPARATOR;
+
+        t += centerText("CONCILIACION", LINE_WIDTH) + CRLF;
+        for (const type in data.paymentDetails) {
+            const det = data.paymentDetails[type];
+            
+            // 🔥 ELIMINADO EL FILTRO: Ahora pasará directo e imprimirá todos los métodos, así estén en 0.00
+            
+            const name = det.method_name || type;
+            t += `${name.toUpperCase()} (${det.currency === 'USD' ? '$' : 'Bs'})` + CRLF;
+            t += formatLR("  Registrado:", det.registered.toFixed(2), LINE_WIDTH) + CRLF;
+            t += formatLR("  Contado:", det.counted.toFixed(2), LINE_WIDTH) + CRLF;
+            t += formatLR("  Diferencia:", det.difference.toFixed(2), LINE_WIDTH) + CRLF;
+        }
+
+        t += SEPARATOR;
+        t += formatLR("DIFERENCIA (Bs):", data.totalDifferenceBs.toFixed(2), LINE_WIDTH) + CRLF;
+        t += formatLR("DIFERENCIA ($):", data.totalDifferenceDollars.toFixed(2), LINE_WIDTH) + CRLF;
+        
+        // Ahorro de papel
+        t += CRLF.repeat(2) + "\x1B\x6D"; 
+
+        try {
+            if (!printerName || printerName === "TICKET") return false;
+            const result = await window.nexusAPI.imprimirTextoLibre(t, printerName);
+            return result.exito;
+        } catch (error) {
+            return false;
+        }
+    }
+    
+    // --- FUNCIONES AUXILIARES DE INTERFAZ Y TEXTO ---
+    function centerText(text, width) {
+        text = text.trim();
+        if (text.length >= width) return text.substring(0, width);
+        const spaces = Math.floor((width - text.length) / 2);
+        return " ".repeat(spaces) + text;
+    }
+
+    function formatLR(left, right, width) {
+        const safeLeft = String(left || '');
+        const safeRight = String(right || '');
+        const spaceNeeded = width - safeLeft.length - safeRight.length;
+        if (spaceNeeded > 0) return safeLeft + " ".repeat(spaceNeeded) + safeRight;
+        return safeLeft.substring(0, width - safeRight.length - 1) + " " + safeRight;
+    }
+
+    function formatCurrency(amount, currency = 'Bs.') {
+        const parsedAmount = parseFloat(amount);
+        return isNaN(parsedAmount) ? `${currency} 0.00` : `${currency} ${parsedAmount.toFixed(2)}`;
+    }
+
+    function resetTotals() {
+        salesPaymentTotals = {}; 
+        incomePaymentTotals = {}; 
+        expensePaymentTotals = {};
+        window.metodosCierre.forEach(m => {
+            salesPaymentTotals[m.id] = 0; incomePaymentTotals[m.id] = 0; expensePaymentTotals[m.id] = 0;
+        });
+        currentReportData.totalSalesBs = 0; currentReportData.totalSalesDollars = 0;
+        currentReportData.totalExpensesBs = 0; currentReportData.totalExpensesDollars = 0;
+        currentReportData.totalIncomes = 0; currentReportData.totalIncomesDollars = 0;
+        currentReportData.totalDifferenceBs = 0; currentReportData.totalDifferenceDollars = 0;
+    }
+
+    async function fetchPrinterConfig() {
+        try {
+            const configRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
+            if (configRaw) {
+                const conf = JSON.parse(configRaw);
+                if (conf.impresoraSeleccionada) printerName = conf.impresoraSeleccionada;
+                // 🔥 AÑADIDO: Capturamos el tamaño y el encabezado
+                if (conf.tamañoImpresora) printerSize = conf.tamañoImpresora;
+                if (conf.encabezadoFactura) encabezadoFactura = conf.encabezadoFactura;
+                
+                // 🖨️ FISCAL: Leemos modo de emisión y puerto
+                currentEmissionMode = conf.tipo_emision || 'TICKET_NO_FISCAL';
+                puertoFiscal = conf.puerto_com_fiscal || '';
+                
+                // Mostrar/ocultar botones fiscales
+                const btnReporteX = document.getElementById('btn-reporte-x');
+                const btnCierreZ = document.getElementById('btn-cierre-z');
+                const btnMemoria = document.getElementById('btn-memoria-fiscal');
+                if (currentEmissionMode === 'FISCAL_HKA') {
+                    if (btnReporteX) btnReporteX.style.display = 'flex';
+                    if (btnCierreZ) btnCierreZ.style.display = 'flex';
+                    if (btnMemoria) btnMemoria.style.display = 'flex';
+                } else {
+                    if (btnReporteX) btnReporteX.style.display = 'none';
+                    if (btnCierreZ) btnCierreZ.style.display = 'none';
+                    if (btnMemoria) btnMemoria.style.display = 'none';
+                }
+            }
+        } catch (error) {
+            printerName = "TICKET";
+        }
+    }
+
+    function updateUserInfoDisplay() {
+        if (userIdDisplay) userIdDisplay.textContent = userId || 'N/A';
+        if (companyIdDisplay) companyIdDisplay.textContent = companyId || 'N/A';
+        if (roleDisplay) roleDisplay.textContent = role || 'N/A';
+    }
+
+    function showInfoMessage(message, type = 'info') {
+        if (modalTitle) {
+            modalTitle.textContent = type === 'error' ? 'Error' : 'Información';
+            modalTitle.className = `text-lg font-bold mb-4 ${type === 'error' ? 'text-red-600' : 'text-blue-600'}`;
+        }
+        if (modalMessage) modalMessage.textContent = message;
+        if (infoModal) infoModal.classList.remove('hidden');
+    }
+
+    function getDifferenceColor(difference, context = 'detail') {
+        if (difference > 0.01) return 'text-green-600'; 
+        if (difference < -0.01) return 'text-red-600'; 
+        return context === 'final' ? 'text-white' : 'text-gray-800'; 
+    }
+
+    function updateConciliationDisplay() {
+        const combinedTotals = { ...salesPaymentTotals };
+        
+        for (const method in incomePaymentTotals) {
+            combinedTotals[method] = (combinedTotals[method] || 0) + incomePaymentTotals[method];
+        }
+        for (const method in expensePaymentTotals) {
+            combinedTotals[method] = (combinedTotals[method] || 0) - expensePaymentTotals[method]; 
+        }
+
+        window.metodosCierre.forEach(m => {
+            const element = document.getElementById(`registered-${m.id}`);
+            const amount = combinedTotals[m.id] || 0;
+            if (element) element.textContent = formatCurrency(amount, m.tipo_moneda === 'USD' ? '$.' : 'Bs.');
+        });
+
+        updateDifferencesAndTotals();
+    }
+
+    function updateDifferencesAndTotals() {
+        let totalDifferenceBs = 0; let totalDifferenceDollars = 0;
+        const paymentDetails = {};
+        const registeredAmounts = {};
+
+        window.metodosCierre.forEach(m => {
+            const element = document.getElementById(`registered-${m.id}`);
+            if (element) {
+                const currencySymbol = m.tipo_moneda === 'USD' ? '$. ' : 'Bs. ';
+                registeredAmounts[m.id] = parseFloat(element.textContent.replace(currencySymbol, '')) || 0;
+            }
+        });
+
+        countedInputs.forEach(input => {
+            const paymentType = input.dataset.paymentType;
+            const m = window.metodosCierre.find(x => String(x.id) === String(paymentType));
+            if (!m) return;
+
+            const countedAmount = parseFloat(input.value) || 0; 
+            const registeredAmount = registeredAmounts[m.id] || 0;
+            const difference = countedAmount - registeredAmount;
+
+            const diffElement = document.getElementById(`diff-${m.id}`);
+            if (diffElement) {
+                const currency = m.tipo_moneda === 'USD' ? '$.' : 'Bs.';
+                diffElement.textContent = formatCurrency(difference, currency);
+                diffElement.className = `text-right font-bold text-lg ${getDifferenceColor(difference, 'detail')}`;
+                
+                if (m.tipo_moneda === 'USD') totalDifferenceDollars += difference;
+                else totalDifferenceBs += difference;
+
+                paymentDetails[m.id] = { registered: registeredAmount, counted: countedAmount, difference: difference, method_name: m.nombre, currency: m.tipo_moneda };
+            }
+        });
+
+        currentReportData.totalDifferenceBs = totalDifferenceBs;
+        currentReportData.totalDifferenceDollars = totalDifferenceDollars;
+        currentReportData.paymentDetails = paymentDetails;
+
+        if (totalDifferenceBsDisplay) {
+            totalDifferenceBsDisplay.textContent = formatCurrency(totalDifferenceBs, 'Bs.');
+            totalDifferenceBsDisplay.className = `text-3xl font-bold ${getDifferenceColor(totalDifferenceBs, 'final')}`;
+        }
+        if (totalDifferenceDollarsDisplay) {
+            totalDifferenceDollarsDisplay.textContent = formatCurrency(totalDifferenceDollars, '$.');
+            totalDifferenceDollarsDisplay.className = `text-3xl font-bold ${getDifferenceColor(totalDifferenceDollars, 'final')}`;
+        }
+    }
+
+    // --- INICIALIZACIÓN DE EVENTOS ---
+    if (closeModalButton) closeModalButton.addEventListener('click', () => { if (infoModal) infoModal.classList.add('hidden'); });
+    countedInputs.forEach(input => { input.addEventListener('input', updateDifferencesAndTotals); });
+    if (closeCashButton) closeCashButton.addEventListener('click', handleCloseCash);
+
+    // Arrancar
+    inicializarCierre();
+
+// ============================================================================
+    // --- MÓDULO DE VISUALIZACIÓN RÁPIDA DE MOVIMIENTOS (TABLAS FLOTANTES) ---
+    // ============================================================================
+
+    const modalHTML = `
+    <div id="modal-visor-movimientos" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 hidden transition-opacity duration-300 opacity-0">
+        <div class="bg-white rounded-none shadow-2xl w-[90%] max-w-5xl max-h-[85vh] flex flex-col transform scale-95 transition-transform duration-300">
+            <div class="p-5 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-2xl">
+                <h2 id="visor-titulo" class="text-2xl font-bold flex items-center">
+                    <span id="visor-icono" class="material-icons mr-3 text-3xl"></span>
+                    <span id="visor-texto">Movimientos</span>
+                </h2>
+                <button onclick="window.cerrarModalMovimientos()" class="text-gray-400 hover:text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-none p-1 transition-colors">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-0">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-100 sticky top-0 z-10 shadow-sm">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Descripción</th>
+                            <th class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Monto (Bs)</th>
+                            <th class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Método</th>
+                            <th class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Monto (USD)</th>
+                            <th class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody id="visor-body" class="bg-white divide-y divide-gray-100">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>`;
+
+    // Inyectamos el modal oculto en el body al cargar
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    const modalPMHTML = `
+    <div id="modal-visor-pm" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 hidden transition-opacity duration-300 opacity-0">
+        <div class="bg-white rounded-none shadow-2xl w-[90%] max-w-5xl max-h-[85vh] flex flex-col transform scale-95 transition-transform duration-300">
+            <div class="p-5 border-b border-gray-200 flex justify-between items-center bg-purple-50 rounded-t-2xl">
+                <h2 class="text-2xl font-bold flex items-center text-purple-800">
+                    <span class="material-icons mr-3 text-3xl">phone_iphone</span>
+                    <span>Pagos Móviles del Turno</span>
+                </h2>
+                <button onclick="window.cerrarModalPagoMovil()" class="text-gray-400 hover:text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-none p-1 transition-colors">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-0">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-100 sticky top-0 z-10 shadow-sm">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Factura/Ref</th>
+                            <th class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Banco Receptor</th>
+                            <th class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Teléfono / Referencia</th>
+                            <th class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Monto (Bs)</th>
+                            <th class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Hora/Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody id="visor-pm-body" class="bg-white divide-y divide-gray-100">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>`;
+
+    document.body.insertAdjacentHTML('beforeend', modalPMHTML);
+
+    window.abrirModalPagoMovil = async function() {
+        const modal = document.getElementById('modal-visor-pm');
+        const tbody = document.getElementById('visor-pm-body');
+
+        tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-gray-500"><div class="spinner mx-auto mb-2 border-t-purple-600"></div>Cargando pagos...</td></tr>';
+
+        // Mostrar modal con animación
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.querySelector('div').classList.remove('scale-95');
+        }, 10);
+
+        try {
+            // NOTA: Ajusta el nombre de la función de tu API si es diferente. 
+            // Basado en tu código de facturación, asumo que tienes algo como 'obtenerPagosMovilesCaja'
+            const pagos = await window.nexusAPI.obtenerPagosMovilesCaja({ 
+                companyId: companyId, 
+                branchId: branchId, 
+                cashierId: userId 
+            });
+
+            tbody.innerHTML = '';
+
+            if (!pagos || pagos.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-gray-500 font-medium">No hay pagos móviles registrados en este turno.</td></tr>';
+                return;
+            }
+
+            // Ordenar por fecha (más reciente primero)
+            pagos.sort((a, b) => new Date(b.fecha_pago) - new Date(a.fecha_pago));
+
+            let totalAcumulado = 0;
+
+            pagos.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-purple-50 transition-colors";
+                
+                totalAcumulado += p.monto;
+
+                tr.innerHTML = `
+                    <td class="px-6 py-4 text-sm font-bold text-gray-900">${p.numero_factura || 'S/N'}</td>
+                    <td class="px-6 py-4 text-sm text-gray-700 font-medium">${p.banco_receptor || 'N/A'}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">
+                        <div>Tlf: <span class="font-mono text-gray-800">${p.telefono_origen || 'N/A'}</span></div>
+                        <div>Ref: <span class="font-mono font-bold text-purple-600">${p.referencia || 'N/A'}</span></div>
+                    </td>
+                    <td class="px-6 py-4 text-sm font-black text-purple-700">${p.monto.toFixed(2)} Bs</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">
+                        ${new Date(p.fecha_pago).toLocaleString('es-VE', {hour: '2-digit', minute:'2-digit'})}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            // Fila de totalizador (Opcional, pero muy útil para la cajera)
+            const trTotal = document.createElement('tr');
+            trTotal.className = "bg-gray-100 border-t-2 border-gray-300";
+            trTotal.innerHTML = `
+                <td colspan="3" class="px-6 py-4 text-right text-sm font-black text-gray-700 uppercase">Total Contabilizado:</td>
+                <td colspan="2" class="px-6 py-4 text-lg font-black text-purple-800">${totalAcumulado.toFixed(2)} Bs</td>
+            `;
+            tbody.appendChild(trTotal);
+
+        } catch (error) {
+            console.error("Error cargando pagos móviles:", error);
+            tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-red-500 font-bold">Error al consultar la base de datos local.</td></tr>';
+        }
+    };
+
+    window.cerrarModalPagoMovil = function() {
+        const modal = document.getElementById('modal-visor-pm');
+        modal.classList.add('opacity-0');
+        modal.querySelector('div').classList.add('scale-95');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    };
+
+    // Funciones globales para que los botones las encuentren
+    window.abrirModalMovimientos = async function(tipo) {
+        const modal = document.getElementById('modal-visor-movimientos');
+        const tituloTexto = document.getElementById('visor-texto');
+        const icono = document.getElementById('visor-icono');
+        const tbody = document.getElementById('visor-body');
+
+        // Configuración visual según el tipo
+        if (tipo === 'GASTO') {
+            tituloTexto.textContent = 'Detalle de Gastos Pendientes';
+            tituloTexto.className = 'text-red-700';
+            icono.textContent = 'receipt_long';
+            icono.className = 'material-icons mr-3 text-3xl text-red-600';
+        } else {
+            tituloTexto.textContent = 'Detalle de Ingresos Pendientes';
+            tituloTexto.className = 'text-green-700';
+            icono.textContent = 'account_balance_wallet';
+            icono.className = 'material-icons mr-3 text-3xl text-green-600';
+        }
+
+        tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-gray-500"><div class="spinner mx-auto mb-2 border-t-blue-600"></div>Cargando...</td></tr>';
+
+        // Mostrar modal con animación
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.querySelector('div').classList.remove('scale-95');
+        }, 10);
+
+        try {
+            // Consultar datos a SQLite (Solo los de la empresa actual)
+            const movs = await window.nexusAPI.obtenerMovimientosCaja({ tipo: tipo, companyId: companyId });
+            tbody.innerHTML = '';
+
+            if (!movs || movs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-gray-500 font-medium">No hay ${tipo.toLowerCase()}s registrados en este turno.</td></tr>`;
+                return;
+            }
+
+            // Ordenar por fecha (más reciente primero)
+            movs.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+            // Construir filas idénticas al módulo original
+            movs.forEach(mov => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-blue-50 transition-colors";
+                
+                const colorBs = tipo === 'GASTO' ? 'text-red-600' : 'text-green-600';
+                const colorUsd = tipo === 'GASTO' ? 'text-red-800' : 'text-blue-600';
+
+                tr.innerHTML = `
+                    <td class="px-6 py-4 text-sm font-medium text-gray-900">${mov.concepto}</td>
+                    <td class="px-6 py-4 text-sm font-black ${colorBs}">${mov.monto.toFixed(2)} Bs</td>
+                    <td class="px-6 py-4 text-sm text-gray-700 font-medium">${mov.metodo_pago}</td>
+                    <td class="px-6 py-4 text-sm font-bold ${colorUsd}">${mov.monto_usd.toFixed(2)} USD</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${new Date(mov.fecha).toLocaleString('es-VE')}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (error) {
+            console.error("Error cargando visor:", error);
+            tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-red-500 font-bold">Error al consultar la base de datos local.</td></tr>`;
+        }
+    };
+
+    window.cerrarModalMovimientos = function() {
+        const modal = document.getElementById('modal-visor-movimientos');
+        modal.classList.add('opacity-0');
+        modal.querySelector('div').classList.add('scale-95');
+        setTimeout(() => modal.classList.add('hidden'), 300); // Espera a que termine la transición
+    };
+
+    
+    // ============================
+    // 🖨️ FUNCIONES FISCALES
+    // ============================
+    
+    // Herramienta de diagnóstico
+    window.enviarComandoLibre = async function() {
+        const cmdInput = document.getElementById("test-comando-input");
+        const cmd = cmdInput.value.trim();
+        if (!cmd) {
+            alert("Escriba un comando en el campo.");
+            return;
+        }
+        if (!puertoFiscal) {
+            alert('No hay puerto COM fiscal configurado.');
+            return;
+        }
+        if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+        try {
+            const resultado = await window.nexusAPI.emitirReporteFiscal(cmd, puertoFiscal);
+            alert("Resultado: " + JSON.stringify(resultado));
+        } catch (error) {
+            alert("Error: " + error.message);
+        } finally {
+            if (loadingOverlay) loadingOverlay.classList.add('hidden');
+        }
+    };
+    
+    // Función para mostrar modal de confirmación y esperar respuesta
+    function showConfirmModal(title, message, isDanger = false) {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('confirm-modal');
+            const titleEl = document.getElementById('confirm-modal-title');
+            const messageEl = document.getElementById('confirm-modal-message');
+            const btnAccept = document.getElementById('confirm-modal-accept');
+            const btnCancel = document.getElementById('confirm-modal-cancel');
+
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+
+            if (isDanger) {
+                btnAccept.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                btnAccept.classList.add('bg-red-600', 'hover:bg-red-700');
+            } else {
+                btnAccept.classList.remove('bg-red-600', 'hover:bg-red-700');
+                btnAccept.classList.add('bg-blue-500', 'hover:bg-blue-600');
+            }
+
+            modal.classList.remove('hidden');
+
+            const handleAccept = () => {
+                cleanup();
+                resolve(true);
+            };
+
+            const handleCancel = () => {
+                cleanup();
+                resolve(false);
+            };
+
+            const cleanup = () => {
+                modal.classList.add('hidden');
+                btnAccept.removeEventListener('click', handleAccept);
+                btnCancel.removeEventListener('click', handleCancel);
+            };
+
+            btnAccept.addEventListener('click', handleAccept);
+            btnCancel.addEventListener('click', handleCancel);
+        });
+    }
+
+    // Función helper para el ciclo completo de reporte fiscal (X o Z)
+    async function procesarCicloReporteFiscal(tipo) {
+        if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+        try {
+            // Se elimina el inicio de cajero ya que la VFP lo rechaza y es opcional en HKA
+
+            // 1. Emitir Reporte Original
+            const cmdEmitir = 'I0' + tipo;
+            const resEmitir = await window.nexusAPI.emitirReporteFiscal([cmdEmitir], puertoFiscal);
+            if (!resEmitir || !resEmitir.success) {
+                showInfoMessage('❌ Error al imprimir Reporte ' + tipo + ': ' + (resEmitir?.msg || 'Sin respuesta'), 'error');
+                return;
+            }
+
+            showInfoMessage('✅ Reporte ' + tipo + ' emitido. Extrayendo datos...', 'success');
+
+            // 2. Extraer Reporte (U0X o U0Z)
+            const resExtraer = await window.nexusAPI.extraerReporteFiscal(tipo, puertoFiscal);
+            if (resExtraer && resExtraer.success) {
+                // 3. Guardar en Base de Datos Local (y sincronizar)
+                const reporteData = resExtraer.data;
+                reporteData.tipoReporte = tipo;
+                reporteData.companyId = companyId;
+                reporteData.branchId = branchId;
+                reporteData.cashierId = userId;
+                await window.nexusAPI.guardarReporteFiscalLocal(reporteData);
+            } else {
+                console.warn('⚠️ No se pudo extraer el reporte para guardar en BD:', resExtraer?.msg);
+            }
+
+            if (loadingOverlay) loadingOverlay.classList.add('hidden');
+
+            // 4. Preguntar si desea imprimir la copia
+            const isCopyConfirmed = await showConfirmModal(
+                '¿Desea imprimir la copia del Reporte ' + tipo + '?', 
+                'Si acepta, se imprimirá la copia (Reporte ' + tipo + '2) y posteriormente se eliminará el registro de la impresora para que el próximo empiece de cero.'
+            );
+
+            if (isCopyConfirmed) {
+                if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+                // Emitir Copia
+                const cmdCopia = 'I1' + tipo;
+                const resCopia = await window.nexusAPI.emitirReporteFiscal([cmdCopia], puertoFiscal);
+                
+                if (resCopia && resCopia.success) {
+                    // Borrar acumulado de la copia
+                    const cmdBorrar = 'X1' + tipo;
+                    await window.nexusAPI.emitirReporteFiscal([cmdBorrar], puertoFiscal);
+                    showInfoMessage('✅ Copia impresa y registro eliminado correctamente.', 'success');
+                } else {
+                    // Si falla I1X, es que no está soportado en este modelo o hubo un problema
+                    showInfoMessage('⚠️ La impresora no soporta la copia de este reporte o hubo un error.', 'warning');
+                }
+            } else {
+                showInfoMessage('✅ Proceso de Reporte ' + tipo + ' finalizado.', 'success');
+            }
+        } catch (error) {
+            console.error('Error en Ciclo de Reporte ' + tipo + ':', error);
+            showInfoMessage('❌ Error de comunicación: ' + error.message, 'error');
+        } finally {
+            // AÑADIDO: Fin de cajero
+            await window.nexusAPI.emitirReporteFiscal(['6'], puertoFiscal);
+
+            if (loadingOverlay) loadingOverlay.classList.add('hidden');
+        }
+    }
+
+    // REPORTE X (lectura sin cerrar)
+    window.ejecutarReporteX = async function() {
+        if (!puertoFiscal) {
+            showInfoMessage('Error: No hay puerto COM fiscal configurado.', 'error');
+            return;
+        }
+        
+        const isConfirmed = await showConfirmModal(
+            '¿Desea imprimir un Reporte X?', 
+            'Este reporte NO cierra el período fiscal, es solo una lectura de los totales acumulados.'
+        );
+        
+        if (!isConfirmed) return;
+        
+        await procesarCicloReporteFiscal('X');
+    };
+
+    // CIERRE Z (cierre fiscal del día)
+    window.ejecutarCierreZ = async function() {
+        if (!puertoFiscal) {
+            showInfoMessage('Error: No hay puerto COM fiscal configurado.', 'error');
+            return;
+        }
+
+        const isConfirmed = await showConfirmModal(
+            '⚠️ Cierre Z Fiscal', 
+            '¿Está seguro de ejecutar el Cierre Z Fiscal?\n\nEste proceso es IRREVERSIBLE. Se cerrarán los totales acumulados del día y se imprimirá el reporte Z en la impresora fiscal.\n\nSe recomienda ejecutar el Cierre Z al final de la jornada.',
+            true
+        );
+
+        if (!isConfirmed) return;
+        
+        await procesarCicloReporteFiscal('Z');
+    };
+
+    // MEMORIA FISCAL - Modal
+    window.abrirModalMemoriaFiscal = function() {
+        const modal = document.getElementById('modal-memoria-fiscal');
+        if (modal) modal.classList.remove('hidden');
+        
+        // Toggle campos según tipo
+        const selectTipo = document.getElementById('memoria-tipo-reporte');
+        selectTipo.onchange = function() {
+            document.getElementById('campos-fecha').classList.toggle('hidden', this.value === 'numero');
+            document.getElementById('campos-numero').classList.toggle('hidden', this.value === 'fecha');
+        };
+    };
+
+    window.cerrarModalMemoriaFiscal = function() {
+        const modal = document.getElementById('modal-memoria-fiscal');
+        if (modal) modal.classList.add('hidden');
+    };
+
+    window.ejecutarMemoriaFiscal = async function() {
+        if (!puertoFiscal) {
+            showInfoMessage('Error: No hay puerto COM fiscal configurado.', 'error');
+            return;
+        }
+        
+        const tipo = document.getElementById('memoria-tipo-reporte').value;
+        const formato = document.getElementById('memoria-formato').value;
+        const letraFormato = formato === 'X' ? 'S' : 'A';
+        let comando = '';
+
+        if (tipo === 'fecha') {
+            const inicio = document.getElementById('memoria-fecha-inicio').value;
+            const fin = document.getElementById('memoria-fecha-fin').value;
+            if (!inicio || !fin) {
+                alert('Debe especificar ambas fechas.');
+                return;
+            }
+            // Formato HKA para imprimir por fechas: I2(A/S) ddmmyy ddmmyy
+            const partsInicio = inicio.split('-');
+            const fechaInicio = partsInicio[2] + partsInicio[1] + partsInicio[0].substring(2, 4); // yyyy-mm-dd -> ddmmyy
+            const partsFin = fin.split('-');
+            const fechaFin = partsFin[2] + partsFin[1] + partsFin[0].substring(2, 4);
+
+            comando = `I2${letraFormato}${fechaInicio}${fechaFin}`;
+        } else {
+            const zInicio = document.getElementById('memoria-z-inicio').value;
+            const zFin = document.getElementById('memoria-z-fin').value;
+            if (!zInicio || !zFin) {
+                alert('Debe especificar ambos números Z.');
+                return;
+            }
+            // Formato HKA para imprimir por número: I3(A/S) nnnnnn nnnnnn
+            const numInicio = zInicio.padStart(6, '0');
+            const numFin = zFin.padStart(6, '0');
+            
+            comando = `I3${letraFormato}${numInicio}${numFin}`;
+        }
+
+        window.cerrarModalMemoriaFiscal();
+        if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+        
+        try {
+            const resultado = await window.nexusAPI.emitirReporteFiscal(comando, puertoFiscal);
+            if (resultado && resultado.success) {
+                showInfoMessage('✅ Reporte de Memoria Fiscal impreso correctamente.', 'success');
+            } else {
+                showInfoMessage('❌ Error al imprimir Memoria Fiscal: ' + (resultado?.msg || 'Sin respuesta'), 'error');
+            }
+        } catch (error) {
+            console.error('Error en Memoria Fiscal:', error);
+            showInfoMessage('❌ Error de comunicación: ' + error.message, 'error');
+        } finally {
+            if (loadingOverlay) loadingOverlay.classList.add('hidden');
+        }
+    };
+    </script>
+</body>
+</html>

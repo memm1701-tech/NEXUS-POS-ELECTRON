@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="es" style="font-size: 18px !important;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEXUS POS - Panel de Control</title>
+    <link rel="icon" type="image/png" href="../logo_nexus.png"> 
+    
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        :root {
+            --sidebar-width: 260px;
+            --header-height: 70px;
+            --bg-main: #fcfcfc;
+            --text-color: #374151;
+            --accent-hover: #f3f4f6;
+            --accent-active: #e5e7eb;
+        }
+
+        html {
+            font-size: 18px !important; 
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--bg-main);
+            margin: 0;
+            overflow-x: hidden;
+            font-size: 1rem;
+            color: var(--text-color);
+        }
+
+        /* ANIMACIÓN DE SALTO PARA EL LOGO */
+        @keyframes jumpIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.1); opacity: 1; }
+            70% { transform: scale(0.95); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .animate-jump {
+            animation: jumpIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        /* HEADER */
+        .top-header {
+            height: var(--header-height);
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background: #ffffff;
+            display: grid;
+            grid-template-columns: var(--sidebar-width) 1fr var(--sidebar-width); 
+            align-items: center;
+            padding: 0 25px;
+            z-index: 100;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .brand img {
+            width: 45px;
+            height: 45px;
+            border-radius: 10px;
+        }
+
+        .brand h3 {
+            font-size: 0.9rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            color: #111827;
+            text-transform: uppercase;
+        }
+
+        .header-title-center {
+            text-align: center;
+            font-family: 'Dancing Script', cursive;
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1f2937;
+            white-space: nowrap;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: #ffffff;
+            position: fixed;
+            top: var(--header-height);
+            left: 0;
+            height: calc(100vh - var(--header-height));
+            border-right: 1px solid #f0f0f0;
+            z-index: 90;
+            overflow-y: auto;
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .nav-item-main {
+            display: flex;
+            align-items: center;
+            padding: 15px 25px;
+            color: var(--text-color);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            text-decoration: none;
+        }
+
+        .nav-item-main:hover { background: var(--accent-hover); }
+
+        .nav-item-main .material-icons {
+            font-size: 24px;
+            margin-right: 15px;
+            color: #9ca3af;
+        }
+
+        .submenu { display: none; background: #fafafa; }
+        .submenu-item {
+            display: block;
+            padding: 12px 25px 12px 65px;
+            font-size: 0.9rem;
+            color: #6b7280;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .submenu-item:hover { color: #111827; background: var(--accent-hover); }
+
+        .main-content {
+            margin-top: var(--header-height);
+            margin-left: var(--sidebar-width);
+            min-height: calc(100vh - var(--header-height));
+            transition: margin-left 0.3s ease-in-out;
+        }
+
+        body.sidebar-hidden .sidebar { transform: translateX(-100%); }
+        body.sidebar-hidden .main-content { margin-left: 0; }
+
+        .active-link { 
+            background-color: var(--accent-active) !important; 
+            font-weight: 700; 
+            border-right: 4px solid #111827;
+        }
+        
+        .dropdown.active .submenu { display: block; }
+
+        #loading-spinner {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 200;
+        }
+
+        #btn-toggle-menu {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            padding: 8px;
+            transition: background 0.2s;
+        }
+        #btn-toggle-menu:hover { background-color: var(--accent-hover); }
+    </style>
+</head>
+<body>
+
+    <div id="welcome-modal" class="fixed inset-0 z-[300] hidden flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md text-center border border-gray-100 mx-4">
+            <div class="mb-4 inline-flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full relative overflow-hidden mx-auto">
+                <i id="welcome-icon" class="material-icons text-4xl text-gray-800 absolute transition-opacity duration-500 opacity-100">verified_user</i>
+                <img id="welcome-logo" src="../logo_nexus.png" alt="Logo" class="w-20 h-20 absolute transition-opacity duration-500 opacity-0">
+            </div>
+            
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">¡Bienvenido a la nueva sección del Sistema!</h2>
+            <p class="text-gray-600 mb-6">
+                Estás ingresando a la nueva interfaz de administración de 
+                <span class="font-extrabold text-gray-800">NEXUS POS GLOBAL</span>.
+            </p>
+            <button id="close-welcome" class="w-full bg-gray-900 hover:bg-black text-white font-bold py-3 rounded-xl transition-colors shadow-lg">
+                Comenzar a Gestionar
+            </button>
+        </div>
+    </div>
+
+    <header class="top-header">
+        <div class="brand">
+            <div id="btn-toggle-menu">
+                <i class="material-icons" style="margin-right: 0; color: #111827; font-size: 28px;">menu</i>
+            </div>
+            <img src="../logo_nexus.png" alt="Nexus Logo">
+            <h3 class="hidden sm:block">Nexus POS Global</h3>
+        </div>
+        <div class="header-title-center">Administración Gerencial</div>
+        <div class="hidden md:block text-right text-sm text-gray-400" id="current-date">--/--/----</div>
+    </header>
+
+    <nav class="sidebar">
+        <div class="pt-6">
+            <div class="nav-item-main" data-page="control_financiero/dashboard.html">
+                <i class="material-icons">dashboard</i> Inicio
+            </div>
+
+            <div class="nav-item-main" data-page="reportes_operativos/sueldos_salarios.html">
+                <i class="material-icons">payments</i> Sueldos y Salarios
+            </div>
+
+            <div class="dropdown">
+                <div class="nav-item-main" data-dropdown-toggle>
+                    <i class="material-icons">account_balance_wallet</i> Financiero
+                </div>
+                <div class="submenu">
+                    <div class="submenu-item" data-page="control_financiero/dashboard.html">Dashboard & Ganancia</div>
+                    <div class="submenu-item" data-page="control_financiero/registrar_egresos.html">Registrar Egresos</div>
+                    <div class="submenu-item" data-page="control_financiero/registro_de_ingresos.html">Registrar Ingresos</div>
+                    <div class="submenu-item" data-page="control_financiero/cuentas_por_cobrar.html">Cuentas por Cobrar/Pagar</div>
+                </div>
+            </div>
+
+            <div class="dropdown">
+                <div class="nav-item-main" data-dropdown-toggle>
+                    <i class="material-icons">bar_chart</i> Reportes
+                </div>
+                <div class="submenu">
+                    <div class="submenu-item" data-page="reportes/ventas_detalle.html">Ventas Detalladas</div>
+                    <div class="submenu-item" data-page="reportes/cierre_inventario.html">Cierre de Inventario</div>
+                </div>
+            </div>
+
+            <div class="dropdown">
+                <div class="nav-item-main" data-dropdown-toggle>
+                    <i class="material-icons">settings</i> Ajustes
+                </div>
+                <div class="submenu">
+                    <div class="submenu-item" data-page="ajustes/tasa_cambio.html">Tasa de Cambio</div>
+                    <div class="submenu-item" data-page="ajustes/datos_empresa.html">Datos de Empresa</div>
+                </div>
+            </div>
+
+            <a href="../inicio.html" class="nav-item-main">
+                <i class="material-icons">arrow_back_ios_new</i> Volver
+            </a>
+        </div>
+    </nav>
+
+    <div id="loading-spinner" class="hidden">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-gray-800"></div>
+    </div>
+
+    <main class="main-content" id="main-view"></main>
+
+    <script type="module">
+        // 1. IMPORTACIONES FIREBASE v11.6.1 (Sincronizado con inicio.html)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDN9mZ1n-OkC-Qz52eTCOy4yJH7M0U9zYI",
+            authDomain: "nexus-pos-75593.firebaseapp.com",
+            projectId: "nexus-pos-75593",
+            storageBucket: "nexus-pos-75593.firebasestorage.app",
+            messagingSenderId: "626840984883",
+            appId: "1:626840984883:web:08d56544ee28bc8e637246"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Variable global para que todas las subvistas accedan al ID de empresa
+        window.userCompanyId = null;
+
+        // FUNCIÓN PARA CARGAR PÁGINAS DINÁMICAMENTE
+        window.loadPage = function(url, element) {
+            const container = document.getElementById('main-view');
+            const spinner = document.getElementById('loading-spinner');
+            
+            // Si la sesión no ha validado el ID de empresa, no cargamos aún
+            if (!window.userCompanyId) return;
+
+            spinner.classList.remove('hidden');
+            
+            fetch(url)
+                .then(res => { if(!res.ok) throw new Error(); return res.text(); })
+                .then(html => {
+                    container.innerHTML = html;
+                    window.scrollTo(0, 0);
+                    const scripts = container.querySelectorAll("script");
+                    scripts.forEach(oldScript => {
+                        const newScript = document.createElement("script");
+                        if (oldScript.type) newScript.type = oldScript.type;
+                        if (oldScript.src) newScript.src = oldScript.src;
+                        else newScript.textContent = oldScript.textContent;
+                        document.body.appendChild(newScript).parentNode.removeChild(newScript);
+                    });
+                    document.querySelectorAll('.nav-item-main, .submenu-item').forEach(i => i.classList.remove('active-link'));
+                    if(element) element.classList.add('active-link');
+                })
+                .catch(() => {
+                    container.innerHTML = `<div class="p-10 text-red-500 text-center">Error cargando vista.</div>`;
+                })
+                .finally(() => spinner.classList.add('hidden'));
+        }
+
+        // CONTROL DE SESIÓN Y RECUPERACIÓN DE TOKEN (CLAIMS)
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                try {
+                    // Obtenemos el token para extraer el companyId (mismo método que en inicio.html)
+                    const tokenResult = await user.getIdTokenResult(true);
+                    
+                    if (tokenResult.claims.companyId) {
+                        window.userCompanyId = tokenResult.claims.companyId;
+                    } else {
+                        // Fallback a Firestore si el claim no existe en el token
+                        const userDoc = await getDoc(doc(db, 'users', user.uid));
+                        window.userCompanyId = userDoc.exists() ? userDoc.data().companyId : "nexus_pos_id";
+                    }
+
+                    console.log("Sesión activa para empresa:", window.userCompanyId);
+                    
+                    // Solo cargamos la página inicial una vez tengamos el companyId
+                    window.loadPage('control_financiero/dashboard.html', null);
+
+                } catch (error) {
+                    console.error("Error validando sesión:", error);
+                }
+            } else {
+                // Si no hay usuario logueado, redirigir al login principal
+                window.location.href = '../index.html';
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const modal = document.getElementById('welcome-modal');
+            const closeBtn = document.getElementById('close-welcome');
+
+            // --- Lógica de UI (Menú, Fecha, Modal) ---
+            document.getElementById('btn-toggle-menu').addEventListener('click', () => {
+                document.body.classList.toggle('sidebar-hidden');
+            });
+
+            document.querySelectorAll('[data-dropdown-toggle]').forEach(btn => {
+                btn.addEventListener('click', () => btn.parentElement.classList.toggle('active'));
+            });
+
+            document.querySelectorAll('[data-page]').forEach(link => {
+                link.addEventListener('click', () => window.loadPage(link.getAttribute('data-page'), link));
+            });
+
+            document.getElementById('current-date').innerText = new Date().toLocaleDateString('es-ES', {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+            });
+
+            // Lógica de Bienvenida
+            const startIconSwap = () => {
+                const icon = document.getElementById('welcome-icon');
+                const logo = document.getElementById('welcome-logo');
+                let isIconVisible = true;
+                const swap = () => {
+                    if (isIconVisible) {
+                        icon.classList.replace('opacity-100', 'opacity-0');
+                        logo.classList.replace('opacity-0', 'opacity-100');
+                        logo.classList.add('animate-jump');
+                        isIconVisible = false;
+                        setTimeout(swap, 4000);
+                    } else {
+                        logo.classList.replace('opacity-100', 'opacity-0');
+                        logo.classList.remove('animate-jump');
+                        icon.classList.replace('opacity-0', 'opacity-100');
+                        isIconVisible = true;
+                        setTimeout(swap, 2000);
+                    }
+                };
+                setTimeout(swap, 2000);
+            };
+
+            setTimeout(() => {
+                modal.classList.remove('hidden');
+                if(typeof confetti === 'function') {
+                    const defaults = { spread: 90, ticks: 100, gravity: 0.7, decay: 0.95, startVelocity: 40, zIndex: 400 };
+                    confetti({ ...defaults, particleCount: 100, angle: 60, origin: { x: 0, y: 1 } });
+                    confetti({ ...defaults, particleCount: 100, angle: 120, origin: { x: 1, y: 1 } });
+                }
+                startIconSwap();
+            }, 500);
+
+            closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+        });
+    </script>
+</body>
+</html>

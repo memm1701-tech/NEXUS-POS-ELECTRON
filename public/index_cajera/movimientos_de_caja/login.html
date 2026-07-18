@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso de Administrador</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script> 
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f3f4f6;
+            margin: 0;
+            padding: 0;
+            /* Añadido para asegurar el centrado completo cuando se carga solo */
+            min-height: 100vh; 
+        }
+
+        .login-container {
+            box-sizing: border-box;
+            text-align: center;
+            /* Añadido para el efecto hover */
+            transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+        }
+
+        /* Añadido: Efecto de "Levitación" al pasar el ratón */
+        .login-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+        }
+        
+        .custom-alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            opacity: 0; /* Inicia invisible para el fade-in */
+            transition: opacity 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center"> 
+    <main class="main-content flex justify-center items-center p-8 w-full">
+        <div class="login-container bg-white p-10 rounded-2xl shadow-xl w-full max-w-sm">
+            <h1 class="text-3xl font-bold text-gray-800 text-center mb-8 flex items-center justify-center">
+                <span id="key-icon" class="material-icons text-red-600 mr-3 text-4xl transition duration-300 ease-in-out">vpn_key</span>
+                Acceso de Administrador
+            </h1>
+            
+            <p id="auth-status" class="text-blue-600 mb-6 font-medium text-sm">
+                Cargando autenticación...
+            </p>
+
+            <div class="form-group mb-6 text-left">
+                <label for="admin-code-input" class="block text-sm font-medium text-gray-700 mb-2">Clave de Seguridad:</label>
+                <input type="password" id="admin-code-input" placeholder="Clave de 4+ caracteres" required minlength="4"
+                       class="block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-2 focus:ring-red-500 sm:text-base p-2.5 border transition duration-150 ease-in-out">
+            </div>
+
+            <button class="btn-submit w-full bg-red-600 text-white py-3 px-6 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition duration-150 ease-in-out text-lg font-semibold shadow-md" 
+                    id="btn-submit" disabled>
+                Desbloquear Funcionalidad
+            </button>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        
+        // **CONFIGURACIÓN DE FIREBASE**
+        const firebaseConfig = {
+            apiKey: "AIzaSyDN9mZ1n-OkC-Qz52eTCOy4yJH7M0U9zYI",
+            authDomain: "nexus-pos-75593.firebaseapp.com",
+            projectId: "nexus-pos-75593",
+            storageBucket: "nexus-pos-75593.firebasestorage.app",
+            messagingSenderId: "626840984883",
+            appId: "1:626840984883:web:08d56544ee28bc8e637246",
+            measurementId: "G-K1EQVJWJHG"
+        };
+        
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        let companyId = null;
+        
+        const adminCodeInput = document.getElementById('admin-code-input');
+        const btnSubmit = document.getElementById('btn-submit');
+        const authStatus = document.getElementById('auth-status');
+        // AÑADIDO: Referencia al ícono de la llave
+        const keyIcon = document.getElementById('key-icon'); 
+        
+        /**
+         * Genera un token criptográficamente seguro.
+         */
+        function generateSecureToken(length) {
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            const charactersLength = characters.length;
+            const randomValues = window.crypto.getRandomValues(new Uint8Array(length));
+            
+            for (let i = 0; i < length; i++) {
+                result += characters.charAt(randomValues[i] % charactersLength);
+            }
+            return result;
+        }
+
+        /**
+         * 🔒 Función CRÍTICA: Verifica la clave de administrador.
+         */
+        async function checkAdminCode() {
+            if (!companyId) { showCustomAlert('Error: El ID de la empresa no está cargado.', 'warning'); return; }
+            
+            const inputCode = adminCodeInput.value.trim(); 
+            if (!inputCode || inputCode.length < 4) { 
+                showCustomAlert('Por favor, introduce la clave completa (mínimo 4 caracteres).', 'warning'); 
+                return; 
+            }
+            
+            try {
+                btnSubmit.disabled = true;
+                btnSubmit.textContent = 'Verificando...';
+                // AÑADIDO: Color ámbar mientras verifica
+                if (keyIcon) keyIcon.style.color = '#F59E0B'; 
+
+                // 1. Crear la referencia a la colección de códigos de administrador
+                const adminCodesColRef = collection(db, `companies/${companyId}/codigos_administrador`);
+                
+                // 2. Crear la consulta
+                const q = query(adminCodesColRef, where('plainCode', '==', inputCode));
+                
+                // 3. Ejecutar la consulta
+                const querySnapshot = await getDocs(q);
+        
+                // 4. Verificar si se encontró al menos un documento (autenticación exitosa)
+                if (!querySnapshot.empty) { 
+                    // ÉXITO
+                    const accessKey = generateSecureToken(32); 
+                    sessionStorage.setItem('adminAccessKey', accessKey);
+                    
+                    showCustomAlert('Acceso concedido. Redirigiendo...', 'success');
+                    // AÑADIDO: Color verde en éxito
+                    if (keyIcon) keyIcon.style.color = '#10B981'; 
+                    
+                    // 5. Redirección
+                    setTimeout(() => {
+                        window.location.href = `index_cajera/movimientos_de_caja/anulacion_y_modificacion.html`;
+                    }, 1000); 
+                    
+                } else {
+                    // FALLO
+                    showCustomAlert('Clave de seguridad incorrecta. Acceso denegado.', 'error');
+                    adminCodeInput.value = '';
+                    // AÑADIDO: Color rojo en fallo
+                    if (keyIcon) keyIcon.style.color = '#EF4444'; 
+                    
+                    // Restablecer después de un breve momento
+                    setTimeout(() => {
+                        // Volver al rojo original (text-red-600)
+                        if (keyIcon) keyIcon.style.color = '#DC2626'; 
+                        btnSubmit.disabled = false;
+                        btnSubmit.textContent = 'Desbloquear Funcionalidad';
+                    }, 500); 
+                }
+                
+            } catch (e) {
+                console.error("Error al verificar la clave de administrador: ", e);
+                showCustomAlert("Error de comunicación con la base de datos.", 'error'); 
+                // AÑADIDO: Volver al rojo original
+                if (keyIcon) keyIcon.style.color = '#DC2626'; 
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = 'Desbloquear Funcionalidad';
+            }
+        }
+        
+        
+        // Inicialización y manejo de eventos
+        function initLoginModule() {
+            if (btnSubmit) {
+                btnSubmit.addEventListener('click', checkAdminCode);
+            }
+
+            // AÑADIDO: Habilidad de Iniciar Sesión con la tecla Enter
+            adminCodeInput.addEventListener('keydown', (event) => {
+                // Verificar si la tecla presionada es 'Enter'
+                if (event.key === 'Enter') {
+                    // Prevenir la acción por defecto
+                    event.preventDefault(); 
+                    // Solo intentar verificar si el botón no está deshabilitado
+                    if (!btnSubmit.disabled) {
+                        checkAdminCode();
+                    }
+                }
+            });
+
+            // AÑADIDO: Efecto interactivo en el ícono de clave al enfocar el input
+            if (keyIcon) {
+                adminCodeInput.addEventListener('focus', () => {
+                    keyIcon.style.transform = 'rotate(-10deg) scale(1.1)';
+                });
+                
+                adminCodeInput.addEventListener('blur', () => {
+                    keyIcon.style.transform = 'rotate(0deg) scale(1)';
+                });
+            }
+
+
+            // Escucha cambios en el estado de autenticación (Necesario para obtener el companyId)
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    try {
+                        const idTokenResult = await user.getIdTokenResult();
+                        companyId = idTokenResult.claims.companyId;
+
+                        if (companyId) {
+                            authStatus.textContent = "Autenticación de usuario OK. Listo para login.";
+                            if (btnSubmit) btnSubmit.disabled = false;
+                        } else {
+                            authStatus.textContent = "Error: ID de la empresa no disponible. Contacte a soporte.";
+                        }
+                    } catch (error) {
+                        authStatus.textContent = "Error al obtener datos de usuario.";
+                        console.error("Error fetching claims:", error);
+                    }
+                } else {
+                    authStatus.textContent = "No se detectó sesión de usuario principal.";
+                    if (btnSubmit) btnSubmit.disabled = true;
+                }
+            });
+        }
+
+        // Aseguramos que la inicialización se ejecute
+        initLoginModule();
+
+        // Función para mostrar una alerta personalizada
+        function showCustomAlert(message, type = 'success') {
+            const alertDiv = document.createElement('div');
+            alertDiv.textContent = message;
+            alertDiv.classList.add('custom-alert'); 
+            
+            let backgroundColor = '#10B981'; // green-500
+            if (type === 'error') {
+                backgroundColor = '#EF4444'; // red-500
+            } else if (type === 'warning') {
+                backgroundColor = '#F59E0B'; // amber-500
+            }
+            
+            alertDiv.style.backgroundColor = backgroundColor;
+            
+            document.body.appendChild(alertDiv);
+            
+            // Iniciar la transición (haciendo que sea visible)
+            setTimeout(() => {
+                alertDiv.style.opacity = '1';
+            }, 50); 
+            
+            // Ocultar
+            setTimeout(() => {
+                alertDiv.style.opacity = '0';
+                setTimeout(() => alertDiv.remove(), 500);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

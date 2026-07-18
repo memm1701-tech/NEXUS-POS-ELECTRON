@@ -1,0 +1,167 @@
+<style>
+    .login-container {
+        box-sizing: border-box;
+        text-align: center;
+        transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+    }
+    .login-container:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+    }
+    .custom-alert {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        color: white;
+        padding: 15px;
+        border-radius: 5px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        z-index: 1000;
+        opacity: 0; 
+        transition: opacity 0.5s ease-in-out;
+    }
+</style>
+<main class="flex justify-center items-center p-4 w-full h-[calc(100vh-120px)]">
+        <div class="login-container bg-white p-8 sm:p-10 rounded-2xl shadow-xl w-full max-w-md mx-auto">
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 text-center mb-4 flex items-center justify-center">
+                <span id="key-icon" class="material-icons text-red-600 mr-3 text-3xl sm:text-4xl transition duration-300 ease-in-out">admin_panel_settings</span>
+                Acceso de Superadministrador
+            </h1>
+            
+            <p id="auth-status" class="text-blue-600 mb-2 font-medium text-sm">
+                Cargando autenticación...
+            </p>
+            
+            <p class="text-gray-600 mb-6 text-sm italic bg-yellow-50 p-3 rounded border border-yellow-200">
+                ⚠️ Para ingresar a este módulo debe comunicarse con el <strong>Soporte Técnico de Nexus POS</strong>. Las modificaciones en este apartado son estrictamente delicadas a nivel fiscal.
+            </p>
+
+            <div class="form-group mb-6 text-left">
+                <label for="admin-code-input" class="block text-sm font-medium text-gray-700 mb-2">Clave Maestra Fiscal:</label>
+                <input type="password" id="admin-code-input" placeholder="Ingrese clave proporcionada por soporte" required
+                       class="block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-2 focus:ring-red-500 sm:text-base p-2.5 border transition duration-150 ease-in-out">
+            </div>
+
+            <button class="btn-submit w-full bg-red-600 text-white py-3 px-6 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition duration-150 ease-in-out text-lg font-semibold shadow-md" 
+                    id="btn-submit" disabled>
+                Validar y Continuar
+            </button>
+        </div>
+    </main>
+
+<script>
+    (function() {
+        const adminCodeInput = document.getElementById('admin-code-input');
+        const btnSubmit = document.getElementById('btn-submit');
+        const authStatus = document.getElementById('auth-status');
+        const keyIcon = document.getElementById('key-icon'); 
+        
+        // Leer el destino desde sessionStorage y establecer fallback
+        const targetPage = sessionStorage.getItem('pendingFiscalTarget') || 'configuracion_fiscal.html';
+
+        async function initLoginModule() {
+            try {
+                authStatus.textContent = "Sistema local conectado. Listo para login.";
+                if (btnSubmit) btnSubmit.disabled = false;
+            } catch (error) {
+                authStatus.textContent = "Error al inicializar el módulo.";
+                console.error("Fallo de inicialización:", error);
+            }
+
+            if (btnSubmit) {
+                btnSubmit.addEventListener('click', checkAdminCode);
+            }
+
+            adminCodeInput?.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault(); 
+                    if (!btnSubmit.disabled) checkAdminCode();
+                }
+            });
+
+            adminCodeInput?.addEventListener('focus', () => {
+                if(keyIcon) keyIcon.style.transform = 'scale(1.2)';
+            });
+            adminCodeInput?.addEventListener('blur', () => {
+                if(keyIcon) keyIcon.style.transform = 'scale(1)';
+            });
+        }
+
+        async function checkAdminCode() {
+            const inputCode = adminCodeInput.value.trim(); 
+            if (!inputCode) { 
+                showCustomAlert('Por favor, introduce la clave.', 'warning'); 
+                return; 
+            }
+            
+            try {
+                btnSubmit.disabled = true;
+                btnSubmit.textContent = 'Verificando...';
+                if(keyIcon) keyIcon.style.color = '#F59E0B'; 
+
+                // Llamada al nuevo handler IPC para validar la clave fiscal
+                const esClaveValida = await window.nexusAPI.validarClaveFiscal(inputCode);
+        
+                if (esClaveValida) { 
+                    // Set token to allow access to target page
+                    sessionStorage.setItem('fiscalAccessKey', 'GRANTED');
+                    
+                    showCustomAlert('Acceso concedido. Redirigiendo...', 'success');
+                    if(keyIcon) keyIcon.style.color = '#10B981'; 
+                    
+                    setTimeout(() => {
+                        if (typeof window.loadPageContent === 'function') {
+                            window.loadPageContent('index_inicio_admin/configuracion/' + targetPage);
+                        }
+                    }, 1000);
+                    
+                } else {
+                    showCustomAlert('Clave fiscal incorrecta. Acceso denegado.', 'error');
+                    adminCodeInput.value = '';
+                    if(keyIcon) keyIcon.style.color = '#EF4444'; 
+                    
+                    setTimeout(() => {
+                        if(keyIcon) keyIcon.style.color = '#DC2626'; 
+                        btnSubmit.disabled = false;
+                        btnSubmit.textContent = 'Validar y Continuar';
+                    }, 500); 
+                }
+                
+            } catch (e) {
+                console.error("Error al verificar clave fiscal: ", e);
+                showCustomAlert("Error de comunicación.", 'error'); 
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = 'Validar y Continuar';
+                if(keyIcon) keyIcon.style.color = '#DC2626'; 
+            }
+        }
+        
+        function showCustomAlert(message, type = 'success') {
+            const alertDiv = document.createElement('div');
+            alertDiv.textContent = message;
+            alertDiv.classList.add('custom-alert'); 
+            
+            let backgroundColor = '#10B981'; 
+            if (type === 'error') backgroundColor = '#EF4444';
+            else if (type === 'warning') backgroundColor = '#F59E0B';
+            
+            alertDiv.style.cssText = `
+                position: fixed; top: 20px; right: 20px;
+                background-color: ${backgroundColor};
+                color: white; padding: 15px; border-radius: 5px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 1000;
+                opacity: 0; transition: opacity 0.3s ease;
+            `;
+            
+            document.body.appendChild(alertDiv);
+            
+            setTimeout(() => { alertDiv.style.opacity = '1'; }, 50); 
+            setTimeout(() => {
+                alertDiv.style.opacity = '0';
+                setTimeout(() => alertDiv.remove(), 300);
+            }, 3000);
+        }
+
+        initLoginModule();
+    })();
+</script>

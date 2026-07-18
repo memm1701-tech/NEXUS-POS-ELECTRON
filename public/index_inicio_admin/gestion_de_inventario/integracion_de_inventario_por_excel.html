@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integración de Inventario por Excel</title>
+
+    <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <script src="tailwindcss.js"></script>
+    <script src="xlsx.full.min.js"></script>
+
+<style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    .excel-module-container {
+        background-color: transparent; padding: 20px; border-radius: 0; box-shadow: none;
+        width: 100% !important; max-width: 100% !important; box-sizing: border-box;
+        text-align: center; margin: 0; min-width: 0; overflow-x: hidden;
+    }
+
+    .excel-module-container h1 { color: #333; margin-bottom: 25px; font-size: 2.2em; font-weight: 700; letter-spacing: -1px; text-align: center; }
+    .excel-module-container h2 { color: #333; margin-bottom: 15px; font-size: 1.4em; font-weight: 700; letter-spacing: -0.5px; text-align: left; }
+
+    .excel-card {
+        background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        padding: 25px 30px; margin-bottom: 20px; text-align: left; width: 100%;
+    }
+
+    .excel-card.info-card { background-color: #f8fafc; border: 1px solid #e2e8f0; }
+    .excel-card.warning-card { background-color: #f8fafc; border: 1px solid #e2e8f0; }
+    .excel-card.success-card { background-color: #f8fafc; border: 1px solid #e2e8f0; }
+
+    .excel-form-section { display: flex; flex-direction: column; gap: 15px; margin-bottom: 10px; text-align: left; }
+    .excel-form-section label { font-weight: bold; color: #4a5568; margin-bottom: 6px; font-size: 0.95em; display: block; }
+    .excel-form-section input[type="file"], .excel-form-section select {
+        width: 100%; padding: 14px; border: 1px solid #cbd5e0; border-radius: 8px; box-sizing: border-box;
+        font-size: 1em; background-color: white; font-family: 'Roboto', sans-serif;
+    }
+    .excel-form-section select {
+        appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%234a5568'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat; background-position: right 1rem center; background-size: 1.5em;
+    }
+
+    .excel-mapping-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin-top: 10px; }
+    .excel-mapping-item { display: flex; flex-direction: column; }
+    .excel-mapping-item label { font-weight: bold; color: #4a5568; margin-bottom: 6px; font-size: 0.95em; }
+    .excel-mapping-item select {
+        width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 8px; box-sizing: border-box;
+        font-size: 1em; background-color: white; appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%234a5568'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat; background-position: right 1rem center; background-size: 1.5em; font-family: 'Roboto', sans-serif;
+    }
+
+    .excel-btn { padding: 14px 24px; border: none; border-radius: 8px; font-size: 1em; font-weight: bold; cursor: pointer; transition: background-color 0.2s, transform 0.1s; width: 100%; font-family: 'Roboto', sans-serif; }
+    .excel-btn:active { transform: scale(0.98); }
+    .excel-btn-primary { background-color: #2563eb; color: white; }
+    .excel-btn-primary:hover { background-color: #1d4ed8; }
+    .excel-btn-danger { background-color: #ef4444; color: white; }
+    .excel-btn-danger:hover { background-color: #dc2626; }
+    .excel-btn-success { background-color: #16a34a; color: white; }
+    .excel-btn-success:hover { background-color: #15803d; }
+    
+    .excel-btn-actions { display: flex; gap: 12px; margin-top: 20px; justify-content: flex-end; }
+    .excel-btn-actions .excel-btn { width: auto; min-width: 160px; }
+
+    .excel-file-status { margin-top: 10px; padding: 10px 14px; border-radius: 8px; font-size: 0.9em; font-style: italic; color: #4a5568; background-color: #f3f4f6; border: 1px solid #e2e8f0; }
+    .excel-file-status.loaded { color: #166534; background-color: #dcfce7; border-color: #86efac; font-style: normal; font-weight: 500; }
+    .excel-file-status.error { color: #991b1b; background-color: #fee2e2; border-color: #fca5a5; }
+
+    .excel-results-box { margin-top: 5px; font-size: 0.95em; line-height: 1.8; color: #374151; }
+    .excel-results-box .result-line { display: flex; align-items: flex-start; gap: 8px; padding: 6px 0; border-bottom: 1px solid #e5e7eb; }
+    .excel-results-box .result-line:last-child { border-bottom: none; }
+
+    .excel-loading-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.65); backdrop-filter: blur(3px); display: none; justify-content: center; align-items: center; z-index: 9999; }
+    .excel-loading-content { background-color: white; padding: 35px 40px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25); text-align: center; width: 360px; max-width: 90vw; }
+    .excel-loading-content h3 { font-size: 1.2em; font-weight: 700; color: #1f2937; margin-bottom: 8px; }
+    
+    .excel-progress-bar-container { width: 100%; background-color: #e5e7eb; border-radius: 99px; height: 12px; overflow: hidden; margin: 15px 0; }
+    .excel-progress-bar { height: 100%; background-color: #2563eb; width: 0%; transition: width 0.3s ease; }
+    .excel-progress-text { font-size: 0.85em; color: #9ca3af; }
+
+    .excel-instructions-list { list-style: none; padding: 0; margin: 0; }
+    .excel-instructions-list li { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid #e2e8f0; font-size: 0.95em; color: #374151; line-height: 1.5; }
+    .excel-instructions-list li:last-child { border-bottom: none; }
+    .required-mark { color: #ef4444; font-weight: bold; margin-left: 2px; }
+
+    /* Estilos Drag and Drop (Tipo YouTube) */
+    .dropzone {
+        border: 2px dashed #94a3b8;
+        border-radius: 12px;
+        padding: 40px 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background-color: #f8fafc;
+        margin-bottom: 15px;
+        position: relative;
+    }
+    .dropzone:hover {
+        background-color: #f1f5f9;
+        border-color: #64748b;
+    }
+    .dropzone.dragover {
+        background-color: #e0f2fe;
+        border-color: #0ea5e9;
+        box-shadow: 0 0 15px rgba(14, 165, 233, 0.2);
+    }
+    .dropzone-icon {
+        font-size: 50px;
+        margin-bottom: 15px;
+    }
+
+</style>
+</head>
+<body>
+
+<div class="excel-module-container">
+
+    <h1> Integración de Inventario por Excel</h1>
+
+    <div class="excel-card info-card" style="margin-bottom: 20px;">
+        <h2> Instrucciones de Uso</h2>
+        <ul class="excel-instructions-list">
+            <li><span class="icon">1️⃣</span><span>Arrastra tu archivo <strong>.xlsx (Excel)</strong> o <strong>.csv</strong> al cuadro punteado.</span></li>
+            <li><span class="icon">2️⃣</span><span>Selecciona una <strong>Categoría de Destino</strong>. Los productos sin categoría se irán directo ahí.</span></li>
+            <li><span class="icon">3️⃣</span><span>Mapea cada columna. El único campo estrictamente obligatorio es el <strong>Nombre del Producto</strong>.</span></li>
+            <li><span class="icon">4️⃣</span><span>Si algún producto no trae precio en el Excel, el sistema lo creará con precio <strong>0</strong> por defecto.</span></li>
+            <li><span class="icon">5️⃣</span><span>Si el sistema detecta que un producto ya existe, <strong>pausará la carga</strong> y te preguntará qué hacer (Sobrescribir, Renombrar u Omitir).</span></li>
+        </ul>
+    </div>
+
+    <!-- PASO 1: ZONA DRAG & DROP -->
+    <div class="excel-card">
+        <h2>Paso 1: Sube tu Archivo</h2>
+        
+        <div id="excel-dropzone" class="dropzone">
+            <div class="dropzone-icon">📁</div>
+            <p style="font-size: 1.15em; color: #334155; font-weight: 500; margin-bottom: 8px;">Arrastra y suelta tu archivo aquí</p>
+            <p style="font-size: 0.9em; color: #64748b;">o haz clic para explorar en tu computadora (.xlsx, .csv)</p>
+            <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" style="display: none;">
+        </div>
+        
+        <div class="excel-file-status" id="excel-file-status">Esperando archivo...</div>
+    </div>
+
+    <!-- PASO 2: MAPEO DE COLUMNAS -->
+    <div class="excel-card warning-card" id="excel-mapping-section" style="display: none;">
+        <h2>Paso 2: Configuraciones y Mapeo</h2>
+        
+        <div class="excel-form-section" style="margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px dashed #cbd5e0;">
+            <label for="excel-target-category">Categoría de Destino (Global)<span class="required-mark">*</span>:</label>
+            <select id="excel-target-category">
+                <option value="">Cargando categorías locales...</option>
+            </select>
+            <p style="font-size: 0.85em; color: #b45309; margin-top: 5px;">Obligatorio. Si un producto del Excel no tiene categoría (o no la mapeas), se guardará en esta categoría.</p>
+        </div>
+
+        <p style="color: #6b7280; font-size: 0.95em; margin-bottom: 18px;">
+            Asigna cada columna de tu archivo al campo del sistema.
+        </p>
+
+        <div id="excel-mapping-selectors" class="excel-mapping-grid"></div>
+
+        <div class="excel-btn-actions">
+            <button id="excel-btn-cancel" class="excel-btn excel-btn-danger">✖ Cancelar</button>
+            <button id="excel-btn-process" class="excel-btn excel-btn-primary">🚀 Procesar e Importar</button>
+        </div>
+    </div>
+
+    <div class="excel-card success-card" id="excel-results-section" style="display: none;">
+        <h2>✅ Resultados de la Importación</h2>
+        <div class="excel-results-box" id="excel-results-message"></div>
+    </div>
+
+</div>
+
+<!-- MODAL DE CARGA -->
+<div id="excel-loading-modal" class="excel-loading-modal">
+    <div class="excel-loading-content">
+        <h3>⏳ Procesando...</h3>
+        <div class="excel-progress-bar-container"><div id="excel-progress-bar" class="excel-progress-bar"></div></div>
+        <p class="excel-progress-text" id="excel-progress-text">0 de 0 filas</p>
+    </div>
+</div>
+
+<!-- MODAL DE PRODUCTO DUPLICADO -->
+<div id="duplicate-modal" class="excel-loading-modal" style="z-index: 10000;">
+    <div class="excel-loading-content" style="width: 480px; text-align: left;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+            <span style="font-size: 30px;">⚠️</span>
+            <h3 style="color: #b45309; margin: 0; font-size: 1.3em;">Producto Existente</h3>
+        </div>
+        
+        <p id="duplicate-message" style="margin-bottom: 20px; color: #4b5563; font-size: 1em; line-height: 1.5;"></p>
+        
+        <div style="margin-bottom: 20px; background: #f3f4f6; padding: 10px; border-radius: 8px;">
+            <label style="font-size: 0.9em; display: flex; align-items: center; gap: 8px; cursor: pointer; color: #374151;">
+                <input type="checkbox" id="skip-all-duplicates" style="width: 18px; height: 18px; cursor: pointer;">
+                <strong>Aplicar "Omitir" a todos los siguientes duplicados</strong>
+            </label>
+        </div>
+
+        <div style="display: flex; gap: 12px; flex-direction: column;">
+            <button id="btn-dup-overwrite" class="excel-btn excel-btn-primary" style="padding: 12px;">🔄 <strong>Sobrescribir</strong> (Actualizar precios/datos con los del Excel)</button>
+            <button id="btn-dup-rename" class="excel-btn excel-btn-success" style="padding: 12px; background-color: #0d9488;">➕ <strong>Renombrar</strong> (Crearlo como uno nuevo diferente)</button>
+            <button id="btn-dup-skip" class="excel-btn excel-btn-danger" style="padding: 12px;">⏭️ <strong>Omitir</strong> (No hacer nada, saltar esta fila)</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    let companyId = null;
+    let SERVER_URL = '';
+    let respaldoActivo = false;
+    let importedData = [];
+
+    // Referencias del DOM
+    const dropzone          = document.getElementById('excel-dropzone');
+    const excelFileInput    = document.getElementById('excel-file-input');
+    const fileStatusDiv     = document.getElementById('excel-file-status'); // ¡Solucionado el ReferenceError!
+    const mappingSection    = document.getElementById('excel-mapping-section');
+    const mappingSelectors  = document.getElementById('excel-mapping-selectors');
+    const btnProcess        = document.getElementById('excel-btn-process');
+    const btnCancel         = document.getElementById('excel-btn-cancel');
+    const resultsSection    = document.getElementById('excel-results-section');
+    const resultsMessage    = document.getElementById('excel-results-message');
+    const loadingModal      = document.getElementById('excel-loading-modal');
+    const progressBar       = document.getElementById('excel-progress-bar');
+    const progressText      = document.getElementById('excel-progress-text');
+    
+    // Referencias para el Modal de Duplicados
+    const duplicateModal    = document.getElementById('duplicate-modal');
+    const duplicateMessage  = document.getElementById('duplicate-message');
+    let resolveDuplicate    = null;
+    let autoSkipDuplicates  = false;
+
+    // Configurar Botones del Modal de Duplicados
+    document.getElementById('btn-dup-overwrite').addEventListener('click', () => { if (resolveDuplicate) resolveDuplicate('overwrite'); });
+    document.getElementById('btn-dup-rename').addEventListener('click', () => { if (resolveDuplicate) resolveDuplicate('rename'); });
+    document.getElementById('btn-dup-skip').addEventListener('click', () => {
+        if (document.getElementById('skip-all-duplicates').checked) autoSkipDuplicates = true;
+        if (resolveDuplicate) resolveDuplicate('skip');
+    });
+
+    // Función que muestra el modal y devuelve una Promesa con la elección del usuario
+    async function promptDuplicate(productName, lineNum) {
+        if (autoSkipDuplicates) return 'skip';
+
+        duplicateMessage.innerHTML = `Hemos detectado que el producto <strong>"${productName}"</strong> (en la Fila ${lineNum} del Excel) ya está guardado en tu inventario.<br><br>¿Cómo deseas proceder con este registro?`;
+        duplicateModal.style.display = 'flex';
+        document.getElementById('skip-all-duplicates').checked = false;
+
+        return new Promise((resolve) => {
+            resolveDuplicate = (choice) => {
+                duplicateModal.style.display = 'none';
+                resolve(choice);
+                resolveDuplicate = null;
+            };
+        });
+    }
+
+    async function iniciarMotorExcel() {
+        try {
+            const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+            if (!api) { setTimeout(iniciarMotorExcel, 150); return; }
+
+            try {
+                if (api.obtenerConfigServer) {
+                    const config = await api.obtenerConfigServer();
+                    respaldoActivo = config.respaldo_datos === 'true' || config.respaldo_datos === true;
+                    if (respaldoActivo) {
+                        SERVER_URL = `http://${config.serverIp || config.SERVER_IP}:${config.serverPort || config.SERVER_PORT}`;
+                    } else { SERVER_URL = null; }
+                }
+            } catch (e) {}
+
+            const session = await api.obtenerSesionLocal();
+            if (session) {
+                companyId = session.companyId;
+                window.currentCompanyId = companyId;
+                
+                await cargarCategoriasLocales();
+                setupListeners();
+            } else {
+                showAlert('⚠️ No hay sesión activa. Inicia sesión.', 'error');
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    async function cargarCategoriasLocales() {
+        const catSelect = document.getElementById('excel-target-category');
+        if (!catSelect) return;
+        try {
+            const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+            const categorias = await api.obtenerCategoriasLocal();
+            
+            catSelect.innerHTML = '<option value="">-- Selecciona una categoría destino --</option>';
+            const catEmpresa = categorias.filter(c => c.company_id === companyId || c.empresa_ID === companyId);
+            
+            if (catEmpresa.length > 0) {
+                catEmpresa.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.id || c.categoria_ID;
+                    opt.textContent = c.nombre || c.name;
+                    catSelect.appendChild(opt);
+                });
+            } else {
+                catSelect.innerHTML = '<option value="">No hay categorías en el sistema.</option>';
+            }
+        } catch (e) {
+            console.error('Error cargando categorias', e);
+        }
+    }
+
+    function setupListeners() {
+        // Listeners del botón tradicional
+        if (excelFileInput) excelFileInput.addEventListener('change', (e) => procesarArchivoSeleccionado(e.target.files[0]));
+        if (btnProcess) btnProcess.addEventListener('click', processImport);
+        if (btnCancel) btnCancel.addEventListener('click', cancelImport);
+
+        // Listeners del Drag & Drop (YouTube Style)
+        if (dropzone) {
+            dropzone.addEventListener('click', () => excelFileInput.click());
+            dropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropzone.classList.add('dragover');
+            });
+            dropzone.addEventListener('dragleave', () => {
+                dropzone.classList.remove('dragover');
+            });
+            dropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('dragover');
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    const file = e.dataTransfer.files[0];
+                    procesarArchivoSeleccionado(file);
+                }
+            });
+        }
+    }
+
+    function parseFlexiblePrice(priceString) {
+        if (typeof priceString === 'number') return priceString;
+        if (typeof priceString !== 'string' || !priceString.trim()) return NaN;
+        let cleaned = priceString.trim().replace(/[^\d,.]/g, '');
+        if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) { cleaned = cleaned.replace(/\./g, '').replace(/,/g, '.'); } 
+        else { cleaned = cleaned.replace(/,/g, ''); }
+        if (!cleaned || cleaned === '.') return NaN;
+        return parseFloat(cleaned);
+    }
+
+    function procesarArchivoSeleccionado(file) {
+        if (!file) return;
+
+        // Validar extensión
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (ext !== 'xlsx' && ext !== 'xls' && ext !== 'csv') {
+            showAlert('❌ Formato no válido. Solo se permiten archivos Excel (.xlsx, .xls) o CSV.', 'error');
+            return;
+        }
+
+        const XLSX_LIB = window.XLSX;
+        if (!XLSX_LIB || !XLSX_LIB.read) return showAlert('❌ Librería XLSX falló. Intenta recargar.', 'error');
+
+        setFileStatus(`Cargando y analizando "${file.name}"...`, '');
+        resultsSection.style.display = 'none'; mappingSection.style.display = 'none';
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            try {
+                const workbook = XLSX_LIB.read(new Uint8Array(event.target.result), { type: 'array' });
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const excelHeaders = XLSX_LIB.utils.sheet_to_json(worksheet, { header: 1 })[0];
+                importedData = XLSX_LIB.utils.sheet_to_json(worksheet);
+
+                if (!importedData.length) return setFileStatus('⚠️ Archivo sin datos.', 'error');
+                
+                generateMappingUI(excelHeaders);
+                mappingSection.style.display = 'block';
+                setFileStatus(`✅ Archivo "${file.name}" cargado — ${importedData.length} filas para mapear.`, 'loaded');
+            } catch (error) { setFileStatus('❌ Error al leer el archivo. ¿Está corrupto?', 'error'); }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function generateMappingUI(headers) {
+        mappingSelectors.innerHTML = '';
+        const fields = [
+            { id: 'map-nombre',      label: 'Nombre del Producto',    required: true  },
+            { id: 'map-precio-venta',label: 'Precio de Venta (P1)',   required: false },
+            { id: 'map-precio-compra',label: 'Precio de Compra (P1)', required: false },
+            { id: 'map-categoria',   label: 'Categoría (Opcional)',   required: false },
+            { id: 'map-unidad',      label: 'Unidad de Venta',        required: false },
+            { id: 'map-codigo',      label: 'Código de Barras',       required: false },
+            { id: 'map-moneda',      label: 'Moneda (BS/USD)',        required: false },
+        ];
+
+        fields.forEach(field => {
+            const req = field.required ? '<span class="required-mark">*</span>' : '';
+            const opts = headers.map(h => `<option value="${h}">${h}</option>`).join('');
+            const div = document.createElement('div');
+            div.className = 'excel-mapping-item';
+            div.innerHTML = `<label for="${field.id}">${field.label}${req}:</label>
+                             <select id="${field.id}"><option value="">-- Ignorar columna --</option>${opts}</select>`;
+            mappingSelectors.appendChild(div);
+        });
+
+        const autoMap = {
+            'map-nombre': ['nombre', 'product', 'producto'],
+            'map-precio-venta': ['precio de venta', 'venta', 'price', 'p1 venta'],
+            'map-precio-compra': ['precio de compra', 'compra', 'costo', 'p1 compra'],
+            'map-categoria': ['categoria', 'categoría', 'category'],
+            'map-unidad': ['unidad', 'unit'],
+            'map-codigo': ['codigo', 'código', 'sku', 'barcode'],
+            'map-moneda': ['moneda', 'currency']
+        };
+        for (const [id, keys] of Object.entries(autoMap)) {
+            const select = document.getElementById(id);
+            if (!select) continue;
+            const match = headers.find(h => keys.includes(h.toString().toLowerCase().trim()));
+            if (match) select.value = match;
+        }
+    }
+
+    async function processImport() {
+        if (!companyId) return showAlert('⚠️ Sin sesión.', 'warning');
+        if (!importedData.length) return showAlert('⚠️ Sube un archivo primero.', 'warning');
+
+        const targetCategory = document.getElementById('excel-target-category').value;
+        if (!targetCategory) return showAlert('⚠️ Selecciona una Categoría de Destino obligatoria.', 'warning');
+
+        const map = {
+            nombre: document.getElementById('map-nombre').value,
+            precioVenta: document.getElementById('map-precio-venta').value,
+            precioCompra: document.getElementById('map-precio-compra').value,
+            categoria: document.getElementById('map-categoria').value,
+            unidad: document.getElementById('map-unidad').value,
+            codigo: document.getElementById('map-codigo').value,
+            moneda: document.getElementById('map-moneda').value,
+        };
+
+        if (!map.nombre) return showAlert('⚠️ Debes mapear la columna "Nombre del Producto".', 'warning');
+
+        const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+        
+        loadingModal.style.display = 'flex';
+        resultsSection.style.display = 'none';
+        autoSkipDuplicates = false; // Resetear el check de duplicados
+        
+        const totalRows = importedData.length;
+        let countOKServer = 0;
+        let countOKLocal = 0;
+        let countFailGeneral = 0;
+        let failedNoName = [];
+        let countSkippedDups = 0;
+        let countRenamedDups = 0;
+        let countOverwrittenDups = 0;
+
+        // --- SISTEMA ANTI-DUPLICADOS: Cargar inventario existente ---
+        let existingProducts = [];
+        try {
+            existingProducts = await api.obtenerProductosLocal(companyId) || [];
+        } catch (e) {
+            console.warn("No se pudo cargar el inventario local para comparar duplicados.", e);
+        }
+
+        // --- BUCLE PRINCIPAL ASÍNCRONO ---
+        for (let i = 0; i < totalRows; i++) {
+            const row = importedData[i];
+            const lineNum = i + 1;
+            
+            progressBar.style.width = `${Math.round((lineNum / totalRows) * 100)}%`;
+            progressText.textContent = `${lineNum} de ${totalRows}`;
+
+            let nombre = String(row[map.nombre] || '').trim();
+            if (!nombre) {
+                failedNoName.push(lineNum);
+                continue; // Saltar producto sin nombre
+            }
+
+            // --- DETECCIÓN DE DUPLICADOS EN TIEMPO REAL ---
+            let finalId = `PROD-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+            let operacionSync = 'INSERT'; // Por defecto es un producto nuevo
+            
+            const existingMatch = existingProducts.find(p => (p.nombre || '').trim().toLowerCase() === nombre.toLowerCase());
+            
+            if (existingMatch) {
+                // Producto duplicado encontrado. Pausar y preguntar al usuario.
+                const choice = await promptDuplicate(nombre, lineNum);
+                
+                if (choice === 'skip') {
+                    countSkippedDups++;
+                    continue; // Detener procesamiento de esta fila y pasar a la siguiente
+                } else if (choice === 'rename') {
+                    nombre = `${nombre} (Copia Excel)`;
+                    countRenamedDups++;
+                    // Deja operacionSync en 'INSERT' y genera un nuevo finalId automáticamente
+                } else if (choice === 'overwrite') {
+                    finalId = existingMatch.id || existingMatch.producto_ID; // Usamos el ID del viejo
+                    operacionSync = 'UPDATE'; // Le decimos al Sync que lo actualice, no lo cree
+                    countOverwrittenDups++;
+                }
+            }
+
+            // --- EXTRACCIÓN Y FALLBACKS ---
+            let pVenta = parseFlexiblePrice(row[map.precioVenta]);
+            let pCompra = parseFlexiblePrice(row[map.precioCompra]);
+            pVenta = (!isNaN(pVenta) && pVenta >= 0) ? pVenta : 0;
+            pCompra = (!isNaN(pCompra) && pCompra >= 0) ? pCompra : 0;
+            const porcentaje = pCompra > 0 ? parseFloat(((pVenta / pCompra - 1) * 100).toFixed(2)) : 0;
+
+            let catValue = map.categoria ? String(row[map.categoria] || '').trim() : '';
+            let finalCategoryId = targetCategory;
+            if (catValue) {
+                const options = Array.from(document.getElementById('excel-target-category').options);
+                const match = options.find(o => o.text.toLowerCase() === catValue.toLowerCase());
+                if (match) finalCategoryId = match.value;
+            }
+
+            const monedaRaw = map.moneda ? String(row[map.moneda] || '').trim().toUpperCase() : 'USD';
+            const moneda = ['BS', 'USD', 'EUR'].includes(monedaRaw) ? monedaRaw : 'USD';
+            const unidad = String(row[map.unidad] || '').trim() || 'UN';
+            const codigo = map.codigo ? String(row[map.codigo] || '').trim() : '';
+
+            const productData = {
+                producto_ID: finalId, id: finalId, empresa_ID: companyId, company_id: companyId,
+                nombre: nombre, codigo: codigo, categoria: finalCategoryId, moneda: moneda, currency: moneda,
+                unit: unidad, tipo_alicuota: '16', precio_venta: parseFloat(pVenta.toFixed(2)), precio_compra: parseFloat(pCompra.toFixed(2)),
+                porcentaje_ganancia: porcentaje, ganancia: parseFloat((pVenta - pCompra).toFixed(2)),
+                precios: {
+                    p1: { compra: parseFloat(pCompra.toFixed(2)), porcentaje: porcentaje, venta: parseFloat(pVenta.toFixed(2)) },
+                    p2: { compra: 0, porcentaje: 0, venta: 0 },
+                    p3: { compra: 0, porcentaje: 0, venta: 0 }
+                },
+                imagen: '', stock_nuevo: 0, status: 1, estado_sync: 0, fecha_modificacion: new Date().toISOString()
+            };
+
+            // --- INSERCIÓN A BASE DE DATOS (Servidor -> Local) ---
+            try {
+                if (navigator.onLine && respaldoActivo && SERVER_URL) {
+                    const response = await fetch(`${SERVER_URL}/api/maestro/inventario/sincronizar`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(productData)
+                    });
+                    if (!response.ok) throw new Error();
+                    productData.estado_sync = 1;
+                    productData.datos_json = JSON.stringify(productData);
+                    await api.sincronizarProductoServidor(productData);
+                    countOKServer++;
+                } else {
+                    throw new Error('Solo local');
+                }
+            } catch (e) {
+                try {
+                    productData.estado_sync = 0;
+                    productData.datos_json = JSON.stringify(productData);
+                    await api.sincronizarProductoServidor(productData);
+                    await api.encolarSincronizacion({ operacion: operacionSync, tabla: 'productos', datos: productData });
+                    countOKLocal++;
+                } catch (e2) {
+                    countFailGeneral++;
+                }
+            }
+        }
+
+        loadingModal.style.display = 'none';
+
+        // --- CONSTRUCCIÓN DE REPORTE FINAL ---
+        let htmlReporte = `<div class="result-line">📊 <span style="font-size: 1.1em;">Total filas procesadas: <strong>${totalRows}</strong></span></div>`;
+        
+        if (countOKServer > 0) htmlReporte += `<div class="result-line" style="color: #15803d;">✅ <span>Guardados y <strong>sincronizados a la Nube</strong>: <strong>${countOKServer}</strong></span></div>`;
+        if (countOKLocal > 0) htmlReporte += `<div class="result-line" style="color: #b45309;">⚠️ <span>Guardados <strong>SÓLO LOCALMENTE</strong> (Falta Internet/Plan Inactivo): <strong>${countOKLocal}</strong></span></div>`;
+        
+        if (countOverwrittenDups > 0) htmlReporte += `<div class="result-line" style="color: #0369a1;">🔄 <span>Productos que fueron sobrescritos: <strong>${countOverwrittenDups}</strong></span></div>`;
+        if (countRenamedDups > 0) htmlReporte += `<div class="result-line" style="color: #0d9488;">➕ <span>Productos creados como copia: <strong>${countRenamedDups}</strong></span></div>`;
+        if (countSkippedDups > 0) htmlReporte += `<div class="result-line" style="color: #64748b;">⏭️ <span>Productos omitidos (Duplicados): <strong>${countSkippedDups}</strong></span></div>`;
+        
+        if (failedNoName.length > 0) htmlReporte += `<div class="result-line" style="color: #b91c1c;">❌ <span>Ignorados por faltar Nombre (Líneas ${failedNoName.join(', ')}): <strong>${failedNoName.length}</strong></span></div>`;
+        if (countFailGeneral > 0) htmlReporte += `<div class="result-line" style="color: #ef4444;">❌ <span>Errores internos de base de datos: <strong>${countFailGeneral}</strong></span></div>`;
+
+        resultsMessage.innerHTML = htmlReporte;
+        resultsSection.style.display = 'block';
+        showAlert('Importación finalizada. Revisa los resultados.', 'info');
+        cancelImport();
+    }
+
+    function cancelImport() {
+        if (excelFileInput) excelFileInput.value = '';
+        importedData = []; mappingSection.style.display = 'none'; 
+        setFileStatus('Esperando archivo...', '');
+    }
+
+    function setFileStatus(msg, type) {
+        if (!fileStatusDiv) return; 
+        fileStatusDiv.textContent = msg; 
+        fileStatusDiv.className = 'excel-file-status';
+        if (type) fileStatusDiv.classList.add(type);
+    }
+
+    function showAlert(msg, type = 'success') {
+        const d = document.createElement('div'); d.textContent = msg;
+        const c = { success: '#22c55e', error: '#ef4444', warning: '#f59e0b', info: '#2563eb' };
+        d.style.cssText = `position: fixed; top: 20px; right: 20px; background-color: ${c[type]||c.info}; color: white; padding: 14px 20px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 99999; font-family: 'Roboto', sans-serif; transition: opacity 0.4s ease;`;
+        document.body.appendChild(d); setTimeout(() => { d.style.opacity = '0'; setTimeout(() => d.remove(), 400); }, 4000);
+    }
+
+    iniciarMotorExcel();
+})();
+</script>
+</body>
+</html>

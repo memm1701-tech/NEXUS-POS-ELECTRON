@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración de Inventario Avanzada</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        /* Contenedor principal: 100% del espacio respetando el cascarón de inicio.html */
+        .main-container {
+            background-color: transparent;
+            padding: 16px;
+            width: 100%;
+            height: calc(100vh - 40px); /* Se adapta a la pantalla sin generar doble scroll global */
+            margin: 0;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Contenedor del diseño 30/70 (Elástico hacia abajo) */
+        .content-layout {
+            display: flex;
+            flex-direction: column-reverse; 
+            gap: 16px;
+            flex: 1; /* Absorbe todo el alto sobrante de la pantalla */
+            overflow: hidden;
+        }
+        
+        /* Contenedor 30% (Configuración) */
+        .config-panel {
+            background-color: #ffffff;
+            padding: 24px;
+            border-radius: 16px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        
+        /* Contenedor 70% (Tabla) */
+        .table-panel {
+            background-color: #ffffff;
+            padding: 24px;
+            border-radius: 16px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Desktop: Aplicar 30%/70% y orden correcto */
+        @media (min-width: 1024px) {
+            .content-layout {
+                flex-direction: row; 
+            }
+            .config-panel {
+                flex: 0 0 350px; /* Ancho fijo para el panel de configuración */
+            }
+            .table-panel {
+                flex: 1; /* La tabla absorbe el resto del ancho */
+            }
+        }
+        
+        /* --- ESTILOS DE LA TABLA --- */
+        .table-responsive-wrapper {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: auto;
+            border-radius: 8px; 
+            border: 1px solid #e5e7eb;
+            margin-top: 10px;
+        }
+        
+        .table-section {
+            width: 100%;
+            min-width: 600px; 
+            border-collapse: collapse;
+            table-layout: fixed; 
+        }
+
+        .table-section th, .table-section td {
+            border-bottom: 1px solid #e5e7eb;
+            padding: 12px 16px; 
+            text-align: left;
+            font-size: 0.875rem; 
+            word-break: break-word; 
+        }
+
+        /* Estilo Azul Premium para Títulos de Tabla */
+        .table-section th {
+            background-color: #eff6ff; 
+            color: #1e40af; 
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 0.75rem; 
+            letter-spacing: 0.05em; 
+            position: sticky; 
+            top: 0;
+            z-index: 10;
+            box-shadow: inset 0 -2px 0 rgba(37, 99, 235, 0.2); 
+            border-bottom: none;
+        }
+        
+        .table-section tr:hover td {
+            background-color: #f8fafc; 
+            color: #1d4ed8; 
+            font-weight: 500;
+        }
+
+        /* Ancho fijo para la columna de Seleccionar */
+        .table-section th:last-child, .table-section td:last-child { 
+            width: 100px; 
+            text-align: center;
+        }
+        
+        .custom-checkbox input[type="checkbox"] {
+            transform: scale(1.4); 
+            cursor: pointer;
+            accent-color: #2563eb;
+        }
+
+        /* --- Scrollbars Nexus POS --- */
+        .table-responsive-wrapper::-webkit-scrollbar, 
+        .config-panel::-webkit-scrollbar { width: 6px; height: 6px; }
+        .table-responsive-wrapper::-webkit-scrollbar-track, 
+        .config-panel::-webkit-scrollbar-track { background: transparent; }
+        .table-responsive-wrapper::-webkit-scrollbar-thumb, 
+        .config-panel::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .table-responsive-wrapper::-webkit-scrollbar-thumb:hover, 
+        .config-panel::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* --- ESTILOS DE DEMOSTRACIÓN (ESTILO AZUL CRISTALINO) --- */
+        .demo-box {
+            border: 1px dashed #93c5fd;
+            background-color: #eff6ff;
+            padding: 16px;
+            border-radius: 12px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        .demo-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #bfdbfe;
+        }
+        .demo-item:last-child {
+            border-bottom: none;
+        }
+        .demo-name {
+            font-weight: 600;
+            color: #1e3a8a;
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-right: 10px;
+            font-size: 0.85rem;
+        }
+        .demo-price {
+            font-size: 0.8rem;
+            color: #64748b;
+            text-decoration: line-through;
+            margin-right: 10px;
+        }
+        .arrow-icon {
+            color: #3b82f6;
+            margin: 0 5px;
+            font-size: 1rem;
+        }
+        .demo-new-price {
+            font-weight: 800;
+            color: #16a34a; 
+            white-space: nowrap;
+            font-size: 0.9rem;
+        }
+
+        /* --- ESTILOS DEL MODAL DE ÉXITO --- */
+        .modal-overlay {
+            display: none; 
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); 
+            backdrop-filter: blur(4px);
+            z-index: 1000; 
+            justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background-color: #ffffff; padding: 24px;
+            border-radius: 16px; 
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            width: 90%; max-width: 400px; 
+            text-align: center;
+            animation: fadeIn 0.3s ease-out;
+        }
+        .modal-title { color: #16a34a; font-size: 1.5rem; font-weight: 700; margin-bottom: 12px; }
+        .modal-message { color: #374151; font-size: 1rem; line-height: 1.5; margin-bottom: 24px; }
+        .modal-close-btn {
+            background-color: #16a34a; color: white; padding: 12px 0; width: 100%;
+            border: none; border-radius: 12px; cursor: pointer; font-weight: 700;
+            transition: background-color 0.2s;
+        }
+        .modal-close-btn:hover { background-color: #15803d; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <h1 class="text-2xl font-semibold text-center mb-4 text-gray-800">Panel de Configuración de Productos</h1>
+        
+        <hr class="mb-5">
+
+        <div class="content-layout">
+            
+            <div class="config-panel">
+                <h2 class="text-xl font-bold mb-5 text-center text-gray-700">⚙️ Configuración</h2>
+                
+                <div class="mb-4">
+                    <label for="percentage-input" class="block font-medium mb-2 text-gray-700">Porcentaje a aplicar:</label>
+                    <div class="flex items-center">
+                        <input type="number" id="percentage-input" value="" placeholder="Ej: 15"
+                            class="flex-1 p-2.5 border border-gray-300 rounded-l-lg focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 text-right"
+                            min="-100" max="1000" step="0.01">
+                        <span class="bg-gray-200 text-gray-600 p-2.5 border border-l-0 border-gray-300 rounded-r-lg font-bold">
+                            %
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="fixed-amount-input" class="block font-medium mb-2 text-gray-700">Monto fijo a sumar:</label>
+                    <div class="flex items-center">
+                        <input type="number" id="fixed-amount-input" value="" placeholder="Ej: 5.50"
+                            class="flex-1 p-2.5 border border-gray-300 rounded-l-lg focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 text-right"
+                            min="-10000" max="1000000" step="0.01">
+                        <span class="bg-gray-200 text-gray-600 p-2.5 border border-l-0 border-gray-300 rounded-r-lg font-bold">
+                            Bs
+                        </span>
+                    </div>
+                </div>
+                <div class="demo-box">
+                    <h3 class="font-bold text-center mb-2 text-sm text-blue-800">DEMOSTRACIÓN DE PRECIOS</h3>
+                    <div id="demo-products-list">
+                        <p class="text-center text-gray-500 text-sm">Cargando demostración...</p>
+                    </div>
+                </div>
+                
+                <button id="apply-percentage-btn" class="w-full bg-green-500 text-white p-2.5 rounded-lg hover:bg-green-600 transition duration-150 font-semibold">
+                    Aplicar a Productos Seleccionados
+                </button>
+            </div>
+
+            <div class="table-panel">
+                <h2 class="text-xl font-bold mb-3 text-center text-gray-700">📋 Productos en Inventario</h2>
+
+                <div class="flex flex-wrap gap-3 mb-4 items-center">
+                    <input type="text" id="table-search-product" placeholder="Buscar producto en la tabla..." 
+                        class="flex-1 min-w-[200px] p-2.5 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    
+                    <button id="select-all-btn" class="bg-blue-500 text-white p-2.5 rounded-lg hover:bg-blue-600 transition duration-150 whitespace-nowrap">Seleccionar Todo</button>
+                    
+                    <select id="category-select" class="p-2.5 border border-gray-300 rounded-lg focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50 min-w-[150px]">
+                        <option value="">Todas las Categorías</option>
+                    </select>
+                </div>
+                <div class="table-responsive-wrapper">
+                    <table class="table-section">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Categoría</th>
+                                <th>Unidad</th>
+                                <th>P. Venta</th>
+                                <th>Seleccionar</th> 
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-table-body">
+                            <tr><td colspan="5" style="text-align: center;">Cargando productos...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div> <div id="success-modal-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-title">¡Éxito! 🎉</div>
+            <p id="modal-message-text" class="modal-message">
+                Aplicado un cambio al Precio de Venta de producto(s) seleccionados.
+            </p>
+            <button id="modal-close-btn" class="modal-close-btn">
+                Entendido
+            </button>
+        </div>
+    </div>
+   <script type="module">
+    // --- ESTADO GLOBAL ---
+    let companyId = null;
+    let allProducts = [];
+    let categoryMap = {}; 
+    let selectedProducts = {}; 
+
+    // --- ELEMENTOS DEL DOM ---
+    const inventoryTableBody = document.getElementById('inventory-table-body');
+    const tableSearchInput = document.getElementById('table-search-product');
+    const selectAllBtn = document.getElementById('select-all-btn');
+    const categorySelect = document.getElementById('category-select');
+    
+    const percentageInput = document.getElementById('percentage-input');
+    const fixedAmountInput = document.getElementById('fixed-amount-input'); 
+    const applyPercentageBtn = document.getElementById('apply-percentage-btn');
+    const demoProductsList = document.getElementById('demo-products-list'); 
+
+    const successModalOverlay = document.getElementById('success-modal-overlay');
+    const modalMessageText = document.getElementById('modal-message-text');
+    const modalCloseBtn = document.getElementById('modal-close-btn');
+
+    // --- FUNCIONES DEL MODAL ---
+    function showModal(message) {
+        modalMessageText.textContent = message;
+        successModalOverlay.style.display = 'flex';
+    }
+    
+    function hideModal() {
+        successModalOverlay.style.display = 'none';
+    }
+
+    if(modalCloseBtn) modalCloseBtn.addEventListener('click', hideModal);
+    if(successModalOverlay) {
+        successModalOverlay.addEventListener('click', (e) => {
+            if (e.target === successModalOverlay) hideModal();
+        });
+    }
+
+    // --- 1. INICIALIZACIÓN DIRECTA ---
+    async function inicializarModulo() {
+        try {
+            console.log("🚀 Arrancando módulo de Cambio Masivo de Precios...");
+            
+            // Buscamos la API de forma segura
+            const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+            if (!api) {
+                console.warn("⏳ NexusAPI no detectada. Reintentando en 100ms...");
+                setTimeout(inicializarModulo, 100);
+                return;
+            }
+
+            const sesion = await api.obtenerSesionLocal();
+            if (sesion) {
+                companyId = sesion.companyId || window.currentCompanyId; 
+
+                if (companyId) {
+                    console.log("✅ Sesión validada. Empresa ID:", companyId);
+                    // Iniciar Listeners de Interacción
+                    if(tableSearchInput) tableSearchInput.addEventListener('input', filterProducts); 
+                    if(categorySelect) categorySelect.addEventListener('change', filterProducts); 
+                    if(selectAllBtn) selectAllBtn.addEventListener('click', handleSelectAll); 
+                    if(applyPercentageBtn) applyPercentageBtn.addEventListener('click', handleApplyPercentage);
+                    if(percentageInput) percentageInput.addEventListener('input', renderDemoProducts); 
+                    if(fixedAmountInput) fixedAmountInput.addEventListener('input', renderDemoProducts); 
+                    
+                    // Cargar datos
+                    await cargarCategorias(api);
+                    await cargarProductos(api);
+                }
+            } else {
+                console.warn("⚠️ No hay sesión local activa.");
+                if (inventoryTableBody) inventoryTableBody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 p-4">Error: Sin sesión activa</td></tr>';
+            }
+        } catch (error) {
+            console.error("❌ Error al iniciar el módulo:", error);
+        }
+    }
+
+    // --- 2. LECTURA DE DATOS ---
+    async function cargarCategorias(api) {
+        try {
+            const categorias = await api.obtenerCategoriasLocal();
+            categoryMap = {}; 
+            if(categorySelect) categorySelect.innerHTML = '<option value="">Todas las Categorías</option>';
+
+            if (categorias && categorias.length > 0) {
+                categorias.forEach(cat => {
+                    categoryMap[cat.id] = cat.nombre || cat.name; 
+                    if(categorySelect) {
+                        const option = document.createElement('option');
+                        option.value = cat.id;
+                        option.textContent = cat.nombre || cat.name;
+                        categorySelect.appendChild(option);
+                    }
+                });
+                console.log(`📂 ${categorias.length} Categorías cargadas.`);
+            }
+        } catch (error) {
+            console.error("Error cargando categorías:", error);
+        }
+    }
+
+    async function cargarProductos(api) {
+        try {
+            const localProducts = await api.obtenerProductosLocal(companyId || window.currentCompanyId);
+            allProducts = []; 
+
+            if (localProducts && localProducts.length > 0) {
+                allProducts = localProducts.map(p => {
+                    if (!p) return null;
+
+                    let d = {}; 
+                    try {
+                        d = (typeof p.datos_json === 'string') ? JSON.parse(p.datos_json) : (p.datos_json || {});
+                    } catch (e) { 
+                        d = {}; 
+                    }
+
+                    // Rescatamos P1 como inventario.html
+                    const p1 = (d.precios && d.precios.p1) ? d.precios.p1 : null;
+
+                    return { 
+                        docId: p.id || p.producto_ID || d.id,
+                        rawProduct: p, 
+                        fullJsonData: d, 
+                        product: {
+                            nombre: d.nombre || p.nombre || 'Desconocido',
+                            codigo: d.codigo || p.codigo || 'Sin código',
+                            categoria: d.categoria || p.categoria || '',
+                            precio_compra: p1 ? parseFloat(p1.compra) : parseFloat(p.precio_compra || d.precio_compra || d.costo || 0),
+                            unit: d.unit || d.unidad_empaque || p.unit || 'UN'
+                        }
+                    };
+                }).filter(item => item !== null);
+                
+                console.log(`📦 ${allProducts.length} Productos cargados.`);
+            } else {
+                console.warn("⚠️ No se encontraron productos en la base de datos.");
+            }
+            
+            filterProducts(); 
+            renderDemoProducts(); 
+        } catch (error) {
+            console.error("Error cargando productos:", error);
+        }
+    }
+    
+    // --- 3. LÓGICA DE SELECCIÓN Y FILTRADO ---
+    function handleCheckboxChange(docId, isChecked) {
+        selectedProducts[docId] = isChecked;
+        renderDemoProducts(); 
+    }
+    
+    function filterVisibleProducts() {
+        if (!tableSearchInput || !categorySelect) return allProducts;
+        
+        const searchTerm = tableSearchInput.value.toLowerCase().trim();
+        const categoryFilter = categorySelect.value;
+        
+        let products = allProducts;
+
+        if (categoryFilter && categoryFilter !== '') {
+             products = products.filter(({ product }) => product.categoria === categoryFilter);
+        }
+
+        if (searchTerm.length > 0) {
+            products = products.filter(({ product }) => {
+                const nameMatch = (product.nombre || '').toLowerCase().includes(searchTerm);
+                const codeMatch = (product.codigo || '').toLowerCase().includes(searchTerm);
+                return nameMatch || codeMatch;
+            });
+        }
+        return products;
+    }
+    
+    function handleSelectAll() {
+        const productsToToggle = filterVisibleProducts(); 
+        const allCurrentlySelected = productsToToggle.every(({ docId }) => selectedProducts[docId]);
+        const shouldSelect = !allCurrentlySelected; 
+
+        productsToToggle.forEach(({ docId }) => {
+            selectedProducts[docId] = shouldSelect;
+        });
+        
+        filterProducts(); 
+        renderDemoProducts(); 
+    }
+
+    function filterProducts() {
+        const productsToDisplay = filterVisibleProducts();
+        renderTable(productsToDisplay);
+    }
+
+    function renderTable(productsToDisplay) {
+        if (!inventoryTableBody) return;
+        inventoryTableBody.innerHTML = '';
+        
+        if (productsToDisplay.length === 0) {
+            inventoryTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #6b7280; font-style: italic;">No se encontraron productos.</td></tr>';
+            return;
+        }
+
+        productsToDisplay.forEach(({ docId, product }) => {
+            const row = document.createElement('tr');
+            const categoryId = product.categoria; 
+            const categoryName = categoryMap[categoryId] || categoryId || 'Sin Categoría'; 
+            const isSelected = selectedProducts[docId] || false;
+            
+            const nombreProd = product.nombre || 'Desconocido';
+            const precioBase = parseFloat(product.precio_compra || 0);
+            
+            row.innerHTML = `
+                <td>${nombreProd}</td>
+                <td>${categoryName}</td> 
+                <td style="text-align: center;">${product.unit || 'UN'}</td>
+                <td class="font-bold text-gray-700">Bs ${precioBase.toFixed(2)}</td>
+                <td style="text-align: center;">
+                    <div class="custom-checkbox">
+                        <input type="checkbox" id="table-select-${docId}" ${isSelected ? 'checked' : ''} data-doc-id="${docId}">
+                    </div>
+                </td>
+            `; 
+            
+            const checkbox = row.querySelector(`#table-select-${docId}`);
+            if(checkbox) {
+                checkbox.addEventListener('change', (e) => handleCheckboxChange(docId, e.target.checked));
+            }
+
+            inventoryTableBody.appendChild(row);
+        });
+    }
+    
+    // --- 4. LÓGICA DE DEMOSTRACIÓN ---
+    function calculateNewPrice(currentPrice, percentageValue, fixedAmountValue) {
+        let newPrice = currentPrice;
+        const percentageMultiplier = 1 + (percentageValue / 100);
+        newPrice *= percentageMultiplier;
+        newPrice += fixedAmountValue;
+        return Math.max(0, newPrice);
+    }
+    
+    function renderDemoProducts() {
+        if (!demoProductsList) return;
+        demoProductsList.innerHTML = '';
+
+        const selectedProductIds = Object.keys(selectedProducts).filter(id => selectedProducts[id]);
+        const percentageValue = percentageInput ? (parseFloat(percentageInput.value) || 0) : 0;
+        const fixedAmountValue = fixedAmountInput ? (parseFloat(fixedAmountInput.value) || 0) : 0; 
+
+        if (selectedProductIds.length === 0) {
+            demoProductsList.innerHTML = '<p class="text-center font-semibold text-red-600 text-sm py-4">⚠️ Seleccione un producto primero</p>';
+            return;
+        }
+        
+        const selectedProductsObjects = allProducts.filter(({ docId }) => selectedProductIds.includes(docId));
+        
+        const getRandomItems = (arr, num) => {
+            const shuffled = [...arr].sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, num);
+        };
+
+        let demoProducts = selectedProductsObjects.length <= 3 ? selectedProductsObjects : getRandomItems(selectedProductsObjects, 3);
+        
+        demoProducts.forEach(({ docId, product }) => {
+            const currentCost = parseFloat(product.precio_compra || 0);
+            const nombreProd = product.nombre || 'Producto';
+            const newCost = calculateNewPrice(currentCost, percentageValue, fixedAmountValue);
+            
+            const itemDiv = document.createElement('div');
+            itemDiv.classList.add('demo-item', 'flex', 'justify-between', 'items-center', 'p-3', 'border-b', 'border-gray-200');
+            itemDiv.innerHTML = `
+                <span class="demo-name text-sm font-semibold truncate w-1/3" title="${nombreProd}">${nombreProd}</span>
+                <span class="demo-price text-sm text-gray-500">Costo: Bs ${currentCost.toFixed(2)}</span>
+                <span class="arrow-icon text-blue-500 mx-2"><i class="fas fa-arrow-right"></i></span>
+                <span class="demo-new-price text-sm font-bold text-green-600">Costo: Bs ${newCost.toFixed(2)}</span>
+            `;
+            demoProductsList.appendChild(itemDiv);
+        });
+    }
+    
+    // --- 5. APLICACIÓN DE CAMBIOS MASIVOS ---
+    async function handleApplyPercentage() {
+        const percentageValue = parseFloat(percentageInput.value) || 0;
+        const fixedAmountValue = parseFloat(fixedAmountInput.value) || 0; 
+
+        if (percentageValue === 0 && fixedAmountValue === 0) {
+            showModal('⚠️ Por favor, ingresa un Porcentaje a aplicar o un Monto fijo a sumar.');
+            return;
+        }
+        
+        const selectedIds = Object.keys(selectedProducts).filter(id => selectedProducts[id]);
+        
+        if (selectedIds.length === 0) {
+            showModal('⚠️ Por favor, selecciona al menos un producto en la tabla para aplicar los cambios.');
+            return;
+        }
+
+        applyPercentageBtn.disabled = true;
+        applyPercentageBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Aplicando...';
+
+        let productsUpdatedCount = 0;
+
+        try {
+            const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+
+            for (const docId of selectedIds) {
+                const productEntry = allProducts.find(p => p.docId === docId);
+                
+                if (productEntry && productEntry.product) {
+                    const currentCost = parseFloat(productEntry.product.precio_compra || 0);
+                    const newCost = calculateNewPrice(currentCost, percentageValue, fixedAmountValue);
+                    const finalCost = parseFloat(newCost.toFixed(2)); 
+
+                    if (currentCost.toFixed(2) !== finalCost.toFixed(2)) {
+                        
+                        let updatedJsonData = { ...productEntry.fullJsonData };
+                        
+                        if (!updatedJsonData.precios) {
+                            updatedJsonData.precios = {
+                                p1: { compra: finalCost, porcentaje: 0, venta: finalCost },
+                                p2: { compra: finalCost, porcentaje: 0, venta: finalCost },
+                                p3: { compra: finalCost, porcentaje: 0, venta: finalCost }
+                            };
+                        }
+
+                        const tiers = ['p1', 'p2', 'p3'];
+                        tiers.forEach(tier => {
+                            if (updatedJsonData.precios[tier]) {
+                                updatedJsonData.precios[tier].compra = finalCost;
+                                const margen = parseFloat(updatedJsonData.precios[tier].porcentaje) || 0;
+                                updatedJsonData.precios[tier].venta = parseFloat((finalCost * (1 + (margen / 100))).toFixed(2));
+                            }
+                        });
+
+                        updatedJsonData.precio_compra = finalCost;
+                        updatedJsonData.precio_venta = updatedJsonData.precios.p1.venta;
+                        updatedJsonData.fecha_modificacion = new Date().toISOString();
+
+                        const productoListoParaSQLite = {
+                            ...productEntry.rawProduct, 
+                            precio_compra: finalCost,
+                            precio: updatedJsonData.precios.p1.venta, 
+                            fecha_modificacion: updatedJsonData.fecha_modificacion,
+                            datos_json: JSON.stringify(updatedJsonData) 
+                        };
+
+                        await api.sincronizarProductoServidor(productoListoParaSQLite);
+                        
+                        if (api.encolarSincronizacion) {
+                            await api.encolarSincronizacion({
+                                operacion: 'UPDATE',
+                                tabla: 'productos',
+                                datos: productoListoParaSQLite
+                            });
+                        }
+                        
+                        productsUpdatedCount++;
+                    }
+                }
+            }
+            
+            if (productsUpdatedCount === 0) {
+                showModal('No hubo cambios. Los valores aplicados resultan en el mismo costo anterior.');
+            } else {
+                let message = '';
+                if (percentageValue !== 0) message += `${percentageValue}% de cambio`;
+                if (percentageValue !== 0 && fixedAmountValue !== 0) message += ' y ';
+                if (fixedAmountValue !== 0) message += `${fixedAmountValue.toFixed(2)}Bs de monto fijo`;
+                
+                const successMessage = `✅ Aplicado un ${message} al Costo Base de ${productsUpdatedCount} producto(s). Los precios de venta fueron recalculados automáticamente según sus márgenes.`;
+                showModal(successMessage);
+                
+                Object.keys(selectedProducts).forEach(id => selectedProducts[id] = false);
+                percentageInput.value = '';
+                fixedAmountInput.value = '';
+                
+                await cargarProductos(api);
+            }
+
+        } catch (error) {
+            console.error("Error al actualizar precios:", error);
+            showModal(`❌ Error interno al modificar precios: ${error.message}`);
+        } finally {
+            applyPercentageBtn.disabled = false;
+            applyPercentageBtn.innerHTML = 'Aplicar a Productos Seleccionados';
+        }
+    }
+
+    // 🔥 EL ARRANQUE DIRECTO (Soluciona el problema de inyección HTML)
+    // En lugar de esperar a DOMContentLoaded, lo ejecutamos de inmediato.
+    inicializarModulo();
+    
+    </script>
+</body>
+</html>

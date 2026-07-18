@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="icon" type="image/png" href="logo_nexus.png">
+    <title>Cargando Catálogo Nexus...</title>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const companyId = params.get('company');
+
+            if (companyId) {
+                // Definimos la URL absoluta de la tienda para evitar errores de ruta
+                const storeBaseUrl = 'https://tienda.nexusposgobal.com/';
+                
+                // Construimos la redirección final
+                const finalUrl = `${storeBaseUrl}?company=${companyId}`;
+                
+                console.log("🚀 Redirigiendo a:", finalUrl);
+                window.location.replace(finalUrl);
+            } else {
+                document.body.innerHTML = `
+                    <div style="text-align: center; padding-top: 100px; font-family: sans-serif;">
+                        <h2>Nexus POS Global</h2>
+                        <p>ID de empresa no encontrado. Por favor, contacte al negocio.</p>
+                    </div>`;
+            }
+        });
+    </script>
+</head>
+<body style="background-color: #f7f7f7;">
+    <div style="text-align: center; padding-top: 100px; font-family: sans-serif; color: #2563EB;">
+        <h3>Conectando con la tienda...</h3>
+        <p>Espera un momento, por favor.</p>
+    </div>
+</body>
+</html>

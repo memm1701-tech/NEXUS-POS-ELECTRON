@@ -1,0 +1,164 @@
+<div class="max-w-7xl mx-auto animate-fade-in p-4 md:p-8">
+    <style>
+        /* Animaciones y estilos específicos del componente */
+        .animate-fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .custom-input { border: 1px solid #f3f4f6; transition: all 0.2s; }
+        .custom-input:focus { border-color: #e5e7eb; background-color: white; outline: none; }
+        .hidden-row { display: none; }
+    </style>
+
+    <div class="mb-8">
+        <h2 class="text-2xl font-bold text-gray-800 italic">Gestión de Créditos</h2>
+        <p class="text-sm text-gray-500">Control inteligente de deudas y cobranzas.</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 h-fit">
+            <h4 class="font-bold text-gray-800 mb-6 italic">Nueva Obligación</h4>
+            
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Tipo de Registro</label>
+                    <div class="flex bg-gray-100 p-1 rounded-xl gap-1">
+                        <button id="btn-cobrar" onclick="setTipo('cobrar')" 
+                            class="flex-1 py-2 text-[10px] font-bold rounded-lg transition-all bg-white text-gray-800 shadow-sm">
+                            POR COBRAR
+                        </button>
+                        <button id="btn-pagar" onclick="setTipo('pagar')" 
+                            class="flex-1 py-2 text-[10px] font-bold rounded-lg transition-all text-gray-400">
+                            POR PAGAR
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase mb-2">Entidad</label>
+                    <input type="text" id="entidad" placeholder="Ej: Cliente X o Proveedor Y" 
+                        class="w-full p-3 bg-gray-50 rounded-xl custom-input text-sm text-gray-700">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-2">Vencimiento</label>
+                        <input type="date" id="fecha" class="w-full p-3 bg-gray-50 rounded-xl custom-input text-xs text-gray-600">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-2">Monto Bs.</label>
+                        <input type="text" id="monto" placeholder="0,000,000,000" 
+                            class="w-full p-3 bg-gray-50 rounded-xl custom-input font-bold text-gray-800">
+                    </div>
+                </div>
+
+                <button id="btn-registrar" class="w-full bg-gray-800 text-white py-4 rounded-xl font-bold hover:bg-black transition-all flex items-center justify-center gap-3">
+                    <span class="text-sm">Registrar</span>
+                    <i class="material-icons text-sm">add_task</i>
+                </button>
+            </div>
+        </div>
+
+        <div class="lg:col-span-2 bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <div class="flex justify-between items-center mb-6">
+                <h4 id="tabla-titulo" class="font-bold text-gray-800 italic uppercase text-xs tracking-widest text-blue-600">Mostrando: Cuentas por Cobrar</h4>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="text-[10px] uppercase tracking-widest text-gray-400 border-b border-gray-50">
+                            <th class="pb-4 font-bold">Estado</th>
+                            <th class="pb-4 font-bold">Entidad / Cliente</th>
+                            <th class="pb-4 font-bold text-right">Saldo Pendiente</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-body" class="text-sm text-gray-600 divide-y divide-gray-50">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Lógica de funcionamiento (Encapsulada para carga dinámica)
+        (function() {
+            let tipoActual = 'cobrar';
+
+            const montoInput = document.getElementById('monto');
+            const btnRegistrar = document.getElementById('btn-registrar');
+
+            montoInput.addEventListener('input', function(e) {
+                let cursorPosition = e.target.selectionStart;
+                let originalLength = e.target.value.length;
+                let value = e.target.value.replace(/[^\d,]/g, "");
+                let parts = value.split(',');
+                if (parts.length > 2) value = parts[0] + ',' + parts.slice(1).join("");
+                if (parts[0].length > 0) {
+                    parts[0] = new Intl.NumberFormat('de-DE').format(parseInt(parts[0]));
+                }
+                e.target.value = parts.join(',');
+                let newPosition = cursorPosition + (e.target.value.length - originalLength);
+                e.target.setSelectionRange(newPosition, newPosition);
+            });
+
+            // Función global para los botones onclick (definida en el scope actual)
+            window.setTipo = function(tipo) {
+                tipoActual = tipo;
+                const btnCobrar = document.getElementById('btn-cobrar');
+                const btnPagar = document.getElementById('btn-pagar');
+                const titulo = document.getElementById('tabla-titulo');
+
+                if(tipo === 'cobrar') {
+                    btnCobrar.className = "flex-1 py-2 text-[10px] font-bold rounded-lg transition-all bg-white text-gray-800 shadow-sm";
+                    btnPagar.className = "flex-1 py-2 text-[10px] font-bold rounded-lg transition-all text-gray-400";
+                    titulo.innerText = "Mostrando: Cuentas por Cobrar";
+                    titulo.className = "font-bold italic uppercase text-xs tracking-widest text-blue-600";
+                } else {
+                    btnPagar.className = "flex-1 py-2 text-[10px] font-bold rounded-lg transition-all bg-white text-gray-800 shadow-sm";
+                    btnCobrar.className = "flex-1 py-2 text-[10px] font-bold rounded-lg transition-all text-gray-400";
+                    titulo.innerText = "Mostrando: Cuentas por Pagar";
+                    titulo.className = "font-bold italic uppercase text-xs tracking-widest text-red-600";
+                }
+                filtrarTabla();
+            };
+
+            function filtrarTabla() {
+                const filas = document.querySelectorAll('.fila-registro');
+                filas.forEach(fila => {
+                    fila.style.display = (fila.getAttribute('data-tipo') === tipoActual) ? '' : 'none';
+                });
+            }
+
+            btnRegistrar.addEventListener('click', function() {
+                const entidad = document.getElementById('entidad').value;
+                const montoRaw = document.getElementById('monto').value;
+                const fecha = document.getElementById('fecha').value;
+                const montoNumerico = parseFloat(montoRaw.replace(/\./g, '').replace(',', '.'));
+
+                if(!entidad || isNaN(montoNumerico)) return;
+
+                const colorMonto = tipoActual === 'cobrar' ? 'text-blue-600' : 'text-red-600';
+
+                const nuevaFila = `
+                    <tr class="fila-registro animate-fade-in hover:bg-gray-50/50" data-tipo="${tipoActual}">
+                        <td class="py-5">
+                            <span class="text-[9px] font-bold px-2 py-1 rounded bg-gray-100 text-gray-500 uppercase">Pendiente</span>
+                        </td>
+                        <td class="py-5">
+                            <div class="font-bold text-gray-800">${entidad}</div>
+                            <div class="text-[10px] text-gray-400">Vence: ${fecha}</div>
+                        </td>
+                        <td class="py-5 text-right">
+                            <span class="font-bold ${colorMonto}">Bs. ${montoNumerico.toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                        </td>
+                    </tr>
+                `;
+
+                document.getElementById('tabla-body').insertAdjacentHTML('afterbegin', nuevaFila);
+                filtrarTabla();
+                document.getElementById('entidad').value = '';
+                document.getElementById('monto').value = '';
+            });
+        })();
+    </script>
+</div>

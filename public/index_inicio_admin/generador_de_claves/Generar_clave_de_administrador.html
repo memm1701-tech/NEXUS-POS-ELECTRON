@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Clave de Administrador</title>
+    <link rel="stylesheet" href="../node_modules/@fortawesome/fontawesome-free/css/all.min.css">
+    <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <script src="tailwindcss.js"></script>
+    <style>
+        /* Hacemos que los títulos de la tabla sean fijos */
+        thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: #f9fafb;
+            box-shadow: inset 0 -1px 0 #e5e7eb;
+        }
+        /* Scrollbar moderno estilo Nexus */
+        .overflow-y-auto::-webkit-scrollbar { width: 6px; }
+        .overflow-y-auto::-webkit-scrollbar-track { background: transparent; }
+        .overflow-y-auto::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .overflow-y-auto::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans overflow-hidden">
+    
+    <main class="flex flex-col w-full h-screen p-4 gap-4">
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 shrink-0">
+
+            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200">
+                <h2 class="text-xl font-bold mb-6 text-gray-800 border-b pb-3 flex items-center">
+                    <i class="fas fa-key text-blue-600 mr-3"></i> Generar Nueva Clave
+                </h2>
+                
+                <div class="space-y-4 text-left">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Dueño de la clave</label>
+                        <input type="text" id="owner-name" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej. Juan Pérez">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Contraseña (Mín. 4 caracteres)</label>
+                        <input type="password" id="admin-code" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="••••••••">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Confirmar Contraseña</label>
+                        <input type="password" id="confirm-admin-code" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="••••••••">
+                    </div>
+                    
+                    <button id="btn-generate" class="w-full mt-4 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition duration-200 shadow-md">
+                        <i class="fas fa-save mr-2"></i> Generar y Guardar
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 flex flex-col">
+                <h2 class="text-xl font-bold mb-6 text-gray-800 border-b pb-3 flex items-center">
+                    <i class="fas fa-random text-green-600 mr-3"></i> Generador Seguro
+                </h2>
+                
+                <div class="space-y-6 text-left flex-1 flex flex-col justify-center">
+                    <p class="text-sm text-gray-500">Usa esta herramienta si deseas generar una contraseña ultra segura al azar.</p>
+                    
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Longitud de la clave (8-32)</label>
+                        <input type="number" id="pass-length" value="12" min="8" max="32" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-green-500 outline-none text-center font-bold text-lg">
+                    </div>
+
+                    <div class="bg-gray-100 p-4 rounded-lg border border-dashed border-gray-300 text-center relative">
+                        <span id="generated-password-display" class="text-xl font-mono font-bold text-gray-800 break-all select-all">Presiona 'Generar'</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 mt-auto pt-4">
+                        <button id="btn-random-generate" class="bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300 transition duration-200">
+                            Generar Nueva
+                        </button>
+                        <button id="btn-copy-pass" class="bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition duration-200 shadow-md">
+                            <i class="fas fa-copy mr-2"></i> Copiar Clave
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div> <div class="flex-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+            <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-3 flex items-center shrink-0">
+                <i class="fas fa-list text-gray-600 mr-3"></i> Claves Registradas
+            </h2>
+            
+            <div class="flex-1 overflow-y-auto pr-2">
+                <table class="min-w-full divide-y divide-gray-200 relative">
+                    <thead class="bg-gray-50 sticky top-0 z-10">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Dueño</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Clave Oculta</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Modificación</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-code-table-body" class="bg-white divide-y divide-gray-200">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </main> 
+
+    <div id="reveal-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 relative text-center">
+            <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-eye text-2xl"></i>
+            </div>
+            
+            <h3 class="text-xl font-bold text-gray-900 mb-2">Revelar Contraseña</h3>
+            <p id="modal-message" class="text-gray-600 text-sm mb-6">Estás apunto de ver la clave, ¿deseas revelarla?</p>
+            
+            <div id="modal-plain-code-display" class="hidden bg-gray-100 p-4 rounded-lg font-mono text-2xl font-black text-gray-800 tracking-widest mb-6 break-all"></div>
+            
+            <div id="modal-actions" class="flex gap-3 justify-center">
+                <button id="modal-btn-no" class="flex-1 py-3 bg-gray-200 text-gray-800 font-bold rounded-xl hover:bg-gray-300 transition">Cancelar</button>
+                <button id="modal-btn-yes" class="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-md">Sí, Revelar</button>
+            </div>
+            
+            <div id="modal-close-action" class="hidden">
+                <button id="modal-btn-close" class="w-full py-3 bg-gray-200 text-gray-800 font-bold rounded-xl hover:bg-gray-300 transition">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="nexus-confirm-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 relative text-center">
+            <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-exclamation-triangle text-2xl"></i>
+            </div>
+            
+            <h3 class="text-xl font-bold text-red-600 mb-2">Confirmar Eliminación</h3>
+            <p id="nexus-confirm-message" class="text-gray-600 text-sm mb-6"></p>
+            
+            <div class="flex gap-3 justify-center">
+                <button onclick="document.getElementById('nexus-confirm-modal').classList.add('hidden')" class="flex-1 py-3 bg-gray-200 text-gray-800 font-bold rounded-xl hover:bg-gray-300 transition">Cancelar</button>
+                <button id="nexus-confirm-yes-btn" class="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition shadow-md">Sí, Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+    // --- 1. ESTADO GLOBAL ---
+    let userId = null;
+    let companyId = null;
+    let currentPlainCodeToReveal = ''; 
+
+    // --- 2. REFERENCIAS AL DOM ---
+    const ownerNameInput = document.getElementById('owner-name');
+    const adminCodeInput = document.getElementById('admin-code');
+    const confirmCodeInput = document.getElementById('confirm-admin-code');
+    const btnGenerate = document.getElementById('btn-generate');
+    const tableBody = document.getElementById('admin-code-table-body');
+    
+    const revealModal = document.getElementById('reveal-modal');
+    const modalMessage = document.getElementById('modal-message');
+    const modalPlainCodeDisplay = document.getElementById('modal-plain-code-display'); 
+    const modalActions = document.getElementById('modal-actions');
+    const modalCloseAction = document.getElementById('modal-close-action');
+    const modalBtnNo = document.getElementById('modal-btn-no');
+    const modalBtnYes = document.getElementById('modal-btn-yes');
+    const modalBtnClose = document.getElementById('modal-btn-close');
+
+    const passLengthInput = document.getElementById('pass-length');
+    const btnRandomGenerate = document.getElementById('btn-random-generate');
+    const generatedPasswordDisplay = document.getElementById('generated-password-display');
+    const btnCopyPass = document.getElementById('btn-copy-pass');
+
+    // --- 3. INICIALIZACIÓN LOCAL ---
+    async function inicializarModuloLocal() {
+        try {
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
+            if (sesion) {
+                userId = sesion.uid;
+                companyId = sesion.companyId;
+                console.log("✅ Sesión local validada. Módulo de Claves listo.");
+                loadAdminCode(); // Cargar la tabla local
+            } else {
+                showCustomAlert("Error: No se detectó sesión activa.", 'error');
+            }
+        } catch (error) {
+            console.error("Error al obtener sesión local:", error);
+            showCustomAlert("Error de conexión con la base de datos.", 'error');
+        }
+    }
+
+    // --- 4. GESTIÓN DE DATOS (CRUD LOCAL) ---
+    async function generateAndSaveCode() {
+        if (!companyId) {
+            showCustomAlert('Error: El sistema no ha identificado la empresa.', 'error');
+            return;
+        }
+
+        const ownerName = ownerNameInput.value.trim();
+        const code = adminCodeInput.value.trim();
+        const confirmCode = confirmCodeInput.value.trim();
+
+        if (!ownerName) { showCustomAlert('Ingresa el nombre del dueño de la clave.', 'warning'); return; }
+        if (!code || code.length < 4) { showCustomAlert('La clave debe tener al menos 4 caracteres.', 'warning'); return; }
+        if (code !== confirmCode) { showCustomAlert('Las claves no coinciden.', 'warning'); return; }
+        
+        btnGenerate.disabled = true;
+
+        try {
+            const nuevaClave = {
+                id: `ADMIN-${Date.now()}`,
+                ownerName: ownerName,
+                plainCode: code, // Se enviará plano, main.js lo cifrará antes de guardarlo en SQLite
+                company_id: companyId,
+                created_by: userId,
+                updatedAt: new Date().toISOString()
+            };
+
+            const resultado = await window.nexusAPI.guardarClaveAdminMaestro(nuevaClave);
+            
+            if (resultado && !resultado.error) {
+                showCustomAlert(`Clave para ${ownerName} guardada correctamente.`, 'success');
+                ownerNameInput.value = '';
+                adminCodeInput.value = '';
+                confirmCodeInput.value = '';
+                loadAdminCode(); // Refrescar tabla
+            } else {
+                throw new Error(resultado.error || "Error desconocido al guardar en SQLite");
+            }
+        } catch (e) {
+            console.error("Error guardando clave:", e);
+            showCustomAlert(`Fallo interno: ${e.message}`, 'error'); 
+        } finally {
+            btnGenerate.disabled = false;
+        }
+    }
+
+    function confirmDeletion(docId, ownerName) {
+        const modal = document.getElementById('nexus-confirm-modal');
+        const message = document.getElementById('nexus-confirm-message');
+        const yesBtn = document.getElementById('nexus-confirm-yes-btn');
+
+        // Insertamos el texto dinámico resaltando el nombre
+        message.innerHTML = `¿Seguro que quieres eliminar la clave de <strong>${ownerName}</strong>?`;
+        
+        // Asignamos la acción real de eliminar al botón rojo
+        yesBtn.onclick = () => {
+            modal.classList.add('hidden');
+            deleteCode(docId); // Tu función original que elimina la base de datos
+        };
+
+        // Mostramos el modal
+        modal.classList.remove('hidden');
+    }
+
+    async function loadAdminCode() {
+        if (!companyId) return;
+        
+        try {
+            // main.js se encargará de desencriptar las claves antes de devolverlas al Front-End
+            const claves = await window.nexusAPI.obtenerClavesAdminMaestro(companyId);
+            renderAdminCodeTable(claves);
+        } catch (error) {
+            console.error("Error al cargar la tabla de códigos:", error);
+            showCustomAlert("Error al leer la base de datos local.", 'error');
+        }
+    }
+
+    async function deleteCode(docId) {
+        if (!companyId) return;
+        try {
+            const result = await window.nexusAPI.eliminarClaveAdminMaestro(docId);
+            if (result && !result.error) {
+                showCustomAlert("Clave eliminada correctamente.", 'success');
+                loadAdminCode(); // Refrescar tabla
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            console.error("Error al eliminar:", error);
+            showCustomAlert("No se pudo eliminar la clave.", 'error');
+        }
+    }
+
+    // --- 5. RENDERIZADO DE TABLA E INTERFAZ ---
+function renderAdminCodeTable(claves) {
+        tableBody.innerHTML = '';
+        
+        if (claves && claves.length > 0) { 
+            claves.forEach((codeData) => {
+                const row = tableBody.insertRow();
+                
+                row.insertCell(0).textContent = codeData.ownerName || 'Administrador Principal';
+                
+                const codeCell = row.insertCell(1);
+                codeCell.textContent = '••••••••';
+                codeCell.style.fontFamily = 'monospace';
+                
+                const fechaLocal = new Date(codeData.updatedAt).toLocaleString('es-VE');
+                row.insertCell(2).textContent = fechaLocal;
+                
+                // Botones de acción alineados como en facturacion.html
+                const actionCell = row.insertCell(3);
+                actionCell.style.display = 'flex';
+                actionCell.style.alignItems = 'center';
+                actionCell.style.gap = '15px'; // Un poco más de espacio entre iconos
+                
+                // Botón de Revelar (Ojo)
+                const revealBtn = document.createElement('button');
+                revealBtn.innerHTML = '<i class="fas fa-eye"></i>'; 
+                revealBtn.className = 'text-blue-600 hover:text-blue-900 transition-colors text-lg';
+                revealBtn.title = 'Revelar Clave';
+                revealBtn.onclick = () => showRevealModal(codeData.plainCode); 
+                actionCell.appendChild(revealBtn);
+                const deleteBtn = document.createElement('button');
+                deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i>'; 
+                deleteBtn.className = 'text-red-600 hover:text-red-900 transition-colors text-lg';
+                deleteBtn.title = 'Eliminar Clave';
+                deleteBtn.onclick = () => confirmDeletion(codeData.id, codeData.ownerName); 
+                actionCell.appendChild(deleteBtn);
+            });
+        } else {
+            const row = tableBody.insertRow();
+            const cell = row.insertCell(0);
+            cell.colSpan = 4;
+            cell.textContent = '❌ No hay códigos de administrador en esta estación.';
+            cell.className = 'text-center text-gray-500 py-3';
+        }
+    }
+
+    // --- 6. FUNCIONES DE MODALES Y GENERADOR ALEATORIO ---
+    function showRevealModal(code) {
+        currentPlainCodeToReveal = code; 
+        modalMessage.textContent = 'Estás apunto de ver la clave, ¿deseas revelarla?';
+        modalPlainCodeDisplay.classList.add('hidden');
+        modalPlainCodeDisplay.textContent = '';
+        modalActions.classList.remove('hidden');
+        modalCloseAction.classList.add('hidden');
+        modalBtnYes.onclick = revealCode; 
+        revealModal.classList.remove('hidden');
+    }
+
+    function revealCode() { 
+        modalMessage.textContent = 'Clave de Administrador (Desencriptada):';
+        modalPlainCodeDisplay.textContent = currentPlainCodeToReveal;
+        modalPlainCodeDisplay.classList.remove('hidden');
+        modalActions.classList.add('hidden');
+        modalCloseAction.classList.remove('hidden');
+    }
+
+    function hideModal() {
+        revealModal.classList.add('hidden');
+        currentPlainCodeToReveal = '';
+    }
+
+    function generateRandomPassword() {
+        const length = parseInt(passLengthInput.value);
+        if (isNaN(length) || length < 8 || length > 32) { showCustomAlert('Longitud entre 8 y 32 caracteres.', 'warning'); return; }
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+        let password = '';
+        for (let i = 0; i < length; i++) {
+            password += characters.charAt(Math.floor(Math.random() * characters.length));
+        }
+        generatedPasswordDisplay.textContent = password;
+        showCustomAlert('Clave segura generada.', 'success');
+    }
+
+    function copyPassword() {
+        const password = generatedPasswordDisplay.textContent;
+        if (password === "Presiona 'Generar'") return;
+        navigator.clipboard.writeText(password).then(() => {
+            showCustomAlert('Copiada al portapapeles. Pégala arriba.', 'success');
+        });
+    }
+
+    function showCustomAlert(message, type = 'success') {
+        const alertDiv = document.createElement('div');
+        alertDiv.textContent = message;
+        alertDiv.style.cssText = `
+            position: fixed; top: 20px; right: 20px;
+            background-color: ${type === 'error' ? '#f44336' : type === 'warning' ? '#ff9800' : '#4CAF50'};
+            color: white; padding: 15px; border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1000;
+            transition: opacity 0.5s ease;
+        `;
+        document.body.appendChild(alertDiv);
+        setTimeout(() => {
+            alertDiv.style.opacity = '0';
+            setTimeout(() => alertDiv.remove(), 500);
+        }, 3000);
+    }
+
+    // --- 7. EVENTOS DIRECTOS ---
+    btnRandomGenerate.addEventListener('click', generateRandomPassword);
+    btnCopyPass.addEventListener('click', copyPassword);
+    modalBtnNo.addEventListener('click', hideModal);
+    modalBtnClose.addEventListener('click', hideModal);
+    btnGenerate.addEventListener('click', generateAndSaveCode);
+
+    // Arrancar el módulo
+    inicializarModuloLocal();
+</script>
+</body>
+</html>

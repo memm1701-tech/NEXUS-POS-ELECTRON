@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS POS - Gestión de Ingresos</title>
+    <link rel="icon" type="image/png" href="https://placehold.co/16x16/000000/FFFFFF?text=NX">
+    <script src="tailwindcss.js"></script>
+    <link href="../node_modules/material-icons/iconfont/material-icons.css" rel="stylesheet">
+    <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #3b82f6;
+            border-radius: 0;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .modal-overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 2.5rem;
+            border-radius: 0;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.open .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-close-button {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #4a5568;
+            transition: color 0.2s ease;
+        }
+
+        .modal-close-button:hover {
+            color: #1a202c;
+        }
+        
+        .user-info-display {
+            font-size: 1.125rem;
+            font-weight: 500;
+            line-height: 1.75;
+            color: #1f2937;
+        }
+        .user-info-display .label {
+            font-weight: normal;
+        }
+        .user-info-display .value {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body class="bg-white w-full h-full m-0 p-0 overflow-hidden"> 
+    <main class="flex flex-col w-full h-full bg-white"> 
+        
+        <div class="p-6 pb-2 shrink-0">
+            <div class="flex justify-between items-end mb-6">
+                <h1 class="text-3xl font-bold text-gray-800 flex items-center">
+                    <span class="material-icons text-blue-600 mr-3 text-4xl">account_balance_wallet</span>
+                    Gestión de Ingresos
+                </h1>
+                <div class="text-right">
+                    <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Entradas Hoy</p>
+                    <p id="total-income-display" class="text-3xl font-black text-blue-600">Bs 0.00</p>
+                </div>
+            </div>
+
+            <div class="mb-8 p-6 border border-gray-200 rounded-none shadow-sm">
+                <h3 class="text-xl font-semibold mb-4 text-gray-700">Registrar Nuevo Ingreso</h3>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4"> 
+                    <div>
+                        <label for="income-description" class="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
+                        <input type="text" id="income-description"
+                               class="block w-full rounded-none border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:text-base p-2.5"
+                               placeholder="Ej. Préstamo recibido">
+                    </div>
+                    <div>
+                        <label for="income-amount-bs" class="block text-sm font-medium text-gray-700 mb-2">Monto (Bs)</label>
+                        <input type="number" id="income-amount-bs" step="0.01" min="0"
+                               class="block w-full rounded-none border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:text-base p-2.5"
+                               placeholder="Ej. 150.00">
+                    </div>
+                    <div id="income-method-bs-group" class="hidden">
+                        <label for="income-method-bs" class="block text-sm font-medium text-gray-700 mb-2">Método Ingreso (Bs)</label>
+                        <select id="income-method-bs"
+                                class="block w-full rounded-none border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:text-base p-2.5">
+                            <option value="">-- Seleccionar --</option>
+                            <option value="Efectivo">Efectivo</option>
+                            <option value="Tarjeta de Débito">Tarjeta de Débito</option>
+                            <option value="Pago Móvil">Pago Móvil</option>
+                            <option value="Zinli">Zinli</option>
+                            <option value="Bio Pago">Bio Pago</option>
+                            <option value="Transferencia">Transferencia</option>
+                            <option value="Depósito">Depósito</option>
+                            <option value="Crédito">Crédito</option>
+                            <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="income-amount-usd" class="block text-sm font-medium text-gray-700 mb-2">Monto (Divisa)</label>
+                        <input type="number" id="income-amount-usd" step="0.01" min="0"
+                               class="block w-full rounded-none border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:text-base p-2.5"
+                               placeholder="Ej. 5.00">
+                    </div>
+                </div>
+                <button id="add-income-btn"
+                        class="mt-6 w-full bg-blue-600 text-white py-3 px-6 rounded-none hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out text-lg font-semibold shadow-md flex items-center justify-center">
+                    <span class="material-icons mr-2">add_circle_outline</span>
+                    Agregar Ingreso
+                </button>
+            </div>
+
+            </div> <div class="flex-1 overflow-hidden px-6 pb-6 flex flex-col">
+            <div class="flex-1 border border-gray-200 rounded-none shadow-sm flex flex-col overflow-hidden bg-white">
+                
+                <h3 class="text-xl font-semibold p-4 border-b border-gray-200 text-gray-700 flex items-center justify-between shrink-0">
+                    Historial de Ingresos
+                    <span class="text-xs text-gray-400 font-normal uppercase italic tracking-widest">Pendientes de Cierre Z</span>
+                </h3>
+                
+                <div class="flex-1 overflow-y-auto">
+                    <table class="min-w-full divide-y divide-gray-200 relative">
+                        <thead class="bg-gray-50 sticky top-0 z-10">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tl-lg">
+                                    Descripción
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Monto (Bs)
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Método (Bs)
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Monto (Divisa)
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Fecha
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tr-lg">
+                                    Acciones
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="income-list" class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td colspan="6" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center"> No hay ingresos registrados.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="info-message-modal-overlay" class="modal-overlay hidden">
+        <div class="modal-content">
+            <button id="close-info-message-modal" class="modal-close-button">
+                <span class="material-icons">close</span>
+            </button>
+            <h3 id="info-message-title" class="text-xl font-bold mb-4 text-gray-800 text-center"></h3>
+            <p id="info-message-text" class="text-gray-700 mb-6 text-center whitespace-pre-line"></p>
+            <div class="flex justify-center">
+                <button id="info-message-ok-btn" class="bg-blue-600 text-white py-2 px-4 rounded-none hover:bg-blue-700">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+<script type="module">
+    // --- 1. ESTADO GLOBAL Y REFERENCIAS ---
+    let userId = null; 
+    let companyId = null; 
+    let branchId = null; 
+    let isAuthReady = false;
+    let currentEmissionMode = 'TICKET_NO_FISCAL';
+    let puertoFiscalHKA = '';
+
+    // Referencias al DOM
+    const incomeList = document.getElementById('income-list');
+    const totalIncomeDisplay = document.getElementById('total-income-display');
+    const incomeDescriptionInput = document.getElementById('income-description');
+    const incomeAmountBsInput = document.getElementById('income-amount-bs');
+    const incomeMethodBsGroup = document.getElementById('income-method-bs-group'); 
+    const incomeMethodBs = document.getElementById('income-method-bs'); 
+    const incomeAmountUsdInput = document.getElementById('income-amount-usd');
+    const addIncomeBtn = document.getElementById('add-income-btn');
+
+    const modalOverlay = document.getElementById('info-message-modal-overlay');
+    const modalTitle = document.getElementById('info-message-title');
+    const modalText = document.getElementById('info-message-text');
+
+    // --- 2. INICIALIZACIÓN DE SESIÓN LOCAL ---
+    async function inicializarModulo() {
+        try {
+            // Obtenemos la sesión guardada en SQLite por el login principal
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
+            
+            if (sesion) {
+                userId = sesion.uid;
+                companyId = sesion.companyId;
+                branchId = sesion.branchId;
+                isAuthReady = true;
+                
+                try {
+                    const configRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
+                    if (configRaw) {
+                        const cfg = JSON.parse(configRaw);
+                        currentEmissionMode = cfg.tipo_emision || 'TICKET_NO_FISCAL';
+                        puertoFiscalHKA = cfg.puerto_com_fiscal || '';
+                        console.log(`🖨️ [INGRESOS] Modo de emisión detectado: ${currentEmissionMode}`);
+                    }
+                } catch(e) {
+                    console.warn("⚠️ No se pudo leer modo de emisión. Usando ticket estándar.");
+                }
+
+                console.log("✅ Conexión establecida con el Cerebro Local.");
+                loadIncomes(); // Cargar historial de hoy
+            } else {
+                showModal("Sesión no válida", "Por favor, inicia sesión de nuevo.", true);
+            }
+        } catch (error) {
+            console.error("Error al inicializar sesión local:", error);
+        }
+    }
+
+    // --- 3. LÓGICA DE REGISTRO (GUARDAR EN SQLITE) ---
+    // REEMPLAZA SOLO ESTA FUNCIÓN EN gestion_de_ingresos.html
+async function addIncome() {
+        // 1. ELIMINAMOS EL RETORNO SILENCIOSO: Obligamos al sistema a hablar
+        if (!isAuthReady) {
+            showModal("Sistema Ocupado", "El módulo aún está cargando la base de datos local. Espera un segundo.", true);
+            return;
+        }
+        if (!userId) {
+            showModal("Error de Sesión", "No se detectó la identidad del cajero. Vuelve al Login.", true);
+            return;
+        }
+        if (!window.nexusAPI || typeof window.nexusAPI.guardarMovimientoCaja !== 'function') {
+            showModal("Fallo de Puente", "El HTML no puede ver a preload.js", true);
+            return;
+        }
+
+        const description = incomeDescriptionInput.value.trim();
+        const amountBs = parseFloat(incomeAmountBsInput.value) || 0;
+        const amountUsd = parseFloat(incomeAmountUsdInput.value) || 0;
+        const methodBs = incomeMethodBs.value.trim(); 
+
+        // 2. VALIDACIONES NORMALES
+        if (description === '' || (amountBs <= 0 && amountUsd <= 0)) {
+            showModal("Datos Incompletos", "Debes ingresar una descripción y un monto válido.", true);
+            return;
+        }
+        
+        if (amountBs > 0 && methodBs === '') {
+            showModal("Falta Método", "Selecciona cómo ingresó el dinero en Bolívares.", true);
+            return;
+        }
+
+        addIncomeBtn.disabled = true;
+        addIncomeBtn.innerHTML = `<span class="spinner"></span> Registrando...`;
+
+        try {
+            const nuevoMovimiento = {
+                id: `INC-${Date.now()}`,
+                tipo: 'INGRESO',
+                concepto: description,
+                monto: amountBs,
+                monto_usd: amountUsd,
+                metodo_pago: amountBs > 0 ? methodBs : 'DIVISA',
+                fecha: new Date().toISOString(),
+                cashier_id: userId,
+                company_id: companyId,
+                branch_id: branchId || 'SUC-01' // Evita nulos que rompan SQLite
+            };
+
+            // 3. ENVÍO DIRECTO A MAIN.JS
+            const resultado = await window.nexusAPI.guardarMovimientoCaja(nuevoMovimiento);
+            
+            if (resultado && !resultado.error) {
+                showModal("Éxito", "Ingreso guardado localmente para el Cierre Z.");
+                
+                // 🔥 AQUÍ LLAMAMOS A LA IMPRESORA CON TUS VARIABLES 🔥
+                if (currentEmissionMode === 'FISCAL_HKA' && puertoFiscalHKA) {
+                    await imprimirDocumentoMaquinaFiscal({
+                        concepto: description, // Usa la variable description de tu código
+                        montoBs: amountBs,     // Usa amountBs
+                        metodoBs: methodBs,    // Usa methodBs
+                        montoUsd: amountUsd    // Usa amountUsd
+                    });
+                } else if (typeof imprimirReciboIngreso === 'function') {
+                    await imprimirReciboIngreso({
+                        concepto: description, // Usa la variable description de tu código
+                        montoBs: amountBs,     // Usa amountBs
+                        metodoBs: methodBs,    // Usa methodBs
+                        montoUsd: amountUsd    // Usa amountUsd
+                    });
+                }
+
+                limpiarCampos();
+                loadIncomes(); 
+            } else {
+                throw new Error(resultado.error || "SQLite rechazó la inserción.");
+            }
+        } catch (error) {
+            showModal("Error SQL", `Fallo interno: ${error.message}`, true);
+        } finally {
+            addIncomeBtn.disabled = false;
+            addIncomeBtn.innerHTML = `<span class="material-icons mr-2">add_circle_outline</span> Agregar Ingreso`;
+        }
+    }
+
+    // --- 4. CARGA DE DATOS (LECTURA DESDE SQLITE) ---
+    async function loadIncomes() {
+        if (!companyId) return;
+        
+        try {
+            // Consultamos solo los ingresos pendientes de cierre de esta empresa
+            const ingresos = await window.nexusAPI.obtenerMovimientosCaja({ 
+                tipo: 'INGRESO', 
+                companyId: companyId 
+            });
+
+            let totalBs = 0;
+            let html = '';
+            
+            if (!ingresos || ingresos.length === 0) {
+                html = `<tr><td colspan="6" class="px-6 py-4 text-sm text-gray-500 text-center">No hay ingresos registrados para esta sesión.</td></tr>`;
+            } else {
+                // Ordenar por fecha descendente
+                ingresos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+                ingresos.forEach(mov => {
+                    totalBs += mov.monto || 0;
+                    const fechaLocal = new Date(mov.fecha).toLocaleString('es-VE');
+
+                    html += `
+                        <tr class="hover:bg-gray-50 transition duration-75">
+                            <td class="px-6 py-4 text-sm font-medium text-gray-900">${mov.concepto}</td>
+                            <td class="px-6 py-4 text-sm text-green-600 font-bold">${mov.monto.toFixed(2)} Bs</td>
+                            <td class="px-6 py-4 text-sm text-gray-700">${mov.metodo_pago}</td>
+                            <td class="px-6 py-4 text-sm text-blue-600 font-semibold">${mov.monto_usd.toFixed(2)} USD</td>
+                            <td class="px-6 py-4 text-sm text-gray-500">${fechaLocal}</td>
+                            <td class="px-6 py-4 text-right">
+                                <span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded-none font-black uppercase">Local</span>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            incomeList.innerHTML = html;
+            totalIncomeDisplay.textContent = `Bs ${totalBs.toFixed(2)}`;
+
+        } catch (error) {
+            console.error("Error al cargar movimientos locales:", error);
+        }
+    }
+
+    // --- 5. UTILIDADES DE INTERFAZ ---
+    function limpiarCampos() {
+        incomeDescriptionInput.value = '';
+        incomeAmountBsInput.value = '0';
+        incomeAmountUsdInput.value = '0';
+        incomeMethodBs.value = '';
+        incomeMethodBsGroup.classList.add('hidden');
+    }
+
+    function showModal(title, message, isError = false) {
+        if (!modalOverlay) return;
+        modalTitle.textContent = title;
+        modalText.textContent = message;
+        modalTitle.className = `text-xl font-bold mb-4 text-center ${isError ? 'text-red-600' : 'text-blue-600'}`;
+        modalOverlay.classList.add('open');
+    }
+
+    // --- 6. EVENTOS (Sin envoltorio DOMContentLoaded para evitar el bloqueo) ---
+    
+    // 1. Arrancamos el módulo directamente
+    inicializarModulo();
+
+    // 2. Asignamos el botón directamente
+    if (addIncomeBtn) {
+        addIncomeBtn.addEventListener('click', addIncome);
+    }
+    
+    // 3. Asignamos la lógica del input
+    if (incomeAmountBsInput) {
+        incomeAmountBsInput.addEventListener('input', () => {
+            const val = parseFloat(incomeAmountBsInput.value) || 0;
+            incomeMethodBsGroup.classList.toggle('hidden', val <= 0);
+            if (val <= 0) incomeMethodBs.value = ''; 
+        });
+    }
+
+    // 4. Asignamos los modales
+    document.getElementById('close-info-message-modal')?.addEventListener('click', () => modalOverlay.classList.remove('open'));
+    document.getElementById('info-message-ok-btn')?.addEventListener('click', () => modalOverlay.classList.remove('open'));
+
+// --- FUNCIÓN PARA IMPRIMIR RECIBO DE INGRESO ---
+async function imprimirReciboIngreso(ingresoData) {
+    // 1. OBTENER CONFIGURACIÓN DE LA IMPRESORA
+    let printerName = null;
+    let printerSize = "58"; 
+    try {
+        const configDataRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
+        if (configDataRaw) {
+            const configFactura = JSON.parse(configDataRaw);
+            printerName = configFactura.impresoraSeleccionada;
+            if(configFactura.tamañoImpresora) printerSize = configFactura.tamañoImpresora;
+        }
+    } catch (e) {
+        console.warn("⚠️ No se pudo leer la configuración de la impresora.");
+    }
+
+    if (!printerName) {
+        console.warn("No hay impresora configurada. Se omite impresión del recibo.");
+        return;
+    }
+
+    // 2. HERRAMIENTAS DE FORMATO (Integradas para evitar errores)
+    const LINE_WIDTH = (printerSize === "80") ? 48 : 32;
+    const CRLF = "\r\n";
+    const SEPARATOR = "-".repeat(LINE_WIDTH) + CRLF;
+
+    const centerText = (text, width) => {
+        if (!text) return "";
+        const str = text.toString().substring(0, width);
+        const pad = Math.floor((width - str.length) / 2);
+        return str.padStart(pad + str.length).padEnd(width);
+    };
+
+    const formatLR = (left, right, width) => {
+        const l = left.toString();
+        const r = right.toString();
+        const space = width - l.length - r.length;
+        return space > 0 ? l + " ".repeat(space) + r : (l + " " + r).substring(0, width);
+    };
+
+    // 3. CONSTRUCCIÓN DEL TICKET
+    let t = "\x1B\x40"; // Resetear impresora
+    
+    t += centerText("RECIBO DE INGRESO", LINE_WIDTH) + CRLF;
+    t += SEPARATOR;
+    t += `FECHA: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}${CRLF}`;
+    t += SEPARATOR;
+    
+    t += `CONCEPTO:${CRLF}`;
+    // Dividimos el concepto si es muy largo para que no se corte feo
+    const conceptoStr = ingresoData.concepto.toUpperCase();
+    for (let i = 0; i < conceptoStr.length; i += LINE_WIDTH) {
+        t += conceptoStr.substring(i, i + LINE_WIDTH) + CRLF;
+    }
+    t += SEPARATOR;
+
+    // Imprimir Bs si hay
+    if (ingresoData.montoBs > 0) {
+        t += formatLR("MONTO BS:", ingresoData.montoBs.toFixed(2), LINE_WIDTH) + CRLF;
+        t += formatLR("METODO:", (ingresoData.metodoBs || "N/A").toUpperCase(), LINE_WIDTH) + CRLF;
+    }
+
+    // Imprimir USD si hay
+    if (ingresoData.montoUsd > 0) {
+        if (ingresoData.montoBs > 0) t += CRLF; // Separador visual si pagó mixto
+        t += formatLR("MONTO USD ($):", ingresoData.montoUsd.toFixed(2), LINE_WIDTH) + CRLF;
+        t += formatLR("METODO:", "EFECTIVO", LINE_WIDTH) + CRLF;
+    }
+
+    t += SEPARATOR;
+    t += CRLF.repeat(2);
+    t += centerText("________________________", LINE_WIDTH) + CRLF;
+    t += centerText("FIRMA RESPONSABLE", LINE_WIDTH) + CRLF;
+
+    // 🔥 LÓGICA DE CORTE EXACTA
+    if (printerSize === "80") {
+        t += CRLF.repeat(2) + "\x1B\x6D"; 
+    } else {
+        t += CRLF.repeat(4) + "\x1B\x6D"; 
+    }
+
+    // 4. ENVIAR A IMPRIMIR
+    try {
+        await window.nexusAPI.imprimirTextoLibre(t, printerName);
+    } catch (error) {
+        console.error("Error imprimiendo recibo de ingreso:", error);
+    }
+}
+
+// --- FUNCIÓN PARA IMPRIMIR RECIBO DE INGRESO (MÁQUINA FISCAL) ---
+async function imprimirDocumentoMaquinaFiscal(ingresoData) {
+    const comandos = [];
+    const MAX_LINE = 40; // Ancho máximo de línea en documento no fiscal HKA
+
+    const limpiarTexto = (texto) => {
+        if (!texto) return "";
+        return texto.toString()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toUpperCase()
+            .replace(/[^A-Z0-9 +-/*.,:$]/g, ' ')
+            .trim();
+    };
+
+    const centerText = (text, width) => {
+        const str = text.substring(0, width);
+        const pad = Math.floor((width - str.length) / 2);
+        return str.padStart(pad + str.length).padEnd(width);
+    };
+
+    const formatLR = (left, right, width) => {
+        const l = left.toString();
+        const r = right.toString();
+        const space = width - l.length - r.length;
+        return space > 0 ? l + " ".repeat(space) + r : (l + " " + r).substring(0, width);
+    };
+
+    const SEPARATOR = "-".repeat(MAX_LINE);
+
+    // 1. Abrir documento no fiscal y Contenido del recibo
+    // The Factory HKA usa la serie 800 para documentos no fiscales
+    comandos.push("800" + centerText("RECIBO DE INGRESO", MAX_LINE));
+    comandos.push("800" + SEPARATOR);
+    comandos.push("800" + `FECHA: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`);
+    comandos.push("800" + SEPARATOR);
+
+    // Concepto (dividir si es largo)
+    comandos.push("800" + "CONCEPTO:");
+    const conceptoStr = limpiarTexto(ingresoData.concepto);
+    for (let i = 0; i < conceptoStr.length; i += MAX_LINE) {
+        comandos.push("800" + conceptoStr.substring(i, i + MAX_LINE));
+    }
+    comandos.push("800" + SEPARATOR);
+
+    // Montos en Bs
+    if (ingresoData.montoBs > 0) {
+        comandos.push("800" + formatLR("MONTO BS:", ingresoData.montoBs.toFixed(2), MAX_LINE));
+        comandos.push("800" + formatLR("METODO:", limpiarTexto(ingresoData.metodoBs || "N/A"), MAX_LINE));
+    }
+
+    // Montos en USD
+    if (ingresoData.montoUsd > 0) {
+        if (ingresoData.montoBs > 0) comandos.push("800" + " ");
+        comandos.push("800" + formatLR("MONTO USD ($):", ingresoData.montoUsd.toFixed(2), MAX_LINE));
+        comandos.push("800" + formatLR("METODO:", "EFECTIVO", MAX_LINE));
+    }
+
+    comandos.push("800" + SEPARATOR);
+    comandos.push("800" + " ");
+    comandos.push("800" + centerText("________________________", MAX_LINE));
+    comandos.push("800" + centerText("FIRMA RESPONSABLE", MAX_LINE));
+
+    // 3. Cerrar documento no fiscal
+    comandos.push("810");
+
+    // 4. Enviar al puerto fiscal
+    try {
+        const resultado = await window.nexusAPI.emitirTramasHKA(comandos, puertoFiscalHKA);
+        if (resultado && resultado.success) {
+            console.log("✅ Recibo de ingreso impreso por máquina fiscal (no fiscal).");
+        } else {
+            console.error("❌ Error fiscal al imprimir recibo:", resultado?.msg);
+        }
+    } catch (error) {
+        console.error("❌ Error enviando documento no fiscal:", error);
+    }
+}
+
+</script>
+
+</body>
+</html> 

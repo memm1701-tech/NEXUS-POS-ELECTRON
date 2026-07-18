@@ -1,0 +1,398 @@
+<div id="payroll-container" class="flex flex-col bg-[#f8f9fa] p-[1px] h-[calc(100vh-70px)] w-full overflow-hidden text-[18px] animate-fade-in">
+    
+    <style>
+        /* Estilos base y animaciones */
+        .animate-fade-in { animation: fadeIn 0.4s ease-out; }
+        .animate-slide-up { animation: slideUp 0.5s ease-out forwards; opacity: 0; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        #payroll-container { margin: 0 !important; width: 100% !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .tabs-header-google { background-color: rgba(0, 139, 139, 0.1); padding-left: 8px; padding-top: 10px; display: flex; align-items: flex-end; width: 100%; z-index: 10; overflow: hidden; }
+        
+        .sheet-tab { cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; background: transparent; color: #5f6368; font-size: 13px; font-weight: 500; height: 38px; border-radius: 8px 8px 0 0; margin-right: 2px; border: 1px solid transparent; border-bottom: none; position: relative; bottom: -1px; flex: 1 1 200px; min-width: 40px; max-width: 220px; overflow: hidden; transition: all 0.1s ease; }
+        .sheet-tab.active { background: white !important; color: #1a73e8; font-weight: 600; border: 1px solid #dee2e6; border-bottom: 2px solid white !important; z-index: 11; flex: 1 1 220px; }
+        
+        .btn-close-tab { font-size: 16px !important; margin-left: 8px; padding: 2px; border-radius: 50%; transition: background 0.2s; color: #9ca3af; flex-shrink: 0; }
+        .btn-close-tab:hover { background-color: #fee2e2; color: #dc2626; }
+
+        .sheets-container-wrapper { background: white; border-radius: 0 12px 12px 12px; display: flex; flex-direction: column; height: 100%; border: 1px solid #dee2e6; margin-top: -1px; z-index: 5; overflow: hidden; }
+        .sheet-content { display: none; }
+        .sheet-content.active { display: flex; }
+
+        .nexus-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .nexus-table th { position: sticky; top: 0; background: #f8f9fa; padding: 12px 15px; text-align: left; font-size: 11px; font-weight: 800; color: #70757a; text-transform: uppercase; border-bottom: 2px solid #e8eaed; z-index: 20; }
+        .nexus-table td { padding: 14px 15px; border-bottom: 1px solid #f1f3f4; font-size: 13px; color: #3c4043; transition: background 0.2s; }
+        .nexus-table tr:hover td { background-color: #f1faff; }
+
+        .badge { padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: bold; text-transform: uppercase; }
+        .badge-ingreso { background: #e6fffa; color: #047857; }
+        .badge-egreso { background: #fef2f2; color: #dc2626; }
+
+        #modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-card { background: #ffffff; width: 650px; border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow: hidden; border: 1px solid #e5e7eb; }
+        .op-type-btn { padding: 10px 20px; font-size: 14px; font-weight: 600; border-radius: 8px 8px 0 0; cursor: pointer; border: 1px solid transparent; color: #6b7280; }
+        .op-type-btn.active-ingreso { background: white; color: #059669; border: 1px solid #e5e7eb; border-bottom-color: white; margin-bottom: -1px; }
+        .op-type-btn.active-egreso { background: white; color: #dc2626; border: 1px solid #e5e7eb; border-bottom-color: white; margin-bottom: -1px; }
+        .currency-input { text-align: right; font-family: monospace; font-weight: bold; font-size: 24px; color: #111827; }
+        
+        /* Estilo barra de búsqueda */
+        .search-container { position: relative; width: 400px; }
+        .search-container i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; font-size: 18px; }
+        .search-input { width: 100%; padding: 8px 12px 8px 40px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; outline: none; transition: all 0.2s; }
+        .search-input:focus { border-color: #1a73e8; box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1); }
+    </style>
+
+    <div id="modal-overlay" onclick="toggleModal(false)">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <div id="modal-step-1">
+                <div class="p-5 border-b flex justify-between items-center">
+                    <h3 class="text-lg font-bold text-gray-800">Nueva Operación</h3>
+                    <button onclick="toggleModal(false)" class="text-gray-400"><i class="material-icons">close</i></button>
+                </div>
+                <div class="bg-gray-50 p-4 border-b">
+                    <input type="text" id="employee-modal-search" class="w-full p-3 rounded-lg border border-gray-300 outline-none" placeholder="Buscar trabajador..." onkeyup="filterModalEmployees()">
+                </div>
+                <div class="max-h-[400px] overflow-y-auto">
+                    <table class="w-full"><tbody id="modal-employee-list"></tbody></table>
+                </div>
+            </div>
+            <div id="modal-step-2" class="hidden">
+                <div class="p-5 border-b flex justify-between items-center bg-gray-50">
+                    <div>
+                        <p class="text-[10px] text-gray-400 font-bold uppercase">Trabajador</p>
+                        <h3 id="selected-emp-name" class="text-lg font-black text-gray-800 uppercase">---</h3>
+                    </div>
+                    <button onclick="backToStep1()" class="text-blue-600 text-sm font-bold flex items-center gap-1">
+                        <i class="material-icons text-sm">arrow_back</i> Cambiar
+                    </button>
+                </div>
+                <div class="p-6">
+                    <div class="flex gap-2 border-b border-gray-200 mb-6">
+                        <div id="btn-ingreso" onclick="setOpType('ingreso')" class="op-type-btn active-ingreso">INGRESO</div>
+                        <div id="btn-egreso" onclick="setOpType('egreso')" class="op-type-btn">EGRESO</div>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-400 uppercase">Nota / Motivo</label>
+                            <textarea id="op-note" rows="2" class="w-full p-3 border rounded-xl outline-none text-sm" placeholder="Motivo..."></textarea>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-400 uppercase">Monto (Bs.)</label>
+                            <input type="text" id="op-amount" class="w-full p-4 border rounded-xl outline-none currency-input" placeholder="0,00">
+                        </div>
+                    </div>
+                    <div class="mt-8 flex gap-3">
+                        <button onclick="toggleModal(false)" class="flex-1 py-3 font-bold text-gray-500 bg-gray-100 rounded-xl">Cancelar</button>
+                        <button id="btn-save-op" onclick="saveOperation()" class="flex-1 py-3 font-bold text-white bg-blue-600 rounded-xl shadow-lg">Guardar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tabs-header-google" id="tabs-bar">
+        <div onclick="switchTab('maestra')" id="tab-btn-maestra" class="sheet-tab active">
+            <div class="tab-text-container"><i class="material-icons text-[18px] mr-2">grid_on</i> <span>Planilla General</span></div>
+        </div>
+        <div id="dynamic-tabs-container" class="flex items-end flex-1 overflow-hidden"></div>
+    </div>
+
+    <div class="sheets-container-wrapper flex-1">
+        <div id="view-maestra" class="sheet-content active h-full flex flex-col w-full">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
+                <button onclick="toggleModal(true)" class="flex items-center gap-2 px-5 py-2 rounded-full text-sm font-bold text-gray-700 border border-gray-300 hover:bg-gray-50">
+                    <i class="material-icons text-blue-600">add_circle</i> Nuevo Registro
+                </button>
+                
+                <div class="search-container">
+                    <i class="material-icons">search</i>
+                    <input type="text" id="main-search" class="search-input" placeholder="Filtrar por nombre o cédula..." onkeyup="filterMainTable()">
+                </div>
+
+                <div class="text-right">
+                    <span class="text-[10px] text-gray-400 font-black uppercase tracking-widest">Total Nómina</span>
+                    <span id="total-nomina-display" class="text-2xl font-black text-gray-900 block">Bs. 0,00</span>
+                </div>
+            </div>
+            <div class="flex-1 overflow-auto">
+                <table class="nexus-table">
+                    <thead>
+                        <tr>
+                            <th>Cédula</th>
+                            <th>Trabajador</th>
+                            <th>Cargo / Rol</th>
+                            <th class="text-right">Sueldo Base</th>
+                            <th class="text-right">Teléfono</th>
+                        </tr>
+                    </thead>
+                    <tbody id="empleados-body"></tbody>
+                </table>
+            </div>
+        </div>
+        <div id="dynamic-views-container" class="w-full h-full"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, collection, getDocs, addDoc, query, where, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDN9mZ1n-OkC-Qz52eTCOy4yJH7M0U9zYI",
+            authDomain: "nexus-pos-75593.firebaseapp.com",
+            projectId: "nexus-pos-75593",
+            storageBucket: "nexus-pos-75593.firebasestorage.app",
+            messagingSenderId: "626840984883",
+            appId: "1:626840984883:web:08d56544ee28bc8e637246"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        let companyId = null;
+        let allEmployeesData = [];
+        let selectedEmpForOp = null;
+        let currentOpType = 'ingreso';
+
+        function formatMoneda(valor) {
+            if (typeof valor === 'string') valor = valor.replace(/\./g, '').replace(',', '.');
+            let n = parseFloat(valor) || 0;
+            return n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const res = await user.getIdTokenResult();
+                companyId = res.claims.companyId;
+                if (companyId) loadAllPayroll();
+            }
+        });
+
+        // FILTRO DE LA TABLA PRINCIPAL
+        window.filterMainTable = () => {
+            const val = document.getElementById('main-search').value.toLowerCase();
+            const rows = document.getElementById('empleados-body').getElementsByTagName('tr');
+            
+            for (let i = 0; i < rows.length; i++) {
+                const text = rows[i].innerText.toLowerCase();
+                rows[i].style.display = text.includes(val) ? "" : "none";
+            }
+        };
+
+        async function loadAllPayroll() {
+            const tbody = document.getElementById('empleados-body');
+            tbody.innerHTML = '';
+            let totalGeneral = 0;
+            allEmployeesData = [];
+            try {
+                const branchesSnap = await getDocs(collection(db, 'companies', companyId, 'branches'));
+                for (const branchDoc of branchesSnap.docs) {
+                    const empSnap = await getDocs(collection(db, 'companies', companyId, 'branches', branchDoc.id, 'empleados'));
+                    empSnap.forEach(empDoc => {
+                        const data = empDoc.data();
+                        const salaryNum = parseFloat(data.salary?.toString().replace(/\./g, '').replace(',', '.')) || 0;
+                        totalGeneral += salaryNum;
+                        allEmployeesData.push({ id: empDoc.id, branchId: branchDoc.id, ...data });
+                        
+                        const tr = document.createElement('tr');
+                        tr.className = "cursor-pointer";
+                        tr.onclick = () => window.openObreroTab(empDoc.id, data);
+                        tr.innerHTML = `
+                            <td class="font-bold text-gray-700">${data.ci}</td>
+                            <td class="font-medium text-gray-800 uppercase">${data.name}</td>
+                            <td class="text-gray-500">${data.role || '-'}</td>
+                            <td class="text-right font-black text-blue-600">Bs. ${formatMoneda(data.salary)}</td>
+                            <td class="text-right text-gray-400 font-medium">${data.phone || '-'}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+                document.getElementById('total-nomina-display').innerText = `Bs. ${formatMoneda(totalGeneral)}`;
+            } catch (e) { console.error(e); }
+        }
+
+        window.toggleModal = (s) => {
+            document.getElementById('modal-overlay').style.display = s ? 'flex' : 'none';
+            if (s) backToStep1();
+        };
+
+        window.backToStep1 = () => {
+            document.getElementById('modal-step-1').classList.remove('hidden');
+            document.getElementById('modal-step-2').classList.add('hidden');
+            renderModalEmployees(allEmployeesData.slice(0, 15));
+        };
+
+        function renderModalEmployees(list) {
+            document.getElementById('modal-employee-list').innerHTML = list.map(emp => `
+                <tr class="cursor-pointer hover:bg-blue-50 border-b border-gray-100" onclick="selectForTransaction('${emp.id}')">
+                    <td class="px-6 py-3 font-medium text-gray-800 uppercase text-xs">${emp.name}</td>
+                    <td class="px-6 py-3 text-right font-bold text-xs text-blue-600">Bs. ${formatMoneda(emp.salary)}</td>
+                </tr>
+            `).join('');
+        }
+
+        window.filterModalEmployees = () => {
+            const q = document.getElementById('employee-modal-search').value.toLowerCase();
+            const filtered = allEmployeesData.filter(e => e.name.toLowerCase().includes(q) || e.ci.includes(q));
+            renderModalEmployees(filtered.slice(0, 15));
+        };
+
+        window.selectForTransaction = (id) => {
+            selectedEmpForOp = allEmployeesData.find(e => e.id === id);
+            document.getElementById('selected-emp-name').innerText = selectedEmpForOp.name;
+            document.getElementById('modal-step-1').classList.add('hidden');
+            document.getElementById('modal-step-2').classList.remove('hidden');
+            document.getElementById('op-amount').value = '0,00';
+            document.getElementById('op-note').value = '';
+            setOpType('ingreso');
+        };
+
+        window.setOpType = (t) => {
+            currentOpType = t;
+            document.getElementById('btn-ingreso').className = t === 'ingreso' ? 'op-type-btn active-ingreso' : 'op-type-btn';
+            document.getElementById('btn-egreso').className = t === 'egreso' ? 'op-type-btn active-egreso' : 'op-type-btn';
+        };
+
+        window.saveOperation = async () => {
+            const amt = parseFloat(document.getElementById('op-amount').value.replace(/\./g, '').replace(',', '.')) || 0;
+            if (amt <= 0) return alert("Ingrese un monto válido");
+            const btn = document.getElementById('btn-save-op');
+            btn.disabled = true;
+            try {
+                const ref = collection(db, 'companies', companyId, 'branches', selectedEmpForOp.branchId, 'empleados', selectedEmpForOp.id, 'operaciones');
+                await addDoc(ref, { tipo: currentOpType, monto: amt, nota: document.getElementById('op-note').value, fecha: serverTimestamp() });
+                alert("Operación guardada");
+                toggleModal(false);
+                if (document.getElementById('view-' + selectedEmpForOp.id)) {
+                    loadEmployeeData(selectedEmpForOp.id, selectedEmpForOp.branchId, selectedEmpForOp.salary);
+                }
+            } catch (e) { console.error(e); } finally { btn.disabled = false; }
+        };
+
+        // --- LÓGICA DE CÁLCULO CORREGIDA ---
+        async function loadEmployeeData(empId, branchId, salaryBase) {
+            try {
+                const opsRef = collection(db, 'companies', companyId, 'branches', branchId, 'empleados', empId, 'operaciones');
+                const q = query(opsRef, orderBy("fecha", "desc"));
+                const snap = await getDocs(q);
+
+                let totalEgresos = 0;
+                let totalIngresos = 0;
+                let historyHtml = '';
+
+                snap.forEach(doc => {
+                    const op = doc.data();
+                    const montoNum = parseFloat(op.monto) || 0;
+
+                    if (op.tipo === 'egreso') totalEgresos += montoNum;
+                    else if (op.tipo === 'ingreso') totalIngresos += montoNum;
+
+                    const fechaStr = op.fecha ? op.fecha.toDate().toLocaleString('es-VE', { dateStyle: 'short', timeStyle: 'short' }) : '...';
+                    historyHtml += `
+                        <tr>
+                            <td class="font-bold text-gray-400 text-xs">${fechaStr}</td>
+                            <td><span class="badge badge-${op.tipo}">${op.tipo}</span></td>
+                            <td class="italic text-gray-600">${op.nota || 'Sin nota'}</td>
+                            <td class="text-right font-black ${op.tipo === 'egreso' ? 'text-red-500' : 'text-green-600'}">
+                                ${op.tipo === 'egreso' ? '-' : '+'} Bs. ${formatMoneda(montoNum)}
+                            </td>
+                        </tr>`;
+                });
+
+                const baseNum = parseFloat(salaryBase.toString().replace(/\./g, '').replace(',', '.')) || 0;
+                const netoFinal = baseNum - totalEgresos + totalIngresos;
+
+                document.getElementById(`discounts-${empId}`).innerText = `- Bs. ${formatMoneda(totalEgresos)}`;
+                document.getElementById(`neto-${empId}`).innerText = `Bs. ${formatMoneda(netoFinal)}`;
+                document.getElementById(`history-body-${empId}`).innerHTML = historyHtml || '<tr><td colspan="4" class="text-center py-10 text-gray-400">No hay movimientos</td></tr>';
+            } catch (e) { console.error(e); }
+        }
+
+        window.openObreroTab = function(id, data) {
+            if (document.getElementById('tab-btn-' + id)) { switchTab(id); return; }
+            const tabContainer = document.getElementById('dynamic-tabs-container');
+            const viewContainer = document.getElementById('dynamic-views-container');
+            
+            const newTab = document.createElement('div');
+            newTab.id = 'tab-btn-' + id;
+            newTab.className = 'sheet-tab';
+            newTab.innerHTML = `<div class="tab-text-container"><i class="material-icons text-[16px] mr-2">person</i><span class="uppercase">${data.name}</span></div><i class="material-icons btn-close-tab" onclick="event.stopPropagation(); closeTab('${id}')">close</i>`;
+            newTab.onclick = () => switchTab(id);
+            tabContainer.appendChild(newTab);
+
+            const newView = document.createElement('div');
+            newView.id = 'view-' + id;
+            newView.className = 'sheet-content animate-fade-in h-full flex flex-col w-full bg-white';
+            newView.innerHTML = `
+                <div class="p-6 border-b flex justify-between items-center bg-gray-50/50">
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800 uppercase">${data.name}</h2>
+                        <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">${data.role || 'Empleado'}</p>
+                    </div>
+                    <span class="bg-blue-50 text-blue-600 px-4 py-1 rounded-full text-[10px] font-black uppercase">Ficha Individual</span>
+                </div>
+                <div class="p-8 flex-1 overflow-auto">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                        <div class="p-6 border rounded-2xl bg-white shadow-sm">
+                            <p class="text-[10px] text-gray-400 font-bold uppercase">Sueldo Base</p>
+                            <p class="text-2xl font-black">Bs. ${formatMoneda(data.salary)}</p>
+                        </div>
+                        <div class="p-6 border rounded-2xl bg-white shadow-sm">
+                            <p class="text-[10px] text-gray-400 font-bold uppercase">Total Egresos</p>
+                            <p id="discounts-${id}" class="text-2xl font-black text-red-500">Bs. 0,00</p>
+                        </div>
+                        <div class="p-6 border-l-4 border-l-blue-600 rounded-2xl bg-white shadow-sm">
+                            <p class="text-[10px] text-gray-400 font-bold uppercase">Neto a Recibir</p>
+                            <p id="neto-${id}" class="text-2xl font-black text-blue-700">Bs. 0,00</p>
+                        </div>
+                    </div>
+
+                    <div class="animate-slide-up bg-white border rounded-2xl shadow-sm overflow-hidden" style="animation-delay: 0.2s">
+                        <div class="px-6 py-4 border-b bg-gray-50/50 flex items-center justify-between">
+                            <h4 class="text-xs font-bold text-gray-700 uppercase tracking-widest">Historial de Operaciones</h4>
+                            <i class="material-icons text-gray-300">history</i>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="nexus-table">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha y Hora</th>
+                                        <th>Operación</th>
+                                        <th>Nota del Procedimiento</th>
+                                        <th class="text-right">Monto</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="history-body-${id}">
+                                    <tr><td colspan="4" class="text-center py-10 text-gray-400">Consultando movimientos...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>`;
+            viewContainer.appendChild(newView);
+            switchTab(id);
+            const branchId = allEmployeesData.find(e => e.id === id)?.branchId;
+            loadEmployeeData(id, branchId, data.salary);
+        };
+
+        window.switchTab = (id) => {
+            document.querySelectorAll('.sheet-tab, .sheet-content').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-btn-' + id)?.classList.add('active');
+            document.getElementById('view-' + id)?.classList.add('active');
+        };
+
+        window.closeTab = (id) => {
+            document.getElementById('tab-btn-' + id)?.remove();
+            document.getElementById('view-' + id)?.remove();
+            switchTab('maestra');
+        };
+        
+        document.getElementById('op-amount').addEventListener('input', (e) => {
+            let v = e.target.value.replace(/\D/g, '');
+            if (v === '') v = '0';
+            e.target.value = formatMoneda(parseInt(v) / 100);
+        });
+    </script>
+</div>

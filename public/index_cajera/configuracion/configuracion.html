@@ -1,0 +1,476 @@
+<div class="w-full min-h-screen bg-white p-6 md:p-10 flex justify-center items-start">
+    <div class="w-full space-y-8 text-center">
+        <h1 class="text-3xl font-bold text-gray-800">Configuración de Factura y Hardware</h1>
+
+        <div class="space-y-4 text-left p-6 border border-gray-200 bg-white rounded-none">
+            <h2 class="text-lg font-semibold text-gray-800">Encabezado de Factura (Normativa SENIAT)</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-2">
+                    <label for="configLine1" class="block text-sm font-medium text-gray-700">Línea 1 (Razón Social):</label>
+                    <input type="text" id="configLine1" class="mt-1 block w-full border-gray-300 rounded-none shadow-sm p-2.5 border" placeholder="Ej: Inversiones Nexus C.A.">
+                </div>
+                <div class="space-y-2">
+                    <label for="configLine2" class="block text-sm font-medium text-gray-700">Línea 2 (Nombre Comercial):</label>
+                    <input type="text" id="configLine2" class="mt-1 block w-full border-gray-300 rounded-none shadow-sm p-2.5 border" placeholder="Ej: Nexus POS Global">
+                </div>
+                <div class="space-y-2">
+                    <label for="configLine3" class="block text-sm font-medium text-gray-700">Línea 3 (RIF / C.I.):</label>
+                    <input type="text" id="configLine3" class="mt-1 block w-full border-gray-300 rounded-none shadow-sm p-2.5 border" placeholder="Ej: J-12345678-9">
+                </div>
+                <div class="space-y-2">
+                    <label for="configLine4" class="block text-sm font-medium text-gray-700">Línea 4 (Domicilio Fiscal):</label>
+                    <input type="text" id="configLine4" class="mt-1 block w-full border-gray-300 rounded-none shadow-sm p-2.5 border" placeholder="Ej: Av. Bolívar, Local 4, Valencia">
+                </div>
+                <div class="space-y-2">
+                    <label for="configLine5" class="block text-sm font-medium text-gray-700">Línea 5 (Teléfono / Correo):</label>
+                    <input type="text" id="configLine5" class="mt-1 block w-full border-gray-300 rounded-none shadow-sm p-2.5 border" placeholder="Ej: 0414-1234567 / info@nexus.com">
+                </div>
+                <div class="space-y-2">
+                    <label for="configLine6" class="block text-sm font-medium text-gray-700">Línea 6 (Sucursal / Opcional):</label>
+                    <input type="text" id="configLine6" class="mt-1 block w-full border-gray-300 rounded-none shadow-sm p-2.5 border" placeholder="Ej: Sucursal Centro">
+                </div>
+            </div>
+        </div>
+        
+        <div class="p-4 border-b border-gray-200 text-left">
+            <label for="config-multicurrency" class="flex items-center justify-between text-gray-700 font-medium cursor-pointer">
+                <span class="text-lg">Habilitar Factura Multimoneda (Bs / Divisa)</span>
+                <input type="checkbox" id="config-multicurrency" class="h-5 w-5 text-yellow-600 border-gray-300 rounded-none focus:ring-yellow-500">
+            </label>
+        </div>
+
+        <div class="p-4 border-b border-gray-200 text-left">
+            <label for="config-validar-eliminar" class="flex items-center justify-between text-gray-700 font-medium cursor-pointer">
+                <span class="text-lg">Validar clave antes de eliminar un producto del carrito</span>
+                <input type="checkbox" id="config-validar-eliminar" class="h-5 w-5 text-indigo-600 border-gray-300 rounded-none focus:ring-indigo-500">
+            </label>
+        </div>
+
+        <div class="space-y-4 text-left p-6 border border-gray-200 bg-white rounded-none">
+            <div class="flex items-center justify-between mb-2 border-b pb-4">
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-800">Báscula / Balanza (Puerto COM)</h2>
+                    <p class="text-sm text-gray-500">Conexión serial directa con el hardware de pesaje.</p>
+                </div>
+                <label for="config-enable-scale" class="flex items-center cursor-pointer bg-white border border-gray-200 px-4 py-2 rounded-none shadow-sm">
+                    <span class="mr-3 text-sm font-bold text-gray-700">Habilitar</span>
+                    <input type="checkbox" id="config-enable-scale" class="h-6 w-6 text-indigo-600 border-gray-300 rounded-none focus:ring-indigo-500">
+                </label>
+            </div>
+            <div class="space-y-2 pt-2">
+                <label for="scaleVpsUrl" class="block text-sm font-medium text-gray-700">Seleccione el Puerto COM de la Balanza:</label>
+                <select id="scaleVpsUrl" class="mt-1 block w-full pl-3 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-none shadow-sm bg-white border">
+                    <option value="">Cargando puertos USB/COM...</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="space-y-4 text-left p-6 border border-gray-200 bg-white rounded-none">
+            <div class="mb-4">
+                <h2 class="text-lg font-semibold text-gray-800">Impresora de Tickets (Windows/OS)</h2>
+                <p class="text-sm text-gray-500">Seleccione la impresora térmica instalada en su equipo.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-2">
+                    <label for="printer-select" class="block text-sm font-medium text-gray-700">Impresora:</label>
+                    <select id="printer-select" class="mt-1 block w-full pl-3 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-none shadow-sm bg-white border">
+                        <option value="">Cargando impresoras...</option>
+                    </select>
+                </div>
+                <div class="space-y-2">
+                    <label for="printer-size-select" class="block text-sm font-medium text-gray-700">Tamaño de Papel:</label>
+                    <select id="printer-size-select" class="mt-1 block w-full pl-3 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-none shadow-sm bg-white border">
+                        <option value="58">58 mm (Por Defecto)</option>
+                        <option value="80">80 mm</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-4 text-left p-6 border border-gray-200 bg-white rounded-none mb-6 ">
+            <div class="mb-2">
+                <h2 class="text-lg font-semibold text-gray-800 flex items-center">Productos Automáticos (Nueva Venta)</h2>
+                <p class="text-sm text-gray-500">Seleccione los productos (ej. Bolsas) que se añadirán automáticamente al carrito al iniciar una factura vacía.</p>
+            </div>
+            <div class="relative">
+                <input type="text" id="auto-product-search" class="mt-1 block w-full border-gray-300 rounded-none shadow-sm p-3 border focus:ring-green-500 focus:border-green-500" placeholder="Escriba para buscar un producto...">
+                <div id="auto-autocomplete-results" class="absolute z-[100] w-full bg-white border border-gray-200 shadow-xl rounded-none mt-1 hidden max-h-60 overflow-y-auto"></div>
+            </div>
+            <div id="auto-products-list" class="mt-4 space-y-2">
+                </div>
+        </div>
+        
+        <div class="pt-4 pb-10">
+            <button id="saveConfigBtn" class="w-full md:w-auto md:min-w-[300px] mx-auto block bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-none shadow-lg transition duration-300 ease-in-out text-lg">
+                Guardar Configuración
+            </button>
+            <p id="messageBox" class="text-center mt-6 font-semibold text-lg"></p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal genérico para alertas y confirmaciones -->
+<div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-none shadow-xl p-6 w-full max-w-md mx-4">
+        <h3 id="custom-modal-title" class="text-lg font-bold text-gray-800 mb-2">Mensaje</h3>
+        <p id="custom-modal-message" class="text-gray-600 mb-6 whitespace-pre-line"></p>
+        <div class="flex justify-end gap-3">
+            <button id="custom-modal-cancel" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-none hover:bg-gray-300 hidden">Cancelar</button>
+            <button id="custom-modal-ok" class="px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700">Aceptar</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+
+    let userId = null;
+    let companyId = null;
+    let branchId = null; 
+    let cashierId = null; 
+    window.allProductsConfig = [];
+    window.autoProductsSelected = [];
+
+    const saveConfigBtn = document.getElementById('saveConfigBtn');
+    const messageBox = document.getElementById('messageBox');
+    
+    const printerSelect = document.getElementById('printer-select');
+    const printerSizeSelect = document.getElementById('printer-size-select');
+    const scaleVpsUrl = document.getElementById('scaleVpsUrl'); 
+    const enableScaleCheckbox = document.getElementById('config-enable-scale'); 
+    const multicurrencyCheckbox = document.getElementById('config-multicurrency');
+    const validarEliminarCheckbox = document.getElementById('config-validar-eliminar');
+
+    const configLine1 = document.getElementById('configLine1');
+    const configLine2 = document.getElementById('configLine2');
+    const configLine3 = document.getElementById('configLine3');
+    const configLine4 = document.getElementById('configLine4');
+    const configLine5 = document.getElementById('configLine5');
+    const configLine6 = document.getElementById('configLine6');   
+
+    window.showCustomAlert = function(message, title = "Atención") {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('custom-modal');
+            document.getElementById('custom-modal-title').textContent = title;
+            document.getElementById('custom-modal-message').textContent = message;
+            document.getElementById('custom-modal-cancel').style.display = 'none';
+            const btnOk = document.getElementById('custom-modal-ok');
+            btnOk.onclick = () => {
+                modal.classList.add('hidden');
+                resolve(true);
+            };
+            modal.classList.remove('hidden');
+            btnOk.focus();
+        });
+    }
+
+    function showMessage(message, color) {
+        if (!messageBox) return;
+        messageBox.textContent = message;
+        messageBox.style.color = color;
+    }
+
+    async function getPuertosCOM() {
+        try {
+            if (!window.nexusAPI || typeof window.nexusAPI.leerPuertos !== 'function') return [];
+            const ports = await window.nexusAPI.leerPuertos();
+            if (scaleVpsUrl) scaleVpsUrl.innerHTML = '<option value="">Seleccione el puerto...</option>';
+            if (ports && ports.length > 0) {
+                ports.forEach(port => {
+                    const opt = document.createElement('option');
+                    opt.value = port.path;
+                    opt.textContent = `${port.path} ${port.manufacturer ? '('+port.manufacturer+')' : ''}`;
+                    if (scaleVpsUrl) scaleVpsUrl.appendChild(opt);
+                });
+                return ports.map(p => p.path);
+            } else {
+                if (scaleVpsUrl) scaleVpsUrl.innerHTML = '<option value="">No hay puertos COM conectados</option>';
+                return [];
+            }
+        } catch (error) {
+            console.error("Error al leer puertos COM:", error);
+            return [];
+        }
+    }
+
+    async function getImpresorasOS() {
+        try {
+            if (!window.nexusAPI || typeof window.nexusAPI.leerImpresoras !== 'function') return [];
+            const impresoras = await window.nexusAPI.leerImpresoras();
+            if (printerSelect) printerSelect.innerHTML = '<option value="">Seleccione su impresora...</option>';
+            if (impresoras && impresoras.length > 0) {
+                impresoras.forEach(imp => {
+                    const opt = document.createElement('option');
+                    opt.value = imp.name; 
+                    opt.textContent = imp.name + (imp.isDefault ? ' (Predeterminada)' : '');
+                    if (printerSelect) printerSelect.appendChild(opt);
+                });
+                return impresoras.map(i => i.name);
+            } else {
+                if (printerSelect) printerSelect.innerHTML = '<option value="">No hay impresoras instaladas</option>';
+                return [];
+            }
+        } catch (error) {
+            console.error("Error al leer Impresoras:", error);
+            return [];
+        }
+    }
+    
+    async function loadAllConfigs(puertosCOMValidos, impresorasValidas) {
+        if (!companyId || !branchId || !cashierId) {
+            showMessage("Error de sesión. No se puede cargar la configuración.", 'red');
+            return;
+        }
+
+        let facturaLoaded = false;
+        let basculaLoaded = false;
+
+        try {
+            const facturaDataRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
+            if (facturaDataRaw) {
+                const data = JSON.parse(facturaDataRaw);
+                const savedPrinter = data.impresoraSeleccionada;
+                const savedPrinterSize = data.tamañoImpresora; 
+                const headerConfig = data.encabezadoFactura; 
+                const enableMulticurrency = data.enableMulticurrency; 
+                
+                if (savedPrinter && impresorasValidas.includes(savedPrinter)) {
+                    if (printerSelect) printerSelect.value = savedPrinter;
+                }
+                if (printerSizeSelect) {
+                    const validSizes = ['58', '80'];
+                    printerSizeSelect.value = (savedPrinterSize && validSizes.includes(savedPrinterSize)) ? savedPrinterSize : '58';
+                }
+                if (headerConfig) {
+                    if (configLine1) configLine1.value = headerConfig.line1 || '';
+                    if (configLine2) configLine2.value = headerConfig.line2 || '';
+                    if (configLine3) configLine3.value = headerConfig.line3 || '';
+                    if (configLine4) configLine4.value = headerConfig.line4 || '';
+                    if (configLine5) configLine5.value = headerConfig.line5 || '';
+                    if (configLine6) configLine6.value = headerConfig.line6 || '';
+                }
+                if (multicurrencyCheckbox) multicurrencyCheckbox.checked = (enableMulticurrency === true);
+                if (validarEliminarCheckbox) validarEliminarCheckbox.checked = (data.validarEliminarProducto === true);
+                
+                facturaLoaded = true;
+            } else {
+                if (multicurrencyCheckbox) multicurrencyCheckbox.checked = false; 
+            }
+        } catch (error) {
+            console.error("Error al cargar Factura:", error);
+        }
+
+        try {
+            const basculaDataRaw = await window.nexusAPI.obtenerConfiguracion('config_bascula');
+            if (basculaDataRaw) {
+                const data = JSON.parse(basculaDataRaw);
+                const savedPort = data.puertoCOM;
+                if (savedPort && puertosCOMValidos.includes(savedPort)) {
+                    if (scaleVpsUrl) scaleVpsUrl.value = savedPort;
+                }
+                if (enableScaleCheckbox) {
+                     enableScaleCheckbox.checked = data.enableScale || false;
+                }
+                basculaLoaded = true;
+            } else {
+                if (enableScaleCheckbox) enableScaleCheckbox.checked = false; 
+            }
+        } catch (error) {
+            console.error("Error al cargar Báscula:", error);
+        }
+        
+        if (facturaLoaded || basculaLoaded) {
+            showMessage(`✅ Configuración cargada correctamente.`, 'green');
+        } else {
+            showMessage("Ajuste los parámetros y presione Guardar.", 'blue');
+        }
+    }
+ 
+    async function verificarAutenticacionLocal() {
+        try {
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
+            if (sesion && sesion.companyId) {
+                userId = sesion.uid;
+                companyId = sesion.companyId;
+                branchId = sesion.branchId; 
+                cashierId = sesion.uid; 
+
+                showMessage("Escaneando hardware e inventario...", 'blue');
+                window.allProductsConfig = await window.nexusAPI.obtenerProductosLocal(companyId) || [];
+
+                const [puertos, impresoras] = await Promise.all([
+                    getPuertosCOM(),
+                    getImpresorasOS()
+                ]);
+
+                await loadAllConfigs(puertos, impresoras); 
+                iniciarBuscadorAutoProductos();
+                const autoProdsRaw = await window.nexusAPI.obtenerConfiguracion('config_auto_productos');
+                if (autoProdsRaw) {
+                    window.autoProductsSelected = JSON.parse(autoProdsRaw);
+                    window.renderAutoProducts();
+                }
+            } else {
+                userId = null;
+                companyId = null;
+                branchId = null; 
+                cashierId = null; 
+            }
+        } catch (error) {
+            console.error("Error de sesión:", error);
+            showMessage("Error de lectura local. Revisa la consola.", 'red');
+        }
+    }
+
+    verificarAutenticacionLocal();
+
+    async function saveFacturaConfiguration() {
+        try {
+            const existingDataRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
+            let facturaData = existingDataRaw ? JSON.parse(existingDataRaw) : {};
+
+            facturaData.ultimoCambio = new Date().toISOString();
+            facturaData.modificadoPor = userId;
+            
+            if (printerSelect) facturaData.impresoraSeleccionada = printerSelect.value;
+            if (printerSizeSelect) facturaData.tamañoImpresora = printerSizeSelect.value;
+            if (multicurrencyCheckbox) facturaData.enableMulticurrency = multicurrencyCheckbox.checked;
+            if (validarEliminarCheckbox) facturaData.validarEliminarProducto = validarEliminarCheckbox.checked;
+            
+            if (configLine1) {
+                facturaData.encabezadoFactura = {
+                    line1: configLine1.value.trim(),
+                    line2: configLine2.value.trim(),
+                    line3: configLine3.value.trim(),
+                    line4: configLine4.value.trim(),
+                    line5: configLine5.value.trim(),
+                    line6: configLine6.value.trim()
+                };
+            }
+
+            await window.nexusAPI.guardarConfiguracion('config_factura', JSON.stringify(facturaData));
+            await window.nexusAPI.guardarConfiguracion('config_auto_productos', JSON.stringify(window.autoProductsSelected));
+            return true;
+        } catch(e) {
+            console.error("Error al guardar factura config:", e);
+            return false;
+        }
+    }
+
+    async function saveBasculaConfiguration() {
+        try {
+            const comPortToSave = scaleVpsUrl ? scaleVpsUrl.value : ''; 
+            const enableScaleState = enableScaleCheckbox ? enableScaleCheckbox.checked : false;
+            
+            const basculaData = {
+                ultimoCambio: new Date().toISOString(),
+                modificadoPor: userId,
+                puertoCOM: comPortToSave || "", 
+                baudRate: 9600,           
+                enableScale: enableScaleState 
+            };
+
+            await window.nexusAPI.guardarConfiguracion('config_bascula', JSON.stringify(basculaData));
+            return true;
+        } catch(e) {
+            console.error("Error al guardar balanza config:", e);
+            return false;
+        }
+    }
+
+    async function saveConfiguration() {
+        if (!userId || !companyId || !branchId || !cashierId) {
+            showMessage("Error: Sesión no válida, no se puede guardar.", 'red');
+            return;
+        }
+
+        showMessage("Guardando configuración...", 'blue');
+        let facturaSuccess = await saveFacturaConfiguration();
+        let basculaSuccess = await saveBasculaConfiguration();
+
+        if (facturaSuccess && basculaSuccess) {
+            showMessage("✅ Configuración guardada correctamente en el equipo.", 'green');
+        } else {
+            showMessage("❌ Hubo un problema al guardar. Revisa la consola.", 'red');
+        }
+    }
+
+    saveConfigBtn.addEventListener('click', saveConfiguration);
+
+    function iniciarBuscadorAutoProductos() {
+        const searchInput = document.getElementById('auto-product-search');
+        if (!searchInput) return;
+        const resultsDiv = document.getElementById('auto-autocomplete-results');
+
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            if (!query) {
+                resultsDiv.classList.add('hidden');
+                return;
+            }
+            const filtered = window.allProductsConfig.filter(p => p.nombre.toLowerCase().includes(query) || (p.codigo && String(p.codigo).toLowerCase().includes(query))).slice(0, 10);
+            
+            resultsDiv.innerHTML = '';
+            if (filtered.length === 0) {
+                resultsDiv.innerHTML = '<div class="p-3 text-gray-500 text-sm">No se encontraron productos</div>';
+            } else {
+                filtered.forEach(p => {
+                    const div = document.createElement('div');
+                    div.className = 'p-3 border-b cursor-pointer hover:bg-green-50 text-sm';
+                    div.innerHTML = `<strong>${p.nombre}</strong> <span class="text-gray-500 text-xs ml-2">(${p.codigo || 'S/C'})</span>`;
+                    div.onclick = () => {
+                        window.addAutoProduct(p);
+                        searchInput.value = '';
+                        resultsDiv.classList.add('hidden');
+                    };
+                    resultsDiv.appendChild(div);
+                });
+            }
+            resultsDiv.classList.remove('hidden');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !resultsDiv.contains(e.target)) resultsDiv.classList.add('hidden');
+        });
+    }
+
+    window.addAutoProduct = function(prod, qty = 1) {
+        const prodId = prod.id || prod.producto_ID;
+        if (!window.autoProductsSelected.find(p => p.id === prodId)) {
+            window.autoProductsSelected.push({ id: prodId, nombre: prod.nombre, cantidad: qty });
+            window.renderAutoProducts();
+        }
+    };
+
+    window.removeAutoProduct = function(id) {
+        window.autoProductsSelected = window.autoProductsSelected.filter(p => p.id !== id);
+        window.renderAutoProducts();
+    };
+
+    window.updateAutoQty = function(id, val) {
+        const item = window.autoProductsSelected.find(p => p.id === id);
+        if (item) item.cantidad = parseFloat(val) || 1;
+    };
+
+    window.renderAutoProducts = function() {
+        const list = document.getElementById('auto-products-list');
+        if (!list) return;
+        list.innerHTML = '';
+        window.autoProductsSelected.forEach(p => {
+            list.innerHTML += `
+                <div class="flex justify-between items-center bg-white p-3 border rounded-none shadow-sm mb-2">
+                    <span class="font-medium text-gray-700">${p.nombre}</span>
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center">
+                            <label class="text-xs text-gray-500 mr-2">Cant:</label>
+                            <input type="number" min="1" value="${p.cantidad}" onchange="window.updateAutoQty('${p.id}', this.value)" class="w-16 border border-gray-300 rounded-none p-1 text-center text-sm outline-none focus:border-green-500">
+                        </div>
+                        <button onclick="window.removeAutoProduct('${p.id}')" class="text-red-600 hover:text-red-900 flex items-center justify-center" title="Eliminar">
+                            <span class="material-icons text-xl">delete</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+    };
+
+</script>

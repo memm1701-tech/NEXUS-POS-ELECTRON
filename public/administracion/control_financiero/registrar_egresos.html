@@ -1,0 +1,173 @@
+<div class="max-w-7xl mx-auto animate-fade-in p-4 md:p-8">
+    <style>
+        .animate-fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .custom-input { border: 1px solid #f3f4f6; transition: all 0.2s; }
+        .custom-input:focus { border-color: #e5e7eb; background-color: white; outline: none; }
+    </style>
+
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-800 italic">Registro de Egresos</h2>
+            <p class="text-sm text-gray-500">Libro Diario y Registro de Asientos Contables.</p>
+        </div>
+        
+        <div class="flex gap-4">
+            <div class="bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm">
+                <p class="text-[10px] font-bold text-gray-400 uppercase">Efectivo Disponible</p>
+                <p class="text-sm font-bold text-green-600" id="total-disponible">Bs. 0,00</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 h-fit">
+            <h4 class="font-bold text-gray-800 mb-6 italic">Nuevo Asiento</h4>
+            
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Glosa / Concepto</label>
+                    <input type="text" id="egreso-beneficiario" placeholder="Ej: Pago de alquiler" 
+                        class="w-full p-3 bg-gray-50 rounded-xl custom-input text-sm text-gray-700">
+                </div>
+
+                <div class="grid grid-cols-1 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Cuenta de Destino (Debe)</label>
+                        <select id="egreso-tipo" class="w-full p-3 bg-gray-50 rounded-xl custom-input text-sm text-gray-700 appearance-none">
+                            <optgroup label="Costo y Gastos">
+                                <option value="Costo de Ventas">5100 · Mercancía / Inventario</option>
+                                <option value="Gastos Personal">5200 · Sueldos y Salarios</option>
+                                <option value="Servicios">5300 · Luz / Agua / Internet</option>
+                                <option value="Marketing">5400 · Publicidad</option>
+                                <option value="Gastos Varios">5900 · Gastos Operativos</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Cuenta de Origen (Haber)</label>
+                        <select id="cuenta-origen" class="w-full p-3 bg-gray-50 rounded-xl custom-input text-sm text-gray-700 appearance-none">
+                            <option value="Caja Chica">1101 · Caja Chica</option>
+                            <option value="Banco Nacional">1102 · Banco (Transferencia)</option>
+                            <option value="Cuentas por Pagar">2101 · Crédito / Proveedores</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Fecha</label>
+                        <input type="date" id="egreso-fecha" class="w-full p-3 bg-gray-50 rounded-xl custom-input text-xs text-gray-600">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Monto Total</label>
+                        <input type="text" id="egreso-monto" placeholder="0,000,000,000" 
+                            class="w-full p-3 bg-red-50/30 border border-red-50 rounded-xl text-red-600 font-bold outline-none text-lg">
+                    </div>
+                </div>
+
+                <button id="btn-registrar-egreso" class="w-full bg-gray-800 text-white py-4 rounded-xl font-bold hover:bg-black transition-all mt-4 flex items-center justify-center gap-3">
+                    <span class="text-sm">Registrar Asiento</span>
+                    <i class="material-icons text-sm">account_balance</i>
+                </button>
+            </div>
+        </div>
+
+        <div class="lg:col-span-2 bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <h4 class="font-bold text-gray-800 mb-6 italic">Movimientos del Periodo</h4>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="text-[10px] uppercase tracking-widest text-gray-400 border-b border-gray-50">
+                            <th class="pb-4 font-bold">Fecha / Ref</th>
+                            <th class="pb-4 font-bold">Detalle Contable</th>
+                            <th class="pb-4 font-bold text-right">Debe / Haber</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-egresos-body" class="text-sm text-gray-600 divide-y divide-gray-50">
+                    </tbody>
+                </table>
+                
+                <div id="empty-state" class="py-20 text-center">
+                    <i class="material-icons text-gray-200 text-5xl mb-3">history_edu</i>
+                    <p class="text-gray-400 text-[10px] uppercase tracking-widest font-bold">No hay asientos contables registrados</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        (function() {
+            const fechaInput = document.getElementById('egreso-fecha');
+            if(fechaInput) fechaInput.valueAsDate = new Date();
+            
+            const btnSave = document.getElementById('btn-registrar-egreso');
+            const emptyState = document.getElementById('empty-state');
+            const tbody = document.getElementById('tabla-egresos-body');
+            const montoInput = document.getElementById('egreso-monto');
+
+            if (montoInput) {
+                montoInput.addEventListener('input', function(e) {
+                    let cursorPosition = e.target.selectionStart;
+                    let originalLength = e.target.value.length;
+                    let value = e.target.value.replace(/[^\d,]/g, "");
+                    let parts = value.split(',');
+                    if (parts.length > 2) value = parts[0] + ',' + parts.slice(1).join("");
+                    if (parts[0].length > 0) {
+                        parts[0] = new Intl.NumberFormat('de-DE').format(parseInt(parts[0]));
+                    }
+                    e.target.value = parts.join(',');
+                    let newPosition = cursorPosition + (e.target.value.length - originalLength);
+                    e.target.setSelectionRange(newPosition, newPosition);
+                });
+            }
+
+            if (btnSave) {
+                btnSave.addEventListener('click', () => {
+                    const beneficiario = document.getElementById('egreso-beneficiario').value;
+                    const montoRaw = montoInput.value;
+                    const destino = document.getElementById('egreso-tipo').value;
+                    const origen = document.getElementById('cuenta-origen').value;
+                    const fecha = document.getElementById('egreso-fecha').value;
+                    
+                    const montoNumerico = parseFloat(montoRaw.replace(/\./g, '').replace(',', '.'));
+
+                    if(!beneficiario || isNaN(montoNumerico)) {
+                        alert("Complete el concepto y el monto.");
+                        return;
+                    }
+
+                    if(emptyState) emptyState.classList.add('hidden');
+
+                    const row = `
+                        <tr class="animate-fade-in group hover:bg-gray-50/50">
+                            <td class="py-5 text-xs font-medium text-gray-400 align-top">
+                                ${fecha}<br><span class="text-[9px] text-gray-300">REF: #${Math.floor(Math.random() * 1000)}</span>
+                            </td>
+                            <td class="py-5">
+                                <div class="font-bold text-gray-800">${beneficiario}</div>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-[9px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded font-bold uppercase">${destino}</span>
+                                    <i class="material-icons text-[10px] text-gray-300">arrow_forward</i>
+                                    <span class="text-[9px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-bold uppercase">${origen}</span>
+                                </div>
+                            </td>
+                            <td class="py-5 text-right align-top">
+                                <span class="font-bold text-red-600 block">Bs. ${montoNumerico.toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                <span class="text-[9px] text-gray-400 italic">Asiento verificado</span>
+                            </td>
+                        </tr>
+                    `;
+                    
+                    if(tbody) tbody.insertAdjacentHTML('afterbegin', row);
+                    document.getElementById('egreso-beneficiario').value = '';
+                    montoInput.value = '';
+                });
+            }
+        })();
+    </script>
+</div>
