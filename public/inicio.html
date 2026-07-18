@@ -871,23 +871,17 @@
                 // 3. Ejecutar scripts internos de la vista cargada
                 const scripts = mainContent.querySelectorAll("script");
                 scripts.forEach(oldScript => {
-                    if (oldScript.src) {
-                        const newScript = document.createElement("script");
-                        Array.from(oldScript.attributes).forEach(attr => {
-                            newScript.setAttribute(attr.name, attr.value);
-                        });
-                        if (oldScript.parentNode) {
-                            oldScript.parentNode.replaceChild(newScript, oldScript);
-                        }
-                    } else {
-                        try {
-                            const scriptContent = oldScript.text || oldScript.textContent || oldScript.innerHTML || "";
-                            if (scriptContent.trim()) {
-                                window.eval(scriptContent);
-                            }
-                        } catch (e) {
-                            console.error("SyntaxError in dynamically loaded script:", e);
-                        }
+                    const newScript = document.createElement("script");
+                    Array.from(oldScript.attributes).forEach(attr => {
+                        newScript.setAttribute(attr.name, attr.value);
+                    });
+                    
+                    if (!oldScript.src) {
+                        newScript.textContent = oldScript.text || oldScript.textContent || oldScript.innerHTML || "";
+                    }
+                    
+                    if (oldScript.parentNode) {
+                        oldScript.parentNode.replaceChild(newScript, oldScript);
                     }
                 });
 
