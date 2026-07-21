@@ -708,21 +708,23 @@ setTimeout(() => {
             </div>
             
             <div id="vuelto-column" class="bg-gray-50 p-4 rounded-none shadow-inner flex flex-col justify-start h-full hidden">
-                <div class="space-y-3">
-                    <h3 class="text-xl font-bold mb-3 border-b pb-2 text-green-700">Vuelto (Cambio)</h3> 
-                    <div class="grid grid-cols-1 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Efectivo (Bs)</label>
-                            <input type="number" id="vuelto-efectivo-amount" class="payment-input w-full border rounded-none p-2 text-right" placeholder="0.00" value="">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Dólares ($)</label>
-                            <input type="number" id="vuelto-dolar-amount" class="payment-input w-full border rounded-none p-2 text-right" placeholder="0.00" value="">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Pago Móvil (Bs)</label>
-                            <input type="number" id="vuelto-pago-movil-amount" class="payment-input w-full border rounded-none p-2 text-right" placeholder="0.00" value="">
-                        </div>
+                <div class="space-y-3 flex flex-col">
+                    <h3 class="text-xl font-bold mb-3 border-b pb-2 text-green-700 flex justify-between items-center">
+                        Vuelto (Cambio)
+                        <button type="button" onclick="window.addVueltoRow()" id="btn-add-vuelto-header" class="hidden text-sm bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded-none shadow">
+                            <i class="fas fa-plus"></i> Añadir
+                        </button>
+                    </h3> 
+                    <div id="vuelto-dinamico-container" class="grid grid-cols-1 gap-4 content-start">
+                        <!-- Vueltos dinámicos se insertarán aquí -->
+                    </div>
+                    <div id="vuelto-selector-container" class="flex flex-col mt-4">
+                        <select id="vuelto-select-metodo" class="w-full border border-gray-300 rounded-none p-2 mb-2 focus:ring-green-500 focus:border-green-500">
+                            <option value="" disabled selected>Seleccionar Método de Cambio...</option>
+                        </select>
+                        <button type="button" onclick="window.addSelectedVueltoRow()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 w-full rounded-none shadow text-sm">
+                            <i class="fas fa-plus mr-2"></i>Añadir Método
+                        </button>
                     </div>
                 </div>
             </div>
@@ -3154,14 +3156,14 @@ async function processSale() {
             }
         });
 
-        // Vueltos
-        const vEfectivo = parseFloat(document.getElementById('vuelto-efectivo-amount')?.value) || 0;
-        const vDolar = parseFloat(document.getElementById('vuelto-dolar-amount')?.value) || 0;
-        const vPM = parseFloat(document.getElementById('vuelto-pago-movil-amount')?.value) || 0;
-
-        if (vEfectivo > 0) pagosRecopilados['vuelto_efectivo'] = vEfectivo;
-        if (vDolar > 0) pagosRecopilados['vuelto_dolar'] = vDolar;
-        if (vPM > 0) pagosRecopilados['vuelto_pagomovil'] = vPM;
+        // Vueltos (Dinámicos)
+        document.querySelectorAll('.vuelto-input').forEach(input => {
+            const idMetodo = input.getAttribute('data-id');
+            const val = parseFloat(input.value) || 0;
+            if (val > 0) {
+                pagosRecopilados['vuelto_' + idMetodo] = val;
+            }
+        });
 
         // --- INICIO EMISIÓN (ENRUTADOR DE FACTURACIÓN) ---
         if (currentEmissionMode === 'ELECTRONICA' || ((window.modoOperacion === 'NOTA_CREDITO' || window.modoOperacion === 'NOTA_DEBITO') && currentEmissionMode === 'ELECTRONICA')) {
@@ -3669,6 +3671,165 @@ document.getElementById('btn-confirm-payment').addEventListener('click', () => {
     processSale();
 });
 
+window.vueltosActivos = [];
+window.vueltosFijados = [];
+
+window.loadVueltosFijados = async function() {
+    try {
+        const config = await window.nexusAPI.obtenerConfiguracionCajera('cambio_fijado');
+        if (config) {
+            const metodosGuardados = JSON.parse(config);
+            window.vueltosFijados = metodosGuardados || [];
+            if (metodosGuardados && metodosGuardados.length > 0) {
+                document.getElementById('vuelto-selector-container').classList.add('hidden');
+                document.getElementById('btn-add-vuelto-header').classList.remove('hidden');
+                
+                const container = document.getElementById('vuelto-dinamico-container');
+                container.innerHTML = '';
+                
+                metodosGuardados.forEach(metodo => {
+                    let mMoneda = metodo.moneda;
+                    if (mMoneda === 'undefined' || !mMoneda) {
+                        const mObj = window.metodosPagoDinámicos ? window.metodosPagoDinámicos.find(m => String(m.id) === String(metodo.id)) : null;
+                        mMoneda = mObj ? (mObj.tipo_moneda || mObj.moneda || 'BS') : 'BS';
+                    }
+                    window.renderVueltoRow(metodo.id, metodo.nombre, mMoneda);
+                });
+                return;
+            }
+        }
+    } catch (e) {
+        console.error("Error al cargar cambios fijados", e);
+    }
+    
+    // Si no hay nada fijado
+    window.vueltosFijados = [];
+    document.getElementById('vuelto-selector-container').classList.remove('hidden');
+    document.getElementById('btn-add-vuelto-header').classList.add('hidden');
+    document.getElementById('vuelto-dinamico-container').innerHTML = '';
+};
+
+window.populateVueltoDropdown = function() {
+    const select = document.getElementById('vuelto-select-metodo');
+    if (!select) return;
+    
+    let html = '<option value="" disabled selected>Seleccionar Método de Cambio...</option>';
+    if (window.metodosPagoDinámicos) {
+        window.metodosPagoDinámicos.forEach(m => {
+            const moneda = m.tipo_moneda || m.moneda || 'BS';
+            html += `<option value="${m.id}" data-moneda="${moneda}" data-nombre="${m.nombre}">${m.nombre}</option>`;
+        });
+    }
+    select.innerHTML = html;
+};
+
+window.renderVueltoRow = function(idMetodo, nombre, moneda) {
+    document.getElementById('vuelto-selector-container').classList.add('hidden');
+    document.getElementById('btn-add-vuelto-header').classList.remove('hidden');
+    
+    const container = document.getElementById('vuelto-dinamico-container');
+    const rowId = 'vuelto-row-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+    
+    const isFijado = window.vueltosFijados.some(m => String(m.id) === String(idMetodo));
+    const btnColor = isFijado ? 'text-blue-500' : 'text-gray-400';
+    
+    const div = document.createElement('div');
+    div.id = rowId;
+    div.className = 'vuelto-item-row relative';
+    div.innerHTML = `
+        <div class="flex justify-between items-center mb-1">
+            <label class="block text-sm font-medium text-gray-700 uppercase">${nombre}</label>
+            <div class="flex gap-2">
+                <button type="button" id="btn-fijar-${idMetodo}-${rowId}" onclick="window.toggleFijarVuelto('${idMetodo}', '${nombre}', '${moneda}')" title="Fijar / Desfijar Método" class="${btnColor} hover:text-blue-700 transition-colors">
+                    <i class="fas fa-thumbtack"></i>
+                </button>
+                <button type="button" onclick="window.removeVueltoRow('${rowId}')" class="text-red-500 hover:text-red-700 ml-1">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <input type="number" id="input-${rowId}" data-id="${idMetodo}" data-nombre="${nombre}" data-moneda="${moneda}" class="vuelto-input w-full border border-gray-300 rounded-none p-2 text-right focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="0.00" value="">
+    `;
+    container.appendChild(div);
+    
+    const inputEl = document.getElementById(`input-${rowId}`);
+    inputEl.addEventListener('input', calculatePaymentSummary);
+    inputEl.addEventListener('change', calculatePaymentSummary);
+    
+    setTimeout(() => {
+        if(document.getElementById('payment-modal').style.display !== 'none'){
+            inputEl.focus();
+        }
+    }, 100);
+};
+
+window.addSelectedVueltoRow = function() {
+    const select = document.getElementById('vuelto-select-metodo');
+    if (select && select.selectedIndex > 0) {
+        const option = select.options[select.selectedIndex];
+        let moneda = option.getAttribute('data-moneda');
+        if (moneda === 'undefined' || !moneda) {
+             const mObj = window.metodosPagoDinámicos ? window.metodosPagoDinámicos.find(m => String(m.id) === String(option.value)) : null;
+             moneda = mObj ? (mObj.tipo_moneda || mObj.moneda || 'BS') : 'BS';
+        }
+        window.renderVueltoRow(option.value, option.getAttribute('data-nombre'), moneda);
+        select.selectedIndex = 0;
+    } else {
+        if (typeof messageBox === 'function') messageBox("Por favor seleccione un método de pago", "bg-orange-500");
+    }
+};
+
+window.addVueltoRow = function() {
+    document.getElementById('vuelto-selector-container').classList.remove('hidden');
+    document.getElementById('btn-add-vuelto-header').classList.add('hidden');
+};
+
+window.removeVueltoRow = function(rowId) {
+    const row = document.getElementById(rowId);
+    if (row) row.remove();
+    
+    const container = document.getElementById('vuelto-dinamico-container');
+    if (container.children.length === 0) {
+        document.getElementById('vuelto-selector-container').classList.remove('hidden');
+        document.getElementById('btn-add-vuelto-header').classList.add('hidden');
+    }
+    
+    calculatePaymentSummary();
+};
+
+window.toggleFijarVuelto = async function(idMetodo, nombre, moneda) {
+    const index = window.vueltosFijados.findIndex(m => String(m.id) === String(idMetodo));
+    let actionStr = "";
+    
+    if (index >= 0) {
+        window.vueltosFijados.splice(index, 1);
+        actionStr = "desfijado";
+        const btns = document.querySelectorAll(`[id^='btn-fijar-${idMetodo}']`);
+        btns.forEach(btn => {
+            btn.classList.remove('text-blue-500');
+            btn.classList.add('text-gray-400');
+        });
+    } else {
+        window.vueltosFijados.push({ id: idMetodo, nombre: nombre, moneda: moneda });
+        actionStr = "fijado";
+        const btns = document.querySelectorAll(`[id^='btn-fijar-${idMetodo}']`);
+        btns.forEach(btn => {
+            btn.classList.remove('text-gray-400');
+            btn.classList.add('text-blue-500');
+        });
+    }
+    
+    try {
+        const respuesta = await window.nexusAPI.guardarConfiguracionCajera('cambio_fijado', JSON.stringify(window.vueltosFijados));
+        if (!respuesta.exito) {
+            throw new Error(respuesta.error);
+        }
+        if (typeof messageBox === 'function') messageBox(`Método de cambio ${actionStr}`, actionStr === "fijado" ? "bg-green-600" : "bg-gray-600");
+    } catch (error) {
+        if (typeof messageBox === 'function') messageBox("Error al guardar configuración", "bg-red-500");
+    }
+};
+
 window.actualizarGridPagos = function() {
     const paymentContent = document.getElementById('payment-content');
     const paymentGrid = document.getElementById('payment-grid');
@@ -3829,11 +3990,19 @@ function calculatePaymentSummary() {
     // 🔥 CÁLCULO CASCADA HKA: Faltante de la factura ANTES de procesar los dólares
     let faltanteAntesDeDolares = totalBs - totalBsPurosPagados;
     if (faltanteAntesDeDolares < 0) faltanteAntesDeDolares = 0;
-    const vueltoEfectivoDado = parseFloat(document.getElementById('vuelto-efectivo-amount')?.value) || 0;
-    const vueltoDolarDado = parseFloat(document.getElementById('vuelto-dolar-amount')?.value) || 0;
-    const vueltoPagoMovilDado = parseFloat(document.getElementById('vuelto-pago-movil-amount')?.value) || 0;
+    let totalVueltoBs = 0;
+    let totalVueltoDolar = 0;
+    document.querySelectorAll('.vuelto-input').forEach(input => {
+        const val = parseFloat(input.value) || 0;
+        const moneda = (input.getAttribute('data-moneda') || 'BS').toUpperCase();
+        if (moneda === 'USD') {
+            totalVueltoDolar += val;
+        } else {
+            totalVueltoBs += val;
+        }
+    });
 
-    const dolaresNetos = Math.max(0, dolarInput - vueltoDolarDado);
+    const dolaresNetos = Math.max(0, dolarInput - totalVueltoDolar);
     const valorBrutoDolaresBs = dolaresNetos * tasaActual;
     const valorBrutoTotalDolaresBs = dolarInput * tasaActual;
 
@@ -3894,8 +4063,8 @@ function calculatePaymentSummary() {
 
     const faltanteBs = totalBs - montoPagadoBs;
     
-    const vueltoDolarDadoBs = vueltoDolarDado * tasaActual;
-    const totalVueltoDadoBs = vueltoEfectivoDado + vueltoDolarDadoBs + vueltoPagoMovilDado;
+    const vueltoDolarDadoBs = totalVueltoDolar * tasaActual;
+    const totalVueltoDadoBs = totalVueltoBs + vueltoDolarDadoBs;
 
     const resumenFaltanteBs = document.getElementById('resumen-faltante-bs');
     const resumenFaltanteUsd = document.getElementById('resumen-faltante-usd');
@@ -3964,9 +4133,7 @@ function calculatePaymentSummary() {
             if (resumenFaltanteUsd) resumenFaltanteUsd.textContent = `$0.00`;
         }
 
-        const hasVueltoData = parseFloat(document.getElementById('vuelto-efectivo-amount')?.value || 0) > 0 ||
-                              parseFloat(document.getElementById('vuelto-dolar-amount')?.value || 0) > 0 ||
-                              parseFloat(document.getElementById('vuelto-pago-movil-amount')?.value || 0) > 0;
+        const hasVueltoData = (totalVueltoBs > 0 || totalVueltoDolar > 0);
                               
         if (!hasVueltoData) {
             vueltoColumn?.classList.add('hidden');
@@ -5078,6 +5245,9 @@ window.openPaymentModal = function() {
             modal.style.display = 'flex';
             modal.style.zIndex = '999999';
             modal.classList.remove('hidden');
+            
+            window.populateVueltoDropdown();
+            window.loadVueltosFijados();
             
             // Mostrar u ocultar campo de impuesto percibido
             const campoPercibido = document.getElementById('campo-impuesto-percibido');

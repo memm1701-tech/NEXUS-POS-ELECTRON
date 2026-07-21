@@ -488,28 +488,43 @@
         function getFechasPorPeriodo(periodo) {
             const hoy = new Date();
             let inicio = new Date();
-            
+            let fin = new Date();
+
             if (periodo === 'dia') {
-                inicio.setDate(hoy.getDate() - 1); 
+                inicio = new Date(); 
+                fin = new Date();
             } else if (periodo === 'semana') {
-                inicio.setDate(hoy.getDate() - 7);
+                const diaSemana = hoy.getDay();
+                // Si es domingo (0), la semana empezó hace 6 días (lunes). Si no, hoy - diaSemana + 1 (lunes)
+                const diff = hoy.getDate() - diaSemana + (diaSemana === 0 ? -6 : 1);
+                inicio = new Date(hoy.getFullYear(), hoy.getMonth(), diff);
+                fin = new Date(hoy.getFullYear(), hoy.getMonth(), diff + 6); // Domingo de esta semana
             } else if (periodo === 'mes') {
-                inicio.setMonth(hoy.getMonth() - 1);
+                inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+                fin = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0); // Último día del mes
             } else if (periodo === 'anual') {
-                inicio.setFullYear(hoy.getFullYear() - 1);
+                inicio = new Date(hoy.getFullYear(), 0, 1);
+                fin = new Date(hoy.getFullYear(), 11, 31); // 31 de Dic
             }
+
+            const getLocalISODate = (d) => {
+                const tzOffset = d.getTimezoneOffset() * 60000;
+                return new Date(d.getTime() - tzOffset).toISOString().split('T')[0];
+            };
             
             return {
-                fecha_inicio: inicio.toISOString().split('T')[0],
-                fecha_fin: hoy.toISOString().split('T')[0]
+                fecha_inicio: getLocalISODate(inicio),
+                fecha_fin: getLocalISODate(fin)
             };
         }
 
         // --- MOTOR DE GRAFICOS NATIVO (SVG) SIN INTERNET ---
         function drawFirebaseChart(container, data) {
             container.innerHTML = '';
-            container.style.border = 'none';
-            container.style.background = '#ffffff'; // Fondo blanco estilo Firebase
+            container.style.border = '1px solid #e5e7eb';
+            container.style.borderRadius = '0.5rem';
+            container.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+            container.style.background = '#ffffff'; // Estilo Shadcn Card
             container.style.padding = '20px';
             container.style.position = 'relative';
 
@@ -525,8 +540,9 @@
             const graphWidth = width - padding.left - padding.right;
             const graphHeight = height - padding.top - padding.bottom;
 
-            let maxVal = Math.max(...data.map(d => d.total_ganancia));
-            if (maxVal === 0) maxVal = 1;
+            let maxVal = Math.max(...data.map(d => Number(d.total_ganancia) || 0));
+            if (maxVal <= 0) maxVal = 10; // Suelo base si no hay ventas o si todo es cero
+            else maxVal = maxVal * 1.2; // 20% de headroom para que el pico quede en el aire
             const minVal = 0;
 
             const xStep = graphWidth / Math.max(1, (data.length - 1));
@@ -534,7 +550,8 @@
             const points = data.map((d, i) => {
                 const x = padding.left + (i * xStep);
                 const y = padding.top + graphHeight - ((d.total_ganancia / maxVal) * graphHeight);
-                return { x, y, label: d.fecha.substring(5), val: d.total_ganancia };
+                const pointLabel = d.label || d.fecha.substring(5);
+                return { x, y, label: pointLabel, val: d.total_ganancia };
             });
 
             let areaPath = `M ${points[0].x} ${padding.top + graphHeight} `;
@@ -556,8 +573,8 @@
             const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
             defs.innerHTML = `
                 <linearGradient id="areaGradient" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stop-color="#4285F4" stop-opacity="0.3" />
-                    <stop offset="100%" stop-color="#4285F4" stop-opacity="0.0" />
+                    <stop offset="0%" stop-color="var(--border, #0f172a)" stop-opacity="0.2" />
+                    <stop offset="100%" stop-color="var(--border, #0f172a)" stop-opacity="0.0" />
                 </linearGradient>
             `;
             svg.appendChild(defs);
@@ -567,7 +584,7 @@
             yAxis.setAttribute("y1", padding.top);
             yAxis.setAttribute("x2", padding.left);
             yAxis.setAttribute("y2", padding.top + graphHeight);
-            yAxis.setAttribute("stroke", "#e0e0e0");
+            yAxis.setAttribute("stroke", "#e5e7eb");
             svg.appendChild(yAxis);
 
             const xAxis = document.createElementNS("http://www.w3.org/2000/svg", "line");
@@ -575,7 +592,7 @@
             xAxis.setAttribute("y1", padding.top + graphHeight);
             xAxis.setAttribute("x2", padding.left + graphWidth);
             xAxis.setAttribute("y2", padding.top + graphHeight);
-            xAxis.setAttribute("stroke", "#e0e0e0");
+            xAxis.setAttribute("stroke", "#e5e7eb");
             svg.appendChild(xAxis);
 
             for(let i=0; i<=4; i++) {
@@ -585,10 +602,10 @@
                 text.setAttribute("x", padding.left - 10);
                 text.setAttribute("y", tickY + 4);
                 text.setAttribute("text-anchor", "end");
-                text.setAttribute("fill", "#666");
+                text.setAttribute("fill", "#64748b");
                 text.setAttribute("font-size", "12px");
                 text.setAttribute("font-family", "sans-serif");
-                text.textContent = "$" + val.toFixed(0);
+                text.textContent = Intl.NumberFormat(undefined, { notation: "compact" }).format(val);
                 svg.appendChild(text);
 
                 const gridLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
@@ -596,7 +613,8 @@
                 gridLine.setAttribute("y1", tickY);
                 gridLine.setAttribute("x2", padding.left + graphWidth);
                 gridLine.setAttribute("y2", tickY);
-                gridLine.setAttribute("stroke", "#f0f0f0");
+                gridLine.setAttribute("stroke", "#e2e8f0");
+                gridLine.setAttribute("stroke-dasharray", "3 3");
                 svg.appendChild(gridLine);
             }
 
@@ -617,42 +635,136 @@
 
             const areaEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
             areaEl.setAttribute("d", areaPath);
-            areaEl.setAttribute("fill", "url(#areaGradient)");
+            areaEl.setAttribute("fill", "#2563eb");
+            areaEl.setAttribute("fill-opacity", "0.2");
             svg.appendChild(areaEl);
 
             const lineEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
             lineEl.setAttribute("d", linePath);
             lineEl.setAttribute("fill", "none");
-            lineEl.setAttribute("stroke", "#4285F4"); 
-            lineEl.setAttribute("stroke-width", "3");
+            lineEl.setAttribute("stroke", "#2563eb"); 
+            lineEl.setAttribute("stroke-width", "2");
             svg.appendChild(lineEl);
 
-            points.forEach(p => {
+            // Cursor vertical de Recharts
+            const cursorLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            cursorLine.setAttribute("y1", padding.top);
+            cursorLine.setAttribute("y2", padding.top + graphHeight);
+            cursorLine.setAttribute("stroke", "#94a3b8");
+            cursorLine.setAttribute("stroke-dasharray", "3 3");
+            cursorLine.style.display = "none";
+            svg.appendChild(cursorLine);
+
+            let tooltip = document.getElementById('grafico-tooltip');
+            if (!tooltip) {
+                tooltip = document.createElement("div");
+                tooltip.id = 'grafico-tooltip';
+                tooltip.style.position = "absolute";
+                tooltip.style.display = "none";
+                tooltip.style.background = "#ffffff";
+                tooltip.style.color = "#020817";
+                tooltip.style.padding = "10px 14px";
+                tooltip.style.borderRadius = "0.5rem";
+                tooltip.style.fontSize = "12px";
+                tooltip.style.fontFamily = "sans-serif";
+                tooltip.style.pointerEvents = "none";
+                tooltip.style.zIndex = "1000";
+                tooltip.style.border = "1px solid #e2e8f0";
+                tooltip.style.boxShadow = "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)";
+                tooltip.style.transition = "opacity 0.1s ease";
+                tooltip.style.opacity = "0";
+                document.body.appendChild(tooltip);
+            }
+
+            const circles = points.map(p => {
                 const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
                 circle.setAttribute("cx", p.x);
                 circle.setAttribute("cy", p.y);
-                circle.setAttribute("r", "5");
-                circle.setAttribute("fill", "#4285F4");
-                circle.setAttribute("stroke", "#ffffff");
+                circle.setAttribute("r", "0"); // Ocultos por defecto como en Shadcn hasta hacer hover
+                circle.setAttribute("fill", "#ffffff");
+                circle.setAttribute("stroke", "#2563eb");
                 circle.setAttribute("stroke-width", "2");
-                circle.style.cursor = "pointer";
-
-                const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-                title.textContent = `${p.label}: ${p.val.toFixed(2)}`;
-                circle.appendChild(title);
-
+                circle.style.transition = "r 0.1s ease";
+                circle.style.pointerEvents = "none"; // El hover lo maneja el overlay
                 svg.appendChild(circle);
+                return circle;
             });
+
+            // Overlay interactivo para capturar el mouse estilo Recharts
+            const overlay = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+            overlay.setAttribute("x", padding.left);
+            overlay.setAttribute("y", padding.top);
+            overlay.setAttribute("width", graphWidth);
+            overlay.setAttribute("height", graphHeight);
+            overlay.setAttribute("fill", "transparent");
+            overlay.style.cursor = "crosshair";
+            
+            let activeIndex = -1;
+
+            overlay.addEventListener("mousemove", (e) => {
+                const rect = svg.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                
+                // Encontrar el punto más cercano en X
+                let closestIdx = 0;
+                let minDiff = Infinity;
+                points.forEach((p, i) => {
+                    const diff = Math.abs(p.x - mouseX);
+                    if (diff < minDiff) {
+                        minDiff = diff;
+                        closestIdx = i;
+                    }
+                });
+
+                if (activeIndex !== closestIdx) {
+                    if (activeIndex > -1) circles[activeIndex].setAttribute("r", "0");
+                    activeIndex = closestIdx;
+                    circles[activeIndex].setAttribute("r", "4"); // Dot activo
+
+                    const p = points[activeIndex];
+                    cursorLine.setAttribute("x1", p.x);
+                    cursorLine.setAttribute("x2", p.x);
+                    cursorLine.style.display = "block";
+
+                    tooltip.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:center; min-width:130px; gap: 12px;">
+                            <span style="color:#64748b; font-weight:500;">${p.label}</span>
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <div style="width:8px; height:8px; border-radius:2px; background:#2563eb;"></div>
+                                <span style="font-weight:600; font-family:monospace; font-size:13px;">$${p.val.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits:2})}</span>
+                            </div>
+                        </div>
+                    `;
+                    tooltip.style.display = "block";
+                    tooltip.style.opacity = "1";
+                }
+
+                // El tooltip sigue al mouse sutilmente
+                tooltip.style.left = (e.pageX + 15) + "px";
+                tooltip.style.top = (e.pageY - 25) + "px";
+            });
+
+            overlay.addEventListener("mouseleave", () => {
+                if (activeIndex > -1) circles[activeIndex].setAttribute("r", "0");
+                activeIndex = -1;
+                cursorLine.style.display = "none";
+                tooltip.style.opacity = "0";
+                setTimeout(() => {
+                    if (tooltip.style.opacity === "0") tooltip.style.display = "none";
+                }, 100);
+            });
+
+            svg.appendChild(overlay);
 
             container.appendChild(svg);
             
             const legend = document.createElement("div");
             legend.style.position = "absolute";
             legend.style.top = "20px";
-            legend.style.right = "20px";
+            legend.style.right = "25px";
             legend.style.display = "flex";
             legend.style.alignItems = "center";
-            legend.innerHTML = `<div style="width:12px; height:12px; background:#4285F4; border-radius:50%; margin-right:8px;"></div> <span style="font-family:sans-serif; font-size:14px; color:#333;">Ganancias Netas</span>`;
+            legend.innerHTML = `<div style="width:10px; height:10px; background:#2563eb; border-radius:2px; margin-right:8px;"></div> <span style="font-family:sans-serif; font-size:13px; font-weight:500; color:#64748b;">Ganancias Netas</span>`;
             container.appendChild(legend);
         }
 
@@ -666,7 +778,7 @@
             if (!ip) ip = 'localhost';
             
             const { fecha_inicio, fecha_fin } = getFechasPorPeriodo(periodo);
-            const url = `http://${ip}:3000/api/maestro/estadisticas?fecha_inicio=${fecha_inicio}&fecha_fin=${fecha_fin}&companyId=${companyId}`;
+            const url = `http://${ip}:3000/api/maestro/estadisticas?fecha_inicio=${fecha_inicio}&fecha_fin=${fecha_fin}&companyId=${companyId}&periodo=${periodo}`;
             const response = await fetch(url);
             const res = await response.json();
             if (!res.exito) throw new Error(res.error);
@@ -688,9 +800,23 @@
                 const mapaDatos = {};
                 if (data.serie_tiempo) data.serie_tiempo.forEach(item => { mapaDatos[item.fecha] = item; });
                 
-                for (let d = new Date(inicioDate); d <= finDate; d.setDate(d.getDate() + 1)) {
-                    const stringFecha = d.toISOString().split('T')[0];
-                    serieCompleta.push(mapaDatos[stringFecha] || { fecha: stringFecha, total_ganancia: 0 });
+                if (periodo === 'dia') {
+                    // Para día, mapeamos las 24 horas del día actual (fecha_fin)
+                    for (let h = 0; h < 24; h++) {
+                        const hStr = h.toString().padStart(2, '0');
+                        const stringFecha = `${fecha_fin} ${hStr}:00:00`;
+                        const labelCorto = `${hStr}:00`;
+                        const item = mapaDatos[stringFecha] || { fecha: stringFecha, total_ganancia: 0 };
+                        item.label = labelCorto;
+                        serieCompleta.push(item);
+                    }
+                } else {
+                    for (let d = new Date(inicioDate); d <= finDate; d.setDate(d.getDate() + 1)) {
+                        const stringFecha = d.toISOString().split('T')[0];
+                        const item = mapaDatos[stringFecha] || { fecha: stringFecha, total_ganancia: 0 };
+                        item.label = stringFecha.substring(5); // MM-DD
+                        serieCompleta.push(item);
+                    }
                 }
                 drawFirebaseChart(graficoPlaceholder, serieCompleta);
             } catch(e) {
@@ -710,6 +836,7 @@
                     kpiProductoNombre.textContent = "Sin datos";
                     kpiProductoDetalle.textContent = "0 unidades";
                 }
+                if (hoveredCard === 'producto') renderTooltipProducto();
             } catch(e) {}
         }
 
@@ -726,6 +853,7 @@
                     kpiClienteNombre.textContent = "Sin datos";
                     kpiClienteDetalle.textContent = "CI/RIF: N/A | $0.00 en compras";
                 }
+                if (hoveredCard === 'cliente') renderTooltipCliente();
             } catch(e) {}
         }
         
@@ -840,6 +968,7 @@
         const cardCliente = contenedor.querySelector('.cliente-vip');
 
         let tooltipTimeout = null;
+        let hoveredCard = null;
 
         function showTooltip(html, e) {
             clearTimeout(tooltipTimeout);
@@ -848,7 +977,7 @@
             // Force layout reflow
             kpiTooltip.offsetHeight;
             kpiTooltip.classList.add('visible');
-            moveTooltip(e);
+            if (e) moveTooltip(e);
         }
 
         function moveTooltip(e) {
@@ -882,13 +1011,15 @@
                 if (!kpiTooltip.classList.contains('visible')) {
                     kpiTooltip.style.display = 'none';
                 }
-            }, 200); // Mismo tiempo que el transition de CSS
+            }, 200);
         }
 
-        cardProducto.addEventListener('mouseenter', (e) => {
-            if (topProductosCached.length === 0) return;
+        function renderTooltipProducto(e = null) {
+            if (topProductosCached.length === 0) {
+                if (hoveredCard === 'producto') hideTooltip();
+                return;
+            }
             let html = '<h4>🏆 Top Productos</h4><ul>';
-            // Mostrar los primeros 5
             topProductosCached.slice(0, 5).forEach((p, idx) => {
                 const nombre = p.producto_nombre || "Desconocido";
                 html += `<li>
@@ -898,15 +1029,14 @@
             });
             html += '</ul>';
             showTooltip(html, e);
-        });
+        }
 
-        cardProducto.addEventListener('mousemove', moveTooltip);
-        cardProducto.addEventListener('mouseleave', hideTooltip);
-
-        cardCliente.addEventListener('mouseenter', (e) => {
-            if (topClientesCached.length === 0) return;
+        function renderTooltipCliente(e = null) {
+            if (topClientesCached.length === 0) {
+                if (hoveredCard === 'cliente') hideTooltip();
+                return;
+            }
             let html = '<h4>👥 Top Clientes</h4><ul>';
-            // Mostrar los primeros 5
             topClientesCached.slice(0, 5).forEach((c, idx) => {
                 const nombre = c.cliente_nombre || "Desconocido";
                 const comprasDolar = (parseFloat(c.total_comprado) || 0) / currentTasaBcv;
@@ -920,10 +1050,27 @@
             });
             html += '</ul>';
             showTooltip(html, e);
+        }
+
+        cardProducto.addEventListener('mouseenter', (e) => {
+            hoveredCard = 'producto';
+            renderTooltipProducto(e);
+        });
+        cardProducto.addEventListener('mousemove', moveTooltip);
+        cardProducto.addEventListener('mouseleave', () => {
+            hoveredCard = null;
+            hideTooltip();
         });
 
+        cardCliente.addEventListener('mouseenter', (e) => {
+            hoveredCard = 'cliente';
+            renderTooltipCliente(e);
+        });
         cardCliente.addEventListener('mousemove', moveTooltip);
-        cardCliente.addEventListener('mouseleave', hideTooltip);
+        cardCliente.addEventListener('mouseleave', () => {
+            hoveredCard = null;
+            hideTooltip();
+        });
 
         // Inicializar
 

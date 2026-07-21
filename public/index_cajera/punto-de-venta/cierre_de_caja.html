@@ -247,6 +247,7 @@
     let salesPaymentTotals = {}; 
     let incomePaymentTotals = {};
     let expensePaymentTotals = {};
+    let totalesMatematicosCierre = {};
     let currentEmissionMode = 'TICKET_NO_FISCAL';
     let puertoFiscal = ''; 
 
@@ -384,6 +385,41 @@
         }
     }
 
+    function processMovimientoPagos(mov, paymentTotalsObj) {
+        const montoBs = parseFloat(mov.monto) || 0;
+        const montoUsd = parseFloat(mov.monto_usd) || 0;
+        const metodosSplit = (mov.metodo_pago || '').split(' / ').map(s => s.trim());
+        
+        let bsMethodName = null;
+        let usdMethodName = null;
+        
+        if (montoBs > 0 && montoUsd > 0) {
+            if (metodosSplit.length >= 2) {
+                bsMethodName = metodosSplit[0];
+                usdMethodName = metodosSplit[1];
+            } else {
+                bsMethodName = metodosSplit[0];
+                usdMethodName = metodosSplit[0];
+            }
+        } else if (montoBs > 0) {
+            bsMethodName = metodosSplit[0];
+        } else if (montoUsd > 0) {
+            usdMethodName = metodosSplit[0];
+        }
+
+        if (bsMethodName) {
+            let mObj = window.metodosCierre.find(m => m.nombre.toLowerCase() === bsMethodName.toLowerCase() && (m.tipo_moneda === 'BS' || m.tipo_moneda === 'Bs'));
+            if (!mObj) mObj = window.metodosCierre.find(m => m.nombre.toLowerCase() === bsMethodName.toLowerCase());
+            if (mObj) paymentTotalsObj[mObj.id] = (paymentTotalsObj[mObj.id] || 0) + montoBs;
+        }
+        
+        if (usdMethodName) {
+            let mObj = window.metodosCierre.find(m => m.nombre.toLowerCase() === usdMethodName.toLowerCase() && m.tipo_moneda === 'USD');
+            if (!mObj) mObj = window.metodosCierre.find(m => m.nombre.toLowerCase() === usdMethodName.toLowerCase());
+            if (mObj) paymentTotalsObj[mObj.id] = (paymentTotalsObj[mObj.id] || 0) + montoUsd;
+        }
+    }
+
     // --- CARGA DE DATOS LOCALES ---
     async function loadCajaData() {
         resetTotals();
@@ -392,29 +428,17 @@
             // 1. CARGAR INGRESOS PENDIENTES
             const ingresos = await window.nexusAPI.obtenerMovimientosCaja({ tipo: 'INGRESO', companyId });
             (ingresos || []).forEach(mov => {
-                currentReportData.totalIncomes += mov.monto;
-                currentReportData.totalIncomesDollars += mov.monto_usd; 
-                
-                const metodoEncontrado = window.metodosCierre.find(m => m.nombre.toLowerCase().replace(/\s/g, '') === (mov.metodo_pago || '').toLowerCase().replace(/\s/g, ''));
-                if (metodoEncontrado) {
-                    const code = metodoEncontrado.id;
-                    const amountToSum = metodoEncontrado.tipo_moneda === 'USD' ? (mov.monto_usd > 0 ? mov.monto_usd : mov.monto) : mov.monto;
-                    incomePaymentTotals[code] = (incomePaymentTotals[code] || 0) + amountToSum;
-                }
+                currentReportData.totalIncomes += (parseFloat(mov.monto) || 0);
+                currentReportData.totalIncomesDollars += (parseFloat(mov.monto_usd) || 0); 
+                processMovimientoPagos(mov, incomePaymentTotals);
             });
 
             // 2. CARGAR GASTOS PENDIENTES
             const gastos = await window.nexusAPI.obtenerMovimientosCaja({ tipo: 'GASTO', companyId });
             (gastos || []).forEach(mov => {
-                currentReportData.totalExpensesBs += mov.monto;
-                currentReportData.totalExpensesDollars += mov.monto_usd;
-                
-                const metodoEncontrado = window.metodosCierre.find(m => m.nombre.toLowerCase().replace(/\s/g, '') === (mov.metodo_pago || '').toLowerCase().replace(/\s/g, ''));
-                if (metodoEncontrado) {
-                    const code = metodoEncontrado.id;
-                    const amountToSum = metodoEncontrado.tipo_moneda === 'USD' ? (mov.monto_usd > 0 ? mov.monto_usd : mov.monto) : mov.monto;
-                    expensePaymentTotals[code] = (expensePaymentTotals[code] || 0) + amountToSum;
-                }
+                currentReportData.totalExpensesBs += (parseFloat(mov.monto) || 0);
+                currentReportData.totalExpensesDollars += (parseFloat(mov.monto_usd) || 0);
+                processMovimientoPagos(mov, expensePaymentTotals);
             });
 
             // 3. CARGAR VENTAS PENDIENTES
@@ -433,9 +457,15 @@
                         let isVuelto = method.startsWith('vuelto_');
                         let baseMethod = isVuelto ? method.replace('vuelto_', '') : method;
                         
-                        let metodo = window.metodosCierre.find(m => m.nombre.toLowerCase().replace(/\s/g, '') === baseMethod.toLowerCase().replace(/\s/g, ''));
+                        // Intentar buscar por ID primero (nueva logica)
+                        let metodo = window.metodosCierre.find(m => String(m.id) === String(baseMethod));
+                        
+                        // Si no encuentra por ID, buscar por nombre para compatibilidad hacia atras
                         if (!metodo) {
-                            metodo = window.metodosCierre.find(m => m.nombre.toLowerCase() === baseMethod.toLowerCase());
+                            metodo = window.metodosCierre.find(m => m.nombre.toLowerCase().replace(/\s/g, '') === String(baseMethod).toLowerCase().replace(/\s/g, ''));
+                        }
+                        if (!metodo) {
+                            metodo = window.metodosCierre.find(m => m.nombre.toLowerCase() === String(baseMethod).toLowerCase());
                         }
 
                         if (metodo) {
@@ -692,6 +722,9 @@
             combinedTotals[method] = (combinedTotals[method] || 0) - expensePaymentTotals[method]; 
         }
 
+        // GUARDADO DE SEGURIDAD MATEMÁTICA PURA
+        totalesMatematicosCierre = combinedTotals;
+
         window.metodosCierre.forEach(m => {
             const element = document.getElementById(`registered-${m.id}`);
             const amount = combinedTotals[m.id] || 0;
@@ -704,15 +737,6 @@
     function updateDifferencesAndTotals() {
         let totalDifferenceBs = 0; let totalDifferenceDollars = 0;
         const paymentDetails = {};
-        const registeredAmounts = {};
-
-        window.metodosCierre.forEach(m => {
-            const element = document.getElementById(`registered-${m.id}`);
-            if (element) {
-                const currencySymbol = m.tipo_moneda === 'USD' ? '$. ' : 'Bs. ';
-                registeredAmounts[m.id] = parseFloat(element.textContent.replace(currencySymbol, '')) || 0;
-            }
-        });
 
         countedInputs.forEach(input => {
             const paymentType = input.dataset.paymentType;
@@ -720,7 +744,7 @@
             if (!m) return;
 
             const countedAmount = parseFloat(input.value) || 0; 
-            const registeredAmount = registeredAmounts[m.id] || 0;
+            const registeredAmount = totalesMatematicosCierre[m.id] || 0;
             const difference = countedAmount - registeredAmount;
 
             const diffElement = document.getElementById(`diff-${m.id}`);

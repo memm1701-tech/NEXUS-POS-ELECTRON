@@ -116,41 +116,38 @@
 
             <div class="mb-8 p-6 border border-gray-200 rounded-none shadow-sm">
                 <h3 class="text-xl font-semibold mb-4 text-gray-700">Registrar Nuevo Gasto</h3>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
+                <div class="flex flex-wrap gap-4">
+                    <div class="flex-1 min-w-[200px]">
                         <label for="expense-description" class="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
                         <input type="text" id="expense-description"
                                class="block w-full rounded-none border-gray-300 shadow-sm focus:border-red-500 focus:ring-1 focus:ring-red-500 sm:text-base p-2.5"
                                placeholder="Ej. Pago a proveedor">
                     </div>
-                    <div>
+                    <div class="flex-1 min-w-[150px]">
                         <label for="expense-amount-bs" class="block text-sm font-medium text-gray-700 mb-2">Monto (Bs)</label>
                         <input type="number" id="expense-amount-bs" step="0.01" min="0"
                                class="block w-full rounded-none border-gray-300 shadow-sm focus:border-red-500 focus:ring-1 focus:ring-red-500 sm:text-base p-2.5"
                                placeholder="Ej. 75.00">
                     </div>
-                    <div id="expense-method-bs-group" class="hidden">
+                    <div id="expense-method-bs-group" class="hidden flex-1 min-w-[180px]">
                         <label for="expense-method-bs" class="block text-sm font-medium text-gray-700 mb-2">Método Egreso (Bs)</label>
                         <select id="expense-method-bs"
                                 class="block w-full rounded-none border-gray-300 shadow-sm focus:border-red-500 focus:ring-1 focus:ring-red-500 sm:text-base p-2.5">
                             <option value="">-- Seleccionar --</option>
-                            <option value="Efectivo">Efectivo</option>
-                            <option value="Tarjeta de Débito">Tarjeta de Débito</option>
-                            <option value="Pago Móvil">Pago Móvil</option>
-                            <option value="Transferencia">Transferencia</option>
-                            <option value="Depósito">Depósito</option>
-                            <option value="Crédito">Crédito</option>
-                            <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
-                            <option value="Zelle">Zelle</option>
-                            <option value="PayPal">PayPal</option>
-                            <option value="Otro">Otro</option>
                         </select>
                     </div>
-                    <div>
+                    <div class="flex-1 min-w-[150px]">
                         <label for="expense-amount-usd" class="block text-sm font-medium text-gray-700 mb-2">Monto (Divisa)</label>
                         <input type="number" id="expense-amount-usd" step="0.01" min="0"
                                class="block w-full rounded-none border-gray-300 shadow-sm focus:border-red-500 focus:ring-1 focus:ring-red-500 sm:text-base p-2.5"
                                placeholder="Ej. 2.50">
+                    </div>
+                    <div id="expense-method-usd-group" class="hidden flex-1 min-w-[180px]">
+                        <label for="expense-method-usd" class="block text-sm font-medium text-gray-700 mb-2">Método Egreso (Divisa)</label>
+                        <select id="expense-method-usd"
+                                class="block w-full rounded-none border-gray-300 shadow-sm focus:border-red-500 focus:ring-1 focus:ring-red-500 sm:text-base p-2.5">
+                            <option value="">-- Seleccionar --</option>
+                        </select>
                     </div>
                 </div>
                 <button id="add-expense-btn"
@@ -265,6 +262,22 @@
                 }
 
                 console.log("✅ Conexión establecida con el Cerebro Local (Gastos).");
+                try {
+                    const resp = await fetch('http://localhost:3000/api/maestro/metodos-pago');
+                    if (resp.ok) {
+                        const metodosData = await resp.json();
+                        const metodos = metodosData.data || [];
+                        const selBs = document.getElementById('expense-method-bs');
+                        const selUsd = document.getElementById('expense-method-usd');
+                        metodos.forEach(m => {
+                            const opt = document.createElement('option');
+                            opt.value = m.nombre;
+                            opt.textContent = m.nombre;
+                            if (m.tipo_moneda === 'BS' || m.tipo_moneda === 'Bs') selBs.appendChild(opt);
+                            else if (m.tipo_moneda === 'USD') selUsd.appendChild(opt);
+                        });
+                    }
+                } catch (e) { console.error("Error loading metodos_pago from API", e); }
                 loadExpenses(); // Cargar historial local
             } else {
                 showModal("Sesión no válida", "Por favor, inicia sesión de nuevo.", true);
@@ -293,6 +306,7 @@ async function addExpense() {
     const amountBs = parseFloat(expenseAmountBsInput.value) || 0;
     const amountUsd = parseFloat(expenseAmountUsdInput.value) || 0;
     const methodBs = expenseMethodBs.value.trim();
+    const methodUsd = document.getElementById('expense-method-usd').value.trim();
 
     if (description === '' || (amountBs <= 0 && amountUsd <= 0)) {
         showModal("Datos Incompletos", "Debes ingresar una descripción y un monto válido.", true);
@@ -303,18 +317,27 @@ async function addExpense() {
         showModal("Falta Método", "Selecciona de dónde salió el dinero en Bolívares.", true);
         return;
     }
+    if (amountUsd > 0 && methodUsd === '') {
+        showModal("Falta Método", "Selecciona de dónde salió el dinero en Divisa.", true);
+        return;
+    }
 
     addExpenseBtn.disabled = true;
     addExpenseBtn.innerHTML = `<span class="spinner"></span> Registrando...`;
 
     try {
+        let methodFinal = [];
+        if (amountBs > 0) methodFinal.push(methodBs);
+        if (amountUsd > 0) methodFinal.push(methodUsd);
+        const metodoUnido = methodFinal.join(' / ');
+
         const nuevoMovimiento = {
             id: `EXP-${Date.now()}`,
             tipo: 'GASTO',
             concepto: description,
             monto: amountBs,
             monto_usd: amountUsd,
-            metodo_pago: amountBs > 0 ? methodBs : 'DIVISA',
+            metodo_pago: metodoUnido,
             fecha: new Date().toISOString(),
             cashier_id: userId,
             company_id: companyId,
@@ -332,14 +355,16 @@ async function addExpense() {
                     concepto: description,
                     montoBs: amountBs,
                     metodoBs: methodBs,
-                    montoUsd: amountUsd
+                    montoUsd: amountUsd,
+                    metodoUsd: methodUsd
                 });
             } else if (typeof imprimirReciboGasto === 'function') {
                 await imprimirReciboGasto({
                     concepto: description,
                     montoBs: amountBs,
                     metodoBs: methodBs,
-                    montoUsd: amountUsd
+                    montoUsd: amountUsd,
+                    metodoUsd: methodUsd
                 });
             }
 
@@ -410,6 +435,10 @@ async function addExpense() {
         expenseAmountUsdInput.value = '0';
         expenseMethodBs.value = '';
         expenseMethodBsGroup.classList.add('hidden');
+        const usdSelect = document.getElementById('expense-method-usd');
+        if(usdSelect) usdSelect.value = '';
+        const usdGroup = document.getElementById('expense-method-usd-group');
+        if(usdGroup) usdGroup.classList.add('hidden');
     }
 
     function showModal(title, message, isError = false) {
@@ -431,12 +460,29 @@ async function addExpense() {
         addExpenseBtn.addEventListener('click', addExpense);
     }
     
-    // Mostrar/ocultar métodos de pago según el monto en BS
+    // Mostrar/ocultar métodos de pago según el monto en BS y USD
+    const preventNonNumeric = (e) => {
+        if (["-", "+", "e", "E"].includes(e.key)) {
+            e.preventDefault();
+        }
+    };
+
     if (expenseAmountBsInput) {
+        expenseAmountBsInput.addEventListener('keydown', preventNonNumeric);
         expenseAmountBsInput.addEventListener('input', () => {
             const val = parseFloat(expenseAmountBsInput.value) || 0;
             expenseMethodBsGroup.classList.toggle('hidden', val <= 0);
             if (val <= 0) expenseMethodBs.value = ''; 
+        });
+    }
+    if (expenseAmountUsdInput) {
+        const usdGroup = document.getElementById('expense-method-usd-group');
+        const usdSelect = document.getElementById('expense-method-usd');
+        expenseAmountUsdInput.addEventListener('keydown', preventNonNumeric);
+        expenseAmountUsdInput.addEventListener('input', () => {
+            const val = parseFloat(expenseAmountUsdInput.value) || 0;
+            usdGroup.classList.toggle('hidden', val <= 0);
+            if (val <= 0) usdSelect.value = ''; 
         });
     }
 
@@ -504,7 +550,7 @@ async function imprimirReciboGasto(gastoData) {
     if (gastoData.montoUsd > 0) {
         if (gastoData.montoBs > 0) t += CRLF; 
         t += formatLR("MONTO USD ($):", gastoData.montoUsd.toFixed(2), LINE_WIDTH) + CRLF;
-        t += formatLR("MÉTODO:", "EFECTIVO", LINE_WIDTH) + CRLF;
+        t += formatLR("MÉTODO:", (gastoData.metodoUsd || "N/A").toUpperCase(), LINE_WIDTH) + CRLF;
     }
 
     t += SEPARATOR;
@@ -584,7 +630,7 @@ async function imprimirDocumentoMaquinaFiscal(gastoData) {
     if (gastoData.montoUsd > 0) {
         if (gastoData.montoBs > 0) comandos.push("800" + " ");
         comandos.push("800" + formatLR("MONTO USD ($):", gastoData.montoUsd.toFixed(2), MAX_LINE));
-        comandos.push("800" + formatLR("MÉTODO:", "EFECTIVO", MAX_LINE));
+        comandos.push("800" + formatLR("MÉTODO:", limpiarTexto(gastoData.metodoUsd || "N/A"), MAX_LINE));
     }
 
     comandos.push("800" + SEPARATOR);

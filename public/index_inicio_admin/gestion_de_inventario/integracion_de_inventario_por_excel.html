@@ -298,7 +298,7 @@
             const categorias = await api.obtenerCategoriasLocal();
             
             catSelect.innerHTML = '<option value="">-- Selecciona una categoría destino --</option>';
-            const catEmpresa = categorias.filter(c => c.company_id === companyId || c.empresa_ID === companyId);
+            const catEmpresa = categorias.filter(c => c.company_id == companyId || c.empresa_ID == companyId);
             
             if (catEmpresa.length > 0) {
                 catEmpresa.forEach(c => {

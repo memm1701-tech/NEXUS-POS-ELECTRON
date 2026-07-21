@@ -48,179 +48,58 @@ if (config.isServer) {
     const serverDb = new Database(serverDbPath, { timeout: 15000 });
     serverDb.pragma('journal_mode = WAL');
     
-    // Inicialización de Tablas Maestras
-    serverDb.exec(`
-        CREATE TABLE IF NOT EXISTS stock_maestro (
-        producto_id TEXT,
-        sucursal_id TEXT,
-        company_id TEXT,
-        cantidad_real REAL DEFAULT 0,
-        ultima_sincronizacion DATETIME,
-        PRIMARY KEY (producto_id, sucursal_id)
-        );
+    // Inicialización de Tablas Maestras automatizada con ESQUEMA_MAESTRO
+    const ESQUEMA_MAESTRO = {
+        stock_maestro: { producto_id: "TEXT", sucursal_id: "TEXT", company_id: "TEXT", cantidad_real: "REAL DEFAULT 0", ultima_sincronizacion: "DATETIME", "PRIMARY KEY": "(producto_id, sucursal_id)" },
+        movimientos_stock_maestro: { id: "INTEGER PRIMARY KEY AUTOINCREMENT", company_id: "TEXT NOT NULL", sucursal_id: "TEXT", producto_id: "TEXT NOT NULL", cantidad: "REAL NOT NULL", tipo_movimiento: "TEXT NOT NULL", fecha_movimiento: "DATETIME DEFAULT CURRENT_TIMESTAMP", referencia_id: "TEXT" },
+        correlativos_maestros: { tipo: "TEXT PRIMARY KEY", prefijo: "TEXT", ultimo_numero: "INTEGER DEFAULT 0", correlativo_nc_actual: "INTEGER DEFAULT 0" },
+        clientes_maestro: { rif: "TEXT PRIMARY KEY", company_id: "TEXT", nombre: "TEXT NOT NULL", direccion: "TEXT", telefono: "TEXT", correo: "TEXT", datos_json: "TEXT", es_contribuyente_especial: "INTEGER DEFAULT 0", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP", saldo_deuda: "REAL DEFAULT 0" },
+        cuentas_por_cobrar: { id: "INTEGER PRIMARY KEY AUTOINCREMENT", cliente_id: "TEXT NOT NULL", cliente_nombre: "TEXT", monto_bs: "REAL DEFAULT 0", monto_usd: "REAL DEFAULT 0", factura_nro: "TEXT", monto_pagado: "REAL DEFAULT 0", fecha: "TEXT", estado: "TEXT DEFAULT 'PENDIENTE'" },
+        facturas_borradores: { id: "TEXT PRIMARY KEY", cliente_nombre: "TEXT", cliente_id: "TEXT", items: "TEXT", subtotal: "REAL", iva: "REAL", total: "REAL", metodos_pago: "TEXT", fecha: "INTEGER", usuario_id: "TEXT", sucursal_id: "TEXT", company_id: "TEXT" },
+        cierres_caja_maestros: { id: "TEXT PRIMARY KEY", fecha: "DATETIME", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", total_ventas_bs: "REAL", total_ventas_usd: "REAL", total_gastos_bs: "REAL", total_gastos_usd: "REAL", total_ingresos_bs: "REAL", total_diferencia_bs: "REAL", total_diferencia_usd: "REAL", detalle_pagos_json: "TEXT" },
+        ventas_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_factura: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", monto_exento: "REAL DEFAULT 0", base_imponible: "REAL DEFAULT 0", monto_iva: "REAL DEFAULT 0", total_iva: "REAL DEFAULT 0", monto_igtf: "REAL DEFAULT 0", monto_total: "REAL DEFAULT 0", tasa_bcv: "REAL DEFAULT 1", metodo_pago: "TEXT", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", estado_cierre: "INTEGER DEFAULT 0", es_nota_credito: "INTEGER DEFAULT 0", es_nota_debito: "INTEGER DEFAULT 0", factura_afectada: "TEXT", monto_factura_afectada: "REAL", fecha_factura_afectada: "TEXT", comprobante_retencion_id: "TEXT DEFAULT NULL" },
+        configuraciones_maestras: { clave: "TEXT PRIMARY KEY", valor: "TEXT" },
+        auditoria_fiscal: { id: "TEXT PRIMARY KEY", usuario: "TEXT NOT NULL", accion: "TEXT NOT NULL", valores: "TEXT NOT NULL", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
+        metodos_pago_maestro: { id: "TEXT PRIMARY KEY", nombre: "TEXT NOT NULL", tecla: "TEXT", tipo_moneda: "TEXT DEFAULT 'BS'", activo: "INTEGER DEFAULT 1", flag_impresora: "TEXT DEFAULT '00'" },
+        claves_admin_maestras: { id: "TEXT PRIMARY KEY", ownerName: "TEXT", encryptedCode: "TEXT", company_id: "TEXT", created_by: "TEXT", updatedAt: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
+        guia_despacho: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_guia: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", factura_asociada: "TEXT", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0" },
+        guias_despacho: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_guia: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", factura_asociada: "TEXT", datos_json: "TEXT", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP" }
+    };
 
+    function asegurarEsquema(dbConnection, esquema) {
+        for (const [tabla, columnas] of Object.entries(esquema)) {
+            const colDefs = [];
+            for (const [colName, colType] of Object.entries(columnas)) {
+                if (colName === "PRIMARY KEY" || colName === "FOREIGN KEY") {
+                    colDefs.push(`${colName} ${colType}`);
+                } else {
+                    colDefs.push(`${colName} ${colType}`);
+                }
+            }
+            const createQuery = `CREATE TABLE IF NOT EXISTS ${tabla} (${colDefs.join(", ")})`;
+            dbConnection.exec(createQuery);
 
-        CREATE TABLE IF NOT EXISTS movimientos_stock_maestro (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            company_id TEXT NOT NULL,
-            sucursal_id TEXT,
-            producto_id TEXT NOT NULL,
-            cantidad REAL NOT NULL,
-            tipo_movimiento TEXT NOT NULL,
-            fecha_movimiento DATETIME DEFAULT CURRENT_TIMESTAMP,
-            referencia_id TEXT
-        );
+            const tableInfo = dbConnection.prepare(`PRAGMA table_info(${tabla})`).all();
+            const columnasExistentes = tableInfo.map(col => col.name);
 
-        CREATE TABLE IF NOT EXISTS correlativos_maestros (
-        tipo TEXT PRIMARY KEY,
-        prefijo TEXT,
-        ultimo_numero INTEGER DEFAULT 0,
-        correlativo_nc_actual INTEGER DEFAULT 0
-    );
+            for (const [colName, colType] of Object.entries(columnas)) {
+                if (colName === "PRIMARY KEY" || colName === "FOREIGN KEY") continue;
 
-    CREATE TABLE IF NOT EXISTS clientes_maestro (
-        rif TEXT PRIMARY KEY,
-        company_id TEXT,
-        nombre TEXT NOT NULL,
-        direccion TEXT,
-        telefono TEXT,
-        correo TEXT,
-        datos_json TEXT,
-        es_contribuyente_especial INTEGER DEFAULT 0,
-        estado_sync INTEGER DEFAULT 0,
-        fecha_modificacion DATETIME DEFAULT CURRENT_TIMESTAMP,
-        saldo_deuda REAL DEFAULT 0
-    );
-
-
-    CREATE TABLE IF NOT EXISTS cuentas_por_cobrar (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        cliente_id TEXT NOT NULL,
-        cliente_nombre TEXT,
-        monto_bs REAL DEFAULT 0,
-        monto_usd REAL DEFAULT 0,
-        factura_nro TEXT,
-        monto_pagado REAL DEFAULT 0,
-        fecha TEXT,
-        estado TEXT DEFAULT 'PENDIENTE'
-    );
-
-
-    CREATE TABLE IF NOT EXISTS facturas_borradores (
-        id TEXT PRIMARY KEY,
-        cliente_nombre TEXT,
-        cliente_id TEXT,
-        items TEXT,
-        subtotal REAL,
-        iva REAL,
-        total REAL,
-        metodos_pago TEXT,
-        fecha INTEGER,
-        usuario_id TEXT,
-        sucursal_id TEXT,
-        company_id TEXT
-    );
-
-        CREATE TABLE IF NOT EXISTS cierres_caja_maestros (
-        id TEXT PRIMARY KEY,
-        fecha DATETIME,
-        company_id TEXT,
-        branch_id TEXT,
-        cashier_id TEXT,
-        total_ventas_bs REAL,
-        total_ventas_usd REAL,
-        total_gastos_bs REAL,
-        total_gastos_usd REAL,
-        total_ingresos_bs REAL,
-        total_diferencia_bs REAL,
-        total_diferencia_usd REAL,
-        detalle_pagos_json TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS ventas_locales (
-            id TEXT PRIMARY KEY,
-            company_id TEXT,
-            branch_id TEXT,
-            cashier_id TEXT,
-            numero_factura TEXT,
-            numero_control TEXT,
-            cliente_nombre TEXT,
-            cliente_rif TEXT,
-            monto_exento REAL DEFAULT 0,
-            base_imponible REAL DEFAULT 0,
-            monto_iva REAL DEFAULT 0,
-            total_iva REAL DEFAULT 0,
-            monto_igtf REAL DEFAULT 0,
-            monto_total REAL DEFAULT 0,
-            tasa_bcv REAL DEFAULT 1,
-            metodo_pago TEXT,
-            datos_json TEXT,
-            estado_sync INTEGER DEFAULT 0,
-            fecha_emision DATETIME DEFAULT CURRENT_TIMESTAMP,
-            estado_cierre INTEGER DEFAULT 0,
-            es_nota_credito INTEGER DEFAULT 0,
-            es_nota_debito INTEGER DEFAULT 0,
-            factura_afectada TEXT,
-            monto_factura_afectada REAL,
-            fecha_factura_afectada TEXT,
-            comprobante_retencion_id TEXT DEFAULT NULL
-    );
-
-
-    CREATE TABLE IF NOT EXISTS configuraciones_maestras (
-        clave TEXT PRIMARY KEY, 
-        valor TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS auditoria_fiscal (
-        id TEXT PRIMARY KEY,
-        usuario TEXT NOT NULL,
-        accion TEXT NOT NULL,
-        valores TEXT NOT NULL,
-        fecha DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS metodos_pago_maestro (
-        id TEXT PRIMARY KEY,
-        nombre TEXT NOT NULL,
-        tecla TEXT,
-        tipo_moneda TEXT DEFAULT 'BS', 
-        activo INTEGER DEFAULT 1,
-        flag_impresora TEXT DEFAULT '00'
-    );
-
-    CREATE TABLE IF NOT EXISTS claves_admin_maestras (
-            id TEXT PRIMARY KEY,
-            ownerName TEXT,
-            encryptedCode TEXT,
-            company_id TEXT,
-            created_by TEXT,
-            updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS guia_despacho (
-        id TEXT PRIMARY KEY,
-        company_id TEXT,
-        branch_id TEXT,
-        cashier_id TEXT,
-        numero_guia TEXT,
-        numero_control TEXT,
-        cliente_nombre TEXT,
-        cliente_rif TEXT,
-        factura_asociada TEXT,
-        fecha_emision DATETIME DEFAULT CURRENT_TIMESTAMP,
-        datos_json TEXT,
-        estado_sync INTEGER DEFAULT 0
-    );
-
-    `);
-
-    // Auto-patch: añadir columna si no existe
-    try {
-        serverDb.prepare("ALTER TABLE metodos_pago_maestro ADD COLUMN flag_impresora TEXT DEFAULT '00'").run();
-    } catch (e) {
-        // La columna ya existe
+                if (!columnasExistentes.includes(colName)) {
+                    const cleanType = colType.replace(/PRIMARY KEY/g, "").replace(/UNIQUE/g, "").trim();
+                    const alterQuery = `ALTER TABLE ${tabla} ADD COLUMN ${colName} ${cleanType}`;
+                    try {
+                        dbConnection.prepare(alterQuery).run();
+                        console.log(`[DB AUTO-SYNC] Columna añadida: '${colName}' en la tabla '${tabla}'`);
+                    } catch (error) {
+                        console.error(`[DB AUTO-SYNC] Error añadiendo columna '${colName}' a '${tabla}':`, error.message);
+                    }
+                }
+            }
+        }
     }
+
+    asegurarEsquema(serverDb, ESQUEMA_MAESTRO);
 
 
 const checkCorr = serverDb.prepare("SELECT COUNT(*) as count FROM correlativos_maestros").get();
@@ -1101,8 +980,8 @@ server.post('/api/maestro/registrar-venta', (req, res) => {
                 id, company_id, branch_id, cashier_id, numero_factura, 
                 numero_control, cliente_nombre, cliente_rif, monto_exento, 
                 base_imponible, monto_iva, monto_igtf, monto_total, 
-                tasa_bcv, metodo_pago, datos_json, ganancia_venta, estado_sync, estado_cierre
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0)
+                tasa_bcv, metodo_pago, datos_json, ganancia_venta, estado_sync, estado_cierre, fecha_emision
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, datetime('now', 'localtime'))
         `);
 
         stmt.run(
@@ -1234,7 +1113,7 @@ server.get('/api/maestro/ventas/:branchId/:companyId', (req, res) => {
 // --- API ESTADÍSTICAS ---
 server.get('/api/maestro/estadisticas', (req, res) => {
     try {
-        const { fecha_inicio, fecha_fin, companyId } = req.query;
+        const { fecha_inicio, fecha_fin, companyId, periodo } = req.query;
         if (!fecha_inicio || !fecha_fin || !companyId) {
             return res.status(400).json({ exito: false, error: "Faltan parámetros (fecha_inicio, fecha_fin, companyId)" });
         }
@@ -1289,13 +1168,24 @@ server.get('/api/maestro/estadisticas', (req, res) => {
         } catch(e) {}
 
         // 4. Serie de tiempo
-        const serieTiempo = serverDb.prepare(`
-            SELECT date(fecha_emision) as fecha, SUM(ganancia_venta) as total_ganancia
-            FROM ventas_locales
-            WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?
-            GROUP BY date(fecha_emision)
-            ORDER BY fecha ASC
-        `).all(companyId, fechaIni, fechaFin);
+        let serieTiempo;
+        if (periodo === 'dia') {
+            serieTiempo = serverDb.prepare(`
+                SELECT strftime('%Y-%m-%d %H:00:00', fecha_emision) as fecha, SUM(ganancia_venta) as total_ganancia
+                FROM ventas_locales
+                WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?
+                GROUP BY strftime('%Y-%m-%d %H', fecha_emision)
+                ORDER BY fecha ASC
+            `).all(companyId, fechaIni, fechaFin);
+        } else {
+            serieTiempo = serverDb.prepare(`
+                SELECT date(fecha_emision) as fecha, SUM(ganancia_venta) as total_ganancia
+                FROM ventas_locales
+                WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?
+                GROUP BY date(fecha_emision)
+                ORDER BY fecha ASC
+            `).all(companyId, fechaIni, fechaFin);
+        }
 
         // 5. Histórico de Stock Promedio (KARDEX)
         let stocks_promedio = [];

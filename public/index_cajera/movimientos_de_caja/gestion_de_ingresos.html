@@ -119,40 +119,38 @@
 
             <div class="mb-8 p-6 border border-gray-200 rounded-none shadow-sm">
                 <h3 class="text-xl font-semibold mb-4 text-gray-700">Registrar Nuevo Ingreso</h3>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4"> 
-                    <div>
+                <div class="flex flex-wrap gap-4">
+                    <div class="flex-1 min-w-[200px]">
                         <label for="income-description" class="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
                         <input type="text" id="income-description"
                                class="block w-full rounded-none border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:text-base p-2.5"
                                placeholder="Ej. Préstamo recibido">
                     </div>
-                    <div>
+                    <div class="flex-1 min-w-[150px]">
                         <label for="income-amount-bs" class="block text-sm font-medium text-gray-700 mb-2">Monto (Bs)</label>
                         <input type="number" id="income-amount-bs" step="0.01" min="0"
                                class="block w-full rounded-none border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:text-base p-2.5"
                                placeholder="Ej. 150.00">
                     </div>
-                    <div id="income-method-bs-group" class="hidden">
+                    <div id="income-method-bs-group" class="hidden flex-1 min-w-[180px]">
                         <label for="income-method-bs" class="block text-sm font-medium text-gray-700 mb-2">Método Ingreso (Bs)</label>
                         <select id="income-method-bs"
                                 class="block w-full rounded-none border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:text-base p-2.5">
                             <option value="">-- Seleccionar --</option>
-                            <option value="Efectivo">Efectivo</option>
-                            <option value="Tarjeta de Débito">Tarjeta de Débito</option>
-                            <option value="Pago Móvil">Pago Móvil</option>
-                            <option value="Zinli">Zinli</option>
-                            <option value="Bio Pago">Bio Pago</option>
-                            <option value="Transferencia">Transferencia</option>
-                            <option value="Depósito">Depósito</option>
-                            <option value="Crédito">Crédito</option>
-                            <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
                         </select>
                     </div>
-                    <div>
+                    <div class="flex-1 min-w-[150px]">
                         <label for="income-amount-usd" class="block text-sm font-medium text-gray-700 mb-2">Monto (Divisa)</label>
                         <input type="number" id="income-amount-usd" step="0.01" min="0"
                                class="block w-full rounded-none border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:text-base p-2.5"
                                placeholder="Ej. 5.00">
+                    </div>
+                    <div id="income-method-usd-group" class="hidden flex-1 min-w-[180px]">
+                        <label for="income-method-usd" class="block text-sm font-medium text-gray-700 mb-2">Método Ingreso (Divisa)</label>
+                        <select id="income-method-usd"
+                                class="block w-full rounded-none border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:text-base p-2.5">
+                            <option value="">-- Seleccionar --</option>
+                        </select>
                     </div>
                 </div>
                 <button id="add-income-btn"
@@ -267,6 +265,22 @@
                 }
 
                 console.log("✅ Conexión establecida con el Cerebro Local.");
+                try {
+                    const resp = await fetch('http://localhost:3000/api/maestro/metodos-pago');
+                    if (resp.ok) {
+                        const metodosData = await resp.json();
+                        const metodos = metodosData.data || [];
+                        const selBs = document.getElementById('income-method-bs');
+                        const selUsd = document.getElementById('income-method-usd');
+                        metodos.forEach(m => {
+                            const opt = document.createElement('option');
+                            opt.value = m.nombre;
+                            opt.textContent = m.nombre;
+                            if (m.tipo_moneda === 'BS' || m.tipo_moneda === 'Bs') selBs.appendChild(opt);
+                            else if (m.tipo_moneda === 'USD') selUsd.appendChild(opt);
+                        });
+                    }
+                } catch (e) { console.error("Error loading metodos_pago from API", e); }
                 loadIncomes(); // Cargar historial de hoy
             } else {
                 showModal("Sesión no válida", "Por favor, inicia sesión de nuevo.", true);
@@ -296,7 +310,8 @@ async function addIncome() {
         const description = incomeDescriptionInput.value.trim();
         const amountBs = parseFloat(incomeAmountBsInput.value) || 0;
         const amountUsd = parseFloat(incomeAmountUsdInput.value) || 0;
-        const methodBs = incomeMethodBs.value.trim(); 
+        const methodBs = incomeMethodBs.value.trim();
+        const methodUsd = document.getElementById('income-method-usd').value.trim();
 
         // 2. VALIDACIONES NORMALES
         if (description === '' || (amountBs <= 0 && amountUsd <= 0)) {
@@ -308,18 +323,27 @@ async function addIncome() {
             showModal("Falta Método", "Selecciona cómo ingresó el dinero en Bolívares.", true);
             return;
         }
+        if (amountUsd > 0 && methodUsd === '') {
+            showModal("Falta Método", "Selecciona cómo ingresó el dinero en Divisa.", true);
+            return;
+        }
 
         addIncomeBtn.disabled = true;
         addIncomeBtn.innerHTML = `<span class="spinner"></span> Registrando...`;
 
         try {
+            let methodFinal = [];
+            if (amountBs > 0) methodFinal.push(methodBs);
+            if (amountUsd > 0) methodFinal.push(methodUsd);
+            const metodoUnido = methodFinal.join(' / ');
+
             const nuevoMovimiento = {
                 id: `INC-${Date.now()}`,
                 tipo: 'INGRESO',
                 concepto: description,
                 monto: amountBs,
                 monto_usd: amountUsd,
-                metodo_pago: amountBs > 0 ? methodBs : 'DIVISA',
+                metodo_pago: metodoUnido,
                 fecha: new Date().toISOString(),
                 cashier_id: userId,
                 company_id: companyId,
@@ -335,17 +359,19 @@ async function addIncome() {
                 // 🔥 AQUÍ LLAMAMOS A LA IMPRESORA CON TUS VARIABLES 🔥
                 if (currentEmissionMode === 'FISCAL_HKA' && puertoFiscalHKA) {
                     await imprimirDocumentoMaquinaFiscal({
-                        concepto: description, // Usa la variable description de tu código
-                        montoBs: amountBs,     // Usa amountBs
-                        metodoBs: methodBs,    // Usa methodBs
-                        montoUsd: amountUsd    // Usa amountUsd
+                        concepto: description,
+                        montoBs: amountBs,
+                        metodoBs: methodBs,
+                        montoUsd: amountUsd,
+                        metodoUsd: methodUsd
                     });
                 } else if (typeof imprimirReciboIngreso === 'function') {
                     await imprimirReciboIngreso({
-                        concepto: description, // Usa la variable description de tu código
-                        montoBs: amountBs,     // Usa amountBs
-                        metodoBs: methodBs,    // Usa methodBs
-                        montoUsd: amountUsd    // Usa amountUsd
+                        concepto: description,
+                        montoBs: amountBs,
+                        metodoBs: methodBs,
+                        montoUsd: amountUsd,
+                        metodoUsd: methodUsd
                     });
                 }
 
@@ -416,6 +442,10 @@ async function addIncome() {
         incomeAmountUsdInput.value = '0';
         incomeMethodBs.value = '';
         incomeMethodBsGroup.classList.add('hidden');
+        const usdSelect = document.getElementById('income-method-usd');
+        if(usdSelect) usdSelect.value = '';
+        const usdGroup = document.getElementById('income-method-usd-group');
+        if(usdGroup) usdGroup.classList.add('hidden');
     }
 
     function showModal(title, message, isError = false) {
@@ -437,11 +467,28 @@ async function addIncome() {
     }
     
     // 3. Asignamos la lógica del input
+    const preventNonNumeric = (e) => {
+        if (["-", "+", "e", "E"].includes(e.key)) {
+            e.preventDefault();
+        }
+    };
+
     if (incomeAmountBsInput) {
+        incomeAmountBsInput.addEventListener('keydown', preventNonNumeric);
         incomeAmountBsInput.addEventListener('input', () => {
             const val = parseFloat(incomeAmountBsInput.value) || 0;
             incomeMethodBsGroup.classList.toggle('hidden', val <= 0);
             if (val <= 0) incomeMethodBs.value = ''; 
+        });
+    }
+    if (incomeAmountUsdInput) {
+        const usdGroup = document.getElementById('income-method-usd-group');
+        const usdSelect = document.getElementById('income-method-usd');
+        incomeAmountUsdInput.addEventListener('keydown', preventNonNumeric);
+        incomeAmountUsdInput.addEventListener('input', () => {
+            const val = parseFloat(incomeAmountUsdInput.value) || 0;
+            usdGroup.classList.toggle('hidden', val <= 0);
+            if (val <= 0) usdSelect.value = ''; 
         });
     }
 
@@ -515,7 +562,7 @@ async function imprimirReciboIngreso(ingresoData) {
     if (ingresoData.montoUsd > 0) {
         if (ingresoData.montoBs > 0) t += CRLF; // Separador visual si pagó mixto
         t += formatLR("MONTO USD ($):", ingresoData.montoUsd.toFixed(2), LINE_WIDTH) + CRLF;
-        t += formatLR("METODO:", "EFECTIVO", LINE_WIDTH) + CRLF;
+        t += formatLR("METODO:", (ingresoData.metodoUsd || "N/A").toUpperCase(), LINE_WIDTH) + CRLF;
     }
 
     t += SEPARATOR;
@@ -593,7 +640,7 @@ async function imprimirDocumentoMaquinaFiscal(ingresoData) {
     if (ingresoData.montoUsd > 0) {
         if (ingresoData.montoBs > 0) comandos.push("800" + " ");
         comandos.push("800" + formatLR("MONTO USD ($):", ingresoData.montoUsd.toFixed(2), MAX_LINE));
-        comandos.push("800" + formatLR("METODO:", "EFECTIVO", MAX_LINE));
+        comandos.push("800" + formatLR("METODO:", limpiarTexto(ingresoData.metodoUsd || "N/A"), MAX_LINE));
     }
 
     comandos.push("800" + SEPARATOR);

@@ -113,6 +113,7 @@ let masterDbDirect = null;
 if (config.isServer) {
     masterDbDirect = new Database(serverDbPath, { timeout: 10000 });
     masterDbDirect.pragma('journal_mode = WAL');
+    // Nota: asegurarEsquema(masterDbDirect, ESQUEMA_MAESTRO) se llama desde inicializarTablas()
     console.log(`\n=========================================================`);
     console.log(`ðŸ’» [NEXUS NODE] Base de Datos Local: ${dbPath}`);
     console.log(`ðŸ‘‘ [NEXUS MASTER] Iniciando Cerebro Maestro: ${serverDbPath}`);
@@ -215,387 +216,134 @@ ipcMain.on('ejecutar-auth-hka', (event, credentials) => {
 try {
     db.pragma('journal_mode = WAL');
 } catch (e) {
-    console.warn("âš ï¸ Aviso: La base de datos estÃ¡ ocupada. Iniciando sin modo WAL forzado.");
+    console.warn("⚠️ Aviso: La base de datos está ocupada. Iniciando sin modo WAL forzado.");
+}
+
+const ESQUEMA_LOCAL = {
+    usuarios_locales: { uid: "TEXT PRIMARY KEY", email: "TEXT UNIQUE", role: "TEXT", companyId: "TEXT", branchId: "TEXT", company_data: "TEXT", last_login: "DATETIME" },
+    movimientos_caja_locales: { id: "TEXT PRIMARY KEY", tipo: "TEXT", concepto: "TEXT", monto: "REAL", monto_usd: "REAL", metodo_pago: "TEXT", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP", cashier_id: "TEXT", company_id: "TEXT", branch_id: "TEXT", estado_cierre: "INTEGER DEFAULT 0" },
+    pagos_moviles_locales: { id: "TEXT PRIMARY KEY", venta_id: "TEXT", numero_factura: "TEXT", banco_receptor: "TEXT", referencia: "TEXT", telefono_origen: "TEXT", monto: "REAL", fecha_pago: "DATETIME", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", estado_cierre: "INTEGER DEFAULT 0" },
+    claves_admin_locales: { id: "TEXT PRIMARY KEY", ownerName: "TEXT", encryptedCode: "TEXT", company_id: "TEXT", created_by: "TEXT", updatedAt: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
+    productos_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", codigo: "TEXT", nombre: "TEXT", precio: "REAL", precio_compra: "REAL DEFAULT 0", porcentaje_ganancia: "REAL DEFAULT 0", categoria: "TEXT", status: "INTEGER", imagen: "TEXT", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME" },
+    categorias_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", nombre: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME" },
+    correlativos: { tipo: "TEXT PRIMARY KEY", ultimo_numero: "INTEGER DEFAULT 0", prefijo: "TEXT DEFAULT ''" },
+    clientes_locales: { rif: "TEXT PRIMARY KEY", company_id: "TEXT", nombre: "TEXT", direccion: "TEXT", telefono: "TEXT", correo: "TEXT", datos_json: "TEXT", es_contribuyente_especial: "INTEGER DEFAULT 0", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
+    configuracion: { clave: "TEXT PRIMARY KEY", valor: "TEXT", fecha_actualizacion: "DATETIME" },
+    historial_tasas: { fecha: "DATE PRIMARY KEY", valor: "DECIMAL(18, 8) NOT NULL", fuente: "TEXT DEFAULT 'BCV'" },
+    ventas_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_factura: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", monto_exento: "REAL DEFAULT 0", base_imponible: "REAL DEFAULT 0", monto_iva: "REAL DEFAULT 0", total_iva: "REAL DEFAULT 0", monto_igtf: "REAL DEFAULT 0", monto_total: "REAL DEFAULT 0", tasa_bcv: "REAL DEFAULT 1", metodo_pago: "TEXT", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", estado_cierre: "INTEGER DEFAULT 0", es_nota_credito: "INTEGER DEFAULT 0", es_nota_debito: "INTEGER DEFAULT 0", factura_afectada: "TEXT", monto_factura_afectada: "REAL", fecha_factura_afectada: "TEXT", comprobante_retencion_id: "TEXT DEFAULT NULL", ganancia_venta: "REAL DEFAULT 0" },
+    cuentas_por_cobrar: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cliente_rif: "TEXT", cliente_nombre: "TEXT", monto_deuda: "REAL", monto_pagado: "REAL DEFAULT 0", estado: "TEXT DEFAULT 'PENDIENTE'", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", venta_id: "TEXT" },
+    sync_queue: { id: "INTEGER PRIMARY KEY AUTOINCREMENT", operacion: "TEXT", tabla: "TEXT", datos: "TEXT", fecha_creacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
+    inventario_sucursales: { producto_id: "TEXT", sucursal_id: "TEXT", company_id: "TEXT", stock: "REAL DEFAULT 0", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP", "PRIMARY KEY": "(producto_id, sucursal_id)" },
+    cierres_caja_locales: { id: "TEXT PRIMARY KEY", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", total_ventas_bs: "REAL", total_ventas_usd: "REAL", total_gastos_bs: "REAL", total_gastos_usd: "REAL", total_ingresos_bs: "REAL", total_diferencia_bs: "REAL", total_diferencia_usd: "REAL", detalle_pagos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0" },
+    reportes_fiscales_cierre: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", tipo_reporte: "TEXT", numero_z: "TEXT", fecha_emision: "TEXT", hora_emision: "TEXT", ultima_factura: "TEXT", exento: "REAL", base_imponible_tasa_1: "REAL", impuesto_tasa_1: "REAL", base_imponible_tasa_2: "REAL", impuesto_tasa_2: "REAL", base_imponible_tasa_3: "REAL", impuesto_tasa_3: "REAL", igtf: "REAL", raw_data: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_registro: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
+    unidades_empaque: { id: "TEXT PRIMARY KEY", company_id: "TEXT", product_id: "TEXT", nombre_unidad: "TEXT", tipo_medida: "TEXT", factor_cantidad: "REAL", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
+    comprobantes_retencion: { id: "TEXT PRIMARY KEY", datos_json: "TEXT NOT NULL", fecha_registro: "DATETIME DEFAULT CURRENT_TIMESTAMP", estatus: "TEXT DEFAULT 'EMITIDO'" },
+    sucursales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", nombre: "TEXT", direccion: "TEXT", telefono: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "TEXT" },
+    salidas_inventario: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", product_id: "TEXT", cantidad: "REAL", unidad: "TEXT", motivo: "TEXT", observacion: "TEXT", usuario_id: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
+    configuracion_cajera: { clave: "TEXT PRIMARY KEY", valor: "TEXT", fecha_actualizacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
+    plan_empresa: { company_id: "TEXT PRIMARY KEY", datos_encriptados: "TEXT", updated_at: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
+    auditoria_fiscal: { id: "TEXT PRIMARY KEY", usuario: "TEXT", accion: "TEXT", valores: "TEXT", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
+    auditoria_administrador: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", admin_name: "TEXT", accion: "TEXT", detalles: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
+    configuracion_fiscal: { id: "INTEGER PRIMARY KEY CHECK (id = 1)", iva_exento: "REAL DEFAULT 0", iva_general: "REAL DEFAULT 16", iva_reducido: "REAL DEFAULT 8", iva_anadida: "REAL DEFAULT 31", igtf_porcentaje: "REAL DEFAULT 3", fecha_actualizacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
+    guias_despacho: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_guia: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", factura_asociada: "TEXT", datos_json: "TEXT", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP" }
+};
+
+function asegurarEsquema(dbConnection, esquema) {
+    for (const [tabla, columnas] of Object.entries(esquema)) {
+        // 1. Crear tabla si no existe
+        const colDefs = [];
+        for (const [colName, colType] of Object.entries(columnas)) {
+            if (colName === "PRIMARY KEY" || colName === "FOREIGN KEY") {
+                colDefs.push(`${colName} ${colType}`);
+            } else {
+                colDefs.push(`${colName} ${colType}`);
+            }
+        }
+        const createQuery = `CREATE TABLE IF NOT EXISTS ${tabla} (${colDefs.join(", ")})`;
+        dbConnection.exec(createQuery);
+
+        // 2. Verificar columnas faltantes
+        const tableInfo = dbConnection.prepare(`PRAGMA table_info(${tabla})`).all();
+        const columnasExistentes = tableInfo.map(col => col.name);
+
+        for (const [colName, colType] of Object.entries(columnas)) {
+            if (colName === "PRIMARY KEY" || colName === "FOREIGN KEY") continue;
+
+            if (!columnasExistentes.includes(colName)) {
+                const cleanType = colType.replace(/PRIMARY KEY/g, "").replace(/UNIQUE/g, "").trim();
+                const alterQuery = `ALTER TABLE ${tabla} ADD COLUMN ${colName} ${cleanType}`;
+                try {
+                    dbConnection.prepare(alterQuery).run();
+                    console.log(`[DB AUTO-SYNC] Columna añadida: '${colName}' en la tabla '${tabla}'`);
+                } catch (error) {
+                    console.error(`[DB AUTO-SYNC] Error añadiendo columna '${colName}' a '${tabla}':`, error.message);
+                }
+            }
+        }
+    }
 }
 
 function inicializarTablas() {
 
     try {
         db.exec(`
-            -- ðŸ“¦ Ãndices para Inventario (BÃºsquedas en milisegundos)
+            -- 📦 Índices para Inventario (Búsquedas en milisegundos)
             CREATE INDEX IF NOT EXISTS idx_productos_codigo ON productos_locales(codigo);
             CREATE INDEX IF NOT EXISTS idx_productos_categoria ON productos_locales(categoria);
             CREATE INDEX IF NOT EXISTS idx_productos_empresa ON productos_locales(company_id);
 
-            -- ðŸ§¾ Ãndices para Ventas (Vital para que el Cierre Z sea instantÃ¡neo)
-            -- Este Ã­ndice compuesto agrupa exactamente lo que busca tu funciÃ³n de cierre
+            -- 🧾 Índices para Ventas (Vital para que el Cierre Z sea instantáneo)
+            -- Este índice compuesto agrupa exactamente lo que busca tu función de cierre
             CREATE INDEX IF NOT EXISTS idx_ventas_cierre_compuesto 
             ON ventas_locales(company_id, branch_id, cashier_id, estado_cierre);
             
-            -- Ãndice para buscar facturas por fecha rÃ¡pidamente (Reportes)
+            -- Índice para buscar facturas por fecha rápidamente (Reportes)
             CREATE INDEX IF NOT EXISTS idx_ventas_fecha ON ventas_locales(fecha_emision);
 
-            -- ðŸ’µ Ãndices para Movimientos de Caja (Ingresos/Gastos)
+            -- 💸 Índices para Movimientos de Caja (Ingresos/Gastos)
             CREATE INDEX IF NOT EXISTS idx_movimientos_cierre 
             ON movimientos_caja_locales(company_id, tipo, estado_cierre);
 
-            -- ðŸ¤ Ãndices para Cuentas por Cobrar (CrÃ©ditos)
+            -- 🤝 Índices para Cuentas por Cobrar (Créditos)
             CREATE INDEX IF NOT EXISTS idx_cxc_cliente ON cuentas_por_cobrar(cliente_rif, estado);
         `);
-        console.log("âš¡ Ãndices de base de datos SQLite verificados y optimizados.");
+        console.log("⚡ Índices de base de datos SQLite verificados y optimizados.");
     } catch (error) {
-        console.error("âš ï¸ Error creando los Ã­ndices:", error.message);
+        console.error("⚠️ Error creando los índices:", error.message);
     }
     
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS usuarios_locales (
-            uid TEXT PRIMARY KEY,
-            email TEXT UNIQUE,
-            role TEXT,
-            companyId TEXT,
-            branchId TEXT,
-            company_data TEXT,
-            last_login DATETIME
-        );
-    `);
+    // Auto-sincronizar el esquema de tablas completo (DB local)
+    asegurarEsquema(db, ESQUEMA_LOCAL);
 
-db.exec(`
-    CREATE TABLE IF NOT EXISTS movimientos_caja_locales (
-        id TEXT PRIMARY KEY,
-        tipo TEXT,           -- 'INGRESO' o 'GASTO'
-        concepto TEXT,
-        monto REAL,          -- Monto en Bs para el cuadre
-        monto_usd REAL,      -- Monto referencial en Divisa
-        metodo_pago TEXT,
-        fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
-        cashier_id TEXT,
-        company_id TEXT,
-        branch_id TEXT,
-        estado_cierre INTEGER DEFAULT 0 -- 0: Pendiente para el Z, 1: Cerrado
-    );
-`);
-
-db.exec(`
-        CREATE TABLE IF NOT EXISTS pagos_moviles_locales (
-            id TEXT PRIMARY KEY,
-            venta_id TEXT,
-            numero_factura TEXT,
-            banco_receptor TEXT,
-            referencia TEXT,
-            telefono_origen TEXT,
-            monto REAL,
-            fecha_pago DATETIME,
-            company_id TEXT,
-            branch_id TEXT,
-            cashier_id TEXT,
-            estado_cierre INTEGER DEFAULT 0
-        );
-    `);
-
-db.exec(`
-        CREATE TABLE IF NOT EXISTS claves_admin_locales (
-            id TEXT PRIMARY KEY,
-            ownerName TEXT,
-            encryptedCode TEXT,
-            company_id TEXT,
-            created_by TEXT,
-            updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-    `);
+    // Si este nodo es el servidor, sincronizar también el acceso directo a la DB maestra
+    if (masterDbDirect) {
+        const ESQUEMA_MAESTRO_LOCAL = {
+            stock_maestro: { producto_id: "TEXT", sucursal_id: "TEXT", company_id: "TEXT", cantidad_real: "REAL DEFAULT 0", ultima_sincronizacion: "DATETIME", "PRIMARY KEY": "(producto_id, sucursal_id)" },
+            movimientos_stock_maestro: { id: "INTEGER PRIMARY KEY AUTOINCREMENT", company_id: "TEXT NOT NULL", sucursal_id: "TEXT", producto_id: "TEXT NOT NULL", cantidad: "REAL NOT NULL", tipo_movimiento: "TEXT NOT NULL", fecha_movimiento: "DATETIME DEFAULT CURRENT_TIMESTAMP", referencia_id: "TEXT", estado_sync: "INTEGER DEFAULT 0" },
+            correlativos_maestros: { tipo: "TEXT PRIMARY KEY", prefijo: "TEXT", ultimo_numero: "INTEGER DEFAULT 0", correlativo_nc_actual: "INTEGER DEFAULT 0" },
+            clientes_maestro: { rif: "TEXT PRIMARY KEY", company_id: "TEXT", nombre: "TEXT NOT NULL", direccion: "TEXT", telefono: "TEXT", correo: "TEXT", datos_json: "TEXT", es_contribuyente_especial: "INTEGER DEFAULT 0", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP", saldo_deuda: "REAL DEFAULT 0" },
+            cuentas_por_cobrar: { id: "INTEGER PRIMARY KEY AUTOINCREMENT", cliente_id: "TEXT NOT NULL", cliente_nombre: "TEXT", monto_bs: "REAL DEFAULT 0", monto_usd: "REAL DEFAULT 0", factura_nro: "TEXT", monto_pagado: "REAL DEFAULT 0", fecha: "TEXT", estado: "TEXT DEFAULT 'PENDIENTE'" },
+            facturas_borradores: { id: "TEXT PRIMARY KEY", cliente_nombre: "TEXT", cliente_id: "TEXT", items: "TEXT", subtotal: "REAL", iva: "REAL", total: "REAL", metodos_pago: "TEXT", fecha: "INTEGER", usuario_id: "TEXT", sucursal_id: "TEXT", company_id: "TEXT" },
+            cierres_caja_maestros: { id: "TEXT PRIMARY KEY", fecha: "DATETIME", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", total_ventas_bs: "REAL", total_ventas_usd: "REAL", total_gastos_bs: "REAL", total_gastos_usd: "REAL", total_ingresos_bs: "REAL", total_diferencia_bs: "REAL", total_diferencia_usd: "REAL", detalle_pagos_json: "TEXT" },
+            ventas_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_factura: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", monto_exento: "REAL DEFAULT 0", base_imponible: "REAL DEFAULT 0", monto_iva: "REAL DEFAULT 0", total_iva: "REAL DEFAULT 0", monto_igtf: "REAL DEFAULT 0", monto_total: "REAL DEFAULT 0", tasa_bcv: "REAL DEFAULT 1", metodo_pago: "TEXT", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", estado_cierre: "INTEGER DEFAULT 0", es_nota_credito: "INTEGER DEFAULT 0", es_nota_debito: "INTEGER DEFAULT 0", factura_afectada: "TEXT", monto_factura_afectada: "REAL", fecha_factura_afectada: "TEXT", comprobante_retencion_id: "TEXT DEFAULT NULL" },
+            configuraciones_maestras: { clave: "TEXT PRIMARY KEY", valor: "TEXT" },
+            auditoria_fiscal: { id: "TEXT PRIMARY KEY", usuario: "TEXT NOT NULL", accion: "TEXT NOT NULL", valores: "TEXT NOT NULL", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
+            metodos_pago_maestro: { id: "TEXT PRIMARY KEY", nombre: "TEXT NOT NULL", tecla: "TEXT", tipo_moneda: "TEXT DEFAULT 'BS'", activo: "INTEGER DEFAULT 1", flag_impresora: "TEXT DEFAULT '00'" },
+            claves_admin_maestras: { id: "TEXT PRIMARY KEY", ownerName: "TEXT", encryptedCode: "TEXT", company_id: "TEXT", created_by: "TEXT", updatedAt: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
+            guia_despacho: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_guia: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", factura_asociada: "TEXT", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0" },
+            guias_despacho: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_guia: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", factura_asociada: "TEXT", datos_json: "TEXT", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP" }
+        };
+        asegurarEsquema(masterDbDirect, ESQUEMA_MAESTRO_LOCAL);
+        console.log("[DB AUTO-SYNC] Esquema maestro sincronizado en masterDbDirect.");
+    }
 
     db.exec(`
-    CREATE TABLE IF NOT EXISTS productos_locales (
-        id TEXT PRIMARY KEY,
-        company_id TEXT,
-        branch_id TEXT,
-        codigo TEXT,
-        nombre TEXT,
-        precio REAL,
-        precio_compra REAL DEFAULT 0,
-        porcentaje_ganancia REAL DEFAULT 0,
-        categoria TEXT,
-        status INTEGER,
-        imagen TEXT,
-        datos_json TEXT,
-        estado_sync INTEGER DEFAULT 0,
-        fecha_modificacion DATETIME
-    );
-`);
-
-
-    db.exec(`
-    CREATE TABLE IF NOT EXISTS categorias_locales (
-        id TEXT PRIMARY KEY,           
-        company_id TEXT,               
-        nombre TEXT,                   
-        estado_sync INTEGER DEFAULT 0, 
-        fecha_modificacion DATETIME
-    );
-`);
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS correlativos (
-    tipo TEXT PRIMARY KEY, 
-    ultimo_numero INTEGER DEFAULT 0,
-    prefijo TEXT DEFAULT ''
-  )
-`);
-
-db.exec(`
-    CREATE TABLE IF NOT EXISTS clientes_locales (
-        rif TEXT PRIMARY KEY,
-        company_id TEXT,
-        nombre TEXT,
-        direccion TEXT,
-        telefono TEXT,
-        correo TEXT,
-        datos_json TEXT,
-        es_contribuyente_especial INTEGER DEFAULT 0,
-        estado_sync INTEGER DEFAULT 0,
-        fecha_modificacion DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-`);
-
-    db.exec(`
-    CREATE TABLE IF NOT EXISTS configuracion (
-        clave TEXT PRIMARY KEY,
-        valor TEXT,
-        fecha_actualizacion DATETIME
-    );
-`);
-
-
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS historial_tasas (
-            fecha DATE PRIMARY KEY, 
-            valor DECIMAL(18, 8) NOT NULL,
-            fuente TEXT DEFAULT 'BCV'
-        );
-    `);
-
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS ventas_locales (
-            id TEXT PRIMARY KEY,
-            company_id TEXT,
-            branch_id TEXT,
-            cashier_id TEXT,
-            numero_factura TEXT,
-            numero_control TEXT,
-            cliente_nombre TEXT,
-            cliente_rif TEXT,
-            monto_exento REAL DEFAULT 0,
-            base_imponible REAL DEFAULT 0,
-            monto_iva REAL DEFAULT 0,
-            total_iva REAL DEFAULT 0,
-            monto_igtf REAL DEFAULT 0,
-            monto_total REAL DEFAULT 0,
-            tasa_bcv REAL DEFAULT 1,
-            metodo_pago TEXT,
-            datos_json TEXT,
-            estado_sync INTEGER DEFAULT 0,
-            fecha_emision DATETIME DEFAULT CURRENT_TIMESTAMP,
-            estado_cierre INTEGER DEFAULT 0,
-            es_nota_credito INTEGER DEFAULT 0,
-            es_nota_debito INTEGER DEFAULT 0,
-            factura_afectada TEXT,
-            monto_factura_afectada REAL,
-            fecha_factura_afectada TEXT,
-            comprobante_retencion_id TEXT DEFAULT NULL,
-            ganancia_venta REAL DEFAULT 0
-        );
-
-    `);
-
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS cuentas_por_cobrar (
-            id TEXT PRIMARY KEY,
-            company_id TEXT,
-            branch_id TEXT,
-            cliente_rif TEXT,
-            cliente_nombre TEXT,
-            monto_deuda REAL,
-            monto_pagado REAL DEFAULT 0,
-            estado TEXT DEFAULT 'PENDIENTE', 
-            fecha_emision DATETIME DEFAULT CURRENT_TIMESTAMP,
-            venta_id TEXT
-        );
-    `);
-
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS sync_queue (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            operacion TEXT,
-            tabla TEXT,
-            datos TEXT,
-            fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-    `);
-
-    // ==========================================
-    // NOTA: Se eliminó inventario_sucursales (incompleto) 
-    // y duplicados de cuentas_por_cobrar para corregir el error SqliteError: incomplete input
-    // ==========================================
-
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS sync_queue (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            operacion TEXT,
-            tabla TEXT,
-            datos TEXT,
-            fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-    `);
-
-    db.exec(`
-    CREATE TABLE IF NOT EXISTS inventario_sucursales (
-        producto_id TEXT,
-        sucursal_id TEXT,
-        company_id TEXT,
-        stock REAL DEFAULT 0,
-        estado_sync INTEGER DEFAULT 0,
-        fecha_modificacion DATETIME DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY (producto_id, sucursal_id)
-    );
-`);
-
-db.exec(`
-    CREATE TABLE IF NOT EXISTS cierres_caja_locales (
-        id TEXT PRIMARY KEY,
-        fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
-        company_id TEXT,
-        branch_id TEXT,
-        cashier_id TEXT,
-        total_ventas_bs REAL,
-        total_ventas_usd REAL,
-        total_gastos_bs REAL,
-        total_gastos_usd REAL,
-        total_ingresos_bs REAL,
-        total_diferencia_bs REAL,
-        total_diferencia_usd REAL,
-        detalle_pagos_json TEXT, -- AquÃ­ guardamos la conciliaciÃ³n completa
-        estado_sync INTEGER DEFAULT 0
-    );
-`);
-
-db.exec(`
-    CREATE TABLE IF NOT EXISTS reportes_fiscales_cierre (
-        id TEXT PRIMARY KEY,
-        company_id TEXT,
-        branch_id TEXT,
-        cashier_id TEXT,
-        tipo_reporte TEXT,
-        numero_z TEXT,
-        fecha_emision TEXT,
-        hora_emision TEXT,
-        ultima_factura TEXT,
-        exento REAL,
-        base_imponible_tasa_1 REAL,
-        impuesto_tasa_1 REAL,
-        base_imponible_tasa_2 REAL,
-        impuesto_tasa_2 REAL,
-        base_imponible_tasa_3 REAL,
-        impuesto_tasa_3 REAL,
-        igtf REAL,
-        raw_data TEXT,
-        estado_sync INTEGER DEFAULT 0,
-        fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-`);
-
-db.exec(`
-    CREATE TABLE IF NOT EXISTS unidades_empaque (
-        id TEXT PRIMARY KEY,
-        company_id TEXT,
-        product_id TEXT,
-        nombre_unidad TEXT, -- Ej: 'Bulto', 'Cesta'
-        tipo_medida TEXT,   -- Ej: 'Kilos', 'Unidades'
-        factor_cantidad REAL, -- Ej: 24.0
-        estado_sync INTEGER DEFAULT 0,
-        fecha_modificacion DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-`);
-
-db.exec(`
-    CREATE TABLE IF NOT EXISTS comprobantes_retencion (
-        id TEXT PRIMARY KEY,
-        datos_json TEXT NOT NULL,
-        fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
-        estatus TEXT DEFAULT 'EMITIDO'
-    );
-`);
-
-
-
-        db.prepare(`
-            CREATE TABLE IF NOT EXISTS sucursales (
-                id TEXT PRIMARY KEY,
-                company_id TEXT,
-                nombre TEXT,
-                direccion TEXT,
-                telefono TEXT,
-                estado_sync INTEGER DEFAULT 0,
-                fecha_modificacion TEXT
-            )
-        `).run();
-
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS salidas_inventario (
-            id TEXT PRIMARY KEY,
-            company_id TEXT,
-            branch_id TEXT,
-            product_id TEXT,
-            cantidad REAL,
-            unidad TEXT,
-            motivo TEXT,
-            observacion TEXT,
-            usuario_id TEXT,
-            estado_sync INTEGER DEFAULT 0,
-            fecha_modificacion DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-    
-    
-    CREATE TABLE IF NOT EXISTS configuracion_cajera (
-        clave TEXT PRIMARY KEY,
-        valor TEXT,
-        fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS plan_empresa (
-            company_id TEXT PRIMARY KEY,
-            datos_encriptados TEXT,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-
-    CREATE TABLE IF NOT EXISTS auditoria_fiscal (id TEXT PRIMARY KEY, usuario TEXT, accion TEXT, valores TEXT, fecha DATETIME DEFAULT CURRENT_TIMESTAMP);
-
-    CREATE TABLE IF NOT EXISTS auditoria_administrador (
-        id TEXT PRIMARY KEY,
-        company_id TEXT,
-        branch_id TEXT,
-        cashier_id TEXT,
-        admin_name TEXT,
-        accion TEXT,
-        detalles TEXT,
-        estado_sync INTEGER DEFAULT 0,
-        fecha DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS configuracion_fiscal (
-        id INTEGER PRIMARY KEY CHECK (id = 1),
-        iva_exento REAL DEFAULT 0,
-        iva_general REAL DEFAULT 16,
-        iva_reducido REAL DEFAULT 8,
-        iva_anadida REAL DEFAULT 31,
-        igtf_porcentaje REAL DEFAULT 3,
-        fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    INSERT OR IGNORE INTO configuracion_fiscal (id, iva_exento, iva_general, iva_reducido, iva_anadida, igtf_porcentaje)
-    VALUES (1, 0, 16, 8, 31, 3);
+        INSERT OR IGNORE INTO configuracion_fiscal (id, iva_exento, iva_general, iva_reducido, iva_anadida, igtf_porcentaje)
+        VALUES (1, 0, 16, 8, 31, 3);
     `); 
 
 }
+
 
 inicializarTablas();
 
@@ -1428,7 +1176,27 @@ ipcMain.handle('guardar-venta-local', async (event, v) => {
                 }
                 
                 let precioVenta = parseFloat(prod.precio) || 0;
-                let ganancia = precioVenta - costo;
+                let monedaProd = (prod.moneda || 'USD').toUpperCase();
+                let tasaBcv = parseFloat(v.tasa_bcv) || 1;
+                let ganancia = 0;
+
+                // Tomamos la ganancia pre-calculada del carrito, si no existe calculamos por costo DB
+                if (prod.ganancia_unitaria !== undefined) {
+                    ganancia = parseFloat(prod.ganancia_unitaria) || 0;
+                } else {
+                    ganancia = precioVenta - costo;
+                }
+
+                // Normalización vital a USD para evitar sumar papas con manzanas
+                if (monedaProd === 'BS') {
+                    ganancia = ganancia / tasaBcv;
+                }
+
+                // REGLA DE NEGOCIO: Los abonos a deudas no generan ganancias
+                if (prod.id === 'PAGO-DEUDA' || prod.codigo === 'DEUDA') {
+                    ganancia = 0;
+                }
+
                 let cantidad = parseFloat(prod.cantidad || prod.quantity || 1);
                 gananciaTotal += (ganancia * cantidad);
             }
@@ -1458,8 +1226,8 @@ ipcMain.handle('guardar-venta-local', async (event, v) => {
                 numero_control, cliente_nombre, cliente_rif, monto_exento, 
                 base_imponible, monto_iva, monto_igtf, monto_total, 
                 tasa_bcv, metodo_pago, datos_json, ganancia_venta, estado_sync, estado_cierre,
-                es_nota_credito, es_nota_debito, factura_afectada, monto_factura_afectada, fecha_factura_afectada
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?)
+                es_nota_credito, es_nota_debito, factura_afectada, monto_factura_afectada, fecha_factura_afectada, fecha_emision
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
         `);
         
         const resultadoLocal = stmt.run(
@@ -4156,6 +3924,49 @@ ipcMain.handle('obtener-empaque-por-producto', async (event, productId) => {
     } catch (e) {
         console.error("? Error obtener empaque:", e);
         return [];
+    }
+});
+
+ipcMain.handle('obtener-unidades-empaque-local', async (event, companyId) => {
+    try {
+        const query = "SELECT * FROM unidades_empaque WHERE company_id = ?";
+        return db.prepare(query).all(companyId);
+    } catch (e) {
+        console.error("Error obtener unidades empaque:", e);
+        return [];
+    }
+});
+
+ipcMain.handle('guardar-unidad-empaque-local', async (event, datos) => {
+    try {
+        const id = datos.id || Date.now().toString();
+        const stmt = db.prepare(`
+            INSERT OR REPLACE INTO unidades_empaque 
+            (id, company_id, product_id, nombre_unidad, tipo_medida, factor_cantidad, estado_sync, fecha_modificacion)
+            VALUES (?, ?, ?, ?, ?, ?, 0, datetime('now', 'localtime'))
+        `);
+        stmt.run(
+            id, 
+            datos.company_id || datos.companyId, 
+            datos.product_id || datos.productId, 
+            datos.nombre_unidad || datos.nombre, 
+            datos.tipo_medida || 'Unidades', 
+            datos.factor_cantidad || datos.factor || 1.0
+        );
+        return { success: true, id };
+    } catch (e) {
+        console.error("Error guardar unidad empaque:", e);
+        return { success: false, error: e.message };
+    }
+});
+
+ipcMain.handle('eliminar-unidad-empaque-local', async (event, id) => {
+    try {
+        db.prepare("DELETE FROM unidades_empaque WHERE id = ?").run(id);
+        return { success: true };
+    } catch (e) {
+        console.error("Error eliminar unidad empaque:", e);
+        return { success: false, error: e.message };
     }
 });
 
