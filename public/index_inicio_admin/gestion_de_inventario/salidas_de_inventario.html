@@ -368,7 +368,12 @@
         inputBusqueda.disabled = false;
         inputBusqueda.placeholder = "Buscando stock en el Maestro...";
         
-        const servidorIP = await window.nexusAPI.obtenerIpMaestro() || '127.0.0.1';
+        const servidorIP = await window.nexusAPI.obtenerIpMaestro();
+        if (!servidorIP || servidorIP === 'null' || servidorIP.trim() === '') {
+            inputBusqueda.placeholder = "⚠️ IP del servidor no configurada";
+            inputBusqueda.disabled = true;
+            return;
+        }
         const URL_BASE = `http://${servidorIP}:3000`;
 
         try {

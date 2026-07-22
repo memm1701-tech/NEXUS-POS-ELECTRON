@@ -910,13 +910,28 @@ server.get('/api/maestro/borradores-stream', (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Evita buffering en proxies/nginx
     res.flushHeaders();
 
     cajasEscuchando.push(res); // Registramos la computadora que se conectó
+    console.log(`📡 [SSE] Nueva caja conectada. Total activas: ${cajasEscuchando.length}`);
 
-    // Si la caja se apaga o cierra, la quitamos de la lista
+    // Heartbeat cada 20s para mantener la conexión viva en routers con idle timeout
+    const heartbeatInterval = setInterval(() => {
+        try {
+            res.write(':heartbeat\n\n');
+        } catch (e) {
+            // Si falla el write, la conexión ya murió — la limpiamos
+            clearInterval(heartbeatInterval);
+            cajasEscuchando = cajasEscuchando.filter(caja => caja !== res);
+        }
+    }, 20000);
+
+    // Si la caja se apaga o cierra, la quitamos de la lista y limpiamos el timer
     req.on('close', () => {
+        clearInterval(heartbeatInterval);
         cajasEscuchando = cajasEscuchando.filter(caja => caja !== res);
+        console.log(`📴 [SSE] Caja desconectada. Total activas: ${cajasEscuchando.length}`);
     });
 });
 

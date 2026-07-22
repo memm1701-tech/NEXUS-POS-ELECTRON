@@ -90,7 +90,7 @@ ipcMain.handle('validar-clave-fiscal', (event, clave) => {
 const configPath = path.join(dbDir, 'config.json');
 let config = { 
     isServer: false, 
-    serverIP: 'localhost', 
+    serverIP: '', 
     allowNoStock: false, 
     geminiApiKey: "AIzaSyAPKpaQrze48wBpt2CwXxGDvATb8lgYpFo" 
 };
@@ -725,10 +725,13 @@ ipcMain.handle('procesar-cierre-caja-local', async (event, reporte) => {
 
         // --- E. SINCRONIZACIÃ“N CON EL SERVIDOR MAESTRO (PUERTO 3000) ---
         try {
-            const ipMaestro = config.isServer ? 'localhost' : config.serverIP; //[cite: 5]
-            // Usamos axios para enviar los datos al endpoint que creamos en server.js
-            await axios.post(`http://${ipMaestro}:3000/api/maestro/registrar-cierre`, reporte, { timeout: 4000 });
-            console.log("ðŸ“¡ Cierre sincronizado con el Servidor Maestro exitosamente.");
+            const ipMaestro = config.isServer ? '127.0.0.1' : getIpMaestro();
+            if (ipMaestro) {
+                await llamarMaestro('POST', '/api/maestro/registrar-cierre', reporte, { timeout: 6000, reintentos: 2 });
+                console.log("📡 Cierre sincronizado con el Servidor Maestro exitosamente.");
+            } else {
+                console.warn('⚠️ [RED] Cierre no sincronizado: IP del maestro no configurada.');
+            }
         } catch (errSync) {
             console.warn("âš ï¸  No se pudo sincronizar con el Maestro (Modo Offline o Servidor Apagado):", errSync.message);
             // No retornamos error aquÃ­ para que el usuario pueda seguir trabajando, 
@@ -1278,8 +1281,12 @@ ipcMain.handle('guardar-venta-local', async (event, v) => {
 
         // 3. SINCRONIZACIÓN CON EL SERVIDOR MAESTRO (Red Local)
         try {
-            const ipMaestro = config.isServer ? 'localhost' : config.serverIP;
-            await axios.post(`http://${ipMaestro}:3000/api/maestro/registrar-venta`, v, { timeout: 3000 });
+            if (config.isServer) {
+                // Modo servidor: localhost directo
+                await axios.post(`http://127.0.0.1:3000/api/maestro/registrar-venta`, v, { timeout: 3000 });
+            } else {
+                await llamarMaestro('POST', '/api/maestro/registrar-venta', v, { timeout: 6000, reintentos: 2 });
+            }
             console.log(`📡 Venta ${v.numero_factura} sincronizada con Maestro.`);
         } catch (errSync) {
             console.warn(`âš ï¸  Maestro no disponible. Venta ${v.numero_factura} guardada solo local.`);
@@ -1295,13 +1302,9 @@ ipcMain.handle('guardar-venta-local', async (event, v) => {
 
 ipcMain.handle('obtener-deuda-cliente-maestro', async (event, rif) => {
     try {
-        const configLocal = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        const ipMaestro = configLocal.isServer ? 'localhost' : (configLocal.serverIP || 'localhost');
-
-        const response = await axios.get(`http://${ipMaestro}:3000/api/maestro/consultar-deuda/${rif}`, { 
-            timeout: 3000 
-        });
-        
+        const ip = config.isServer ? '127.0.0.1' : getIpMaestro();
+        if (!ip) return { existe: false, monto_bs: 0, error: 'IP del servidor no configurada' };
+        const response = await llamarMaestro('GET', `/api/maestro/consultar-deuda/${rif}`, null, { timeout: 5000, reintentos: 1 });
         return response.data;
     } catch (error) {
         console.error("â Œ Error consultando deuda en Maestro desde Main:", error.message);
@@ -1341,8 +1344,8 @@ ipcMain.handle('obtener-proximo-correlativo', async (event, tipo) => {
             console.log("âš¡ Correlativo generado localmente (Directo de DB)");
             return transaccion();
         } else {
-            // ðŸŒ  MODO CLIENTE: Sigue usando la red para buscar al Xeon
-            const respuesta = await axios.post(`http://${config.serverIP}:${PORT}/api/maestro/obtener-correlativo`, { tipo });
+            // 🌠 MODO CLIENTE: Red → Servidor Maestro
+            const respuesta = await llamarMaestro('POST', '/api/maestro/obtener-correlativo', { tipo }, { timeout: 8000, reintentos: 3 });
             return respuesta.data;
         }
     } catch (e) { 
@@ -1358,13 +1361,10 @@ ipcMain.handle('obtener-venta-por-id', async (event, id) => {
 
 ipcMain.handle('obtener-factura-local', async (event, numFactura) => {
     try {
-        let serverIp = 'localhost';
-        if (fs.existsSync(configPath)) {
-            const configLocal = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-            serverIp = configLocal.isServer ? 'localhost' : (configLocal.serverIP || 'localhost');
-        }
-        const response = await axios.get(`http://${serverIp}:3000/api/maestro/buscar-factura/${numFactura}`);
-        return response.data; 
+        const ip = config.isServer ? '127.0.0.1' : getIpMaestro();
+        if (!ip) return { error: true, mensaje: 'IP del servidor no configurada' };
+        const response = await llamarMaestro('GET', `/api/maestro/buscar-factura/${numFactura}`, null, { timeout: 5000 });
+        return response.data;
 
     } catch (error) {
         console.error("â Œ Error de comunicaciÃ³n con el Maestro:", error.message);
@@ -1428,9 +1428,8 @@ ipcMain.handle('registrar-deuda-maestro', async (event, datos) => {
             transaccion();
             return { exito: true };
         } else {
-            // ðŸŒ  MODO CLIENTE: Enviar por red
-            const ipDestino = config.isServer ? '127.0.0.1' : config.serverIP;
-            const respuesta = await axios.post(`http://${ipDestino}:${PORT}/api/maestro/registrar-deuda`, datos);
+            // 🌠 MODO CLIENTE: Enviar por red al Servidor Maestro
+            const respuesta = await llamarMaestro('POST', '/api/maestro/registrar-deuda', datos, { timeout: 8000, reintentos: 2 });
             return respuesta.data;
         }
     } catch (e) {
@@ -1438,17 +1437,13 @@ ipcMain.handle('registrar-deuda-maestro', async (event, datos) => {
     }
 });
 
-// main.js - PUENTE DE ABONOS (REDUCCIÃ“N DE DEUDA EN MAESTRO)
+// main.js - PUENTE DE ABONOS (REDUCCIÓN DE DEUDA EN MAESTRO)
 ipcMain.handle('registrar-abono-maestro', async (event, datos) => {
     try {
         // ðŸ”¥ CORRECCIÃ“N ARQUITECTÃ“NICA: 
         // Eliminamos la lÃ³gica duplicada de SQLite aquÃ­. 
         // Ahora TODOS (incluyendo el servidor) pasan por la API de server.js
-        const ipDestino = config.isServer ? '127.0.0.1' : config.serverIP;
-        
-        console.log(`[MAIN] Redirigiendo pago de deuda al servidor local (${ipDestino})...`);
-        
-        const respuesta = await axios.post(`http://${ipDestino}:${PORT}/api/maestro/registrar-abono`, datos);
+        const respuesta = await llamarMaestro('POST', '/api/maestro/registrar-abono', datos, { timeout: 8000, reintentos: 2 });
         return respuesta.data;
     } catch (e) {
         console.error("[MAIN] Error en puente de abonos:", e.message);
@@ -1485,9 +1480,8 @@ ipcMain.handle('guardar-cliente-local', async (event, cliente) => {
 
             return { success: true };
         } else {
-            // ðŸŒ  MODO CLIENTE: EnvÃ­a por red al Servidor Maestro
-            const ipDestino = config.isServer ? '127.0.0.1' : config.serverIP;
-            const respuesta = await axios.post(`http://${ipDestino}:${PORT}/api/maestro/guardar-cliente`, cliente);
+            // 🌠 MODO CLIENTE: Envía por red al Servidor Maestro
+            const respuesta = await llamarMaestro('POST', '/api/maestro/guardar-cliente', cliente, { timeout: 8000, reintentos: 2 });
             return respuesta.data;
         }
     } catch (error) {
@@ -1501,8 +1495,7 @@ ipcMain.handle('obtener-clientes-local', async () => {
         if (config.isServer && masterDbDirect) {
             return masterDbDirect.prepare('SELECT * FROM clientes_maestro ORDER BY nombre ASC').all();
         } else {
-            const ipDestino = config.isServer ? '127.0.0.1' : config.serverIP;
-            const respuesta = await axios.get(`http://${ipDestino}:${PORT}/api/maestro/obtener-clientes`);
+            const respuesta = await llamarMaestro('GET', '/api/maestro/obtener-clientes', null, { timeout: 8000, reintentos: 1 });
             return respuesta.data;
         }
     } catch (e) {
@@ -1517,8 +1510,7 @@ ipcMain.handle('eliminar-cliente-local', async (event, rif) => {
             masterDbDirect.prepare('DELETE FROM clientes_maestro WHERE rif = ?').run(rif);
             return { success: true };
         } else {
-            const ipDestino = config.isServer ? '127.0.0.1' : config.serverIP;
-            const respuesta = await axios.delete(`http://${ipDestino}:${PORT}/api/maestro/eliminar-cliente/${rif}`);
+            const respuesta = await llamarMaestro('DELETE', `/api/maestro/eliminar-cliente/${rif}`, null, { timeout: 6000, reintentos: 1 });
             return respuesta.data;
         }
     } catch (e) { 
@@ -1671,7 +1663,7 @@ ipcMain.handle('guardar-configuracion', async (event, clave, valor) => {
         
         return { success: true };
     } catch (error) {
-        console.error(`âŒ Error crÃ­tico al guardar configuraciÃ³n:`, error.message);
+        console.error(`â Œ Error crÃ­tico al guardar configuraciÃ³n:`, error.message);
         return { error: error.message };
     }
 });
@@ -1698,11 +1690,11 @@ ipcMain.handle('imprimir-texto-libre', async (event, textoTicket, nombreImpresor
                 }, 2000);
 
                 if (error) {
-                    console.error("âŒ Error al enviar RAW a impresora:", error.message);
+                    console.error("â Œ Error al enviar RAW a impresora:", error.message);
                     console.error("Detalles:", stderr);
                     resolve({ exito: false, mensaje: error.message });
                 } else {
-                    console.log(`ðŸ–¨ï¸ Ticket enviado exitosamente a: \\\\localhost\\${nombreImpresora}`);
+                    console.log(`ðŸ–¨ï¸  Ticket enviado exitosamente a: \\\\localhost\\${nombreImpresora}`);
                     resolve({ exito: true });
                 }
             });
@@ -1718,7 +1710,7 @@ ipcMain.handle('obtener-cola-sincronizacion', async () => {
         const stmt = db.prepare('SELECT * FROM sync_queue ORDER BY fecha_creacion ASC');
         return stmt.all();
     } catch (e) {
-        console.error("âŒ Error al leer la cola de sincronizaciÃ³n:", e);
+        console.error("â Œ Error al leer la cola de sincronizaciÃ³n:", e);
         return [];
     }
 });
@@ -1730,7 +1722,7 @@ ipcMain.handle('eliminar-de-cola', async (event, id) => {
         const resultado = stmt.run(id);
         return { success: true, changes: resultado.changes };
     } catch (e) {
-        console.error(`âŒ Error al eliminar el registro ${id} de la cola:`, e);
+        console.error(`â Œ Error al eliminar el registro ${id} de la cola:`, e);
         return { success: false, error: e.message };
     }
 });
@@ -1785,7 +1777,7 @@ ipcMain.handle('sincronizar-producto-servidor', async (event, p) => {
 
         return resultado;
     } catch (e) {
-        console.error("âŒ Error en sincronizar-producto-servidor:", e);
+        console.error("â Œ Error en sincronizar-producto-servidor:", e);
         return { error: e.message };
     }
 });
@@ -1866,7 +1858,7 @@ ipcMain.handle('verificar-actualizacion-github', async (event, versionActual) =>
         }
 
     } catch (error) {
-        console.error("âŒ Error en ConexiÃ³n GitHub:", error.response?.status || error.message);
+        console.error("â Œ Error en ConexiÃ³n GitHub:", error.response?.status || error.message);
         return { 
             success: false, 
             error: error.response?.status === 404 ? "Repositorio no encontrado o privado sin acceso" : (error.response?.status === 403 ? "LÃ­mite de API excedido o Token invÃ¡lido" : error.message) 
@@ -1875,7 +1867,7 @@ ipcMain.handle('verificar-actualizacion-github', async (event, versionActual) =>
 });
 
 ipcMain.handle('editar-env-local', async (event, nuevaConfig) => {
-    // USAMOS LA MISMA LÃ“GICA DE RUTA DINÃMICA QUE EN LA LECTURA
+    // USAMOS LA MISMA LÃ“GICA DE RUTA DINÃ MICA QUE EN LA LECTURA
     const baseDataDir = process.env.APPDATA 
         ? path.join(process.env.APPDATA, 'nexus-pos') 
         : path.join(process.platform === 'darwin' ? path.join(process.env.HOME, 'Library/Application Support') : process.env.HOME, '.config', 'nexus-pos');
@@ -1905,7 +1897,7 @@ ipcMain.handle('obtener-version-app', () => {
     return app.getVersion();
 });
 
-// --- DESCARGA E INSTALACIÃ“N AUTOMÃTICA ---
+// --- DESCARGA E INSTALACIÃ“N AUTOMÃ TICA ---
 ipcMain.handle('descargar-update', async (event, urlDescarga) => {
     try {
         // Descargar a la carpeta de Archivos Temporales de Windows (para no ensuciar Descargas)
@@ -1943,7 +1935,7 @@ ipcMain.handle('descargar-update', async (event, urlDescarga) => {
                     try {
                         const { spawn } = require('child_process');
                         
-                        // ðŸ”¥ LA MEJOR PRÃCTICA: InstalaciÃ³n silenciosa con auto-reinicio.
+                        // ðŸ”¥ LA MEJOR PRÃ CTICA: InstalaciÃ³n silenciosa con auto-reinicio.
                         const installer = spawn(filePath, ['/S', '--force-run'], {
                             detached: true,
                             stdio: 'ignore'
@@ -1991,7 +1983,7 @@ ipcMain.handle('marcar-como-sincronizado', async (event, tabla, idElemento) => {
         
         return { success: true };
     } catch (e) {
-        console.error("âŒ Error al marcar como sincronizado:", e.message);
+        console.error("â Œ Error al marcar como sincronizado:", e.message);
         return { error: e.message };
     }
 });
@@ -2345,7 +2337,7 @@ ipcMain.handle('guardar-sucursal-local', async (event, sucursal) => {
             fechaAUsar             // Usar la fecha correcta
         );
     } catch (e) {
-        console.error("âŒ Error al guardar sucursal:", e);
+        console.error("â Œ Error al guardar sucursal:", e);
         return { error: e.message };
     }
 });
@@ -2370,16 +2362,13 @@ ipcMain.handle('obtener-inventario-sucursal', async (event, { companyId, sucursa
             `);
             return stmt.all(companyId, sucursalId);
         } else {
-            // ðŸŒ MODO CLIENTE: Intenta consultar por red al puerto 3000
-            const ipDestino = config.isServer ? '127.0.0.1' : config.serverIP;
-            const respuesta = await axios.get(`http://${ipDestino}:${PORT}/api/maestro/stock`, {
-                params: { sucursalId: sucursalId, companyId: companyId }
-            });
-            return respuesta.data; 
+            // 🌐 MODO CLIENTE: Petición por red al servidor con retry
+            const respuesta = await llamarMaestro('GET', `/api/maestro/stock?sucursalId=${sucursalId}&companyId=${companyId}`, null, { timeout: 8000, reintentos: 2 });
+            return respuesta.data;
         }
     } catch (e) {
-        console.warn("âš ï¸ Puerto 3000 bloqueado o Maestro offline. Leyendo stock desde respaldo local SQLite...");
-        // ðŸ›¡ï¸ FALLBACK: Si falla (por Expo o red), lee directamente de la base de datos local
+        console.warn("âš ï¸  Puerto 3000 bloqueado o Maestro offline. Leyendo stock desde respaldo local SQLite...");
+        // ðŸ›¡ï¸  FALLBACK: Si falla (por Expo o red), lee directamente de la base de datos local
         try {
             const stmt = db.prepare(`
                 SELECT producto_id, stock as cantidad_real
@@ -2388,7 +2377,7 @@ ipcMain.handle('obtener-inventario-sucursal', async (event, { companyId, sucursa
             `);
             return stmt.all(companyId, sucursalId);
         } catch (errorLocal) {
-            console.error("âŒ Error profundo leyendo inventario local:", errorLocal.message);
+            console.error("â Œ Error profundo leyendo inventario local:", errorLocal.message);
             return [];
         }
     }
@@ -2943,11 +2932,15 @@ ipcMain.handle('guardar-reporte-fiscal-local', async (event, reporte) => {
         });
 
         try {
-            const ipMaestro = config.isServer ? 'localhost' : config.serverIP; 
-            const axios = require('axios');
-            await axios.post('http://' + ipMaestro + ':3000/api/maestro/registrar-reporte-fiscal', reporte, { timeout: 4000 });
-            console.log("📡 Reporte fiscal sincronizado con el Servidor Maestro exitosamente.");
-            db.prepare('UPDATE reportes_fiscales_cierre SET estado_sync = 1 WHERE id = ?').run(reporte.id || 'REP-' + Date.now());
+            const ipMaestro = config.isServer ? '127.0.0.1' : getIpMaestro();
+            if (ipMaestro) {
+                const axiosLocal = require('axios');
+                await axiosLocal.post('http://' + ipMaestro + ':3000/api/maestro/registrar-reporte-fiscal', reporte, { timeout: 4000 });
+                console.log("📡 Reporte fiscal sincronizado con el Servidor Maestro exitosamente.");
+                db.prepare('UPDATE reportes_fiscales_cierre SET estado_sync = 1 WHERE id = ?').run(reporte.id || 'REP-' + Date.now());
+            } else {
+                console.warn('⚠️ [RED] Reporte fiscal no sincronizado: IP del maestro no configurada.');
+            }
         } catch (errSync) {
             console.warn("⚠️ No se pudo sincronizar el reporte fiscal con el Maestro:", errSync.message);
         }
@@ -3216,14 +3209,64 @@ function prepararPaquete(comando, campos = []) {
     const check = calcularChecksum(tramaParaCheck);
     return Buffer.from(STX + tramaParaCheck + check, 'ascii');
 }
-function getIpServidor() {
+// ============================================================
+// FUNCIÓN CENTRALIZADA DE IP — Única fuente de verdad para la
+// IP del servidor maestro. Úsala en TODOS los lugares.
+// ============================================================
+function getIpMaestro() {
     try {
         const configLocal = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        const esMaestro = (configLocal.isServer === true || configLocal.isServer === 'true');      
-        return esMaestro ? '127.0.0.1' : (configLocal.serverIP || '127.0.0.1'); 
+        const esMaestro = (configLocal.isServer === true || configLocal.isServer === 'true');
+        if (esMaestro) {
+            return '127.0.0.1';
+        }
+        const ip = configLocal.serverIP;
+        if (!ip || ip === 'localhost' || ip.trim() === '') {
+            console.error('[RED] ❌ ERROR CRÍTICO: Esta PC está configurada como CLIENTE pero no tiene una IP de servidor válida.');
+            console.error('[RED]    Verifica config.json → campo "serverIP" debe tener la IP real del servidor (ej: 192.168.1.100)');
+            return null;
+        }
+        return ip.trim();
     } catch (e) {
-        return '127.0.0.1';
+        console.error('[RED] ❌ Error leyendo config.json para obtener IP del servidor:', e.message);
+        return null;
     }
+}
+
+// Alias para compatibilidad con llamadas antiguas
+function getIpServidor() {
+    return getIpMaestro() || '127.0.0.1';
+}
+
+// Helper: llama al servidor maestro con reintentos automáticos
+async function llamarMaestro(metodo, ruta, datos = null, opciones = {}) {
+    const ip = getIpMaestro();
+    if (!ip) {
+        throw new Error('IP del servidor maestro no configurada. Verifica config.json → serverIP');
+    }
+    const url = `http://${ip}:3000${ruta}`;
+    const timeout = opciones.timeout || 8000;
+    const reintentos = opciones.reintentos !== undefined ? opciones.reintentos : 2;
+    let ultimoError;
+    for (let i = 0; i <= reintentos; i++) {
+        try {
+            const cfg = { timeout };
+            const res = metodo === 'GET'
+                ? await axios.get(url, cfg)
+                : metodo === 'DELETE'
+                    ? await axios.delete(url, cfg)
+                    : await axios.post(url, datos, cfg);
+            return res;
+        } catch (err) {
+            ultimoError = err;
+            if (i < reintentos) {
+                const espera = 1000 * (i + 1);
+                console.warn(`[RED] ⚠️ Intento ${i + 1} fallido para ${url}. Reintentando en ${espera}ms...`);
+                await new Promise(r => setTimeout(r, espera));
+            }
+        }
+    }
+    throw ultimoError;
 }
 
 ipcMain.handle('obtener-borradores-maestro', async (event, { sucursalId, companyId }) => {

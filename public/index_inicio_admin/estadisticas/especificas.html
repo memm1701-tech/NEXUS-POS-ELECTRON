@@ -775,7 +775,9 @@
             const sesion = await api.obtenerSesionLocal();
             const companyId = sesion.companyId;
             let ip = await api.obtenerIpMaestro();
-            if (!ip) ip = 'localhost';
+            if (!ip || ip === 'null' || ip.trim() === '') {
+                throw new Error('IP del servidor maestro no configurada. Ve a Configuración y establece la IP del servidor.');
+            }
             
             const { fecha_inicio, fecha_fin } = getFechasPorPeriodo(periodo);
             const url = `http://${ip}:3000/api/maestro/estadisticas?fecha_inicio=${fecha_inicio}&fecha_fin=${fecha_fin}&companyId=${companyId}&periodo=${periodo}`;

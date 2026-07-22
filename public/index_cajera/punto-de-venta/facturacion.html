@@ -7375,7 +7375,11 @@ window.procesarGuiaDespacho = async function() {
         try {
             console.log("🚚 Enviando registro al servidor maestro (server.js)...");
             const ipMaestro = await window.nexusAPI.obtenerIpMaestro();
-            const serverUrl = `http://${ipMaestro || 'localhost'}:3000/api/maestro/registrar-guia-despacho`;
+            if (!ipMaestro || ipMaestro === 'null' || ipMaestro.trim() === '') {
+                console.warn("⚠️ [GUIA] IP del servidor no configurada. Guía guardada solo localmente.");
+                throw new Error('IP no configurada');
+            }
+            const serverUrl = `http://${ipMaestro}:3000/api/maestro/registrar-guia-despacho`;
             
             const reqFetch = await fetch(serverUrl, {
                 method: 'POST',
@@ -8375,26 +8379,61 @@ async function arrancarSistema() {
 }
 
 async function iniciarDetectorCambios() {
-    try {
-        const ip = await window.nexusAPI.obtenerIpMaestro();
-        const urlStream = `http://${ip}:3000/api/maestro/borradores-stream`;
-        
-        // Abrimos la manguera (EventSource es nativo del navegador, no necesita librerías)
-        const receptorPulsos = new EventSource(urlStream);
-        
-        receptorPulsos.onmessage = (event) => {
-            if (event.data === 'CAMBIO_DETECTADO') {
-                console.log("⚡ PULSO RECIBIDO: Alguien actualizó los borradores.");
-                loadBorradoresFromServer(); // Trae las facturas nuevas instantáneamente
-            }
-        };
+    let sseReconexionTimer = null;
+    let sseDelay = 3000; // Empieza en 3s, crece con cada fallo (máx 30s)
+    let receptorActivo = null;
 
-        receptorPulsos.onerror = () => {
-            // Falla silenciosa. EventSource se reconecta solo de forma automática si se cae la red.
-        };
-    } catch (e) {
-        console.error("No se pudo iniciar el detector de cambios:", e);
+    async function conectarSSE() {
+        try {
+            const ip = await window.nexusAPI.obtenerIpMaestro();
+
+            if (!ip || ip === 'null' || ip.trim() === '') {
+                console.warn('⚠️ [SSE] IP del servidor no configurada. Sin detector de cambios en tiempo real.');
+                return; // No intentamos conectar con URL inválida
+            }
+
+            const urlStream = `http://${ip}:3000/api/maestro/borradores-stream`;
+
+            // Cerramos la conexión anterior si existe
+            if (receptorActivo) {
+                receptorActivo.close();
+                receptorActivo = null;
+            }
+
+            // Abrimos la manguera (EventSource es nativo del navegador)
+            const receptor = new EventSource(urlStream);
+            receptorActivo = receptor;
+
+            receptor.onopen = () => {
+                console.log('✅ [SSE] Conectado al servidor maestro. Detector de cambios activo.');
+                sseDelay = 3000; // Reseteamos el delay en conexión exitosa
+            };
+
+            receptor.onmessage = (event) => {
+                if (event.data === 'CAMBIO_DETECTADO') {
+                    console.log('⚡ PULSO RECIBIDO: Alguien actualizó los borradores.');
+                    loadBorradoresFromServer();
+                }
+            };
+
+            receptor.onerror = () => {
+                // EventSource falla → cerramos y reconectamos con backoff
+                receptor.close();
+                receptorActivo = null;
+                console.warn(`⚠️ [SSE] Conexión perdida. Reconectando en ${sseDelay / 1000}s...`);
+                clearTimeout(sseReconexionTimer);
+                sseReconexionTimer = setTimeout(() => {
+                    sseDelay = Math.min(sseDelay * 2, 30000); // Max 30s
+                    conectarSSE();
+                }, sseDelay);
+            };
+
+        } catch (e) {
+            console.error('❌ [SSE] Error al iniciar detector de cambios:', e.message);
+        }
     }
+
+    conectarSSE();
 }
 
 window.abrirModalDocFiscales = function() {

@@ -608,8 +608,10 @@
                 try {
                     ipMaestro = await window.nexusAPI.obtenerIpMaestro();
                 } catch (e) {
-                    console.warn("⚠️ No se pudo obtener IP, usando localhost.");
-                    ipMaestro = 'localhost';
+                    console.warn("⚠️ No se pudo obtener IP del maestro:", e.message);
+                }
+                if (!ipMaestro || ipMaestro === 'null' || ipMaestro.trim() === '') {
+                    throw new Error('IP del servidor maestro no configurada. Ve a Configuración → IP del servidor.');
                 }
 
                 const urlServidorMaestro = `http://${ipMaestro}:3000/api/maestro/ventas/${branchId}/${userCompanyId}?limit=${currentLimit}&offset=${currentOffset}`;
