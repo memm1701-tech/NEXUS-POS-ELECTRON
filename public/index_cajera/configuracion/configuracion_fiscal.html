@@ -693,7 +693,10 @@
         const tbody = document.getElementById('tabla-mapeo-pagos');
         if (!tbody) return;
         try {
-            const resp = await fetch('http://localhost:3000/api/maestro/metodos-pago');
+            const ip = (window.nexusAPI && typeof window.nexusAPI.obtenerIpMaestro === 'function')
+                ? (await window.nexusAPI.obtenerIpMaestro() || '127.0.0.1')
+                : '127.0.0.1';
+            const resp = await fetch(`http://${ip}:3000/api/maestro/metodos-pago`);
             if (!resp.ok) throw new Error("Error HTTP " + resp.status);
             const metodos = await resp.json();
             
@@ -755,8 +758,11 @@
             
             const exito = await ejecutarComandosFiscales(comandos);
             if (exito) {
+                const ip = (window.nexusAPI && typeof window.nexusAPI.obtenerIpMaestro === 'function')
+                    ? (await window.nexusAPI.obtenerIpMaestro() || '127.0.0.1')
+                    : '127.0.0.1';
                 for (const act of actualizacionesFlags) {
-                    await fetch(`http://localhost:3000/api/maestro/metodos-pago/${act.id}`, {
+                    await fetch(`http://${ip}:3000/api/maestro/metodos-pago/${act.id}`, {
                         method: 'PUT',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ flag_impresora: act.flag })

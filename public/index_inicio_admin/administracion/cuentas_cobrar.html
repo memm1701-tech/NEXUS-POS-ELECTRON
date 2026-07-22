@@ -285,8 +285,13 @@
         try {
             tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-8 text-center text-gray-500"><div class="spinner inline-block"></div><p class="mt-2">Cargando cuentas por cobrar...</p></td></tr>`;
             
-            var esLocal = window.location.hostname === 'localhost' || window.location.protocol === 'file:';
-            var localServerUrl = esLocal ? 'http://localhost:3000' : `http://${window.location.hostname}:3000`;
+            var api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+            var ip = '127.0.0.1';
+            if (api && typeof api.obtenerIpMaestro === 'function') {
+                var ipObtenida = await api.obtenerIpMaestro();
+                if (ipObtenida && ipObtenida !== 'null' && ipObtenida.trim() !== '') ip = ipObtenida.trim();
+            }
+            var localServerUrl = `http://${ip}:3000`;
                 
             var response = await fetch(`${localServerUrl}/api/cuentas_por_cobrar`);
             if (!response.ok) throw new Error('Error al obtener deudas');

@@ -266,7 +266,10 @@
 
                 console.log("✅ Conexión establecida con el Cerebro Local.");
                 try {
-                    const resp = await fetch('http://localhost:3000/api/maestro/metodos-pago');
+                    const ip = (window.nexusAPI && typeof window.nexusAPI.obtenerIpMaestro === 'function')
+                        ? (await window.nexusAPI.obtenerIpMaestro() || '127.0.0.1')
+                        : '127.0.0.1';
+                    const resp = await fetch(`http://${ip}:3000/api/maestro/metodos-pago`);
                     if (resp.ok) {
                         const metodosData = await resp.json();
                         const metodos = metodosData.data || [];

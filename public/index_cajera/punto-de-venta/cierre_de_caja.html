@@ -282,7 +282,10 @@
     
     async function fetchMetodosCierre() {
         try {
-            const resp = await fetch('http://localhost:3000/api/maestro/metodos-pago');
+            const ip = (window.nexusAPI && typeof window.nexusAPI.obtenerIpMaestro === 'function')
+                ? (await window.nexusAPI.obtenerIpMaestro() || '127.0.0.1')
+                : '127.0.0.1';
+            const resp = await fetch(`http://${ip}:3000/api/maestro/metodos-pago`);
             const resData = await resp.json();
             window.metodosCierre = resData.data || [];
         } catch(e) {

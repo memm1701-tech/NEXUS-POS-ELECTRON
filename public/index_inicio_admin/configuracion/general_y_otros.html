@@ -67,6 +67,22 @@
             </div>
         </div>
 
+        <div class="nexus-card p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800 flex items-center">
+                        <i class="material-icons mr-2 text-gray-700">terminal</i>
+                        Mostrar Inicialización con Consola (DevTools)
+                    </h3>
+                    <p class="text-sm text-gray-500 mt-1">Abre la ventana de consola técnica al iniciar la aplicación para ver todos los logs del sistema en tiempo real.</p>
+                </div>
+                <input type="checkbox" id="local-show-console" class="h-6 w-6 cursor-pointer">
+            </div>
+            <div class="mt-4 bg-gray-50 p-3 text-xs text-gray-600 italic font-medium">
+                * Útil en proyectos compilados para diagnosticar errores de red, impresoras, base de datos e inicialización. Requiere reiniciar la app.
+            </div>
+        </div>
+
 
         <div class="nexus-card p-8 space-y-6">
             <div class="border-b pb-4">
@@ -118,6 +134,7 @@
             // 1. Declaración de variables globales del DOM (Intactas)
             const isServerCb = document.getElementById('local-is-server');
             const allowNoStockCb = document.getElementById('local-discount-stock');
+            const showConsoleCb = document.getElementById('local-show-console');
             const saveBtn = document.getElementById('saveBtn'); 
             const statusMsg = document.getElementById('statusMsg'); 
             
@@ -159,14 +176,14 @@
                     const isServer = await window.nexusAPI.obtenerConfiguracion('isServer');
                     const serverIP = await window.nexusAPI.obtenerConfiguracion('serverIP');
                     const allowNoStock = await window.nexusAPI.obtenerConfiguracion('allowNoStock');
+                    const showConsole = await window.nexusAPI.obtenerConfiguracion('showConsole');
                     
                     // MEJORA: Parseo booleano estricto consolidado para evitar fallos de lectura
                     const parseBool = (val) => val === true || val === "true";
 
                     isServerCb.checked = parseBool(isServer);
                     allowNoStockCb.checked = parseBool(allowNoStock);
-
-
+                    if (showConsoleCb) showConsoleCb.checked = parseBool(showConsole);
                     
                     // Configuramos la interfaz
                     setFullIP(serverIP);
@@ -232,6 +249,7 @@
                     await window.nexusAPI.guardarConfiguracion('isServer', isServerCb.checked);
                     await window.nexusAPI.guardarConfiguracion('serverIP', finalIP);
                     await window.nexusAPI.guardarConfiguracion('allowNoStock', allowNoStockCb.checked);
+                    if (showConsoleCb) await window.nexusAPI.guardarConfiguracion('showConsole', showConsoleCb.checked);
 
                     let maestroError = false;
 

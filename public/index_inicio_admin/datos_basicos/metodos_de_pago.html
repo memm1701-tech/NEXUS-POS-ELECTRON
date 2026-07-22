@@ -106,9 +106,19 @@
     <script>
         window.metodosData = window.metodosData || [];
         
+        async function getBaseUrlMaster() {
+            const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+            let ip = '127.0.0.1';
+            if (api && typeof api.obtenerIpMaestro === 'function') {
+                const ipObtenida = await api.obtenerIpMaestro();
+                if (ipObtenida && ipObtenida !== 'null' && ipObtenida.trim() !== '') ip = ipObtenida.trim();
+            }
+            return `http://${ip}:3000`;
+        }
+
         window.cargarMetodos = async function() {
             try {
-                const baseUrl = window.location.hostname === '' ? 'http://localhost:3000' : '';
+                const baseUrl = await getBaseUrlMaster();
                 const response = await fetch(`${baseUrl}/api/maestro/metodos-pago`);
                 const result = await response.json();
                 
@@ -193,7 +203,7 @@
             const moneda = inputMoneda.value;
 
             try {
-                const baseUrl = window.location.hostname === '' ? 'http://localhost:3000' : '';
+                const baseUrl = await getBaseUrlMaster();
                 const response = await fetch(`${baseUrl}/api/maestro/metodos-pago`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -215,7 +225,7 @@
         window.eliminarMetodo = async function(id) {
             if (confirm("¿Estás seguro de eliminar este método de pago? Podría afectar el historial de las facturas.")) {
                 try {
-                    const baseUrl = window.location.hostname === '' ? 'http://localhost:3000' : '';
+                    const baseUrl = await getBaseUrlMaster();
                     const response = await fetch(`${baseUrl}/api/maestro/metodos-pago/${id}`, {
                         method: 'DELETE'
                     });

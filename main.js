@@ -92,7 +92,35 @@ let config = {
     isServer: false, 
     serverIP: '', 
     allowNoStock: false, 
+    showConsole: false,
     geminiApiKey: "AIzaSyAPKpaQrze48wBpt2CwXxGDvATb8lgYpFo" 
+};
+
+// --- LOG FORWARDING (main.js -> DevTools) ---
+const originalConsoleLog = console.log;
+const originalConsoleError = console.error;
+const originalConsoleWarn = console.warn;
+
+function sendLogToDevTools(type, args) {
+    if (typeof win !== 'undefined' && win && win.webContents && !win.webContents.isDestroyed()) {
+        try {
+            const text = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+            win.webContents.executeJavaScript(`console.${type}(${JSON.stringify('[MAIN] ' + text)})`).catch(() => {});
+        } catch (e) {}
+    }
+}
+
+console.log = function(...args) {
+    originalConsoleLog.apply(console, args);
+    sendLogToDevTools('log', args);
+};
+console.error = function(...args) {
+    originalConsoleError.apply(console, args);
+    sendLogToDevTools('error', args);
+};
+console.warn = function(...args) {
+    originalConsoleWarn.apply(console, args);
+    sendLogToDevTools('warn', args);
 };
 
 if (fs.existsSync(configPath)) {
@@ -100,7 +128,7 @@ if (fs.existsSync(configPath)) {
         const contenido = fs.readFileSync(configPath, 'utf8');
         config = JSON.parse(contenido);
     } catch (e) { 
-        console.error("âŒ Error al leer config.json:", e);
+        console.error("❌ Error al leer config.json:", e);
     }
 } else {
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
@@ -1644,11 +1672,12 @@ ipcMain.handle('guardar-configuracion', async (event, clave, valor) => {
         else if (clave === 'serverIP') config.serverIP = valor;
         else if (clave === 'allowNoStock') config.allowNoStock = (valor === true || valor === "true");
         else if (clave === 'geminiApiKey') config.geminiApiKey = valor;
+        else if (clave === 'showConsole' || clave === 'mostrarConsola') config.showConsole = (valor === true || valor === "true");
 
-        // 3. Escribir en el archivo fÃ­sico config.json (RecreÃ¡ndolo si no existe)
-        const llavesFisicas = ['isServer', 'serverIP', 'allowNoStock', 'geminiApiKey'];
+        // 3. Escribir en el archivo físico config.json (Recreándolo si no existe)
+        const llavesFisicas = ['isServer', 'serverIP', 'allowNoStock', 'geminiApiKey', 'showConsole', 'mostrarConsola'];
         if (llavesFisicas.includes(clave)) {
-            // ðŸ”¥ CORRECCIÃ“N: Escribimos el objeto 'config' directamente para asegurar que el archivo se cree/actualice
+            config.showConsole = (clave === 'showConsole' || clave === 'mostrarConsola') ? (valor === true || valor === "true") : (config.showConsole || false);
             fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
 
             // 4. LÃ³gica de PM2 (Solo si cambia isServer)
@@ -3592,13 +3621,28 @@ async function createWindow() {
         backgroundColor: '#2e2c29',
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
-            nodeIntegration: true,
-            contextIsolation: true,
             nodeIntegration: false,
+            contextIsolation: true,
             spellcheck: true,
-            devTools: false
+            devTools: true
         }
     });
+
+    // --- REVISIÓN Y DESPLIEGUE DE CONSOLA AL INICIALIZAR ---
+    let showConsoleEnabled = (config.showConsole === true || config.showConsole === 'true' || config.mostrarConsola === true || config.mostrarConsola === 'true');
+    if (!showConsoleEnabled) {
+        try {
+            const row = db.prepare("SELECT valor FROM configuracion WHERE clave IN ('showConsole', 'mostrarConsola')").get();
+            if (row && (row.valor === 'true' || row.valor === true)) {
+                showConsoleEnabled = true;
+            }
+        } catch(e) {}
+    }
+
+    if (showConsoleEnabled) {
+        win.webContents.openDevTools({ mode: 'detach' });
+        console.log("🛠️ Consola de desarrollo desplegada automáticamente al iniciar.");
+    }
 
     async function ejecutarScrapingYGuardar() {
     const tasaBcv = await obtenerTasaDesdeWeb(); // Tu funciÃ³n actual que usa axios/cheerio

@@ -46,6 +46,16 @@
             </label>
         </div>
 
+        <div class="p-4 border-b border-gray-200 text-left">
+            <label for="config-show-console" class="flex items-center justify-between text-gray-700 font-medium cursor-pointer">
+                <div>
+                    <span class="text-lg">Mostrar Inicialización con Consola (DevTools)</span>
+                    <p class="text-xs text-gray-500 font-normal mt-0.5">Abre la ventana de consola técnica al iniciar la aplicación para visualizar logs del sistema en ejecuciones compiladas.</p>
+                </div>
+                <input type="checkbox" id="config-show-console" class="h-5 w-5 text-indigo-600 border-gray-300 rounded-none focus:ring-indigo-500">
+            </label>
+        </div>
+
         <div class="space-y-4 text-left p-6 border border-gray-200 bg-white rounded-none">
             <div class="flex items-center justify-between mb-2 border-b pb-4">
                 <div>
@@ -139,6 +149,7 @@
     const enableScaleCheckbox = document.getElementById('config-enable-scale'); 
     const multicurrencyCheckbox = document.getElementById('config-multicurrency');
     const validarEliminarCheckbox = document.getElementById('config-validar-eliminar');
+    const showConsoleCheckbox = document.getElementById('config-show-console');
 
     const configLine1 = document.getElementById('configLine1');
     const configLine2 = document.getElementById('configLine2');
@@ -260,6 +271,15 @@
         }
 
         try {
+            const showConsoleVal = await window.nexusAPI.obtenerConfiguracion('showConsole');
+            if (showConsoleCheckbox) {
+                showConsoleCheckbox.checked = (showConsoleVal === true || showConsoleVal === 'true');
+            }
+        } catch (error) {
+            console.error("Error al cargar preferencia de consola:", error);
+        }
+
+        try {
             const basculaDataRaw = await window.nexusAPI.obtenerConfiguracion('config_bascula');
             if (basculaDataRaw) {
                 const data = JSON.parse(basculaDataRaw);
@@ -349,6 +369,9 @@
 
             await window.nexusAPI.guardarConfiguracion('config_factura', JSON.stringify(facturaData));
             await window.nexusAPI.guardarConfiguracion('config_auto_productos', JSON.stringify(window.autoProductsSelected));
+            if (showConsoleCheckbox) {
+                await window.nexusAPI.guardarConfiguracion('showConsole', showConsoleCheckbox.checked);
+            }
             return true;
         } catch(e) {
             console.error("Error al guardar factura config:", e);
