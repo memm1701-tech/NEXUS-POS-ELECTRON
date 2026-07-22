@@ -1645,48 +1645,41 @@ const style = document.createElement('style');
     window.globalStockCache = null;
 
 
+// 🚀 OPTIMIZACIÓN: filterProducts ahora es ASYNC y delega la búsqueda al backend SQLite.
+// Ya NO filtra el array allProducts en el navegador — eso causaba el colapso con catálogos grandes.
+let _filterDebounceTimer = null;
 function filterProducts(query, type, resultsId) {
-
-    // 1. REINICIAR EL FOCO SEGÚN EL TIPO
+    // Reiniciar el foco según el tipo
     if (type === 'name') {
         productFocus = -1;
     } else {
         barcodeFocus = -1;
     }
 
-    if (!allProducts || allProducts.length === 0) {
-        console.error("❌ ERROR: 'allProducts' está vacío. ¿Falló el PASO 1?");
-        document.getElementById(resultsId).style.display = 'none';
+    if (!query || !query.trim()) {
+        const el = document.getElementById(resultsId);
+        if (el) el.style.display = 'none';
         return;
     }
 
-    const normalizedQuery = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    
-    let filteredProducts = allProducts.filter(product => {
-        if (!product.nombre) return false;
-        const productName = product.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        
-        if (type === 'name') {
-            return productName.includes(normalizedQuery);
-        } else if (type === 'code') {
-            return product.codigo && String(product.codigo).toLowerCase().includes(normalizedQuery);
+    // Debounce de 280ms: evita saturar el backend mientras el usuario escribe
+    clearTimeout(_filterDebounceTimer);
+    _filterDebounceTimer = setTimeout(async () => {
+        try {
+            const resultadosDB = await window.nexusAPI.buscarProductosLocal(query.trim(), window.companyId);
+            if (!resultadosDB || resultadosDB.length === 0) {
+                renderAutocompleteResults([], resultsId, type);
+                return;
+            }
+            // Convertimos las filas SQLite al formato que espera el render
+            const productosFormateados = resultadosDB.map(_mapearProductoCaja);
+            // Actualizamos el caché de allProducts con los resultados recientes
+            allProducts = productosFormateados;
+            renderAutocompleteResults(productosFormateados, resultsId, type);
+        } catch (e) {
+            console.error('❌ Error en filterProducts backend:', e);
         }
-        return false;
-    });
-
-    // Ordenar resultados
-    filteredProducts.sort((a, b) => {
-        const aName = a.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const bName = b.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const aStarts = aName.startsWith(normalizedQuery) ? 0 : 1;
-        const bStarts = bName.startsWith(normalizedQuery) ? 0 : 1;
-        return aStarts - bStarts;
-    });
-
-    const topResults = filteredProducts.slice(0, 10);
-
-    // Enviar a renderizar
-    renderAutocompleteResults(topResults, resultsId, type);
+    }, 280);
 }
 
     let currentInvoiceId = null;
@@ -2433,7 +2426,13 @@ async function processBarcodeScan(barcode) {
     if (!barcode) return;
 
     try {
-        const product = allProducts.find(p => String(p.codigo) === barcode);
+        // 🚀 OPTIMIZACIÓN: Busca el producto directamente en SQLite por código exacto.
+        // Esto es instantáneo y no depende de que allProducts esté cargado.
+        let product = allProducts.find(p => String(p.codigo) === barcode);
+        if (!product && window.nexusAPI && window.nexusAPI.buscarProductoPorCodigo) {
+            const rawDB = await window.nexusAPI.buscarProductoPorCodigo(barcode, window.companyId);
+            if (rawDB) product = _mapearProductoCaja(rawDB);
+        }
 
         if (product) {
             let quantity;
@@ -4498,102 +4497,55 @@ function mostrarConfirmacion(mensaje) {
     });
 }
 
+// 🚀 FUNCIÓN AUXILIAR: Convierte una fila cruda de SQLite al formato de producto esperado por la caja
+function _mapearProductoCaja(p) {
+    let monedaReal = p.currency || p.moneda || 'BS';
+    let unidadReal = p.unit || 'UN';
+    let alicuotaReal = p.tipo_alicuota;
+    let preciosMulti = null;
+
+    if (p.datos_json) {
+        try {
+            const d = typeof p.datos_json === 'string' ? JSON.parse(p.datos_json) : p.datos_json;
+            if (d.currency || d.moneda) monedaReal = d.currency || d.moneda;
+            if (d.unit) unidadReal = d.unit;
+            if (d.precios) preciosMulti = d.precios;
+            if (d.tipo_alicuota !== undefined && d.tipo_alicuota !== null) alicuotaReal = d.tipo_alicuota;
+        } catch (e) {}
+    }
+
+    const cats = window.globalCategories || [];
+    const categoriaNombre = cats.find(c => (c.id === p.categoria || c.categoria_ID === p.categoria))?.nombre || 'General';
+
+    return {
+        id: p.producto_ID || p.id,
+        nombre: p.nombre || p.name,
+        codigo: p.codigo || p.code,
+        precio: parseFloat(p.precio_venta || p.precio || 0),
+        precios: preciosMulti,
+        imagen: p.imagen || '',
+        iva: (alicuotaReal !== undefined && alicuotaReal !== null) ? alicuotaReal : '16',
+        stock: p.stock || 0,
+        categoria: categoriaNombre,
+        currency: monedaReal,
+        isUSD: monedaReal === 'USD' || false,
+        unit: unidadReal
+    };
+}
+
+// 🚀 OPTIMIZACIÓN: fetchProducts YA NO DESCARGA TODO EL INVENTARIO.
+// Solo carga las categorías (datos ligeros) para que el mapeador funcione.
+// La búsqueda real se hace en el backend (buscarProductosLocal) bajo demanda.
 async function fetchProducts() {
-    const productSearchInput = document.getElementById('product-search');
-    const resultsContainer = document.getElementById('autocomplete-results');
-    
-    // Validamos que el ID de la empresa esté definido en el entorno
     if (!window.companyId) return;
-
     try {
-        // Descargamos los datos locales directamente de SQLite
-        const [productosDB, categoriasDB] = await Promise.all([
-            window.nexusAPI.obtenerProductosLocal(window.companyId),
-            window.nexusAPI.obtenerCategoriasLocal()
-        ]);
-
+        const categoriasDB = await window.nexusAPI.obtenerCategoriasLocal();
         window.globalCategories = categoriasDB || [];
-
-        if (!productosDB || productosDB.length === 0) {
-            if (resultsContainer) resultsContainer.innerHTML = `<div class="autocomplete-item text-center text-gray-500">No hay productos registrados.</div>`;
-            allProducts = []; 
-            return;
-        }
-
-        // 👇 --- INICIO DE FILTRADO LÓGICO --- 👇
-        const productosActivos = productosDB.filter(p => {
-            // 1. Extraemos el status de la raíz (por defecto 1 si viene vacío)
-            let status = p.status !== undefined ? p.status : 1;
-            
-            // 2. Extracción profunda desde datos_json para máxima compatibilidad con el servidor
-            if (p.datos_json) {
-                try {
-                    const d = typeof p.datos_json === 'string' ? JSON.parse(p.datos_json) : p.datos_json;
-                    if (d.status !== undefined) status = d.status;
-                } catch(e) {
-                    console.warn("Aviso silencioso: Error parseando datos_json en filtro de facturación.");
-                }
-            }
-
-            // 3. Evaluamos las condiciones exactas de tu arquitectura
-            const isDeshabilitado = status === 0 || status === '0' || status === false;
-            const isEliminado = status === -1 || status === '-1';
-
-            // El producto sobrevive solo si NO está deshabilitado y NO está eliminado
-            return !isDeshabilitado && !isEliminado;
-        });
-
-        // Si después de filtrar no queda nada activo, limpiamos la barra
-        if (productosActivos.length === 0) {
-            if (resultsContainer) resultsContainer.innerHTML = `<div class="autocomplete-item text-center text-gray-500">No hay productos activos disponibles.</div>`;
-            allProducts = []; 
-            return;
-        }
-
-        // Mapeamos a allProducts ÚNICAMENTE los productos que pasaron la validación
-        allProducts = productosActivos.map(p => {
-        // 👆 --- FIN DE FILTRADO LÓGICO --- 👆
-
-            let monedaReal = p.currency || p.moneda || 'BS';
-            let unidadReal = p.unit || 'UN'; 
-            let alicuotaReal = p.tipo_alicuota; 
-            let preciosMulti = null;
-            
-            // Reconstrucción del interior del producto
-            if (p.datos_json) {
-                try {
-                    const datosParseados = typeof p.datos_json === 'string' ? JSON.parse(p.datos_json) : p.datos_json;
-                    if (datosParseados.currency || datosParseados.moneda) monedaReal = datosParseados.currency || datosParseados.moneda;
-                    if (datosParseados.unit) unidadReal = datosParseados.unit; 
-                    if (datosParseados.precios) preciosMulti = datosParseados.precios;
-                    if (datosParseados.tipo_alicuota !== undefined && datosParseados.tipo_alicuota !== null) {
-                        alicuotaReal = datosParseados.tipo_alicuota;
-                    }
-                } catch (e) {}
-            }
-
-            const categoriaNombre = window.globalCategories.find(c => 
-                (c.id === p.categoria || c.categoria_ID === p.categoria)
-            )?.nombre || 'General';
-
-            return {
-                id: p.producto_ID || p.id,
-                nombre: p.nombre || p.name,
-                codigo: p.codigo || p.code,
-                precio: parseFloat(p.precio_venta || p.precio || 0),
-                precios: preciosMulti,
-                imagen: p.imagen || '',
-                iva: (alicuotaReal !== undefined && alicuotaReal !== null) ? alicuotaReal : '16', 
-                stock: p.stock || 0,
-                categoria: categoriaNombre,
-                currency: monedaReal, 
-                isUSD: monedaReal === 'USD' || p.isUSD || false,
-                unit: unidadReal 
-            };
-        });
-
+        // allProducts ya no se llena aquí. Se usará como caché de resultados de búsqueda.
+        allProducts = [];
+        console.log('✅ [CAJA] Categorías cargadas. Búsqueda de productos ahora es bajo demanda (SQLite).');
     } catch (error) {
-        console.error("❌ Error crítico al cargar inventario en la facturación:", error);
+        console.error('❌ Error cargando categorías en facturación:', error);
     }
 }
 
@@ -4684,7 +4636,8 @@ function setupSearchListener() {
     });
 
     // 2. BÚSQUEDA DINÁMICA CON DETECCIÓN DE ESCÁNER
-    searchInput.addEventListener('input', (event) => {
+    searchInput.addEventListener('input', async (event) => {
+
         // RESET DE SEGURIDAD: Limpiamos selección anterior para no arrastrar productos
         selectedProduct = null;
         
@@ -4701,8 +4654,12 @@ function setupSearchListener() {
         const isPotentialBarcode = /^\d{7,}$/.test(query); 
 
         if (isPotentialBarcode) {
-            // Buscamos el producto por su código exacto en el array local
-            const product = allProducts.find(p => String(p.codigo) === query);
+            // 🚀 OPTIMIZACIÓN: Busca primero en caché, luego en backend
+            let product = allProducts.find(p => String(p.codigo) === query);
+            if (!product && window.nexusAPI && window.nexusAPI.buscarProductoPorCodigo) {
+                const rawDB = await window.nexusAPI.buscarProductoPorCodigo(query, window.companyId);
+                if (rawDB) product = _mapearProductoCaja(rawDB);
+            }
             
             if (product) {
                 console.log(`🚀 Escáner detectado en barra de búsqueda. Producto: ${product.nombre}`);
@@ -4722,6 +4679,7 @@ function setupSearchListener() {
         // Si no es un código de barras, procedemos con la búsqueda normal por nombre
         filterProducts(query, 'name', 'autocomplete-results');
     });
+
 
     // 3. NAVEGACIÓN, SELECCIÓN Y ESCÁNER (TECLAS)
     searchInput.addEventListener('keydown', (e) => {
@@ -4785,41 +4743,56 @@ function setupBarcodeSearchListener() {
     const resultsContainer = document.getElementById('barcode-autocomplete-results');
     if (!barcodeInput) return;
 
+    // 🚀 OPTIMIZACIÓN: Busca por código en el backend con debounce
+    let _barcodeDebounce = null;
     barcodeInput.addEventListener('input', (event) => {
-        // SOLUCIÓN: Invalidar selección anterior al escribir
         selectedProduct = null; 
 
-        const query = event.target.value.toLowerCase().trim();
+        const query = event.target.value.trim();
         if (!query) {
             resultsContainer.style.display = 'none';
             return;
         }
-        
-        let filteredProducts = allProducts.filter(product =>
-            product.codigo && String(product.codigo).toLowerCase().includes(query)
-        );
-        renderAutocompleteResults(filteredProducts, 'barcode-autocomplete-results', 'code');
+
+        clearTimeout(_barcodeDebounce);
+        _barcodeDebounce = setTimeout(async () => {
+            try {
+                const resultadosDB = await window.nexusAPI.buscarProductosLocal(query, window.companyId);
+                const filteredProducts = (resultadosDB || [])
+                    .map(_mapearProductoCaja)
+                    .filter(p => p.codigo && String(p.codigo).toLowerCase().includes(query.toLowerCase()));
+                renderAutocompleteResults(filteredProducts, 'barcode-autocomplete-results', 'code');
+            } catch (e) {
+                console.error('❌ Error buscando por código en backend:', e);
+            }
+        }, 250);
     });
         
     
-    barcodeInput.addEventListener('keydown', (e) => {
+    barcodeInput.addEventListener('keydown', async (e) => {
         if (e.key === "Enter") {
             e.preventDefault();
             const code = barcodeInput.value.trim();
             if (!code) return;
 
-            // 🔥 APLICAR MISMO FILTRO ANTI-REBOTE AQUÍ
+            // 🔥 FILTRO ANTI-REBOTE
             const now = Date.now();
             if (code === lastScannedCodeGlobal && (now - lastScannedTimestamp) < 600) return;
             
             lastScannedCodeGlobal = code;
             lastScannedTimestamp = now;
 
-            const product = allProducts.find(p => String(p.codigo) === code);
+            // 🚀 OPTIMIZACIÓN: Busca primero en caché, luego en backend
+            let product = allProducts.find(p => String(p.codigo) === code);
+            if (!product && window.nexusAPI && window.nexusAPI.buscarProductoPorCodigo) {
+                const rawDB = await window.nexusAPI.buscarProductoPorCodigo(code, window.companyId);
+                if (rawDB) product = _mapearProductoCaja(rawDB);
+            }
+
             if (product) {
                 selectedProduct = product;
                 addItem(); 
-                barcodeInput.value = ''; // Limpiar inmediatamente
+                barcodeInput.value = '';
             } else {
                 if (typeof messageBox === 'function') messageBox("Producto no encontrado.", 'bg-red-500');
             }
@@ -4832,6 +4805,7 @@ function setupBarcodeSearchListener() {
         }
     });
 }
+
 
     // Highlights an item in the autocomplete dropdown
     function highlightItem(items) {

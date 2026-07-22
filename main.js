@@ -34,6 +34,7 @@ const { SerialPort } = require('serialport');
 const { ReadlineParser } = require('@serialport/parser-readline');
 const server = express();
 const PORT = 3000;
+let win = null;
 const ENCRYPTION_KEY = crypto.scryptSync("NexusGlobalSecretoAdmin2026", "saltingNexus", 32);
 const IV_LENGTH = 16;
 const baseDataDir = process.env.APPDATA 
@@ -180,7 +181,6 @@ if (config.isServer) {
 
 
 
-let win;   
 let splash;
 let sistemaPrincipalAbierto = false;
 let cierreAutorizado = false; // <--- NUEVA VARIABLE DE SEGURIDAD
@@ -1182,6 +1182,183 @@ ipcMain.handle('obtener-productos-local', async (event, empresaId) => {
         return []; 
     }
 });
+
+// ═══════════════════════════════════════════════════════════════════
+// 🔍 OPTIMIZACIÓN: OBTENER PRODUCTOS PAGINADOS Y FILTRADOS
+// ═══════════════════════════════════════════════════════════════════
+ipcMain.handle('obtener-productos-paginados', async (event, { empresaId, limit = 350, offset = 0, letterFilter = '', searchQuery = '' }) => {
+    try {
+        let baseQuery = `FROM productos_locales WHERE status != -1`;
+        const params = [];
+
+        if (empresaId) {
+            baseQuery += ` AND company_id = ?`;
+            params.push(empresaId);
+        }
+
+        if (searchQuery) {
+            const term = `%${searchQuery.trim()}%`;
+            baseQuery += ` AND (nombre LIKE ? OR codigo LIKE ? OR categoria LIKE ?)`;
+            params.push(term, term, term);
+        } else if (letterFilter) {
+            if (letterFilter === '#') {
+                baseQuery += ` AND UPPER(SUBSTR(nombre, 1, 1)) < 'A' OR UPPER(SUBSTR(nombre, 1, 1)) > 'Z'`;
+            } else {
+                baseQuery += ` AND nombre LIKE ?`;
+                params.push(`${letterFilter}%`);
+            }
+        }
+
+        const countStmt = db.prepare(`SELECT COUNT(*) as total ${baseQuery}`);
+        const countResult = countStmt.get(...params);
+        const totalCount = countResult.total;
+
+        const dataQuery = `SELECT * ${baseQuery} ORDER BY nombre ASC LIMIT ? OFFSET ?`;
+        params.push(limit, offset);
+        
+        const dataStmt = db.prepare(dataQuery);
+        const data = dataStmt.all(...params);
+
+        return { data, totalCount };
+    } catch (e) {
+        console.error("❌ Error en obtener-productos-paginados:", e);
+        return { data: [], totalCount: 0 };
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// 🚀 OPTIMIZACIÓN: SINCRONIZACIÓN EN LOTE (BULK UPSERT)
+// Recibe un array de productos y los guarda todos en una sola transacción SQLite.
+// Elimina la necesidad de N llamadas IPC individuales (una por producto).
+// Emite el evento 'productos-actualizados' UNA SOLA VEZ al finalizar.
+// ═══════════════════════════════════════════════════════════════════
+ipcMain.handle('sincronizar-productos-lote', async (event, productos) => {
+    if (!productos || productos.length === 0) return { changes: 0 };
+    
+    try {
+        const stmtSelect = db.prepare('SELECT id FROM productos_locales WHERE id = ?');
+        const stmtInsert = db.prepare(`
+            INSERT INTO productos_locales (id, company_id, branch_id, codigo, nombre, precio, precio_compra, porcentaje_ganancia, categoria, status, imagen, datos_json, estado_sync, fecha_modificacion)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        const stmtUpdate = db.prepare(`
+            UPDATE productos_locales
+            SET codigo = ?, nombre = ?, precio = ?, precio_compra = ?, porcentaje_ganancia = ?, categoria = ?, status = ?, imagen = ?, datos_json = ?, estado_sync = ?, fecha_modificacion = ?
+            WHERE id = ?
+        `);
+
+        const transaccion = db.transaction((items) => {
+            let inserted = 0;
+            let updated = 0;
+            for (const p of items) {
+                const idProducto  = p.id || p.producto_ID;
+                const idEmpresa   = p.company_id || p.empresa_ID;
+                const idSucursal  = p.branch_id || p.sucursal_ID || 'sucursal_1';
+                const barcodeRef  = p.codigo || p.producto_codigo || '';
+                const precioRef   = parseFloat(p.precios ? p.precios.p1.venta : (p.precio_venta || p.precio || 0)) || 0;
+                const compraRef   = parseFloat(p.precios ? p.precios.p1.compra : (p.precio_compra || 0)) || 0;
+                const porcentajeRef = parseFloat(p.precios ? p.precios.p1.porcentaje : (p.porcentaje_ganancia || 0)) || 0;
+                const jsonGuardar = JSON.stringify(p);
+                const estadoSync  = p.estado_sync !== undefined ? p.estado_sync : 0;
+
+                const existe = stmtSelect.get(idProducto);
+                if (!existe) {
+                    stmtInsert.run(idProducto, idEmpresa, idSucursal, barcodeRef, p.nombre, precioRef, compraRef, porcentajeRef, p.categoria, p.status, p.imagen, jsonGuardar, estadoSync, p.fecha_modificacion);
+                    inserted++;
+                } else {
+                    stmtUpdate.run(barcodeRef, p.nombre, precioRef, compraRef, porcentajeRef, p.categoria, p.status, p.imagen, jsonGuardar, estadoSync, p.fecha_modificacion, idProducto);
+                    updated++;
+                }
+            }
+            return { inserted, updated };
+        });
+
+        const resultado = transaccion(productos);
+        console.log(`✅ [LOTE] ${resultado.inserted} insertados, ${resultado.updated} actualizados.`);
+
+        // Notificar a TODAS las ventanas UNA SOLA VEZ
+        BrowserWindow.getAllWindows().forEach(ventana => {
+            if (!ventana.isDestroyed()) ventana.webContents.send('productos-actualizados');
+        });
+
+        return { success: true, ...resultado };
+    } catch (e) {
+        console.error("❌ Error en sincronizar-productos-lote:", e);
+        return { error: e.message };
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// 🔍 OPTIMIZACIÓN: BÚSQUEDA DE PRODUCTOS EN BACKEND (SQL LIKE)
+// Recibe un texto de búsqueda y retorna máximo 60 resultados activos
+// usando índices de SQLite. El frontend NUNCA descarga todo el catálogo.
+// ═══════════════════════════════════════════════════════════════════
+ipcMain.handle('buscar-productos-local', async (event, { query, empresaId }) => {
+    try {
+        const term = `%${(query || '').trim()}%`;
+        let stmt;
+        if (empresaId) {
+            stmt = db.prepare(`
+                SELECT *
+                FROM productos_locales
+                WHERE company_id = ?
+                  AND status != -1
+                  AND (nombre LIKE ? OR codigo LIKE ? OR categoria LIKE ?)
+                ORDER BY nombre ASC
+                LIMIT 60
+            `);
+            return stmt.all(empresaId, term, term, term);
+        } else {
+            stmt = db.prepare(`
+                SELECT *
+                FROM productos_locales
+                WHERE status != -1
+                  AND (nombre LIKE ? OR codigo LIKE ? OR categoria LIKE ?)
+                ORDER BY nombre ASC
+                LIMIT 60
+            `);
+            return stmt.all(term, term, term);
+        }
+    } catch (e) {
+        console.error("❌ Error en buscar-productos-local:", e);
+        return [];
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// 📡 OPTIMIZACIÓN: BÚSQUEDA POR CÓDIGO DE BARRAS (ESCÁNER)
+// Búsqueda exacta e instantánea por código de barras desde SQLite.
+// Retorna el primer producto activo que coincida exactamente con el código.
+// ═══════════════════════════════════════════════════════════════════
+ipcMain.handle('buscar-producto-por-codigo', async (event, { codigo, empresaId }) => {
+    try {
+        const codigoLimpio = String(codigo || '').trim();
+        if (!codigoLimpio) return null;
+        let stmt;
+        if (empresaId) {
+            stmt = db.prepare(`
+                SELECT *
+                FROM productos_locales
+                WHERE company_id = ? AND codigo = ? AND status != -1 AND status != 0
+                LIMIT 1
+            `);
+            return stmt.get(empresaId, codigoLimpio) || null;
+        } else {
+            stmt = db.prepare(`
+                SELECT *
+                FROM productos_locales
+                WHERE codigo = ? AND status != -1 AND status != 0
+                LIMIT 1
+            `);
+            return stmt.get(codigoLimpio) || null;
+        }
+    } catch (e) {
+        console.error("❌ Error en buscar-producto-por-codigo:", e);
+        return null;
+    }
+});
+
+
 
 ipcMain.handle('guardar-venta-local', async (event, v) => {
     try {

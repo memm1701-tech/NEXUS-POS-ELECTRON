@@ -470,11 +470,9 @@
     }
 
     function renderizarHistorial() {
-        cuerpoHistorial.innerHTML = '';
-        
+        if (!cuerpoHistorial) return;
         let lista = [...historialSalidasCompleto];
         
-        // Aplicar Filtros de Fecha
         const fechaDesde = document.getElementById('filtro-desde').value;
         const fechaHasta = document.getElementById('filtro-hasta').value;
         const limite = parseInt(document.getElementById('filtro-limite').value) || 100;
@@ -489,10 +487,7 @@
             lista = lista.filter(h => new Date(h.fecha_modificacion).getTime() <= dtHasta.getTime());
         }
 
-        // Ordenar más recientes primero
         lista.sort((a,b) => new Date(b.fecha_modificacion) - new Date(a.fecha_modificacion));
-
-        // Aplicar límite
         lista = lista.slice(0, limite);
 
         if (!lista || lista.length === 0) {
@@ -500,27 +495,26 @@
             return;
         }
 
+        let htmlBuffer = '';
         lista.forEach(h => {
-            const fila = document.createElement('tr');
-            
             let nombreCruce = h.product_id;
             if (catalogoProductosGlobal && catalogoProductosGlobal.length > 0) {
                 const prod = catalogoProductosGlobal.find(p => p.id === h.product_id);
                 if (prod) nombreCruce = prod.nombre;
             }
             const nombreProd = h.nombre_producto || nombreCruce || 'Producto Desconocido';
-            
             const unidadLimpia = h.unidad ? h.unidad.split(' ')[0] : 'UN';
 
-            fila.innerHTML = `
+            htmlBuffer += `<tr>
                 <td class="px-6 py-4 text-xs text-gray-500">${new Date(h.fecha_modificacion).toLocaleString()}</td>
                 <td class="px-6 py-4 text-sm font-bold text-gray-900">${nombreProd}</td>
                 <td class="px-6 py-4 text-sm font-bold text-red-600">-${h.cantidad} ${unidadLimpia}</td>
                 <td class="px-6 py-4 text-sm text-gray-600">${h.motivo}</td>
                 <td class="px-6 py-4 text-sm text-gray-500">${h.branch_id}</td>
-            `;
-            cuerpoHistorial.appendChild(fila);
+            </tr>`;
         });
+        
+        cuerpoHistorial.innerHTML = htmlBuffer;
     }
 
     // --- 6. EVENT LISTENERS ---

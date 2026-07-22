@@ -688,31 +688,31 @@ async function cargarCategoriasDesdeLocal() {
             return;
         }
 
-        categorias.forEach((cat) => {
-            // Llenamos el mapa global que usa el sistema
-            allCategories[cat.id] = cat.nombre;
+        let tableBuffer = '';
+        let optionsBuffer = '<option value="">Selecciona una categoría...</option>';
 
-            // 1. Llenar la tabla de categorías
-            const row = document.createElement('tr');
-            row.innerHTML = `
+        categorias.forEach((cat) => {
+            allCategories[cat.id] = cat.nombre;
+            const safeName = cat.nombre.replace(/'/g, "\\'");
+            tableBuffer += `<tr>
                 <td>${cat.nombre}</td>
                 <td class="action-cell">
                     <button class="btn-delete" 
-                            onclick="showDeleteModal('${cat.id}', '${cat.nombre.replace(/'/g, "\\'")}')">
+                            onclick="showDeleteModal('${cat.id}', '${safeName}')">
                         Eliminar
                     </button>
                 </td>
-            `;
-            categoryTableBody.appendChild(row);
+            </tr>`;
 
-            // 2. Llenar el select de Cambio Masivo
             if (newCategorySelect) {
-                const option = document.createElement('option');
-                option.value = cat.id; // Usamos el ID de la categoría
-                option.textContent = cat.nombre;
-                newCategorySelect.appendChild(option);
+                optionsBuffer += `<option value="${cat.id}">${cat.nombre}</option>`;
             }
         });
+        
+        categoryTableBody.innerHTML = tableBuffer;
+        if (newCategorySelect) {
+            newCategorySelect.innerHTML = optionsBuffer;
+        }
 
         console.log(`✅ ${categorias.length} categorías renderizadas desde SQLite para la empresa ${companyId}.`);
 

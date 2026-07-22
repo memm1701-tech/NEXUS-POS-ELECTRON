@@ -581,32 +581,32 @@
     };
 
     window.renderizarTablaEntradas = function(lista) {
-        cuerpoTablaInventario.innerHTML = '';
-
+        if (!cuerpoTablaInventario) return;
         if (lista.length === 0) {
             cuerpoTablaInventario.innerHTML = '<tr><td colspan="5" class="placeholder-message">Sin productos vinculados.</td></tr>';
             return;
         }
 
+        let htmlBuffer = '';
         lista.forEach(item => {
-            const fila = document.createElement('tr');
             const stock = item.stock_sucursal || 0;
             const cat = mapaCategorias[item.categoria] || item.categoria || "General";
             const nombreMayuscula = (item.nombre || '').toUpperCase();
+            const safeNombre = (item.nombre || '').replace(/'/g, "\\'");
 
-            fila.innerHTML = `
+            htmlBuffer += `<tr>
                 <td style="font-weight: bold; color: #2c3e50;">${nombreMayuscula}</td>
                 <td class="text-gray-600">${cat}</td> 
                 <td class="text-center">${item.unit || 'UN'}</td>
                 <td class="text-center font-bold text-blue-600">${stock}</td>
                 <td>
                     <div class="action-buttons">
-                        <button class="edit-stock-btn" onclick="prepararEdicionStockEntrada('${item.id}', '${item.nombre}', ${stock})">EDITAR</button>
+                        <button class="edit-stock-btn" onclick="prepararEdicionStockEntrada('${item.id}', '${safeNombre}', ${stock})">EDITAR</button>
                     </div>
                 </td>
-            `;
-            cuerpoTablaInventario.appendChild(fila);
+            </tr>`;
         });
+        cuerpoTablaInventario.innerHTML = htmlBuffer;
     }
 
     // --- 6. Registro de Entrada (USANDO IPC LOCAL Y FETCH AL VPS) ---
@@ -651,7 +651,7 @@
                         if (jsonVPS.exito || jsonVPS.success) exitoVPS = true;
                     }
                 } catch (vpsError) {
-                    console.error('VPS Sincro fallida (se ignorará para mantener flujo local):', vpsError.message);
+                    console.error('VPS Sincro fallida (se ignorarï¿½ para mantener flujo local):', vpsError.message);
                 }
             }
 
@@ -659,7 +659,7 @@
             const resLocal = await window.nexusAPI.guardarStockSucursal(payloadLocal);
             let exitoLocal = resLocal && resLocal.success;
 
-            if (!exitoLocal) throw new Error(resLocal.error || 'Error crítico al registrar la entrada en disco local.');
+            if (!exitoLocal) throw new Error(resLocal.error || 'Error crï¿½tico al registrar la entrada en disco local.');
 
             if (!exitoVPS && payloadVPS && window.nexusAPI.encolarSincronizacion) {
                 await window.nexusAPI.encolarSincronizacion({ 
@@ -670,11 +670,11 @@
             }
 
             if (exitoVPS) {
-                mostrarAlerta('? ÉXITO: Stock registrado y sincronizado en la nube.', 'success');
+                mostrarAlerta('? ï¿½XITO: Stock registrado y sincronizado en la nube.', 'success');
             } else if (respaldoActivo && SERVER_URL) {
-                mostrarAlerta('? GUARDADO LOCAL: Añadido a la cola de sincronización (Sin conexión/VPS falló).', 'warning');
+                mostrarAlerta('? GUARDADO LOCAL: Aï¿½adido a la cola de sincronizaciï¿½n (Sin conexiï¿½n/VPS fallï¿½).', 'warning');
             } else {
-                mostrarAlerta('? ÉXITO: Stock registrado (Modo 100% Local).', 'success');
+                mostrarAlerta('? ï¿½XITO: Stock registrado (Modo 100% Local).', 'success');
             }
 
             limpiarFormulario();
