@@ -2,7 +2,11 @@ const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
 contextBridge.exposeInMainWorld('nexusAPI', {
     sincronizarProductoServidor: (productData) => ipcRenderer.invoke('sincronizar-producto-servidor', productData),
+    sincronizarProductosLote: (productos) => ipcRenderer.invoke('sincronizar-productos-lote', productos),
     obtenerProductosLocal: (empresaId) => ipcRenderer.invoke('obtener-productos-local', empresaId),
+    obtenerProductosPaginados: (params) => ipcRenderer.invoke('obtener-productos-paginados', params),
+    buscarProductosLocal: (query, empresaId) => ipcRenderer.invoke('buscar-productos-local', { query, empresaId }),
+    buscarProductoPorCodigo: (codigo, empresaId) => ipcRenderer.invoke('buscar-producto-por-codigo', { codigo, empresaId }),
     obtenerCategoriasLocal: () => ipcRenderer.invoke('obtener-categorias-local'),
     sincronizarCategoriaServidor: (cat) => ipcRenderer.invoke('sincronizar-categoria-servidor', cat),
     eliminarCategoriaLocal: (id) => ipcRenderer.invoke('eliminar-categoria-local', id),

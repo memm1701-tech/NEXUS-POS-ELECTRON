@@ -465,6 +465,12 @@
 
             <div class="table-section-container">
                 <h2 style="font-size: 1.8em; font-weight: 800; color: #333; letter-spacing: -0.5px; text-align: left;">Productos Disponibles</h2>
+                
+                <!-- A-Z FILTER CONTAINER -->
+                <div id="az-filter-container" style="display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 15px; justify-content: flex-start;">
+                    <!-- Javascript will populate this -->
+                </div>
+
                 <div class="search-bar-container" style="margin-bottom: 20px; text-align: left;">
                     <label for="product-search" style="font-weight: bold; color: #555; display: block; margin-bottom: 5px;">Buscar Producto:</label>
                     <input type="text" id="product-search" placeholder="Escribe el nombre, categoría o código del producto..." style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 1em;">
@@ -490,6 +496,11 @@
                         </thead>
                         <tbody id="inventory-table-body"></tbody>
                     </table>
+                </div>
+
+                <!-- PAGINATION CONTAINER -->
+                <div id="pagination-container" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
+                    <!-- Javascript will populate this -->
                 </div>
             </div> 
         </div> 
@@ -555,17 +566,29 @@
         p3: { compra: 0, porcentaje: 0, venta: 0 }
     };
 
-
-
+    // --- VARIABLES DE PAGINACIÓN ---
+    let currentPage = 1;
+    let currentLetterFilter = '';
+    let currentSearchQuery = '';
+    let totalItems = 0;
+    const ITEMS_PER_PAGE = 250;
+    let searchTimeout = null;
 
     if (!companyId) {
-    console.warn("⚠️ Advertencia: No se encontró el companyId. Es posible que el módulo local falle.");
-}
+        console.warn("⚠️ Advertencia: No se encontró el companyId. Es posible que el módulo local falle.");
+    }
 
     let productBase64 = "";
     const searchInput = document.getElementById('product-search');
-        if (searchInput) {
-        searchInput.addEventListener('input', filterProducts);
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                currentSearchQuery = e.target.value;
+                currentPage = 1;
+                cargarProductosDesdeLocal();
+            }, 300); // 300ms debounce
+        });
     }
     const stockBranchSelect = document.getElementById('stock-branch');
     const stockCurrentInput = document.getElementById('stock-current');
@@ -860,6 +883,7 @@ async function descargarYValidarProductos(companyId) {
 
         let procesados = 0;
         let omitidos = 0;
+        const loteParaSincronizar = [];
 
         for (const pServidor of productosServidor) {
             const idServidor = pServidor.producto_ID || pServidor.id || pServidor.producto_id;
@@ -907,14 +931,19 @@ async function descargarYValidarProductos(companyId) {
                 fecha_modificacion: pServidor.ultima_sincronizacion || new Date().toISOString()
             };
 
-            await window.nexusAPI.sincronizarProductoServidor(productoParaValidar);
+            loteParaSincronizar.push(productoParaValidar);
             procesados++;
+        }
+
+        if (loteParaSincronizar.length > 0) {
+            await window.nexusAPI.sincronizarProductosLote(loteParaSincronizar);
+        } else {
+            cargarProductosDesdeLocal();
         }
 
         if (persistentAlert) persistentAlert.remove();
         window.syncStateMessage = "";
         console.log(`✅ [SYNC] ${procesados} descargados. ${omitidos} protegidos por edición local.`);
-        cargarProductosDesdeLocal();
 
     } catch (error) {
         if (persistentAlert) persistentAlert.remove();
@@ -1501,7 +1530,7 @@ window.updateProduct = async function(idEmpresa) {
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    cargarProductosDesdeLocal();
+    // Se removió el cargarProductosDesdeLocal(); duplicado
 });
 
 async function guardarEnColaLocal(productData, companyId) {
@@ -1821,89 +1850,162 @@ function renderProducts(products) {
         inventoryTableBody.appendChild(row);
     });
 }
+
+// === PAGINACIÓN Y FILTROS A-Z ===
+function drawAZFilter() {
+    const container = document.getElementById('az-filter-container');
+    if (!container) return;
+    container.innerHTML = '';
     
-function filterProducts() {
-    const searchInputEl = document.getElementById('product-search');
-    const searchTerm = searchInputEl ? searchInputEl.value.toLowerCase() : '';
-
-    const filteredProducts = allProducts.filter(item => {
-        const p = item.product;
-        const nombre = (p.nombre || '').toLowerCase();
-        const categoria = (p.categoria || '').toLowerCase();
-        const codigo = (p.codigo || '').toLowerCase();
-
-        return nombre.includes(searchTerm) || 
-               categoria.includes(searchTerm) || 
-               codigo.includes(searchTerm);
+    const letters = ['Todos', 'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z', '#'];
+    
+    letters.forEach(letter => {
+        const btn = document.createElement('button');
+        btn.textContent = letter;
+        btn.style.padding = '5px 10px';
+        btn.style.border = '1px solid #ccc';
+        btn.style.borderRadius = '5px';
+        btn.style.cursor = 'pointer';
+        btn.style.fontWeight = 'bold';
+        btn.style.fontSize = '12px';
+        btn.style.transition = 'all 0.2s';
+        
+        // Estilo seleccionado
+        const isSelected = (letter === 'Todos' && currentLetterFilter === '') || (letter === currentLetterFilter);
+        if (isSelected) {
+            btn.style.backgroundColor = '#007bff';
+            btn.style.color = 'white';
+            btn.style.borderColor = '#007bff';
+        } else {
+            btn.style.backgroundColor = '#f8f9fa';
+            btn.style.color = '#333';
+        }
+        
+        btn.addEventListener('click', () => {
+            currentLetterFilter = (letter === 'Todos') ? '' : letter;
+            currentPage = 1;
+            cargarProductosDesdeLocal();
+        });
+        
+        container.appendChild(btn);
     });
-
-    renderProducts(filteredProducts);
 }
 
+function drawPagination() {
+    const container = document.getElementById('pagination-container');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+    if (totalPages <= 1 || currentLetterFilter) return; // No pagination needed if A-Z filtered
+    
+    // Botón Anterior
+    const btnPrev = document.createElement('button');
+    btnPrev.textContent = 'Anterior';
+    btnPrev.disabled = currentPage === 1;
+    btnPrev.style.padding = '8px 12px';
+    btnPrev.style.cursor = btnPrev.disabled ? 'not-allowed' : 'pointer';
+    btnPrev.style.opacity = btnPrev.disabled ? '0.5' : '1';
+    btnPrev.style.borderRadius = '5px';
+    btnPrev.style.border = '1px solid #ccc';
+    btnPrev.addEventListener('click', () => {
+        if (currentPage > 1) {
+            currentPage--;
+            cargarProductosDesdeLocal();
+        }
+    });
+    container.appendChild(btnPrev);
+    
+    // Indicador de página
+    const indicator = document.createElement('span');
+    indicator.textContent = `Página ${currentPage} de ${totalPages} (${totalItems} items)`;
+    indicator.style.fontWeight = 'bold';
+    indicator.style.color = '#555';
+    container.appendChild(indicator);
+    
+    // Botón Siguiente
+    const btnNext = document.createElement('button');
+    btnNext.textContent = 'Siguiente';
+    btnNext.disabled = currentPage === totalPages;
+    btnNext.style.padding = '8px 12px';
+    btnNext.style.cursor = btnNext.disabled ? 'not-allowed' : 'pointer';
+    btnNext.style.opacity = btnNext.disabled ? '0.5' : '1';
+    btnNext.style.borderRadius = '5px';
+    btnNext.style.border = '1px solid #ccc';
+    btnNext.addEventListener('click', () => {
+        if (currentPage < totalPages) {
+            currentPage++;
+            cargarProductosDesdeLocal();
+        }
+    });
+    container.appendChild(btnNext);
+}
+
+// === CARGA DESDE SQLITE CON PAGINACIÓN ===
 async function cargarProductosDesdeLocal() {
     try {
         if (typeof showLoadingSpinner === 'function') showLoadingSpinner();
         
-        // 1. Buscamos en el Cerebro (SQLite)
         const apiSegura = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
-        const localProducts = await apiSegura.obtenerProductosLocal(companyId || window.currentCompanyId);
         
-        // Inicializamos allProducts como array vacío por seguridad (Debe ser variable global)
+        const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+        const result = await apiSegura.obtenerProductosPaginados({
+            empresaId: companyId || window.currentCompanyId,
+            limit: currentLetterFilter ? -1 : ITEMS_PER_PAGE,
+            offset: offset,
+            letterFilter: currentLetterFilter,
+            searchQuery: currentSearchQuery
+        });
+        
+        const localProducts = result.data || [];
+        totalItems = result.totalCount || 0;
+        
         allProducts = [];
 
-        if (localProducts && localProducts.length > 0) {
+        if (localProducts.length > 0) {
             allProducts = localProducts.map(p => {
-            if (!p) return null;
+                if (!p) return null;
 
-            let d = {}; // Datos parseados
-            try {
-                d = (typeof p.datos_json === 'string') ? JSON.parse(p.datos_json) : (p.datos_json || {});
-            } catch (e) { 
-                console.warn("⚠️ Error parseando JSON del producto ID:", p.id, e);
-                d = {}; 
-            }
-
-            // 🧠 Lógica de precios Multi-Nivel (Prioridad Nivel 1)
-            const p1 = (d.precios && d.precios.p1) ? d.precios.p1 : null;
-
-            return {
-                docId: p.id || 'ID-DESCONOCIDO',
-                product: {
-                    nombre: d.nombre || p.nombre || 'Sin nombre',
-                    codigo: d.codigo || p.codigo || 'Sin código',
-                    
-                    // 🛡️ BÚSQUEDA ROBUSTA: P1 -> Columna DB -> JSON raíz -> 'costo'
-                    precio_compra: p1 ? p1.compra : (p.precio_compra || d.precio_compra || d.costo || 0),
-                    precio_venta: p1 ? p1.venta : (p.precio || d.precio_venta || 0),
-                    
-                    // ⚠️ Manejo de typos: ganacia vs ganancia
-                    porcentaje_ganancia: p1 ? p1.porcentaje : (p.porcentaje_ganancia || d.porcentaje_ganancia || d.porcentaje_ganacia || 0),
-                    
-                    ganancia: d.ganancia || 0,
-                    precios: d.precios || null, 
-                    
-                    categoria: d.categoria || p.categoria || '',
-                    status: d.status !== undefined ? d.status : (p.status !== undefined ? p.status : 1),
-                    imagen: d.imagen || p.imagen || '',
-                    currency: d.currency || p.currency || 'USD',
-                    unit: d.unit || p.unit || 'UN',
-                    tipo_alicuota: d.tipo_alicuota || p.tipo_alicuota || "16"
+                let d = {}; 
+                try {
+                    d = (typeof p.datos_json === 'string') ? JSON.parse(p.datos_json) : (p.datos_json || {});
+                } catch (e) { 
+                    d = {}; 
                 }
-            };
-        }).filter(item => item !== null && item.product.status !== -1);
+
+                const p1 = (d.precios && d.precios.p1) ? d.precios.p1 : null;
+
+                return {
+                    docId: p.id || 'ID-DESCONOCIDO',
+                    product: {
+                        nombre: d.nombre || p.nombre || 'Sin nombre',
+                        codigo: d.codigo || p.codigo || 'Sin código',
+                        precio_compra: p1 ? p1.compra : (p.precio_compra || d.precio_compra || d.costo || 0),
+                        precio_venta: p1 ? p1.venta : (p.precio || d.precio_venta || 0),
+                        porcentaje_ganancia: p1 ? p1.porcentaje : (p.porcentaje_ganancia || d.porcentaje_ganancia || 0),
+                        ganancia: d.ganancia || 0,
+                        precios: d.precios || null, 
+                        categoria: d.categoria || p.categoria || '',
+                        status: d.status !== undefined ? d.status : (p.status !== undefined ? p.status : 1),
+                        imagen: d.imagen || p.imagen || '',
+                        currency: d.currency || p.currency || 'USD',
+                        unit: d.unit || p.unit || 'UN',
+                        tipo_alicuota: d.tipo_alicuota || p.tipo_alicuota || "16"
+                    }
+                };
+            }).filter(item => item !== null);
             
-            // 3. Dibujar la tabla y sincronizar UI
             if (typeof renderProducts === 'function') renderProducts(allProducts);
-            
-            // Si el buscador tiene texto, volvemos a filtrar para no perder la vista del usuario
-            if (typeof filterProducts === 'function') filterProducts();
         } else {
-            console.warn("La tabla local está vacía.");
             if (typeof renderProducts === 'function') renderProducts([]);
         }
-    } catch (err) {
-        console.error("❌ Error crítico al obtener productos de SQLite:", err);
-    } finally {
+        
+        drawAZFilter();
+        drawPagination();
+        
+        if (typeof hideLoadingSpinner === 'function') hideLoadingSpinner();
+    } catch (error) {
+        console.error('Error al cargar productos desde SQLite:', error);
         if (typeof hideLoadingSpinner === 'function') hideLoadingSpinner();
     }
 }
