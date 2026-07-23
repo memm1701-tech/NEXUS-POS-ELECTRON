@@ -140,10 +140,14 @@
                 if(keyIcon) keyIcon.style.color = '#F59E0B'; // Ámbar (Verificando)
 
                 // 1. Obtenemos todas las claves desencriptadas desde el Servidor Maestro
+                console.log('[FRONTEND] Solicitando claves de admin para companyId:', companyId);
                 const clavesGuardadas = await window.nexusAPI.obtenerClavesAdminMaestro(companyId);
+                console.log('[FRONTEND] Claves obtenidas del servidor:', clavesGuardadas);
+                console.log('[FRONTEND] Clave ingresada en el input:', inputCode);
                 
                 // 2. Buscamos si la clave ingresada coincide con alguna clave válida
                 const esClaveValida = clavesGuardadas.some(clave => clave.plainCode === inputCode);
+                console.log('[FRONTEND] ¿Coincide la clave ingresada?:', esClaveValida);
         
                 if (esClaveValida) { 
                     // ÉXITO: Generar y almacenar el token de acceso

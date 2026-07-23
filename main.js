@@ -138,14 +138,33 @@ if (fs.existsSync(configPath)) {
 const dbPath = path.join(dbDir, 'nexus_pos.db');
 const serverDbPath = path.join(dbDir, 'nexus-local-server.db');
 const db = new Database(dbPath, { timeout: 10000 });
+
+// Sincronizar 'config' desde la tabla 'configuracion' en la SQLite local (nexus_pos.db)
+try {
+    const rowServer = db.prepare("SELECT valor FROM configuracion WHERE clave = 'isServer'").get();
+    if (rowServer) config.isServer = (rowServer.valor === true || rowServer.valor === 'true');
+    const rowIP = db.prepare("SELECT valor FROM configuracion WHERE clave = 'serverIP'").get();
+    if (rowIP) config.serverIP = rowIP.valor;
+} catch (eConfigSync) {
+    console.error("❌ Error al sincronizar config desde SQLite en inicio:", eConfigSync.message);
+}
+
 let masterDbDirect = null;
 if (config.isServer) {
-    masterDbDirect = new Database(serverDbPath, { timeout: 10000 });
-    masterDbDirect.pragma('journal_mode = WAL');
+    try {
+        masterDbDirect = new Database(serverDbPath, { timeout: 10000 });
+        try {
+            masterDbDirect.pragma('journal_mode = WAL');
+        } catch (ePragma) {
+            console.warn("⚠️ [NEXUS MASTER] No se pudo aplicar journal_mode = WAL:", ePragma.message);
+        }
+    } catch (eDb) {
+        console.error("❌ [NEXUS MASTER] Error abriendo base de datos maestra:", eDb.message);
+    }
     // Nota: asegurarEsquema(masterDbDirect, ESQUEMA_MAESTRO) se llama desde inicializarTablas()
     console.log(`\n=========================================================`);
-    console.log(`ðŸ’» [NEXUS NODE] Base de Datos Local: ${dbPath}`);
-    console.log(`ðŸ‘‘ [NEXUS MASTER] Iniciando Cerebro Maestro: ${serverDbPath}`);
+    console.log(`💻 [NEXUS NODE] Base de Datos Local: ${dbPath}`);
+    console.log(`👑 [NEXUS MASTER] Iniciando Cerebro Maestro: ${serverDbPath}`);
 
     try {
         const serverScriptPath = path.join(__dirname, 'server.js');
@@ -438,7 +457,7 @@ ipcMain.on('confirmar-cierre-seguro', () => {
 
 ipcMain.handle('guardar-auditoria-fiscal', async (event, datos) => {
     try {
-        const serverUrl = store.get('serverUrl') || 'http://localhost:3000';
+        const serverUrl = store.get('serverUrl') || 'http://127.0.0.1:3000';
         // Se usa fetch nativo de Node/Electron
         
         const response = await fetch(`${serverUrl}/api/maestro/auditoria-fiscal`, {
@@ -3421,6 +3440,32 @@ function prepararPaquete(comando, campos = []) {
 // ============================================================
 function getIpMaestro() {
     try {
+        let isServerVal = null;
+        let serverIPVal = null;
+
+        try {
+            if (typeof db !== 'undefined' && db) {
+                const rowServer = db.prepare("SELECT valor FROM configuracion WHERE clave = 'isServer'").get();
+                if (rowServer) isServerVal = rowServer.valor;
+
+                const rowIP = db.prepare("SELECT valor FROM configuracion WHERE clave = 'serverIP'").get();
+                if (rowIP) serverIPVal = rowIP.valor;
+            }
+        } catch (eDb) {
+            // Ignorar si db no está inicializada aún
+        }
+
+        if (isServerVal !== null) {
+            const esMaestro = (isServerVal === true || isServerVal === 'true');
+            if (esMaestro) {
+                return '127.0.0.1';
+            }
+            if (serverIPVal && serverIPVal !== 'localhost' && serverIPVal.trim() !== '') {
+                return serverIPVal.trim();
+            }
+        }
+
+        // Fallback a config.json si no se encuentra en SQLite
         const configLocal = JSON.parse(fs.readFileSync(configPath, 'utf8'));
         const esMaestro = (configLocal.isServer === true || configLocal.isServer === 'true');
         if (esMaestro) {
@@ -3429,12 +3474,11 @@ function getIpMaestro() {
         const ip = configLocal.serverIP;
         if (!ip || ip === 'localhost' || ip.trim() === '') {
             console.error('[RED] ❌ ERROR CRÍTICO: Esta PC está configurada como CLIENTE pero no tiene una IP de servidor válida.');
-            console.error('[RED]    Verifica config.json → campo "serverIP" debe tener la IP real del servidor (ej: 192.168.1.100)');
             return null;
         }
         return ip.trim();
     } catch (e) {
-        console.error('[RED] ❌ Error leyendo config.json para obtener IP del servidor:', e.message);
+        console.error('[RED] ❌ Error en getIpMaestro:', e.message);
         return null;
     }
 }
@@ -3936,46 +3980,37 @@ win.once('ready-to-show', () => {
 
 
 ipcMain.handle('obtener-claves-admin-maestro', async (event, companyId) => {
+    console.log(`[CLAVES-ADMIN] Iniciando consulta para companyId: ${companyId}`);
     try {
-        const configPath = require('path').join(__dirname, 'config.json');
-        let API_BASE_URL = 'http://localhost:3000';
-        if (require('fs').existsSync(configPath)) {
-            const config = JSON.parse(require('fs').readFileSync(configPath, 'utf8'));
-            API_BASE_URL = config.API_BASE_URL || API_BASE_URL;
-        }
+        const ip = getIpServidor();
+        const url = `http://${ip}:3000/api/maestro/obtener-claves-admin/${companyId}`;
+        console.log(`[CLAVES-ADMIN] IP Servidor: ${ip} | URL completa: ${url}`);
         
-        // Se usa fetch nativo de Node/Electron
-        const res = await fetch(`${API_BASE_URL}/api/maestro/obtener-claves-admin/${companyId}`);
-        if (res.ok) {
-            const data = await res.json();
-            return data.map(c => {
-                c.plainCode = decryptClave(c.encryptedCode);
-                return c;
-            });
-        }
-        return [];
+        const respuesta = await llamarMaestro('GET', `/api/maestro/obtener-claves-admin/${companyId}`, null, { timeout: 8000, reintentos: 2 });
+        console.log(`[CLAVES-ADMIN] Respuesta HTTP de ${url}: Registros = ${respuesta.data ? respuesta.data.length : 0}`);
+        console.log(`[CLAVES-ADMIN] Datos recibidos:`, JSON.stringify(respuesta.data));
+        
+        const result = (respuesta.data || []).map(c => {
+            c.plainCode = decryptClave(c.encryptedCode);
+            return c;
+        });
+        console.log(`[CLAVES-ADMIN] Claves desencriptadas:`, result.map(c => ({ owner: c.ownerName, code: c.plainCode })));
+        return result;
     } catch (e) {
-        console.error('Error obtener-claves-admin-maestro:', e);
+        console.error('[CLAVES-ADMIN] Error en obtener-claves-admin-maestro:', e.message);
         return [];
     }
 });
 
 ipcMain.handle('leer-config-maestra', async (event, clave) => {
     try {
-        const configPath = require('path').join(__dirname, 'config.json');
-        let API_BASE_URL = 'http://localhost:3000';
-        if (require('fs').existsSync(configPath)) {
-            const config = JSON.parse(require('fs').readFileSync(configPath, 'utf8'));
-            API_BASE_URL = config.API_BASE_URL || API_BASE_URL;
+        if (config.isServer && masterDbDirect) {
+            const row = masterDbDirect.prepare('SELECT valor FROM configuraciones_maestras WHERE clave = ?').get(clave);
+            return row ? { valor: row.valor } : null;
+        } else {
+            const respuesta = await llamarMaestro('GET', `/api/maestro/configuracion/${clave}`, null, { timeout: 8000, reintentos: 1 });
+            return respuesta.data;
         }
-        
-        // Se usa fetch nativo de Node/Electron
-        const res = await fetch(`${API_BASE_URL}/api/maestro/configuracion/${clave}`);
-        if (res.ok) {
-            const data = await res.json();
-            return data;
-        }
-        return null;
     } catch (e) {
         console.error('Error leer-config-maestra:', e);
         return null;
@@ -3984,23 +4019,8 @@ ipcMain.handle('leer-config-maestra', async (event, clave) => {
 
 ipcMain.handle('eliminar-clave-admin-maestro', async (event, id) => {
     try {
-        const configPath = require('path').join(__dirname, 'config.json');
-        let API_BASE_URL = 'http://localhost:3000';
-        if (require('fs').existsSync(configPath)) {
-            const config = JSON.parse(require('fs').readFileSync(configPath, 'utf8'));
-            API_BASE_URL = config.API_BASE_URL || API_BASE_URL;
-        }
-        
-        // Se usa fetch nativo de Node/Electron
-        const res = await fetch(`${API_BASE_URL}/api/maestro/eliminar-clave-admin/${id}`, {
-            method: 'DELETE'
-        });
-        if (res.ok) {
-            const data = await res.json();
-            return data;
-        }
-        const errText = await res.text();
-        return { error: `Error del servidor: HTTP ${res.status} - ${errText}` };
+        const respuesta = await llamarMaestro('DELETE', `/api/maestro/eliminar-clave-admin/${id}`, null, { timeout: 6000, reintentos: 1 });
+        return respuesta.data;
     } catch (e) {
         console.error('Error eliminar-clave-admin-maestro:', e);
         return { error: e.message };
@@ -4009,31 +4029,14 @@ ipcMain.handle('eliminar-clave-admin-maestro', async (event, id) => {
 
 ipcMain.handle('guardar-clave-admin-maestro', async (event, datos) => {
     try {
-        const configPath = require('path').join(__dirname, 'config.json');
-        let API_BASE_URL = 'http://localhost:3000';
-        if (require('fs').existsSync(configPath)) {
-            const config = JSON.parse(require('fs').readFileSync(configPath, 'utf8'));
-            API_BASE_URL = config.API_BASE_URL || API_BASE_URL;
-        }
-        
-        // Se usa fetch nativo de Node/Electron
-        
-        // Encriptar clave antes de enviar al Maestro
+        // Encriptar clave antes de enviar/guardar
         if (datos.plainCode) {
             datos.encryptedCode = encryptClave(datos.plainCode);
             delete datos.plainCode; // No enviar la contraseña plana
         }
         
-        const res = await fetch(`${API_BASE_URL}/api/maestro/guardar-clave-admin`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(datos)
-        });
-        if (res.ok) {
-            const data = await res.json();
-            return data;
-        }
-        return { error: 'Error del servidor: HTTP ' + res.status };
+        const respuesta = await llamarMaestro('POST', '/api/maestro/guardar-clave-admin', datos, { timeout: 8000, reintentos: 2 });
+        return respuesta.data;
     } catch (e) {
         console.error('Error guardar-clave-admin-maestro:', e);
         return { error: e.message };
@@ -4042,24 +4045,17 @@ ipcMain.handle('guardar-clave-admin-maestro', async (event, datos) => {
 
 ipcMain.handle('guardar-config-maestra', async (event, datos) => {
     try {
-        const configPath = require('path').join(__dirname, 'config.json');
-        let API_BASE_URL = 'http://localhost:3000';
-        if (require('fs').existsSync(configPath)) {
-            const config = JSON.parse(require('fs').readFileSync(configPath, 'utf8'));
-            API_BASE_URL = config.API_BASE_URL || API_BASE_URL;
+        if (config.isServer && masterDbDirect) {
+            const stmt = masterDbDirect.prepare(`
+                INSERT INTO configuraciones_maestras (clave, valor) 
+                VALUES (?, ?) ON CONFLICT(clave) DO UPDATE SET valor=excluded.valor
+            `);
+            stmt.run(datos.clave, datos.valor);
+            return { exito: true };
+        } else {
+            const respuesta = await llamarMaestro('POST', '/api/maestro/configuracion', datos, { timeout: 8000, reintentos: 2 });
+            return respuesta.data;
         }
-        
-        // Se usa fetch nativo de Node/Electron
-        const res = await fetch(`${API_BASE_URL}/api/maestro/configuracion`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(datos)
-        });
-        if (res.ok) {
-            const data = await res.json();
-            return data;
-        }
-        return { error: 'Error del servidor: HTTP ' + res.status };
     } catch (e) {
         console.error('Error guardar-config-maestra:', e);
         return { error: e.message };
