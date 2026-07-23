@@ -97,6 +97,7 @@ let config = {
 };
 
 // --- LOG FORWARDING (main.js -> DevTools) ---
+var win = null;
 const originalConsoleLog = console.log;
 const originalConsoleError = console.error;
 const originalConsoleWarn = console.warn;
@@ -180,7 +181,6 @@ if (config.isServer) {
 
 
 
-let win;   
 let splash;
 let sistemaPrincipalAbierto = false;
 let cierreAutorizado = false; // <--- NUEVA VARIABLE DE SEGURIDAD
