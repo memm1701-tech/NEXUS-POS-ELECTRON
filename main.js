@@ -1152,6 +1152,148 @@ server.get('/api/tasas', async (req, res) => {
     }
 });
 
+// --- RUTAS RECUPERADAS DE SERVER.JS ---
+server.get('/api/maestro/stock', (req, res) => {
+    const { sucursalId, companyId } = req.query;
+    if (!masterDbDirect) return res.status(500).json({ error: "Base de datos maestra no inicializada" });
+    try {
+        let query;
+        let params;
+
+        if (sucursalId && sucursalId !== 'undefined' && sucursalId !== 'null') {
+            query = `SELECT producto_id, cantidad_real FROM stock_maestro WHERE sucursal_id = ? AND company_id = ?`;
+            params = [sucursalId, companyId];
+        } else {
+            query = `SELECT producto_id, SUM(cantidad_real) as cantidad_real 
+                     FROM stock_maestro 
+                     WHERE company_id = ? 
+                     GROUP BY producto_id`;
+            params = [companyId];
+        }
+
+        const filas = masterDbDirect.prepare(query).all(...params);
+        res.json(filas);
+    } catch (e) {
+        console.error("❌ Error en stock maestro:", e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+server.get('/api/maestro/estadisticas', (req, res) => {
+    if (!masterDbDirect) return res.status(500).json({ exito: false, error: "Base de datos maestra no inicializada" });
+    try {
+        const { fecha_inicio, fecha_fin, companyId, periodo } = req.query;
+        if (!fecha_inicio || !fecha_fin || !companyId) {
+            return res.status(400).json({ exito: false, error: "Faltan parámetros (fecha_inicio, fecha_fin, companyId)" });
+        }
+
+        const fechaIni = `${fecha_inicio} 00:00:00`;
+        const fechaFin = `${fecha_fin} 23:59:59`;
+
+        const gananciaResult = masterDbDirect.prepare(`
+            SELECT SUM(ganancia_venta) as total_ganancia 
+            FROM ventas_locales 
+            WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?
+        `).get(companyId, fechaIni, fechaFin);
+        const total_ganancia = gananciaResult?.total_ganancia || 0;
+
+        const cogsResult = masterDbDirect.prepare(`
+            SELECT SUM((monto_total / COALESCE(NULLIF(tasa_bcv, 0), 1)) - ganancia_venta) as total_cogs
+            FROM ventas_locales
+            WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?
+        `).get(companyId, fechaIni, fechaFin);
+        const total_cogs = Math.max(0, cogsResult?.total_cogs || 0);
+
+        const topClientes = masterDbDirect.prepare(`
+            SELECT cliente_nombre, cliente_rif, SUM(monto_total) as total_comprado
+            FROM ventas_locales
+            WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?
+            GROUP BY cliente_rif
+            ORDER BY total_comprado DESC
+            LIMIT 5
+        `).all(companyId, fechaIni, fechaFin);
+
+        const topProductos = [];
+        try {
+            const ventas = masterDbDirect.prepare(`SELECT datos_json FROM ventas_locales WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?`).all(companyId, fechaIni, fechaFin);
+            const mapa = {};
+            ventas.forEach(v => {
+                try {
+                    const parsed = JSON.parse(v.datos_json);
+                    const prodArray = Array.isArray(parsed) ? parsed : (parsed.productos || parsed.items || []);
+                    prodArray.forEach(item => {
+                        const qty = parseFloat(item.cantidad || item.quantity) || 0;
+                        if (!mapa[item.id]) mapa[item.id] = { producto_nombre: item.nombre || item.id, cantidad_vendida: 0 };
+                        mapa[item.id].cantidad_vendida += qty;
+                    });
+                } catch(e){}
+            });
+            const array = Object.values(mapa).sort((a,b) => b.cantidad_vendida - a.cantidad_vendida).slice(0,5);
+            topProductos.push(...array);
+        } catch(e) {}
+
+        let serieTiempo;
+        if (periodo === 'dia') {
+            serieTiempo = masterDbDirect.prepare(`
+                SELECT strftime('%Y-%m-%d %H:00:00', fecha_emision) as fecha, SUM(ganancia_venta) as total_ganancia
+                FROM ventas_locales
+                WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?
+                GROUP BY strftime('%Y-%m-%d %H', fecha_emision)
+                ORDER BY fecha ASC
+            `).all(companyId, fechaIni, fechaFin);
+        } else {
+            serieTiempo = masterDbDirect.prepare(`
+                SELECT date(fecha_emision) as fecha, SUM(ganancia_venta) as total_ganancia
+                FROM ventas_locales
+                WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?
+                GROUP BY date(fecha_emision)
+                ORDER BY fecha ASC
+            `).all(companyId, fechaIni, fechaFin);
+        }
+
+        let stocks_promedio = [];
+        try {
+            const rowsActual = masterDbDirect.prepare('SELECT producto_id, SUM(cantidad_real) as cant FROM stock_maestro WHERE company_id = ? GROUP BY producto_id').all(companyId);
+            
+            const movimientos = masterDbDirect.prepare(`
+                SELECT producto_id, SUM(cantidad) as mov_total
+                FROM movimientos_stock_maestro
+                WHERE company_id = ? AND fecha_movimiento >= ?
+                GROUP BY producto_id
+            `).all(companyId, fechaIni);
+
+            const mapaMov = {};
+            movimientos.forEach(m => { mapaMov[m.producto_id] = m.mov_total; });
+
+            rowsActual.forEach(r => {
+                const stockActual = r.cant;
+                const movsRevertir = mapaMov[r.producto_id] || 0;
+                const stockInicio = stockActual - movsRevertir;
+                const promedio = (stockInicio + stockActual) / 2;
+                stocks_promedio.push({
+                    producto_id: r.producto_id,
+                    stock_promedio: Math.max(0, promedio)
+                });
+            });
+        } catch(e) { console.error("Error calculando stocks_promedio", e.message); }
+
+        res.json({
+            exito: true,
+            data: {
+                total_ganancia,
+                total_cogs,
+                top_clientes: topClientes,
+                top_productos: topProductos,
+                serie_tiempo: serieTiempo,
+                stocks_promedio: stocks_promedio
+            }
+        });
+    } catch (e) {
+        console.error("❌ Error en /api/maestro/estadisticas:", e.message);
+        res.status(500).json({ exito: false, error: e.message });
+    }
+});
+
 ipcMain.on('cerrar-y-volver-login', (event) => {
     const currentWin = BrowserWindow.fromWebContents(event.sender);
     
@@ -2026,10 +2168,21 @@ function esVersionMayor(versionNube, versionLocal) {
     return false; // Son exactamente iguales (Omitir)
 }
 
+let cacheActualizacionGithub = null;
+const CACHE_TTL_GITHUB = 6 * 60 * 60 * 1000; // 6 horas
+
 // --- VERIFICADOR DE ACTUALIZACIONES GITHUB ---
 // Ahora recibe la versiÃ³n que tiene instalada el cliente actualmente
-ipcMain.handle('verificar-actualizacion-github', async (event, versionActual) => {
+ipcMain.handle('verificar-actualizacion-github', async (event, versionActual, forzarBusqueda = false) => {
     try {
+        if (!forzarBusqueda && cacheActualizacionGithub) {
+            const ahora = Date.now();
+            if (ahora - cacheActualizacionGithub.timestamp < CACHE_TTL_GITHUB && cacheActualizacionGithub.versionActual === versionActual) {
+                console.log("Retornando actualización de GitHub desde caché local.");
+                return cacheActualizacionGithub.resultado;
+            }
+        }
+        
         const repo = "memm1701-tech/NEXUS-POS-ELECTRON";
         const url = `https://api.github.com/repos/${repo}/releases`;
         
@@ -2061,13 +2214,14 @@ ipcMain.handle('verificar-actualizacion-github', async (event, versionActual) =>
             }
         }
 
+        let resultado = null;
         // Si encontramos una versiÃ³n superior
         if (actualizacionEncontrada) {
             const urlDescargaFichero = (actualizacionEncontrada.assets && actualizacionEncontrada.assets.length > 0) 
                                         ? actualizacionEncontrada.assets[0].browser_download_url 
                                         : "";
 
-            return {
+            resultado = {
                 success: true,
                 hayActualizacion: true, // Bandera para el frontend
                 nuevaVersion: actualizacionEncontrada.tag_name,
@@ -2076,11 +2230,22 @@ ipcMain.handle('verificar-actualizacion-github', async (event, versionActual) =>
             };
         } else {
             // Si no encontrÃ³ nada mayor (O estamos iguales, o Github tiene una versiÃ³n mÃ¡s vieja)
-            return {
+            resultado = {
                 success: true,
                 hayActualizacion: false // Bandera de seguridad
             };
         }
+
+        // Guardamos en caché si fue exitoso
+        if (resultado.success) {
+            cacheActualizacionGithub = {
+                timestamp: Date.now(),
+                versionActual: versionActual,
+                resultado: resultado
+            };
+        }
+
+        return resultado;
 
     } catch (error) {
         console.error("â Œ Error en ConexiÃ³n GitHub:", error.response?.status || error.message);
@@ -2668,6 +2833,7 @@ ipcMain.handle('verificar-y-descontar-stock-maestro', async (event, datos) => {
                     // Obtener company_id
                     const rowComp = masterDbDirect.prepare('SELECT company_id FROM stock_maestro WHERE producto_id = ? LIMIT 1').get(item.id);
                     const compId = rowComp ? rowComp.company_id : 'DEFAULT';
+                    const sucursalReal = sucursalId || 'GLOBAL';
 
                     if (sucursalId) {
                         stmtConSucursal.run(item.cantidad, item.id, sucursalId);
@@ -2675,6 +2841,21 @@ ipcMain.handle('verificar-y-descontar-stock-maestro', async (event, datos) => {
                     } else {
                         stmtSinSucursal.run(item.cantidad, item.id);
                         try { stmtKardex.run(compId, 'GLOBAL', item.id, -Math.abs(item.cantidad), 'VENTA', 1); } catch(e) {}
+                    }
+
+                    // ☁️ ENCOLAR PARA VPS (Si está activo el respaldo)
+                    if (config.respaldo_datos === 'true' || config.respaldo_datos === true) {
+                        try {
+                            const payloadVPS = {
+                                company_id: compId,
+                                sucursal_id: sucursalReal,
+                                producto_id: item.id,
+                                operacion: 'restar',
+                                cantidad: item.cantidad
+                            };
+                            db.prepare('INSERT INTO sync_queue (operacion, tabla, datos) VALUES (?, ?, ?)')
+                              .run('UPSERT', 'movimientos_stock', JSON.stringify(payloadVPS));
+                        } catch(eQueue) { console.error("Error encolando venta de stock para VPS:", eQueue); }
                     }
                 }
             });
@@ -2706,28 +2887,45 @@ ipcMain.handle('guardar-stock-sucursal', async (event, { productoId, sucursalId,
             const rowStock = masterDbDirect.prepare('SELECT cantidad_real FROM stock_maestro WHERE producto_id = ? AND sucursal_id = ?').get(productoId, sucursalId);
             if (rowStock) stockPrevio = parseFloat(rowStock.cantidad_real || 0);
 
-            const sql = operacion === 'FIJAR' 
-                ? `INSERT INTO stock_maestro (producto_id, sucursal_id, company_id, cantidad_real, ultima_sincronizacion)
+            let sql = '';
+            let valDb = cantidad;
+            const opUpper = (operacion || '').toUpperCase();
+            
+            if (opUpper === 'FIJAR') {
+                sql = `INSERT INTO stock_maestro (producto_id, sucursal_id, company_id, cantidad_real, ultima_sincronizacion)
                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
                    ON CONFLICT(producto_id, sucursal_id) DO UPDATE SET
                    cantidad_real = excluded.cantidad_real,
-                   ultima_sincronizacion = CURRENT_TIMESTAMP`
-                : `INSERT INTO stock_maestro (producto_id, sucursal_id, company_id, cantidad_real, ultima_sincronizacion)
+                   ultima_sincronizacion = CURRENT_TIMESTAMP`;
+            } else if (opUpper === 'RESTAR') {
+                valDb = -Math.abs(cantidad);
+                sql = `INSERT INTO stock_maestro (producto_id, sucursal_id, company_id, cantidad_real, ultima_sincronizacion)
                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
                    ON CONFLICT(producto_id, sucursal_id) DO UPDATE SET
                    cantidad_real = stock_maestro.cantidad_real + excluded.cantidad_real,
                    ultima_sincronizacion = CURRENT_TIMESTAMP`;
+            } else { // SUMAR
+                valDb = Math.abs(cantidad);
+                sql = `INSERT INTO stock_maestro (producto_id, sucursal_id, company_id, cantidad_real, ultima_sincronizacion)
+                   VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                   ON CONFLICT(producto_id, sucursal_id) DO UPDATE SET
+                   cantidad_real = stock_maestro.cantidad_real + excluded.cantidad_real,
+                   ultima_sincronizacion = CURRENT_TIMESTAMP`;
+            }
 
-            const resultado = masterDbDirect.prepare(sql).run(productoId, sucursalId, companyId, cantidad);
+            const resultado = masterDbDirect.prepare(sql).run(productoId, sucursalId, companyId, valDb);
 
             // REGISTRAR MOVIMIENTO KARDEX
             let diferencia = 0;
             let tipoMov = '';
-            if (operacion === 'FIJAR') {
+            if (opUpper === 'FIJAR') {
                 diferencia = parseFloat(cantidad) - stockPrevio;
                 tipoMov = diferencia >= 0 ? 'AJUSTE_POSITIVO' : 'AJUSTE_NEGATIVO';
+            } else if (opUpper === 'RESTAR') {
+                diferencia = -Math.abs(cantidad);
+                tipoMov = 'SALIDA';
             } else {
-                diferencia = parseFloat(cantidad);
+                diferencia = Math.abs(cantidad);
                 tipoMov = 'ENTRADA';
             }
 

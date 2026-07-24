@@ -1115,5 +1115,36 @@ async function inicializarDashboard() {
         }
     });
 </script>
+<!-- MODAL DE ACTUALIZACIÓN GLOBAL (Estilo Bloqueo de Plan) -->
+<div id="global-update-modal" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(4px);">
+    <div style="background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+        <i class="material-icons" style="font-size: 50px; color: #2563eb;">system_update</i>
+        <h2 style="font-size: 20px; color: #1f2937; margin: 15px 0 10px; font-weight: bold;">Actualización Disponible</h2>
+        <p style="color: #4b5563; font-size: 15px; line-height: 1.5;">
+            Tienes una nueva actualización disponible, por favor actualiza.
+        </p>
+        <button onclick="document.getElementById('global-update-modal').style.display='none'" style="margin-top: 20px; background: #2563eb; color: white; border: none; padding: 10px 25px; border-radius: 8px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold;">Entendido</button>
+    </div>
+</div>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        setTimeout(async () => {
+            try {
+                if (window.nexusAPI && window.nexusAPI.obtenerVersionApp && window.nexusAPI.verificarActualizacion) {
+                    const version = await window.nexusAPI.obtenerVersionApp();
+                    const result = await window.nexusAPI.verificarActualizacion(version, false);
+                    if (result && result.success && result.hayActualizacion) {
+                        const globalUpdateModal = document.getElementById('global-update-modal');
+                        if (globalUpdateModal) {
+                            globalUpdateModal.style.display = 'flex';
+                        }
+                    }
+                }
+            } catch (err) {
+                console.log("Error al verificar actualización global:", err);
+            }
+        }, 8000);
+    });
+</script>
 </body>
 </html>

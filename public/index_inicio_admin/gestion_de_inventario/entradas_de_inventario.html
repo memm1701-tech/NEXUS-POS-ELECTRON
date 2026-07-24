@@ -625,11 +625,13 @@
             operacion: modoEdicion ? 'FIJAR' : 'SUMAR'
         };
 
-        // 📦 Payload estructurado para Servidor VPS
+        // 📦 Payload estructurado para Servidor VPS (Nuevo estándar)
         const payloadVPS = {
-            sucursalId: idSucursalSeleccionada,
-            companyId: idEmpresa,
-            items: [{ id: idProductoSeleccionado, cantidad: cantFinal, operacion: modoEdicion ? 'FIJAR' : 'SUMAR' }]
+            company_id: idEmpresa,
+            sucursal_id: idSucursalSeleccionada,
+            producto_id: idProductoSeleccionado,
+            operacion: modoEdicion ? 'fijar' : 'sumar',
+            cantidad: cantFinal
         };
 
         try {
@@ -641,7 +643,7 @@
             if (respaldoActivo && SERVER_URL && navigator.onLine) {
                 botonRegistrar.textContent = 'Sincronizando con VPS...';
                 try {
-                    const resVPS = await fetch("${SERVER_URL}/api/maestro/inventario/registrar-entrada", {
+                    const resVPS = await fetch(`${SERVER_URL}/api/maestro/stock/actualizar`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payloadVPS)
@@ -651,7 +653,7 @@
                         if (jsonVPS.exito || jsonVPS.success) exitoVPS = true;
                     }
                 } catch (vpsError) {
-                    console.error('VPS Sincro fallida (se ignorar� para mantener flujo local):', vpsError.message);
+                    console.error('VPS Sincro fallida (se ignorará para mantener flujo local):', vpsError.message);
                 }
             }
 
@@ -661,7 +663,7 @@
 
             if (!exitoLocal) throw new Error(resLocal.error || 'Error cr�tico al registrar la entrada en disco local.');
 
-            if (!exitoVPS && payloadVPS && window.nexusAPI.encolarSincronizacion) {
+            if (!exitoVPS && respaldoActivo && SERVER_URL && window.nexusAPI.encolarSincronizacion) {
                 await window.nexusAPI.encolarSincronizacion({ 
                     operacion: 'UPSERT', 
                     tabla: 'movimientos_stock', 

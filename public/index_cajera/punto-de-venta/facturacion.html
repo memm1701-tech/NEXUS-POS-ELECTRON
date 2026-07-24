@@ -2738,18 +2738,16 @@ window.openExtendedSearchModal = async function() {
         if (oldModal) oldModal.remove();
 
         // --- CARGA DE STOCK EN CACHÉ ANTES DE ABRIR ---
-        if (!window.globalStockCache) {
-            try {
-                window.globalStockCache = await window.nexusAPI.obtenerInventarioSucursal({ 
-                    company_id: window.companyId, 
-                    sucursal_id: window.branchId,
-                    companyId: window.companyId,
-                    sucursalId: window.branchId
-                });
-            } catch (e) {
-                console.warn("⚠️ No se pudo obtener el stock para el catálogo", e);
-                window.globalStockCache = [];
-            }
+        try {
+            window.globalStockCache = await window.nexusAPI.obtenerInventarioSucursal({ 
+                company_id: window.companyId, 
+                sucursal_id: window.branchId,
+                companyId: window.companyId,
+                sucursalId: window.branchId
+            });
+        } catch (e) {
+            console.warn("⚠️ No se pudo obtener el stock para el catálogo", e);
+            window.globalStockCache = [];
         }
 
         const modalHTML = `
@@ -3410,17 +3408,31 @@ async function processSale() {
                 // Filtramos abonos o servicios para no sumarlos al stock físico
                 if (!nombreUp.includes('ABONO') && !nombreUp.includes('DEUDA') && !nombreUp.includes('SERVICIO')) {
                     try {
-                        // Usamos tu API existente para sumar entradas
                         await window.nexusAPI.guardarStockSucursal({
-                        productoId: item.id,
-                        producto_id: item.id,
-                        sucursalId: window.branchId,
-                        sucursal_id: window.branchId,
-                        companyId: window.companyId,
-                        company_id: window.companyId,
-                        cantidad: item.cantidad,
-                        operacion: 'SUMAR' 
-                    });
+                            productoId: item.id,
+                            producto_id: item.id,
+                            sucursalId: window.branchId,
+                            sucursal_id: window.branchId,
+                            companyId: window.companyId,
+                            company_id: window.companyId,
+                            cantidad: item.cantidad,
+                            operacion: 'SUMAR' 
+                        });
+                        
+                        // ☁️ ENCOLAR REINTEGRO PARA VPS
+                        if (window.nexusAPI.encolarSincronizacion) {
+                            await window.nexusAPI.encolarSincronizacion({ 
+                                operacion: 'UPSERT', 
+                                tabla: 'movimientos_stock', 
+                                datos: {
+                                    company_id: window.companyId,
+                                    sucursal_id: window.branchId,
+                                    producto_id: item.id,
+                                    operacion: 'sumar',
+                                    cantidad: item.cantidad
+                                }
+                            });
+                        }
                     } catch (errStock) {
                         console.error(`Error al reintegrar ${item.nombre}:`, errStock);
                     }
@@ -7010,18 +7022,16 @@ window.abrirModalCatalogoGuia = async function() {
         if (oldModal) oldModal.remove();
 
         // --- CARGA DE STOCK EN CACHÉ ANTES DE ABRIR ---
-        if (!window.globalStockCache) {
-            try {
-                window.globalStockCache = await window.nexusAPI.obtenerInventarioSucursal({ 
-                    company_id: window.companyId, 
-                    sucursal_id: window.branchId,
-                    companyId: window.companyId,
-                    sucursalId: window.branchId
-                });
-            } catch (e) {
-                console.warn("⚠️ No se pudo obtener el stock para el catálogo", e);
-                window.globalStockCache = [];
-            }
+        try {
+            window.globalStockCache = await window.nexusAPI.obtenerInventarioSucursal({ 
+                company_id: window.companyId, 
+                sucursal_id: window.branchId,
+                companyId: window.companyId,
+                sucursalId: window.branchId
+            });
+        } catch (e) {
+            console.warn("⚠️ No se pudo obtener el stock para el catálogo", e);
+            window.globalStockCache = [];
         }
 
         const modalHTML = `

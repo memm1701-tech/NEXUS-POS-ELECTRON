@@ -654,8 +654,8 @@
                 productoId: idProductoSeleccionado,
                 sucursalId: idSucursalSeleccionada,
                 companyId: idEmpresa,
-                cantidad: -totalARestar, // Negativo para descontar
-                operacion: 'SUMAR'
+                cantidad: totalARestar,
+                operacion: 'RESTAR'
             };
             const resultadoStock = await window.nexusAPI.guardarStockSucursal(payloadStockLocal);
             if (!resultadoStock || !resultadoStock.success) {
@@ -672,17 +672,15 @@
             if (navigator.onLine && respaldoActivo && SERVER_URL) {
                 btnSubmit.textContent = "Sincronizando con VPS...";
                 const payloadVPS = {
-                    sucursalId: idSucursalSeleccionada,
-                    companyId: idEmpresa,
-                    items: [{ 
-                        id: idProductoSeleccionado, 
-                        cantidad: -totalARestar, // <--- CANTIDAD NEGATIVA PARA RESTAR
-                        operacion: 'SUMAR' 
-                    }]
+                    company_id: idEmpresa,
+                    sucursal_id: idSucursalSeleccionada,
+                    producto_id: idProductoSeleccionado,
+                    operacion: 'restar',
+                    cantidad: totalARestar
                 };
 
                 try {
-                    const resVPS = await fetch(`${SERVER_URL}/api/maestro/inventario/registrar-entrada`, {
+                    const resVPS = await fetch(`${SERVER_URL}/api/maestro/stock/actualizar`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payloadVPS)

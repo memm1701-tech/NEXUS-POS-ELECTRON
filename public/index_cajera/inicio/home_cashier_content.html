@@ -190,7 +190,7 @@
 
         try {
             // Llama a main.js pasándole la versión local para que haga los cálculos
-            const result = await window.nexusAPI.verificarActualizacion(versionLocal);
+            const result = await window.nexusAPI.verificarActualizacion(versionLocal, true);
 
             if (!result.success) {
                 openModal("Aviso de Sistema", "No se pudo verificar la actualización: " + result.error, false);
@@ -260,4 +260,28 @@
             console.log("Aplicación cerrándose para actualizar...");
         }
     }
+
+    // Verificación silenciosa al inicio
+    setTimeout(async () => {
+        const versionChip = document.getElementById('version-chip');
+        if(!versionChip) return;
+        const versionLocal = versionChip.innerText.trim(); 
+        
+        try {
+            const result = await window.nexusAPI.verificarActualizacion(versionLocal, false);
+            if (result.success && result.hayActualizacion) {
+                const updateTitle = document.getElementById('update-title');
+                const updateDesc = document.getElementById('update-desc');
+                const updateBanner = document.getElementById('update-banner');
+
+                if(updateTitle) updateTitle.innerText = `NEXUS POS ${result.nuevaVersion}`;
+                if(updateDesc) updateDesc.innerText = result.notas; 
+                urlDescargaReal = result.urlDescarga; 
+                
+                if(updateBanner) updateBanner.classList.remove('hidden'); 
+            }
+        } catch (err) {
+            console.error("Error en comprobación automática de actualización:", err);
+        }
+    }, 5000); // Dar 5 segundos para que cargue la interfaz sin bloquear
 </script>

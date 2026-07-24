@@ -307,7 +307,7 @@
             window.openModal("Seguridad Nexus", "Consultando servidor seguro...", true);
 
             try {
-                const result = await window.nexusAPI.verificarActualizacion(versionLocal);
+                const result = await window.nexusAPI.verificarActualizacion(versionLocal, true);
                 const mBtn = document.getElementById('modal-btn');
 
                 if (!result.success) {
@@ -393,6 +393,30 @@
         };
 
         window.cargarVersionReal();
+
+        // Verificación silenciosa al inicio
+        setTimeout(async () => {
+            const versionChip = document.getElementById('version-chip');
+            if(!versionChip) return;
+            const versionLocal = versionChip.innerText.trim(); 
+            
+            try {
+                const result = await window.nexusAPI.verificarActualizacion(versionLocal, false);
+                if (result.success && result.hayActualizacion) {
+                    const updateTitle = document.getElementById('update-title');
+                    const updateDesc = document.getElementById('update-desc');
+                    const updateBanner = document.getElementById('update-banner');
+
+                    if(updateTitle) updateTitle.innerText = `NEXUS POS ${result.nuevaVersion}`;
+                    if(updateDesc) updateDesc.innerText = result.notas; 
+                    window.urlDescargaReal = result.urlDescarga; 
+                    
+                    if(updateBanner) updateBanner.classList.remove('hidden'); 
+                }
+            } catch (err) {
+                console.error("Error en comprobación automática de actualización:", err);
+            }
+        }, 5000); // Dar 5 segundos para que cargue la interfaz sin bloquear
     </script>
 </body>
 </html>
