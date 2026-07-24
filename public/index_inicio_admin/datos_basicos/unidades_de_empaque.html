@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Unidades de Empaque</title>  
-    <link href="../../tailwindcss.css" rel="stylesheet">
-    <link href="../../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <script src="tailwindcss.js"></script>
+    <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
 
 <style>
     body {
@@ -29,19 +29,17 @@
         margin: 0;
     }
 
-    /* AQUÍ ESTÁ LA MAGIA: Forzamos el margen interno (padding) directamente en el contenedor principal */
     #app-container {
         background-color: transparent !important;
         box-shadow: none !important;
         border-radius: 0 !important;
         width: 100% !important;
         max-width: 100% !important;
-        padding: 20px 1rem !important; /* 20px arriba/abajo, 1rem a los lados */
+        padding: 20px 1rem !important;
         margin: 0 !important;
         box-sizing: border-box;
     }
 
-    /* Limpiamos el div interno para que no agregue fondos blancos ni sombras extra */
     #app-container > div {
         background-color: transparent !important;
         box-shadow: none !important;
@@ -55,10 +53,9 @@
 
     @media (min-width: 768px) {
         #app-container {
-            padding: 30px 1rem !important; /* Mantenemos 1rem lateral en PC, pero un poco más de espacio arriba/abajo */
+            padding: 30px 1rem !important;
         }
     }
-    /* ----------------------------------------------------------------------- */
 
     .form-input, .form-select {
         display: block;
@@ -148,8 +145,8 @@
     }
 
     .result-item.autocomplete-active {
-        background-color: #bfdbfe !important; /* Azul intenso resaltado */
-        border-left: 4px solid #2563eb !important; /* Franja azul oscuro */
+        background-color: #bfdbfe !important;
+        border-left: 4px solid #2563eb !important;
         outline: none !important;
         color: #1e3a8a;
     }
@@ -157,7 +154,7 @@
     .result-item:hover {
         background-color: #ebf8ff; 
     }
-    /* --- Estilos de Tabla y Scroll --- */
+
     #packing-units-table, 
     #packing-units-table th, 
     #packing-units-table td {
@@ -187,7 +184,6 @@
         .text-xl { font-size: 1rem; }
     }
 
-    /* --- Estilos Modal y Toast --- */
     .modal-overlay {
         position: fixed;
         top: 0;
@@ -227,6 +223,7 @@
     .toast.show { opacity: 1; transform: translateX(0); }
     .toast.success { background-color: #48bb78; }
     .toast.error { background-color: #f56565; }
+    .toast.warning { background-color: #ed8936; }
 
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(-20px); }
@@ -246,14 +243,12 @@
 
     <div class="toast-container" id="toast-container"></div>
 
-
     <main class="main-content flex-grow p-8 flex items-start justify-start" id="app-container" style="display: none; flex-direction: column;">
         
         <div class="bg-white p-6 md:p-10 rounded-lg shadow-xl w-full max-w-6xl mx-0">
             <h1 class="text-3xl font-bold text-gray-800 mb-6 flex items-center"><span class="material-icons text-blue-600 mr-3 text-4xl">straighten</span> Gestión de Unidades de Empaque</h1>
             
-            <div id="userInfoBar" class="user-info-bar w-full mb-6" style="display: none;">
-            </div>
+            <div id="userInfoBar" class="user-info-bar w-full mb-6" style="display: none;"></div>
             
             <div id="successMessage" class="feedback-message success">Unidad de empaque guardada correctamente.</div>
             <div id="errorMessage" class="feedback-message error">Error al guardar la unidad de empaque. Verifica la consola.</div>
@@ -318,7 +313,6 @@
                 <h3 class="text-lg font-semibold text-gray-800 mb-6 ">Unidades Agregadas</h3>
                 
                 <div class="overflow-x-auto shadow-md rounded-lg">
-                    
                     <div id="packing-units-scroll-container">
                         <table id="packing-units-table" class="min-w-full">
                             <thead class="bg-gray-50">
@@ -332,14 +326,14 @@
                             </thead>
                             <tbody id="packing-units-body" class="bg-white">
                                 <tr>
-                                    <td colspan="5" class="px-6 py-4  text-sm text-gray-500">Cargando unidades...</td>
+                                    <td colspan="5" class="px-6 py-4 text-sm text-gray-500 text-center">Cargando unidades...</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
-            </div>
+        </div>
     </main>
 
     <div id="delete-modal" class="modal-overlay">
@@ -363,34 +357,37 @@
         </div>
     </div>
 
-
-    <script>
-    // Lógica original del formulario (UI)
+<script type="module">
+    // --- 0. Lógica de Selección de Unidad de Empaque (UI) ---
     const packagingUnitSelect = document.getElementById('packaging-unit');
     const otherUnitContainer = document.getElementById('other-unit-container');
     const otherUnitInput = document.getElementById('other-unit');
 
-    packagingUnitSelect.addEventListener('change', (event) => {
-        if (event.target.value === 'otro') {
-            otherUnitContainer.classList.remove('hidden');
-            otherUnitInput.setAttribute('required', 'true');
-        } else {
-            otherUnitContainer.classList.add('hidden');
-            otherUnitInput.removeAttribute('required');
-            otherUnitInput.value = ''; 
-        }
-    });
-</script>
+    if (packagingUnitSelect) {
+        packagingUnitSelect.addEventListener('change', (event) => {
+            if (event.target.value === 'otro') {
+                if (otherUnitContainer) otherUnitContainer.classList.remove('hidden');
+                if (otherUnitInput) otherUnitInput.setAttribute('required', 'true');
+            } else {
+                if (otherUnitContainer) otherUnitContainer.classList.add('hidden');
+                if (otherUnitInput) {
+                    otherUnitInput.removeAttribute('required');
+                    otherUnitInput.value = ''; 
+                }
+            }
+        });
+    }
+    // --- 1. Variables de Estado Global y Configuración VPS ---
+    let SERVER_URL = "";
+    let respaldoActivo = false;
+    let sincronizandoEmpaques = false;
 
-<script type="module">
-    // --- 1. Variables de Estado Global ---
     let idEmpresa = null;
     let idUsuario = null;
     let rolUsuario = null;
     let listaProductos = [];
     let focoProducto = -1;
     let idProductoSeleccionado = null;
-    let tiempoEsperaBusqueda;
 
     // --- 2. Referencias al DOM ---
     const cargandoMensaje = document.getElementById('loading-message');
@@ -405,17 +402,41 @@
     const botonConfirmarEliminar = document.getElementById('confirm-delete');
     const botonCancelarEliminar = document.getElementById('cancel-delete');
     let idItemAEliminar = null;
-    
 
-    // --- 3. Inicialización del Módulo ---
-    async function inicializarModulo() {
-        console.log("🚀 [NEXUS] Inicializando Unidades de Empaque (Modo Local)...");
+    // --- 3. Inicialización del Motor de Empaques y Conexión VPS ---
+    async function iniciarMotorEmpaques() {
+        console.log("🚀 [NEXUS] Inicializando Unidades de Empaque (Sincronización VPS)...");
         
         cargandoMensaje.style.display = 'none';
         appContenedor.style.display = 'flex';
 
         try {
-            const sesion = await window.nexusAPI.obtenerSesionLocal();
+            const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+            if (!api) {
+                console.warn("⏳ NexusAPI no está disponible aún. Reintentando...");
+                setTimeout(iniciarMotorEmpaques, 100);
+                return;
+            }
+
+            // Obtener IP, Puerto y Respaldo desde el backend (.env)
+            try {
+                if (api.obtenerConfigServer) {
+                    const config = await api.obtenerConfigServer();
+                    respaldoActivo = config.respaldo_datos === 'true' || config.respaldo_datos === true;
+
+                    if (respaldoActivo) {
+                        SERVER_URL = `http://${config.serverIp || config.SERVER_IP}:${config.serverPort || config.SERVER_PORT}`;
+                        console.log("🧠 Cerebro PostgreSQL detectado para Empaques en:", SERVER_URL);
+                    } else {
+                        SERVER_URL = null;
+                        console.log("🔒 Respaldo en la nube desactivado (Plan Local).");
+                    }
+                }
+            } catch (configError) {
+                console.error("❌ Error obteniendo configuración del servidor:", configError);
+            }
+
+            const sesion = await api.obtenerSesionLocal();
 
             if (sesion && sesion.companyId) {
                 idEmpresa = sesion.companyId;
@@ -424,21 +445,201 @@
 
                 console.log(`✅ Sesión detectada para Empresa: ${idEmpresa}`);
                 
-                // Cargamos el catálogo de productos a la memoria apenas entra
                 await cargarCatalogoProductos();
                 await cargarUnidadesEmpaque();
+
+                if (navigator.onLine && respaldoActivo && SERVER_URL) {
+                    await iniciarSincronizacionSilenciosa();
+                    await descargarYValidarEmpaques(idEmpresa);
+                } else {
+                    console.log("🔌 Modo Local Activo: Usando datos SQLite exclusivamente.");
+                }
             } else {
                 console.warn("⚠️ No se encontró sesión local activa.");
             }
         } catch (error) {
-            console.error("❌ Error al inicializar sesión local:", error);
+            console.error("❌ Error en el arranque del motor de empaques:", error);
+        }
+    }
+
+    async function iniciarSincronizacionSilenciosa() {
+        if (sincronizandoEmpaques) return;
+
+        const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+        if (!navigator.onLine || !respaldoActivo || !SERVER_URL || !api) return;
+
+        sincronizandoEmpaques = true;
+        try {
+            const cola = await api.obtenerColaSincronizacion();
+
+            if (cola && cola.length > 0) {
+                const colaEmpaques = cola.filter(r => r.tabla === 'unidades_empaque' || r.tabla === 'empaques');
+                if (colaEmpaques.length > 0) {
+                    console.log(`⏳ [SYNC] Procesando ${colaEmpaques.length} registros de empaque pendientes...`);
+
+                    for (const registro of colaEmpaques) {
+                        try {
+                            const datosJSON = typeof registro.datos === 'string' ? JSON.parse(registro.datos) : registro.datos;
+                            let exitoso = false;
+
+                            if (registro.operacion === 'DELETE') {
+                                const response = await fetch(`${SERVER_URL}/api/maestro/empaque/${datosJSON.id || datosJSON.empaque_ID}`, {
+                                    method: 'DELETE'
+                                });
+                                exitoso = response.ok;
+                            } else {
+                                const response = await fetch(`${SERVER_URL}/api/maestro/empaque/sincronizar`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(datosJSON)
+                                });
+                                exitoso = response.ok;
+                            }
+
+                            if (exitoso) {
+                                await api.eliminarDeCola(registro.id);
+                                if (registro.operacion !== 'DELETE') {
+                                    datosJSON.estado_sync = 1;
+                                    await api.marcarComoSincronizado('unidades_empaque', datosJSON.id || datosJSON.empaque_ID);
+                                }
+                            }
+                        } catch (e) {
+                            console.error("❌ Error subiendo registro individual de empaque:", e);
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error("❌ Error en hilo de subida de empaques:", error);
+        } finally {
+            sincronizandoEmpaques = false;
+        }
+    }
+
+    async function descargarYValidarEmpaques(companyId) {
+        if (!navigator.onLine || !respaldoActivo || !SERVER_URL) return;
+
+        const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+        if (!api) return;
+
+        try {
+            console.log(`⏳ [SYNC-EMPAQUE] Descargando unidades de empaque desde ${SERVER_URL} para empresa: ${companyId}...`);
+            const response = await fetch(`${SERVER_URL}/api/maestro/empaque/${companyId}`, {
+                signal: AbortSignal.timeout(30000)
+            });
+
+            if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+
+            const resJson = await response.json();
+            let empaquesServidor = [];
+
+            if (Array.isArray(resJson)) {
+                empaquesServidor = resJson;
+            } else if (resJson && Array.isArray(resJson.data)) {
+                empaquesServidor = resJson.data;
+            } else if (resJson && Array.isArray(resJson.unidades_empaque)) {
+                empaquesServidor = resJson.unidades_empaque;
+            } else if (resJson && Array.isArray(resJson.empaques)) {
+                empaquesServidor = resJson.empaques;
+            } else if (resJson && typeof resJson === 'object') {
+                empaquesServidor = Object.values(resJson).find(val => Array.isArray(val)) || [];
+            }
+
+            if (!empaquesServidor || empaquesServidor.length === 0) {
+                console.log("ℹ️ [SYNC-EMPAQUE] No se encontraron unidades de empaque en el servidor VPS.");
+                return;
+            }
+
+            // Obtener registros activos en la cola de sincronización para no sobreescribir ediciones pendientes
+            const cola = await api.obtenerColaSincronizacion();
+            const queueIds = new Set();
+            if (cola && cola.length > 0) {
+                cola.forEach(r => {
+                    if (r.tabla === 'unidades_empaque' || r.tabla === 'empaques') {
+                        try {
+                            const d = typeof r.datos === 'string' ? JSON.parse(r.datos) : r.datos;
+                            const id = d.id || d.empaque_id || d.empaque_ID;
+                            if (id) queueIds.add(id);
+                        } catch (e) {}
+                    }
+                });
+            }
+
+            const empaquesLocales = await api.obtenerUnidadesEmpaqueLocal(companyId);
+            const estadosLocales = {};
+            if (empaquesLocales) {
+                empaquesLocales.forEach(e => {
+                    estadosLocales[e.id] = e.estado_sync;
+                });
+            }
+
+            const loteParaSincronizar = [];
+            let procesados = 0;
+            let omitidos = 0;
+
+            for (const eServidor of empaquesServidor) {
+                const idServidor = eServidor.id || eServidor.empaque_id || eServidor.empaque_ID;
+                if (!idServidor) continue;
+
+                // Solo omitir si tiene estado_sync 0 Y además está activamente en la cola de sincronización pendiente
+                if (estadosLocales[idServidor] === 0 && queueIds.has(idServidor)) {
+                    omitidos++;
+                    continue;
+                }
+
+                let nombreProd = eServidor.nombre_producto || eServidor.producto_nombre || eServidor.nombre || '';
+
+                // Si la unidad fue creada directamente en PostgreSQL sin nombre_producto, la resolvemos con el catálogo en memoria
+                const prodID = eServidor.product_id || eServidor.producto_id || eServidor.producto_ID;
+                if (!nombreProd && prodID && listaProductos && listaProductos.length > 0) {
+                    const prodEncontrado = listaProductos.find(p => p.id === prodID);
+                    if (prodEncontrado && prodEncontrado.nombre) {
+                        nombreProd = prodEncontrado.nombre;
+                    }
+                }
+
+                const empaqueValidado = {
+                    id: idServidor,
+                    company_id: eServidor.company_id || eServidor.empresa_id || companyId,
+                    product_id: prodID || '',
+                    nombre_producto: nombreProd,
+                    nombre_unidad: eServidor.nombre_unidad || eServidor.unidad || '',
+                    tipo_medida: eServidor.tipo_medida || eServidor.medida || 'Unidades',
+                    factor_cantidad: parseFloat(eServidor.factor_cantidad || eServidor.cantidad || 1.0),
+                    estado_sync: 1,
+                    fecha_modificacion: eServidor.fecha_modificacion || new Date().toISOString(),
+                    ultima_sincronizacion: eServidor.ultima_sincronizacion || new Date().toISOString()
+                };
+
+                loteParaSincronizar.push(empaqueValidado);
+                procesados++;
+            }
+
+            if (loteParaSincronizar.length > 0) {
+                if (api.sincronizarUnidadesEmpaqueLote) {
+                    await api.sincronizarUnidadesEmpaqueLote(loteParaSincronizar);
+                } else {
+                    for (const item of loteParaSincronizar) {
+                        await api.guardarUnidadEmpaqueLocal(item);
+                    }
+                }
+            }
+
+            await cargarUnidadesEmpaque();
+            console.log(`✅ [SYNC-EMPAQUE] ${procesados} empaques actualizados/guardados en SQLite local. ${omitidos} protegidos por cambios locales.`);
+        } catch (error) {
+            console.warn(`⚠️ Error al sincronizar empaques desde VPS. Motivo: ${error.message}`);
         }
     }
 
     async function cargarCatalogoProductos() {
         try {
+            const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+            if (!api) return;
+
             console.log("📦 [NEXUS] Cargando catálogo de productos desde SQLite...");
-            const productosBrutos = await window.nexusAPI.obtenerProductosLocal(idEmpresa);
+            const productosBrutos = await api.obtenerProductosLocal(idEmpresa);
             
             if (productosBrutos && productosBrutos.length > 0) {
                 listaProductos = productosBrutos.map(p => {
@@ -475,11 +676,6 @@
         const resultados = listaProductos.filter(p => {
             const nombreProd = (p.nombre || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             const codigoProd = (p.codigo || "").toLowerCase();
-            
-            // Eliminamos la categoría de la ecuación de búsqueda para evitar resultados fantasma
-            // const categoriaProd = (p.categoria || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            
-            // Ahora SOLO busca coincidencias en el Nombre o en el Código del producto
             return nombreProd.includes(query) || codigoProd.includes(query);
         });
 
@@ -513,13 +709,14 @@
 
     async function cargarUnidadesEmpaque() {
         try {
-            // 1. CARGA INICIAL DESDE SQLITE (Velocidad)
-            let empaquesLocales = await window.nexusAPI.obtenerUnidadesEmpaqueLocal(idEmpresa);
-            renderizarTablaEmpaques(empaquesLocales);
+            const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+            if (!api) return;
 
+            let empaquesLocales = await api.obtenerUnidadesEmpaqueLocal(idEmpresa);
+            renderizarTablaEmpaques(empaquesLocales);
         } catch (error) {
             console.error("❌ Error al cargar empaques:", error);
-            cuerpoTablaEmpaque.innerHTML = '<tr><td colspan="5" class="py-4  text-red-500">Error al conectar con la base de datos local.</td></tr>';
+            cuerpoTablaEmpaque.innerHTML = '<tr><td colspan="5" class="py-4 text-red-500 text-center">Error al conectar con la base de datos local.</td></tr>';
         }
     }
 
@@ -527,7 +724,7 @@
         cuerpoTablaEmpaque.innerHTML = '';
         
         if (!lista || lista.length === 0) {
-            cuerpoTablaEmpaque.innerHTML = '<tr><td colspan="5" class="py-4  text-gray-500">No hay unidades de empaque registradas.</td></tr>';
+            cuerpoTablaEmpaque.innerHTML = '<tr><td colspan="5" class="py-4 text-gray-500 text-center">No hay unidades de empaque registradas.</td></tr>';
             return;
         }
 
@@ -547,21 +744,14 @@
         });
     }
 
-    async function buscarProductos(termino) {
-        // Aquí conectaremos con la búsqueda de productos de la empresa
-        console.log("Buscando producto localmente:", termino);
-    }
-
     function seleccionarProducto(producto) {
-        idProductoSeleccionado = producto.id; // ¡Aquí guardamos el ID crucial!
+        idProductoSeleccionado = producto.id;
         entradaBusquedaProducto.value = producto.nombre;
         
         resultadosBusquedaProducto.innerHTML = '';
         resultadosBusquedaProducto.classList.remove('activo');
         
         console.log(`🎯 Nexus POS: Seleccionado ${producto.nombre} (ID: ${producto.id})`);
-        
-        // Enfocamos el siguiente campo para agilizar el flujo
         document.getElementById('packaging-unit').focus();
     }
 
@@ -587,30 +777,12 @@
         }, 5000);
     }
 
-    // --- 5. Utilidades (Toast y Modales) ---
-
-    function mostrarToast(mensaje, tipo = "success") {
-        const toast = document.createElement('div');
-        toast.className = `toast ${tipo}`;
-        toast.textContent = mensaje;
-        contenedorToast.appendChild(toast);
-
-        setTimeout(() => toast.classList.add('show'), 10);
-        setTimeout(() => {
-            toast.classList.remove('show');
-            toast.addEventListener('transitionend', () => toast.remove());
-        }, 5000);
-    }
-
-// --- 6. Event Listeners (Control de Interfaz y Guardado) ---
-
-    // Evento de Escritura en el Buscador Inteligente
+    // --- Event Listeners ---
     entradaBusquedaProducto.addEventListener('input', (e) => {
-        focoProducto = -1; // Reiniciamos el foco en cada nueva letra
+        focoProducto = -1;
         manejarBusquedaProducto(e.target.value);
     });
 
-    // Evento de Teclado (Navegación con Flechas y Enter)
     entradaBusquedaProducto.addEventListener('keydown', (e) => {
         const items = resultadosBusquedaProducto.querySelectorAll('.result-item');
         if (items.length === 0) return;
@@ -632,20 +804,18 @@
             if (focoProducto > -1 && items[focoProducto]) {
                 items[focoProducto].click();
             } else if (items.length > 0) {
-                // Si no hay resaltado pero hay resultados, elige el primero
                 items[0].click();
             }
         }
     });
 
-    // Cerrar menú de búsqueda al hacer clic fuera del contenedor
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.search-container')) {
             resultadosBusquedaProducto.classList.remove('activo');
         }
     });
 
-    // Procesar el formulario: Guardado Local Exclusivo
+    // Procesar Formulario: Guardado Local + Sincronización VPS
     formularioEmpaque.addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -654,51 +824,65 @@
             return;
         }
 
+        const productoSeleccionado = listaProductos.find(p => p.id === idProductoSeleccionado);
         const nombreUnidad = document.getElementById('packaging-unit').value;
         const unidadFinal = nombreUnidad === 'otro' ? document.getElementById('other-unit').value : nombreUnidad;
 
-        // Estructura de datos alineada con el Cerebro (main.js)
         const datosEmpaque = {
             id: `EMP-${Date.now()}`,
             company_id: idEmpresa,
             product_id: idProductoSeleccionado,
+            nombre_producto: productoSeleccionado ? (productoSeleccionado.nombre || '') : '',
             nombre_unidad: unidadFinal,
             tipo_medida: document.getElementById('measure-type').value,
             factor_cantidad: parseFloat(document.getElementById('quantity').value),
+            estado_sync: 0,
             fecha_modificacion: new Date().toISOString()
         };
 
-        try {
-            // 1. GUARDADO LOCAL (SQLite)
-            const resultadoLocal = await window.nexusAPI.guardarUnidadEmpaqueLocal(datosEmpaque);
+        const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
 
-            if (resultadoLocal.success) {
-                mostrarToastEmpaque("✅ Guardado localmente", "success");
-                
-                // Limpieza de interfaz
-                formularioEmpaque.reset();
-                if(document.getElementById('other-unit-container')) {
-                    document.getElementById('other-unit-container').classList.add('hidden');
-                }
-                idProductoSeleccionado = null;
-                
-                // Refrescar la tabla visual
-                await cargarUnidadesEmpaque();
+        try {
+            if (navigator.onLine && respaldoActivo && SERVER_URL) {
+                const response = await fetch(`${SERVER_URL}/api/maestro/empaque/sincronizar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(datosEmpaque)
+                });
+
+                if (!response.ok) throw new Error("Error en el Servidor VPS Maestro");
+
+                datosEmpaque.estado_sync = 1;
+                await api.guardarUnidadEmpaqueLocal(datosEmpaque);
+                mostrarToastEmpaque("✅ Unidad de empaque creada y sincronizada con el VPS", "success");
             } else {
-                throw new Error(resultadoLocal.error);
+                throw new Error("Modo local activo o sin permisos de nube");
             }
         } catch (error) {
-            console.error("❌ Error en proceso de guardado:", error);
-            mostrarToastEmpaque("Error al procesar la solicitud: " + error.message, "error");
+            console.warn("⚠️ Sincronización en tiempo real no disponible:", error.message);
+            datosEmpaque.estado_sync = 0;
+            await api.guardarUnidadEmpaqueLocal(datosEmpaque);
+
+            await api.encolarSincronizacion({
+                operacion: 'INSERT',
+                tabla: 'unidades_empaque',
+                datos: datosEmpaque
+            });
+            mostrarToastEmpaque("⚠️ Guardado localmente. Se subirá al reconectar.", "warning");
+        } finally {
+            formularioEmpaque.reset();
+            if (document.getElementById('other-unit-container')) {
+                document.getElementById('other-unit-container').classList.add('hidden');
+            }
+            idProductoSeleccionado = null;
+            await cargarUnidadesEmpaque();
         }
     });
 
-
-    // --- 7. Lógica de Eliminación (Globalizada para botones dinámicos) ---
-
+    // --- Eliminación con VPS + Cola Offline ---
     window.eliminarEmpaque = (id) => {
         idItemAEliminar = id;
-        modalEliminar.style.display = 'flex'; // Activamos modal de advertencia
+        modalEliminar.style.display = 'flex';
     };
 
     botonCancelarEliminar.onclick = () => {
@@ -709,25 +893,47 @@
     botonConfirmarEliminar.onclick = async () => {
         if (!idItemAEliminar) return;
 
+        const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+        const payloadEliminar = { id: idItemAEliminar, company_id: idEmpresa };
+
         try {
-            // 1. ELIMINACIÓN LOCAL (SQLite)
-            const resultado = await window.nexusAPI.eliminarUnidadEmpaqueLocal(idItemAEliminar);
+            if (navigator.onLine && respaldoActivo && SERVER_URL) {
+                const response = await fetch(`${SERVER_URL}/api/maestro/empaque/${idItemAEliminar}`, {
+                    method: 'DELETE'
+                });
 
-            if (resultado.success) {
+                if (!response.ok) throw new Error("Fallo en la nube al eliminar");
 
-                mostrarToastEmpaque("🗑️ Unidad eliminada correctamente", "success");
-                modalEliminar.style.display = 'none';
-                await cargarUnidadesEmpaque(); // Refrescamos la tabla de inmediato
+                await api.eliminarUnidadEmpaqueLocal(idItemAEliminar);
+                mostrarToastEmpaque("🗑️ Unidad eliminada de la nube y localmente", "success");
+            } else {
+                throw new Error("Offline o sin plan activo");
             }
         } catch (error) {
-            console.error("❌ Error al eliminar:", error);
-            mostrarToastEmpaque("Error al eliminar la unidad", "error");
+            console.warn("⚠️ Eliminación en cola local:", error.message);
+            await api.eliminarUnidadEmpaqueLocal(idItemAEliminar);
+            await api.encolarSincronizacion({
+                operacion: 'DELETE',
+                tabla: 'unidades_empaque',
+                datos: payloadEliminar
+            });
+            mostrarToastEmpaque("⚠️ Eliminado localmente (Pendiente de sincronizar)", "warning");
+        } finally {
+            modalEliminar.style.display = 'none';
+            idItemAEliminar = null;
+            await cargarUnidadesEmpaque();
         }
     };
 
-    // Ejecutar inicio
-    inicializarModulo();
-</script>
+    // Escuchador de estado Online
+    window.addEventListener('online', async () => {
+        console.log("🌐 Internet detectado. Sincronizando Unidades de Empaque...");
+        await iniciarSincronizacionSilenciosa();
+        if (idEmpresa) await descargarYValidarEmpaques(idEmpresa);
+    });
 
+    // Ejecutar arranque del motor de empaques
+    iniciarMotorEmpaques();
+</script>
 </body>
 </html>

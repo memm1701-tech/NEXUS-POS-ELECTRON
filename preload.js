@@ -65,6 +65,7 @@ contextBridge.exposeInMainWorld('nexusAPI', {
     guardarStockSucursal: (datos) => ipcRenderer.invoke('guardar-stock-sucursal', datos),
     obtenerUnidadesEmpaqueLocal: (companyId) => ipcRenderer.invoke('obtener-unidades-empaque-local', companyId),
     guardarUnidadEmpaqueLocal: (datos) => ipcRenderer.invoke('guardar-unidad-empaque-local', datos),
+    sincronizarUnidadesEmpaqueLote: (lote) => ipcRenderer.invoke('sincronizar-unidades-empaque-lote', lote),
     eliminarUnidadEmpaqueLocal: (id) => ipcRenderer.invoke('eliminar-unidad-empaque-local', id),
     obtenerEmpaquePorProducto: (productId) => ipcRenderer.invoke('obtener-empaque-por-producto', productId),
     guardarSalidaLocal: (datos) => ipcRenderer.invoke('guardar-salida-local', datos),

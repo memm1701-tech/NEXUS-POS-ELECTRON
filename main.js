@@ -283,7 +283,7 @@ const ESQUEMA_LOCAL = {
     inventario_sucursales: { producto_id: "TEXT", sucursal_id: "TEXT", company_id: "TEXT", stock: "REAL DEFAULT 0", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP", "PRIMARY KEY": "(producto_id, sucursal_id)" },
     cierres_caja_locales: { id: "TEXT PRIMARY KEY", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", total_ventas_bs: "REAL", total_ventas_usd: "REAL", total_gastos_bs: "REAL", total_gastos_usd: "REAL", total_ingresos_bs: "REAL", total_diferencia_bs: "REAL", total_diferencia_usd: "REAL", detalle_pagos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0" },
     reportes_fiscales_cierre: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", tipo_reporte: "TEXT", numero_z: "TEXT", fecha_emision: "TEXT", hora_emision: "TEXT", ultima_factura: "TEXT", exento: "REAL", base_imponible_tasa_1: "REAL", impuesto_tasa_1: "REAL", base_imponible_tasa_2: "REAL", impuesto_tasa_2: "REAL", base_imponible_tasa_3: "REAL", impuesto_tasa_3: "REAL", igtf: "REAL", raw_data: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_registro: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
-    unidades_empaque: { id: "TEXT PRIMARY KEY", company_id: "TEXT", product_id: "TEXT", nombre_unidad: "TEXT", tipo_medida: "TEXT", factor_cantidad: "REAL", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
+    unidades_empaque: { id: "TEXT PRIMARY KEY", company_id: "TEXT", product_id: "TEXT", nombre_producto: "TEXT DEFAULT ''", nombre_unidad: "TEXT", tipo_medida: "TEXT", factor_cantidad: "REAL", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP", ultima_sincronizacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
     comprobantes_retencion: { id: "TEXT PRIMARY KEY", datos_json: "TEXT NOT NULL", fecha_registro: "DATETIME DEFAULT CURRENT_TIMESTAMP", estatus: "TEXT DEFAULT 'EMITIDO'" },
     sucursales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", nombre: "TEXT", direccion: "TEXT", telefono: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "TEXT" },
     salidas_inventario: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", product_id: "TEXT", cantidad: "REAL", unidad: "TEXT", motivo: "TEXT", observacion: "TEXT", usuario_id: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
@@ -2199,6 +2199,8 @@ ipcMain.handle('marcar-como-sincronizado', async (event, tabla, idElemento) => {
         } else if (tabla === 'movimientos_stock') {
             try { db.prepare('UPDATE salidas_inventario SET estado_sync = 1 WHERE product_id = ? AND estado_sync = 0').run(idElemento); } catch(e) {}
             try { if (masterDbDirect) masterDbDirect.prepare('UPDATE movimientos_stock_maestro SET estado_sync = 1 WHERE producto_id = ? AND estado_sync = 0').run(idElemento); } catch(e) {}
+        } else if (tabla === 'unidades_empaque' || tabla === 'empaques') {
+            db.prepare('UPDATE unidades_empaque SET estado_sync = 1 WHERE id = ?').run(idElemento);
         }
         
         // Avisar a la pantalla de inventario que refresque la tabla
@@ -4199,23 +4201,74 @@ ipcMain.handle('obtener-unidades-empaque-local', async (event, companyId) => {
 
 ipcMain.handle('guardar-unidad-empaque-local', async (event, datos) => {
     try {
-        const id = datos.id || Date.now().toString();
+        if (!datos) return { success: false, error: 'Datos no proporcionados' };
+
+        // Asegurar que las columnas existen dinámicamente si Electron no se ha reiniciado
+        try { db.exec("ALTER TABLE unidades_empaque ADD COLUMN nombre_producto TEXT DEFAULT ''"); } catch (e) {}
+        try { db.exec("ALTER TABLE unidades_empaque ADD COLUMN ultima_sincronizacion DATETIME DEFAULT CURRENT_TIMESTAMP"); } catch (e) {}
+
+        const id = (datos.id || datos.empaque_id || datos.empaque_ID || Date.now()).toString();
+        const companyId = (datos.company_id || datos.companyId || datos.empresa_id || '').toString();
+        const productId = (datos.product_id || datos.productId || datos.producto_id || '').toString();
+        const nombreProducto = (datos.nombre_producto || datos.nombreProducto || datos.producto_nombre || '').toString();
+        const nombreUnidad = (datos.nombre_unidad || datos.nombre || datos.unidad || 'Unidad').toString();
+        const tipoMedida = (datos.tipo_medida || datos.medida || 'Unidades').toString();
+        const factorCantidad = parseFloat(datos.factor_cantidad || datos.cantidad || 1.0) || 1.0;
+        const estadoSync = datos.estado_sync !== undefined && datos.estado_sync !== null ? Number(datos.estado_sync) : 0;
+        const fechaMod = (datos.fecha_modificacion || new Date().toISOString()).toString();
+        const ultimaSync = (datos.ultima_sincronizacion || new Date().toISOString()).toString();
+
         const stmt = db.prepare(`
             INSERT OR REPLACE INTO unidades_empaque 
-            (id, company_id, product_id, nombre_unidad, tipo_medida, factor_cantidad, estado_sync, fecha_modificacion)
-            VALUES (?, ?, ?, ?, ?, ?, 0, datetime('now', 'localtime'))
+            (id, company_id, product_id, nombre_producto, nombre_unidad, tipo_medida, factor_cantidad, estado_sync, fecha_modificacion, ultima_sincronizacion)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
-        stmt.run(
-            id, 
-            datos.company_id || datos.companyId, 
-            datos.product_id || datos.productId, 
-            datos.nombre_unidad || datos.nombre, 
-            datos.tipo_medida || 'Unidades', 
-            datos.factor_cantidad || datos.factor || 1.0
-        );
+        stmt.run(id, companyId, productId, nombreProducto, nombreUnidad, tipoMedida, factorCantidad, estadoSync, fechaMod, ultimaSync);
         return { success: true, id };
     } catch (e) {
         console.error("Error guardar unidad empaque:", e);
+        return { success: false, error: e.message };
+    }
+});
+
+ipcMain.handle('sincronizar-unidades-empaque-lote', async (event, lote) => {
+    try {
+        if (!Array.isArray(lote) || lote.length === 0) {
+            return { success: true, count: 0 };
+        }
+
+        // Asegurar que las columnas existen dinámicamente si Electron no se ha reiniciado
+        try { db.exec("ALTER TABLE unidades_empaque ADD COLUMN nombre_producto TEXT DEFAULT ''"); } catch (e) {}
+        try { db.exec("ALTER TABLE unidades_empaque ADD COLUMN ultima_sincronizacion DATETIME DEFAULT CURRENT_TIMESTAMP"); } catch (e) {}
+
+        const stmt = db.prepare(`
+            INSERT OR REPLACE INTO unidades_empaque 
+            (id, company_id, product_id, nombre_producto, nombre_unidad, tipo_medida, factor_cantidad, estado_sync, fecha_modificacion, ultima_sincronizacion)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        const transaction = db.transaction((items) => {
+            for (const item of items) {
+                if (!item) continue;
+                const id = (item.id || item.empaque_id || item.empaque_ID || Date.now()).toString();
+                const companyId = (item.company_id || item.companyId || item.empresa_id || '').toString();
+                const productId = (item.product_id || item.productId || item.producto_id || '').toString();
+                const nombreProducto = (item.nombre_producto || item.nombreProducto || item.producto_nombre || '').toString();
+                const nombreUnidad = (item.nombre_unidad || item.nombre || item.unidad || 'Unidad').toString();
+                const tipoMedida = (item.tipo_medida || item.medida || 'Unidades').toString();
+                const factorCantidad = parseFloat(item.factor_cantidad || item.cantidad || 1.0) || 1.0;
+                const estadoSync = item.estado_sync !== undefined && item.estado_sync !== null ? Number(item.estado_sync) : 1;
+                const fechaMod = (item.fecha_modificacion || new Date().toISOString()).toString();
+                const ultimaSync = (item.ultima_sincronizacion || new Date().toISOString()).toString();
+
+                stmt.run(id, companyId, productId, nombreProducto, nombreUnidad, tipoMedida, factorCantidad, estadoSync, fechaMod, ultimaSync);
+            }
+        });
+
+        transaction(lote);
+        return { success: true, count: lote.length };
+    } catch (e) {
+        console.error("Error sincronizando lote de unidades de empaque:", e.message);
         return { success: false, error: e.message };
     }
 });

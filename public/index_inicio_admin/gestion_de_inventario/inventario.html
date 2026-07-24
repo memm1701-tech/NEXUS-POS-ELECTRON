@@ -24,14 +24,6 @@
         width: 100%;
         overflow-x: hidden; 
     }
-    body {
-        font-family: 'Roboto', sans-serif;
-        background-color: #f3f4f6;
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        overflow-x: hidden; 
-    }
 
     /* AGREGA ESTE BLOQUE NUEVO */
     main {
@@ -326,19 +318,7 @@
         </div>
     </div>
 
-    <div id="delete-confirmation-modal" style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
-        <div style="background-color: white; margin: 15% auto; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); width: 80%; max-width: 400px; text-align: center;">
-            <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
-                <span style="font-size: 24px; color: #ffc107; margin-right: 10px;">⚠️</span>
-                <h3 style="font-size: 1.2em; font-weight: 700; color: #333;">Confirmación Requerida</h3>
-            </div>
-            <p id="modal-product-message" style="margin-bottom: 20px; font-size: 1em; color: #666;"></p>
-            <div style="display: flex; justify-content: space-around; gap: 10px;">
-                <button id="modal-confirm-delete-btn" style="padding: 10px 20px; border: none; border-radius: 6px; background-color: #dc3545; color: white; cursor: pointer;">Sí, Deshabilitar Permanentemente</button>
-                <button id="modal-cancel-delete-btn" style="padding: 10px 20px; border: 1px solid #ccc; border-radius: 6px; background-color: #f8f9fa; color: #333; cursor: pointer;">Cancelar</button>
-            </div>
-        </div>
-    </div>
+    <!-- Modal de confirmación unificado (ver modal completo debajo del </body>) -->
 
     <main>
         <div class="inventory-container">
@@ -1080,7 +1060,7 @@ document.getElementById('file-input').addEventListener('change', async (e) => {
 
 document.getElementById('btn-remove-img').addEventListener('click', () => {
     updateImageUI(null);
-});1
+});
 
 document.addEventListener('DOMContentLoaded', () => {
     // Llamamos a la carga de categorías al iniciar
@@ -1147,8 +1127,15 @@ function calculateTotalStockAddition() {
     }
 }
 
-window.enableEditing = async function(docId, productData) {
+window.enableEditing = async function(docId) {
     if (!docId) return;
+
+    // ✅ FIX #4: Buscar el producto en memoria por ID.
+    // Antes se pasaba todo el JSON del producto en el atributo onclick (muy costoso en RAM y DOM).
+    // Ahora solo se pasa el ID y aquí lo buscamos en O(n).
+    const item = allProducts.find(p => p.docId === docId);
+    if (!item) { console.warn(`⚠️ Producto ${docId} no encontrado en memoria.`); return; }
+    const productData = item.product;
 
     console.log("📝 Modo edición: Sincronizando los 3 niveles de precio...");
     currentProductInEditing = JSON.parse(JSON.stringify(productData));
@@ -1171,10 +1158,8 @@ window.enableEditing = async function(docId, productData) {
 
     // 2. 🧠 MIGRACIÓN COMPLETA DE PRECIOS
     if (productData.precios && productData.precios.p1) {
-        // Si el objeto fue extraído correctamente, lo clonamos
         preciosData = JSON.parse(JSON.stringify(productData.precios));
     } else {
-        // Si es un producto muy antiguo sin Multi-Precio, rescatamos sus datos viejos a P1
         preciosData = {
             p1: { 
                 compra: parseFloat(productData.precio_compra) || 0, 
@@ -1222,7 +1207,8 @@ window.enableEditing = async function(docId, productData) {
     const stockContainer = document.getElementById('stock-container');
     if (stockContainer) stockContainer.style.display = 'block'; 
     
-    updateImageUI(productData.imagen || null);
+    // ✅ FIX #2: Recuperar imagen del mapa dedicado (no del objeto en allProducts)
+    updateImageUI((window.productImageMap && window.productImageMap[docId]) || null);
     toggleFormButtons(true); 
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
@@ -1438,17 +1424,7 @@ document.getElementById('permanent-confirm-btn').onclick = async function() {
     }
 };
 
-window.cancelEditing = function() {
-    editingProductId = null;
-    clearForm();
-    toggleFormButtons(false);
-
-    // Ocultar sección de stock (Ajusta 'stock-edit-section' al ID real de tu div)
-    const stockSection = document.getElementById('stock-edit-section');
-    if (stockSection) {
-        stockSection.style.display = 'none';
-    }
-};
+// ✅ FIX #6: cancelEditing duplicado eliminado. La versión activa está más abajo.
 
 async function guardarInactivacionLocal(datos) {
     try {
@@ -1529,9 +1505,7 @@ window.updateProduct = async function(idEmpresa) {
 };
 
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Se removió el cargarProductosDesdeLocal(); duplicado
-});
+// ✅ FIX #6: DOMContentLoaded duplicado eliminado.
 
 async function guardarEnColaLocal(productData, companyId) {
     try {
@@ -1734,8 +1708,6 @@ function renderProducts(products) {
     const inventoryTableBody = document.getElementById('inventory-table-body'); 
     if (!inventoryTableBody) return;
 
-    inventoryTableBody.innerHTML = '';
-
     if (!products || products.length === 0) {
         if (window.syncStateMessage) {
             inventoryTableBody.innerHTML = `<tr><td colspan="10">${window.syncStateMessage}</td></tr>`;
@@ -1752,113 +1724,124 @@ function renderProducts(products) {
         return nombreA.localeCompare(nombreB, undefined, { numeric: true, sensitivity: 'base' });
     });
 
+    // Pre-calcular el mapa de IVA una sola vez fuera del loop
+    const taxLabels = {
+        "16": "G (General)",
+        "0": "E (Exento)",
+        "8": "R (Reducida)",
+        "31": "A (Adicional)"
+    };
+
+    // ✅ FIX #1 (CRÍTICO): Construir todo el HTML como un string y hacer UN SOLO golpe al DOM.
+    // Antes: 250 appendChild → 250 reflows del browser.
+    // Ahora: 1 innerHTML → 1 reflow del browser.
+    let htmlBuffer = '';
+
     productosOrdenados.forEach(item => {
         const product = item.product;
         const docId = item.docId;
         
-        // Convertir nombre a mayúsculas
         const nombreMayuscula = (product.nombre || '').toUpperCase();
         const displayNombre = nombreMayuscula || '---';
         const safeProductName = nombreMayuscula.replace(/'/g, "\\'");
 
-        // 1. TRADUCTOR DE CATEGORÍA
+        // TRADUCTOR DE CATEGORÍA
         const categoryName = window.categoryMap && window.categoryMap[product.categoria] 
             ? window.categoryMap[product.categoria] 
             : (product.categoria || 'Sin Cat.');
 
-        // 2. CÁLCULOS Y PRECIOS
+        // CÁLCULOS Y PRECIOS
         const sellPrice = parseFloat(product.precio_venta || 0);
         const buyPrice = parseFloat(product.precio_compra || 0);
         const profit = parseFloat(product.ganancia !== undefined ? product.ganancia : (sellPrice - buyPrice));
         const profitPercentage = parseFloat(product.porcentaje_ganancia || 0);
         
-        // 3. ESTILOS DE MONEDA
+        // ESTILOS DE MONEDA
         const currencySymbol = product.currency || 'USD';
-        const isUSD = currencySymbol === "USD";
-        const currencyStyle = isUSD ? 'style="color: #27ae60; font-weight: bold;"' : '';
-        const numberStyle = 'style="font-weight: bold; color: #2c3e50;"';
+        const isUSD = currencySymbol === 'USD';
+        const currencyColor = isUSD ? 'color: #27ae60; font-weight: bold;' : '';
 
-        // 4. LÓGICA DE IVA (ALÍCUOTA) - Doble línea
-        const taxLabels = {
-            "16": "G (General)",
-            "0": "E (Exento)",
-            "8": "R (Reducida)",
-            "31": "A (Adicional)"
-        };
-
+        // LÓGICA DE IVA
         const taxRate = product.tipo_alicuota || '16';
-        const taxLabel = taxLabels[taxRate] || "G (General)";
-        
-        // Colores: Azul para General, Naranja para el resto
+        const taxLabel = taxLabels[taxRate] || 'G (General)';
         const taxClass = (taxRate === '16' || taxRate === 16) 
             ? 'background-color: #e8f4fd; color: #2980b9;' 
             : 'background-color: #fdf2e9; color: #d35400;';
 
-        const row = document.createElement('tr');
-        const safeProductJson = JSON.stringify(product).replace(/"/g, '&quot;');
+        const btnDeleteColor = product.status === 1 ? '#64748b' : '#10b981';
+        const btnDeleteText = product.status === 1 ? 'Deshabilitar' : 'Habilitar';
 
-        // 5. RENDERIZADO FINAL
-        // --- INICIO DE LA MODIFICACIÓN: Estilo aplicado a la columna del nombre ---
-        row.innerHTML = `
-            <td style="font-weight: bold; color: #2c3e50;">${displayNombre}</td>
-            <td title="${product.categoria}">${categoryName}</td>
-            <td style="text-align: center;">${product.unit || 'UN'}</td>
-            
-            <td ${numberStyle}>
-                ${buyPrice.toFixed(2)} <span ${currencyStyle}>${currencySymbol}</span>
-            </td>
-
-            <td style="text-align: center; font-weight: bold; color: #2c3e50;">
-                ${profitPercentage.toFixed(2)}%
-            </td>
-
-            <td ${numberStyle}>
-                ${sellPrice.toFixed(2)} <span ${currencyStyle}>${currencySymbol}</span>
-            </td>
-
-            <td style="color: #27ae60; font-weight: bold;">
-                ${profit.toFixed(2)} <span ${currencyStyle}>${currencySymbol}</span>
-            </td>
-
-            <td style="text-align: center; min-width: 100px;">
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;">
-                    <span style="padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; ${taxClass}">
-                        ${taxRate}%
-                    </span>
-                    <small style="font-size: 9px; color: #666; font-weight: bold; text-transform: uppercase;">
-                        ${taxLabel.split(' ')[0]} ${taxLabel.split(' ')[1] || ''}
-                    </small>
-                </div>
-            </td>
-
-            <td><code style="background: #eee; padding: 2px 4px; border-radius: 4px;">${product.codigo || '---'}</code></td>
-            
-            <td>
-                <div class="table-actions-container">
-                    <button class="btn-edit" onclick="window.enableEditing('${docId}', ${safeProductJson})">Editar</button>
-                    <button class="btn-delete" style="background-color: ${product.status === 1 ? '#64748b' : '#10b981'}; color: white;" onclick="window.deleteProduct('${docId}', '${safeProductName}', ${product.status})">
-                        ${product.status === 1 ? 'Deshabilitar' : 'Habilitar'}
-                    </button>
-                    <button class="btn-trash" onclick="window.eliminarPermanente('${docId}', '${safeProductName}')">
-                        Eliminar
-                    </button>
-                </div>
-            </td>
-        `;
-        // --- FIN DE LA MODIFICACIÓN ---
-        
-        inventoryTableBody.appendChild(row);
+        // ✅ FIX #4: El onclick solo pasa el docId (string liviano).
+        // Antes se serializaba el objeto completo con JSON.stringify (incluía imagen Base64 enorme).
+        htmlBuffer += `
+            <tr>
+                <td style="font-weight: bold; color: #2c3e50;">${displayNombre}</td>
+                <td title="${product.categoria}">${categoryName}</td>
+                <td style="text-align: center;">${product.unit || 'UN'}</td>
+                <td style="font-weight: bold; color: #2c3e50;">
+                    ${buyPrice.toFixed(2)} <span style="${currencyColor}">${currencySymbol}</span>
+                </td>
+                <td style="text-align: center; font-weight: bold; color: #2c3e50;">
+                    ${profitPercentage.toFixed(2)}%
+                </td>
+                <td style="font-weight: bold; color: #2c3e50;">
+                    ${sellPrice.toFixed(2)} <span style="${currencyColor}">${currencySymbol}</span>
+                </td>
+                <td style="color: #27ae60; font-weight: bold;">
+                    ${profit.toFixed(2)} <span style="${currencyColor}">${currencySymbol}</span>
+                </td>
+                <td style="text-align: center; min-width: 100px;">
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;">
+                        <span style="padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; ${taxClass}">
+                            ${taxRate}%
+                        </span>
+                        <small style="font-size: 9px; color: #666; font-weight: bold; text-transform: uppercase;">
+                            ${taxLabel.split(' ')[0]} ${taxLabel.split(' ')[1] || ''}
+                        </small>
+                    </div>
+                </td>
+                <td><code style="background: #eee; padding: 2px 4px; border-radius: 4px;">${product.codigo || '---'}</code></td>
+                <td>
+                    <div class="table-actions-container">
+                        <button class="btn-edit" onclick="window.enableEditing('${docId}')">Editar</button>
+                        <button class="btn-delete" style="background-color: ${btnDeleteColor}; color: white;" onclick="window.deleteProduct('${docId}', '${safeProductName}', ${product.status})">
+                            ${btnDeleteText}
+                        </button>
+                        <button class="btn-trash" onclick="window.eliminarPermanente('${docId}', '${safeProductName}')">
+                            Eliminar
+                        </button>
+                    </div>
+                </td>
+            </tr>`;
     });
+
+    // UN SOLO golpe al DOM para toda la tabla
+    inventoryTableBody.innerHTML = htmlBuffer;
 }
 
 // === PAGINACIÓN Y FILTROS A-Z ===
 function drawAZFilter() {
     const container = document.getElementById('az-filter-container');
     if (!container) return;
-    container.innerHTML = '';
     
     const letters = ['Todos', 'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z', '#'];
     
+    // ✅ FIX #3: Si los botones ya existen, solo actualizar el estado activo sin recrearlos.
+    // Antes: destruía y recreaba 28 botones (con sus event listeners) en CADA carga de tabla.
+    // Ahora: solo cambia el color del botón activo (28 operaciones de estilo vs 28 creaciones de DOM).
+    if (container.children.length === letters.length) {
+        Array.from(container.children).forEach((btn, i) => {
+            const letter = letters[i];
+            const isSelected = (letter === 'Todos' && currentLetterFilter === '') || (letter === currentLetterFilter);
+            btn.style.backgroundColor = isSelected ? '#007bff' : '#f8f9fa';
+            btn.style.color = isSelected ? 'white' : '#333';
+            btn.style.borderColor = isSelected ? '#007bff' : '#ccc';
+        });
+        return;
+    }
+    
+    // Primera vez: construir los botones desde cero
+    container.innerHTML = '';
     letters.forEach(letter => {
         const btn = document.createElement('button');
         btn.textContent = letter;
@@ -1870,16 +1853,10 @@ function drawAZFilter() {
         btn.style.fontSize = '12px';
         btn.style.transition = 'all 0.2s';
         
-        // Estilo seleccionado
         const isSelected = (letter === 'Todos' && currentLetterFilter === '') || (letter === currentLetterFilter);
-        if (isSelected) {
-            btn.style.backgroundColor = '#007bff';
-            btn.style.color = 'white';
-            btn.style.borderColor = '#007bff';
-        } else {
-            btn.style.backgroundColor = '#f8f9fa';
-            btn.style.color = '#333';
-        }
+        btn.style.backgroundColor = isSelected ? '#007bff' : '#f8f9fa';
+        btn.style.color = isSelected ? 'white' : '#333';
+        btn.style.borderColor = isSelected ? '#007bff' : '#ccc';
         
         btn.addEventListener('click', () => {
             currentLetterFilter = (letter === 'Todos') ? '' : letter;
@@ -1949,9 +1926,15 @@ async function cargarProductosDesdeLocal() {
         const apiSegura = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
         
         const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+
+        // ✅ FIX #2 (CRÍTICO): Antes limit: -1 en filtro A-Z traía TODOS los productos sin límite.
+        // Con 1500 productos, SQLite los devolvía todos, se mapeaban en JS y el DOM intentaba
+        // renderizar 300+ filas de golpe. Ahora siempre hay un límite razonable.
+        const limitToUse = currentLetterFilter ? 500 : ITEMS_PER_PAGE;
+
         const result = await apiSegura.obtenerProductosPaginados({
             empresaId: companyId || window.currentCompanyId,
-            limit: currentLetterFilter ? -1 : ITEMS_PER_PAGE,
+            limit: limitToUse,
             offset: offset,
             letterFilter: currentLetterFilter,
             searchQuery: currentSearchQuery
@@ -1961,6 +1944,12 @@ async function cargarProductosDesdeLocal() {
         totalItems = result.totalCount || 0;
         
         allProducts = [];
+
+        // ✅ FIX #2: Mapa separado para imágenes Base64.
+        // Las imágenes pueden pesar 50–200 KB cada una como string.
+        // Antes vivían dentro de allProducts, ocupando hasta 25 MB de RAM con 250 productos cargados.
+        // Ahora se guardan en un mapa dedicado y se leen solo al abrir el formulario de edición.
+        if (!window.productImageMap) window.productImageMap = {};
 
         if (localProducts.length > 0) {
             allProducts = localProducts.map(p => {
@@ -1972,6 +1961,10 @@ async function cargarProductosDesdeLocal() {
                 } catch (e) { 
                     d = {}; 
                 }
+
+                // Guardar imagen en mapa separado, no en el objeto del producto
+                const imagenB64 = d.imagen || p.imagen || '';
+                if (imagenB64 && p.id) window.productImageMap[p.id] = imagenB64;
 
                 const p1 = (d.precios && d.precios.p1) ? d.precios.p1 : null;
 
@@ -1987,10 +1980,10 @@ async function cargarProductosDesdeLocal() {
                         precios: d.precios || null, 
                         categoria: d.categoria || p.categoria || '',
                         status: d.status !== undefined ? d.status : (p.status !== undefined ? p.status : 1),
-                        imagen: d.imagen || p.imagen || '',
+                        // imagen YA NO está aquí — está en window.productImageMap[docId]
                         currency: d.currency || p.currency || 'USD',
                         unit: d.unit || p.unit || 'UN',
-                        tipo_alicuota: d.tipo_alicuota || p.tipo_alicuota || "16"
+                        tipo_alicuota: d.tipo_alicuota || p.tipo_alicuota || '16'
                     }
                 };
             }).filter(item => item !== null);
@@ -2114,7 +2107,7 @@ window.addEventListener('online', async () => {
     }
 });
 
-loadCategories();
+// ✅ FIX #6: loadCategories() duplicado eliminado. Ya se llama dentro del DOMContentLoaded (línea ~1087).
 </script>
 </body>
 </html>
