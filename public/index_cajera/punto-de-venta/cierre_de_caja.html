@@ -157,6 +157,9 @@
                     <span class="material-icons mr-2">history</span>
                     Memoria Fiscal
                 </button>
+                <button id="btn-reimpresion-auditoria" onclick="window.abrirModalReimpresion()" class="bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-3 px-4 shadow-lg transition flex items-center" style="display:none;">
+                    <i class="fas fa-history mr-2"></i> Reimpresión Auditoría
+                </button>
                 <button id="close-cash-button" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-none transition duration-300 shadow-md">
                     Cerrar Caja
                 </button>
@@ -210,6 +213,50 @@
                 </div>
             </div>
 
+            <!-- Modal: Reimpresión de Auditoría -->
+            <div id="modal-reimpresion" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 hidden">
+                <div class="bg-white rounded-none p-6 shadow-2xl max-w-md w-full">
+                    <h3 class="text-lg font-bold mb-4 text-indigo-700 flex items-center">
+                        <span class="material-icons mr-2">history</span>
+                        Reimpresión de Auditoría
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Documento:</label>
+                            <select id="reimp-tipo-doc" class="w-full border rounded-none p-2">
+                                <option value="F">Facturas</option>
+                                <option value="C">Notas de Crédito</option>
+                                <option value="D">Notas de Débito</option>
+                                <option value="Z">Reportes Z</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Buscar por:</label>
+                            <select id="reimp-rango-tipo" class="w-full border rounded-none p-2">
+                                <option value="numero">Por Número</option>
+                                <option value="fecha">Por Fecha</option>
+                            </select>
+                        </div>
+                        <div id="reimp-campos-numero">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Número Inicial:</label>
+                            <input type="number" id="reimp-num-inicio" min="1" class="w-full border rounded-none p-2 mb-2" placeholder="Ej: 1">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Número Final:</label>
+                            <input type="number" id="reimp-num-fin" min="1" class="w-full border rounded-none p-2" placeholder="Ej: 50">
+                        </div>
+                        <div id="reimp-campos-fecha" class="hidden">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Inicio:</label>
+                            <input type="date" id="reimp-fecha-inicio" class="w-full border rounded-none p-2 mb-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Fin:</label>
+                            <input type="date" id="reimp-fecha-fin" class="w-full border rounded-none p-2">
+                        </div>
+                    </div>
+                    <div class="flex justify-end mt-6 space-x-3">
+                        <button onclick="window.cerrarModalReimpresion()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-none transition">Cancelar</button>
+                        <button onclick="window.ejecutarReimpresion()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-none transition">Reimprimir</button>
+                    </div>
+                </div>
+            </div>
+
     </main>
 
     <div id="info-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 hidden">
@@ -219,6 +266,20 @@
             <div class="flex justify-end">
                 <button id="close-modal-button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-none">Aceptar</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal: Conteo Regresivo Fiscal -->
+    <div id="countdown-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-none p-6 shadow-xl max-w-sm w-full text-center">
+            <h3 id="countdown-title" class="text-lg font-bold mb-2 text-blue-600">Procesando Reporte Fiscal</h3>
+            <p id="countdown-desc" class="text-gray-600 text-sm mb-4">Esperando transmisión fiscal y emisión de DNF...</p>
+            <div class="flex items-center justify-center mb-4">
+                <div class="w-20 h-20 rounded-full border-4 border-blue-500 flex items-center justify-center">
+                    <span id="countdown-number" class="text-3xl font-bold text-blue-600">20</span>
+                </div>
+            </div>
+            <p class="text-xs text-gray-400">No enviar comandos a la impresora durante este período.</p>
         </div>
     </div>
 
@@ -679,14 +740,17 @@
                 const btnReporteX = document.getElementById('btn-reporte-x');
                 const btnCierreZ = document.getElementById('btn-cierre-z');
                 const btnMemoria = document.getElementById('btn-memoria-fiscal');
+                const btnReimpresion = document.getElementById('btn-reimpresion-auditoria');
                 if (currentEmissionMode === 'FISCAL_HKA') {
                     if (btnReporteX) btnReporteX.style.display = 'flex';
                     if (btnCierreZ) btnCierreZ.style.display = 'flex';
                     if (btnMemoria) btnMemoria.style.display = 'flex';
+                    if (btnReimpresion) btnReimpresion.style.display = 'flex';
                 } else {
                     if (btnReporteX) btnReporteX.style.display = 'none';
                     if (btnCierreZ) btnCierreZ.style.display = 'none';
                     if (btnMemoria) btnMemoria.style.display = 'none';
+                    if (btnReimpresion) btnReimpresion.style.display = 'none';
                 }
             }
         } catch (error) {
@@ -1076,6 +1140,39 @@
         });
     }
 
+    // Función de conteo regresivo visual para delays fiscales
+    function esperarConConteoRegresivo(segundos, tipoReporte) {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('countdown-modal');
+            const numberEl = document.getElementById('countdown-number');
+            const titleEl = document.getElementById('countdown-title');
+            const descEl = document.getElementById('countdown-desc');
+
+            titleEl.textContent = 'Procesando Reporte ' + tipoReporte;
+            if (tipoReporte === 'Z') {
+                descEl.textContent = 'Esperando transmisión fiscal al SENIAT y emisión de DNF...';
+            } else {
+                descEl.textContent = 'Esperando emisión de Documento No Fiscal (DNF)...';
+            }
+
+            let restante = segundos - 1;
+            numberEl.textContent = restante;
+            modal.classList.remove('hidden');
+            if (infoModal) infoModal.classList.add('hidden');
+
+            const intervalo = setInterval(() => {
+                restante--;
+                numberEl.textContent = restante;
+
+                if (restante <= 0) {
+                    clearInterval(intervalo);
+                    modal.classList.add('hidden');
+                    resolve();
+                }
+            }, 1000);
+        });
+    }
+
     // Función helper para el ciclo completo de reporte fiscal (X o Z)
     async function procesarCicloReporteFiscal(tipo) {
         if (loadingOverlay) loadingOverlay.classList.remove('hidden');
@@ -1090,7 +1187,11 @@
                 return;
             }
 
-            showInfoMessage('✅ Reporte ' + tipo + ' emitido. Extrayendo datos...', 'success');
+            showInfoMessage('✅ Reporte ' + tipo + ' emitido. Esperando transmisión fiscal...', 'success');
+
+            // DELAY OBLIGATORIO: 20 segundos (Manual HKA Sección 20, pág. 67)
+            // La impresora emite tickets DNF y en el caso del Z transmite datos al SENIAT.
+            await esperarConConteoRegresivo(20, tipo);
 
             // 2. Extraer Reporte (U0X o U0Z)
             const resExtraer = await window.nexusAPI.extraerReporteFiscal(tipo, puertoFiscal);
@@ -1214,11 +1315,11 @@
                 alert('Debe especificar ambas fechas.');
                 return;
             }
-            // Formato HKA para imprimir por fechas: I2(A/S) ddmmyy ddmmyy
+            // Formato HKA para imprimir por fechas: I2(A/S) yymmdd yymmdd
             const partsInicio = inicio.split('-');
-            const fechaInicio = partsInicio[2] + partsInicio[1] + partsInicio[0].substring(2, 4); // yyyy-mm-dd -> ddmmyy
+            const fechaInicio = partsInicio[0].substring(2, 4) + partsInicio[1] + partsInicio[2]; // yyyy-mm-dd -> yymmdd
             const partsFin = fin.split('-');
-            const fechaFin = partsFin[2] + partsFin[1] + partsFin[0].substring(2, 4);
+            const fechaFin = partsFin[0].substring(2, 4) + partsFin[1] + partsFin[2];
 
             comando = `I2${letraFormato}${fechaInicio}${fechaFin}`;
         } else {
@@ -1247,6 +1348,66 @@
             }
         } catch (error) {
             console.error('Error en Memoria Fiscal:', error);
+            showInfoMessage('❌ Error de comunicación: ' + error.message, 'error');
+        } finally {
+            if (loadingOverlay) loadingOverlay.classList.add('hidden');
+        }
+    };
+
+    window.abrirModalReimpresion = function() {
+        const modal = document.getElementById('modal-reimpresion');
+        if (modal) modal.classList.remove('hidden');
+        const selectTipo = document.getElementById('reimp-rango-tipo');
+        if (selectTipo) selectTipo.onchange = function() {
+            document.getElementById('reimp-campos-numero').classList.toggle('hidden', this.value === 'fecha');
+            document.getElementById('reimp-campos-fecha').classList.toggle('hidden', this.value === 'numero');
+        };
+    };
+
+    window.cerrarModalReimpresion = function() {
+        const modal = document.getElementById('modal-reimpresion');
+        if (modal) modal.classList.add('hidden');
+    };
+
+    window.ejecutarReimpresion = async function() {
+        if (!puertoFiscal) {
+            showInfoMessage('Error: No hay puerto COM fiscal configurado.', 'error');
+            return;
+        }
+        const tipoDoc = document.getElementById('reimp-tipo-doc').value; // F, C, D, Z
+        const tipoRango = document.getElementById('reimp-rango-tipo').value; // numero, fecha
+        let comando = '';
+
+        if (tipoRango === 'numero') {
+            const inicio = document.getElementById('reimp-num-inicio').value;
+            const fin = document.getElementById('reimp-num-fin').value;
+            if (!inicio || !fin) { alert('Especifique ambos números.'); return; }
+            if (tipoDoc === 'Z') {
+                comando = `U4${tipoDoc}${inicio.padStart(6,'0')}${fin.padStart(6,'0')}`;
+            } else {
+                comando = `U4${tipoDoc}${inicio.padStart(8,'0')}${fin.padStart(8,'0')}`;
+            }
+        } else {
+            const inicio = document.getElementById('reimp-fecha-inicio').value;
+            const fin = document.getElementById('reimp-fecha-fin').value;
+            if (!inicio || !fin) { alert('Especifique ambas fechas.'); return; }
+            const pi = inicio.split('-');
+            const pf = fin.split('-');
+            const fi = pi[2] + pi[1] + pi[0].substring(2,4);
+            const ff = pf[2] + pf[1] + pf[0].substring(2,4);
+            comando = `U5${tipoDoc}${fi}${ff}`;
+        }
+
+        window.cerrarModalReimpresion();
+        if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+        try {
+            const resultado = await window.nexusAPI.emitirReporteFiscal(comando, puertoFiscal);
+            if (resultado && resultado.success) {
+                showInfoMessage('✅ Reimpresión ejecutada correctamente.', 'success');
+            } else {
+                showInfoMessage('❌ Error: ' + (resultado?.msg || 'Sin respuesta'), 'error');
+            }
+        } catch (error) {
             showInfoMessage('❌ Error de comunicación: ' + error.message, 'error');
         } finally {
             if (loadingOverlay) loadingOverlay.classList.add('hidden');

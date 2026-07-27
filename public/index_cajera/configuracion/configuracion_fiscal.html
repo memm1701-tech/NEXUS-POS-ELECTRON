@@ -168,6 +168,76 @@
         </div>
 
         
+        <!-- Configuración de Código de Barras Fiscal -->
+        <div class="space-y-4 text-left p-6 border border-gray-200 bg-white rounded-none mb-6">
+            <div class="mb-4">
+                <h2 class="text-lg font-semibold text-gray-800">Configuración de Código de Barras Fiscal</h2>
+                <p class="text-sm text-gray-500">Imprime el número de control interno como código de barras al pie del documento.</p>
+            </div>
+            
+            <div class="p-4 border border-gray-200 bg-gray-50 mb-4 text-left rounded-none">
+                <label for="config-enable-barcode-fiscal" class="flex items-center justify-between text-gray-700 font-medium cursor-pointer">
+                    <div>
+                        <span class="text-md">Habilitar impresión de Código de Barras</span>
+                        <p class="text-xs text-gray-500 font-normal mt-0.5">Activa la impresión automática en Facturas, Notas de Crédito y Débito.</p>
+                    </div>
+                    <input type="checkbox" id="config-enable-barcode-fiscal" class="h-5 w-5 text-indigo-600 border-gray-300 rounded-none focus:ring-indigo-500" onchange="toggleSeccionCodigoBarras(this.checked)">
+                </label>
+            </div>
+
+            <div id="seccion-codigo-barras" style="display:none" class="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border border-gray-200 bg-white">
+                <div class="space-y-3">
+                    <label class="block font-medium text-sm text-gray-700">1. Seleccionar Impresora Fiscal:</label>
+                    <select id="select-modelo-impresora-fiscal" class="w-full border p-2 rounded-none" onchange="filtrarCodigosBarrasPorImpresora(this.value)">
+                        <option value="" disabled selected>-- Seleccione su modelo --</option>
+                        <option value="SRP-812">SRP-812</option>
+                        <option value="HKA-80">HKA-80</option>
+                        <option value="DT-230">DT-230</option>
+                        <option value="PP9">PP9</option>
+                        <option value="PP9-PLUS">ACLAS PP9 PLUS</option>
+                        <option value="P3100DL">P3100DL</option>
+                        <option value="SRP-350">SRP-350</option>
+                        <option value="HKA-112">HKA-112</option>
+                        <option value="HSP7000">HSP7000</option>
+                        <option value="TALLY-1125">TALLY 1125</option>
+                        <option value="TALLY-1140">TALLY 1140</option>
+                        <option value="KUBE">KUBE</option>
+                        <option value="SRP-280">SRP-280</option>
+                    </select>
+                </div>
+                
+                <div class="space-y-3">
+                    <label class="block font-medium text-sm text-gray-700">2. Seleccionar Tipo de Código:</label>
+                    <div class="relative w-full">
+                        <div id="select-tipo-codigo-trigger" class="w-full border p-2 bg-white flex items-center justify-between cursor-pointer rounded-none border-gray-300" onclick="document.getElementById('tipo-codigo-options').classList.toggle('hidden')">
+                            <div id="selected-tipo-content" class="flex items-center text-sm text-gray-500">
+                                Seleccione Impresora Primero
+                            </div>
+                            <span class="material-icons text-sm">expand_more</span>
+                        </div>
+                        <div id="tipo-codigo-options" class="hidden absolute z-10 w-full bg-white border border-t-0 border-gray-300 max-h-60 overflow-y-auto shadow-lg">
+                            <!-- Opciones inyectadas por JS -->
+                        </div>
+                    </div>
+                    <input type="hidden" id="select-tipo-codigo-barras" value="">
+                    <p id="aviso-srp280" class="text-xs text-red-600 hidden font-semibold">Esta impresora no soporta códigos de barras.</p>
+                </div>
+
+                <div class="space-y-3 md:col-span-2">
+                    <label class="block font-medium text-sm text-gray-700">3. Visualización del Número Asociado:</label>
+                    <div class="flex flex-col sm:flex-row sm:space-x-4 space-y-2 sm:space-y-0">
+                        <select id="select-visibilidad-numero" class="w-full sm:w-2/3 border p-2 rounded-none">
+                            <option value="PJ3001">PJ3001 - Mostrar Código + Número legible debajo</option>
+                            <option value="PJ3000">PJ3000 - Solo Código de Barras (ocultar número)</option>
+                        </select>
+                        <button id="btn-programar-barcode" type="button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 shadow transition w-full sm:w-1/3 rounded-none flex justify-center items-center" onclick="programarVisibilidadBarcode()">
+                            <span class="material-icons text-sm mr-1">print</span> Programar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="space-y-4 text-left p-6 border border-gray-200 bg-white rounded-none mb-6 ">
             <div class="mb-2 flex justify-between items-center flex-wrap gap-4">
                 <div>
@@ -400,6 +470,24 @@
                     if (document.getElementById('fiscalIvaReducido')) document.getElementById('fiscalIvaReducido').value = data.programacionFiscal.ivaReducido || '';
                     if (document.getElementById('fiscalIvaAdicional')) document.getElementById('fiscalIvaAdicional').value = data.programacionFiscal.ivaAdicional || '';
                 }
+
+                // Cargar configuración de código de barras fiscal
+                if (data.codigo_barra_fiscal) {
+                    const cb = data.codigo_barra_fiscal;
+                    const enableCb = cb.habilitado === true;
+                    document.getElementById('config-enable-barcode-fiscal').checked = enableCb;
+                    document.getElementById('select-modelo-impresora-fiscal').value = cb.modelo_impresora || '';
+                    if (cb.modelo_impresora) {
+                        filtrarCodigosBarrasPorImpresora(cb.modelo_impresora);
+                    }
+                    if (cb.tipo_codigo) {
+                        seleccionarTipoCodigoBarra(cb.tipo_codigo, cb.max_caracteres);
+                    }
+                    document.getElementById('select-visibilidad-numero').value = cb.visibilidad_numero || 'PJ3001';
+                    toggleSeccionCodigoBarras(enableCb);
+                } else {
+                    toggleSeccionCodigoBarras(false);
+                }
                 
                 facturaLoaded = true;
             }
@@ -448,6 +536,159 @@
         }
     };
 
+    async function cargarMetodosPagoMapeo() {
+        try {
+            const metodos = await window.nexusAPI.obtenerMetodosPagoActivos();
+            const configDataRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
+            let data = {};
+            if (configDataRaw) {
+                data = JSON.parse(configDataRaw);
+            }
+
+            const contenedor = document.getElementById('mapeo-metodos-container');
+            if (metodos.length === 0) {
+                contenedor.innerHTML = '<p class="text-sm text-gray-500">No hay métodos de pago activos configurados en el sistema.</p>';
+                return;
+            }
+
+            let html = '';
+            metodos.forEach(m => {
+                const mapValue = (data.mapeo_metodos_fiscal && data.mapeo_metodos_fiscal[m.id]) ? data.mapeo_metodos_fiscal[m.id] : '';
+                html += `
+                    <div class="flex items-center space-x-2">
+                        <label class="w-1/3 font-medium text-sm">${m.nombre}:</label>
+                        <input type="text" data-mapeo-id="${m.id}" class="w-2/3 border p-2 rounded-none mapeo-input" value="${mapValue}" placeholder="Flag (Ej: 01, 16)">
+                    </div>
+                `;
+            });
+            contenedor.innerHTML = html;
+        } catch (error) {
+            console.error("Error cargando métodos para mapeo:", error);
+        }
+    }
+
+    // Lógica para el Código de Barras Fiscal
+    window.toggleSeccionCodigoBarras = function(checked) {
+        const seccion = document.getElementById('seccion-codigo-barras');
+        if (checked) {
+            seccion.style.display = 'grid';
+        } else {
+            seccion.style.display = 'none';
+        }
+    };
+
+    const tablaCaracteresBarras = {
+        'SRP-812': { 'EAN13': '12 fijos', 'ITF': '12 fijos', 'CODE128': '32 máx', 'CODE39': '32 máx', 'QR': '120 máx', 'PDF417': '120 máx' },
+        'HKA-80': { 'EAN13': '12 fijos', 'ITF': '12 fijos', 'CODE128': '23 máx', 'CODE39': '20 máx', 'QR': '120 máx', 'PDF417': '120 máx' },
+        'DT-230': { 'EAN13': '12 fijos', 'ITF': '32 máx', 'CODE128': '32 máx', 'CODE39': '32 máx', 'QR': '122 máx', 'PDF417': '122 máx' },
+        'PP9': { 'EAN13': '12 fijos', 'ITF': '38 máx', 'CODE128': '44 máx', 'CODE39': '12 fijos', 'QR': '122 máx', 'PDF417': null },
+        'PP9-PLUS': { 'EAN13': '12 máx', 'ITF': '32 máx', 'CODE128': '32 máx', 'CODE39': '32 máx', 'QR': '122 máx', 'PDF417': '122 máx' },
+        'P3100DL': { 'EAN13': '12 fijos', 'ITF': '13 fijos', 'CODE128': '32 máx', 'CODE39': '32 máx', 'QR': '120 máx', 'PDF417': '120 máx' },
+        'SRP-350': { 'EAN13': '12 fijos', 'ITF': '31 máx', 'CODE128': '32 máx', 'CODE39': null, 'QR': null, 'PDF417': null },
+        'HKA-112': { 'EAN13': '12 fijos', 'ITF': '20 máx', 'CODE128': '20 máx', 'CODE39': '20 máx', 'QR': '120 máx', 'PDF417': null },
+        'HSP7000': { 'EAN13': '12 fijos', 'ITF': '20 máx', 'CODE128': '20 máx', 'CODE39': '20 máx', 'QR': null, 'PDF417': null },
+        'TALLY-1125': { 'EAN13': '12 fijos', 'ITF': '32 fijos', 'CODE128': '32 máx', 'CODE39': '32 máx', 'QR': null, 'PDF417': null },
+        'TALLY-1140': { 'EAN13': '12 máx', 'ITF': '32 máx', 'CODE128': '25 máx', 'CODE39': '11 máx', 'QR': null, 'PDF417': null },
+        'KUBE': { 'EAN13': '12 fijos', 'ITF': '20 máx', 'CODE128': '20 máx', 'CODE39': null, 'QR': null, 'PDF417': null },
+        'SRP-280': { 'EAN13': null, 'ITF': null, 'CODE128': null, 'CODE39': null, 'QR': null, 'PDF417': null }
+    };
+
+    window.filtrarCodigosBarrasPorImpresora = function(modelo) {
+        const triggerDiv = document.getElementById('selected-tipo-content');
+        const optionsDiv = document.getElementById('tipo-codigo-options');
+        const aviso = document.getElementById('aviso-srp280');
+        
+        optionsDiv.innerHTML = '';
+        document.getElementById('select-tipo-codigo-barras').value = '';
+        
+        if (!modelo) {
+            triggerDiv.innerHTML = 'Seleccione Impresora Primero';
+            aviso.classList.add('hidden');
+            return;
+        }
+
+        const disponibilidades = tablaCaracteresBarras[modelo];
+        if (!disponibilidades || modelo === 'SRP-280') {
+            triggerDiv.innerHTML = 'No disponible';
+            aviso.classList.remove('hidden');
+            return;
+        }
+        
+        aviso.classList.add('hidden');
+        let html = '';
+        
+        Object.keys(disponibilidades).forEach(tipo => {
+            if (disponibilidades[tipo]) {
+                const max = disponibilidades[tipo];
+                const maxNum = parseInt(max.replace(/[^0-9]/g, '')) || 20;
+                
+                html += `
+                <div class="flex items-center p-2 hover:bg-indigo-50 cursor-pointer border-b" onclick="seleccionarTipoCodigoBarra('${tipo}', ${maxNum})">
+                    <img src="index_cajera/configuracion/${tipo === 'PDF417' ? 'PDF' : tipo}.png" alt="${tipo}" class="w-16 h-8 object-contain bg-white border p-1 mr-3">
+                    <div class="flex flex-col">
+                        <span class="font-bold text-gray-800 text-sm">${tipo}</span>
+                        <span class="text-xs text-gray-500">${max}</span>
+                    </div>
+                </div>
+                `;
+            }
+        });
+        
+        optionsDiv.innerHTML = html;
+        triggerDiv.innerHTML = 'Seleccione un tipo de código de barras';
+    };
+
+    window.seleccionarTipoCodigoBarra = function(tipo, maxChars) {
+        const triggerDiv = document.getElementById('selected-tipo-content');
+        const hiddenInput = document.getElementById('select-tipo-codigo-barras');
+        const optionsDiv = document.getElementById('tipo-codigo-options');
+        
+        const disponibilidades = tablaCaracteresBarras[document.getElementById('select-modelo-impresora-fiscal').value];
+        const limite = disponibilidades ? disponibilidades[tipo] : 'Límite desconocido';
+        
+        triggerDiv.innerHTML = `
+            <div class="flex items-center">
+                <img src="index_cajera/configuracion/${tipo === 'PDF417' ? 'PDF' : tipo}.png" alt="${tipo}" class="w-10 h-6 object-contain bg-white border p-0.5 mr-2">
+                <span class="font-bold text-gray-800 text-sm mr-2">${tipo}</span>
+                <span class="text-xs text-gray-500">(${limite})</span>
+            </div>
+        `;
+        
+        hiddenInput.value = tipo;
+        hiddenInput.setAttribute('data-max-chars', maxChars);
+        optionsDiv.classList.add('hidden');
+    };
+
+    window.programarVisibilidadBarcode = async function() {
+        const select = document.getElementById('select-visibilidad-numero');
+        if (!select || !select.value) {
+            showMessage("Seleccione una opción de visibilidad.", "bg-red-500");
+            return;
+        }
+        const comando = select.value;
+        const confirmacion = await showCustomConfirm(`¿Desea enviar el comando ${comando} a la impresora fiscal?`, "Programar Código de Barras");
+        if (!confirmacion) return;
+
+        logProgramacion(`⏳ Solicitando programación de visibilidad de código de barras (${comando})...`);
+        const resultado = await ejecutarComandosFiscales([comando]);
+        
+        if (resultado) {
+            logProgramacion(`✅ Programación enviada exitosamente: ${comando}.`);
+            showMessage(`Comando ${comando} programado correctamente.`, "bg-green-500");
+            saveFacturaConfiguration();
+        } else {
+            showMessage(`Error al programar: El comando ${comando} falló.`, "bg-red-500");
+        }
+    };
+    
+    document.addEventListener('click', function(event) {
+        const trigger = document.getElementById('select-tipo-codigo-trigger');
+        const options = document.getElementById('tipo-codigo-options');
+        if (trigger && options && !trigger.contains(event.target) && !options.contains(event.target)) {
+            options.classList.add('hidden');
+        }
+    });
+
     async function saveFacturaConfiguration() {
         try {
             const existingDataRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
@@ -464,6 +705,14 @@
             if (hkaSucursal) facturaData.hka_sucursal = hkaSucursal.value.trim();
             if (hkaSerie) facturaData.hka_serie = hkaSerie.value.trim().toUpperCase();
             if (hkaMoneda) facturaData.hka_moneda = hkaMoneda.value;
+
+            facturaData.codigo_barra_fiscal = {
+                habilitado: document.getElementById('config-enable-barcode-fiscal')?.checked || false,
+                modelo_impresora: document.getElementById('select-modelo-impresora-fiscal')?.value || '',
+                tipo_codigo: document.getElementById('select-tipo-codigo-barras')?.value || '',
+                visibilidad_numero: document.getElementById('select-visibilidad-numero')?.value || 'PJ3001',
+                max_caracteres: parseInt(document.getElementById('select-tipo-codigo-barras')?.getAttribute('data-max-chars') || '20')
+            };
 
             facturaData.programacionFiscal = {
                 PH1: document.getElementById('fiscalPH1') ? document.getElementById('fiscalPH1').value.trim() : '',

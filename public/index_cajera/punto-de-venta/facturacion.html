@@ -5483,6 +5483,12 @@ async function fetchFacturaConfig() {
                 // AGREGAMOS LA EXTRACCIÓN DEL PUERTO
                 window.configFiscalHKA.puerto = fullConfigData.puerto_com_fiscal || ""; 
 
+                if (fullConfigData.codigo_barra_fiscal) {
+                    window.configBarrasFiscal = fullConfigData.codigo_barra_fiscal;
+                } else {
+                    window.configBarrasFiscal = { habilitado: false };
+                }
+
                 currentEmissionMode = fullConfigData.tipo_emision || 'TICKET_NO_FISCAL';
 
                 if (currentEmissionMode === 'FISCAL_HKA') {
@@ -6434,7 +6440,7 @@ function prepararComandosNoFiscalHKA(cliente, cart, pagos, nroRecibo = null) {
     return comandos;
 }
 
-function prepararComandosFacturaFiscal(cliente, cart, pagos, nroControlInterno = null) {
+function prepararComandosFacturaFiscal(cliente, cart, pagos, nroControlInterno = null, comentario = null) {
     const comandos = [];
     const limpiarTextoHKA = (texto) => {
         if (!texto) return "";
@@ -6458,6 +6464,17 @@ function prepararComandosFacturaFiscal(cliente, cart, pagos, nroControlInterno =
         comandos.push(`i00${limpiarTextoHKA(cliente.direccion || cliente.address).substring(0,40)}`);
     }
     
+    // COMENTARIOS FISCALES (Comando @)
+    if (comentario && comentario.trim()) {
+        const lineas = comentario.trim().toUpperCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^A-Z0-9 +-/*.]/g, ' ')
+            .match(/.{1,40}/g) || [];
+        lineas.slice(0, 4).forEach(linea => {
+            comandos.push(`@${linea.trim()}`);
+        });
+    }
+
     // 2. PRODUCTOS
     cart.forEach(item => {
         const factor = (item.moneda === 'USD' || item.isUSD === true) ? (window.dolarExchangeRate || 1) : 1;
@@ -6485,6 +6502,15 @@ function prepararComandosFacturaFiscal(cliente, cart, pagos, nroControlInterno =
 
     // 3. SUBTOTALIZAR
     comandos.push('3');
+
+    // 3.5 CÓDIGO DE BARRAS AL PIE (si está habilitado)
+    if (window.configBarrasFiscal && window.configBarrasFiscal.habilitado && nroControlInterno) {
+        const mapaComandos = { 'EAN13': 'y2', 'ITF': 'y5', 'CODE39': 'y4', 'CODE128': 'y6', 'QR': 'y7', 'PDF417': 'y8' };
+        const prefijo = mapaComandos[window.configBarrasFiscal.tipo_codigo] || 'y6';
+        const maxChars = window.configBarrasFiscal.max_caracteres || 20;
+        const dato = String(nroControlInterno).substring(0, maxChars);
+        comandos.push(`${prefijo}${dato}`);
+    }
 
     // 4. MEDIOS DE PAGO DINÁMICOS Y CONDICIÓN MAESTRA IGTF
     let esSPE = false;
@@ -6515,7 +6541,7 @@ function prepararComandosFacturaFiscal(cliente, cart, pagos, nroControlInterno =
         if (esElUltimoPago) {
             comandos.push(`1${pago.codigo}`);
         } else {
-            const montoFormateado = Math.round(pago.monto * 100).toString().padStart(10, '0');
+            const montoFormateado = Math.round(pago.monto * 100).toString().padStart(12, '0');
             comandos.push(`2${pago.codigo}${montoFormateado}`);
         }
     });
@@ -6524,7 +6550,7 @@ function prepararComandosFacturaFiscal(cliente, cart, pagos, nroControlInterno =
 }
    
 
-function prepararComandosNotaCreditoFiscal(cliente, cart, pagos, facturaOriginal, nroControlInterno = null) {
+function prepararComandosNotaCreditoFiscal(cliente, cart, pagos, facturaOriginal, nroControlInterno = null, comentario = null) {
     const comandos = [];
     const limpiarTextoHKA = (texto) => {
         if (!texto) return "";
@@ -6551,6 +6577,17 @@ function prepararComandosNotaCreditoFiscal(cliente, cart, pagos, facturaOriginal
 
     if (nroControlInterno) {
         comandos.push(`i01CTRL INT: ${limpiarTextoHKA(nroControlInterno)}`);
+    }
+
+    // COMENTARIOS FISCALES (Comando @)
+    if (comentario && comentario.trim()) {
+        const lineas = comentario.trim().toUpperCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^A-Z0-9 +-/*.]/g, ' ')
+            .match(/.{1,40}/g) || [];
+        lineas.slice(0, 4).forEach(linea => {
+            comandos.push(`@${linea.trim()}`);
+        });
     }
 
     // 🟢 2. DATOS DE LA FACTURA ORIGINAL AFECTADA (OBLIGATORIO PARA EL SENIAT)
@@ -6611,6 +6648,14 @@ function prepararComandosNotaCreditoFiscal(cliente, cart, pagos, facturaOriginal
     // 🟢 4. SUBTOTALIZAR
     comandos.push('3');
 
+    // 4.5 CÓDIGO DE BARRAS AL PIE (si está habilitado)
+    if (window.configBarrasFiscal && window.configBarrasFiscal.habilitado && nroControlInterno) {
+        const mapaComandos = { 'EAN13': 'y2', 'ITF': 'y5', 'CODE39': 'y4', 'CODE128': 'y6', 'QR': 'y7', 'PDF417': 'y8' };
+        const prefijo = mapaComandos[window.configBarrasFiscal.tipo_codigo] || 'y6';
+        const maxChars = window.configBarrasFiscal.max_caracteres || 20;
+        const dato = String(nroControlInterno).substring(0, maxChars);
+        comandos.push(`${prefijo}${dato}`);
+    }
     
     // 5. MEDIOS DE PAGO DINÁMICOS Y CONDICIÓN MAESTRA IGTF
     let esSPE = false;
@@ -6640,7 +6685,7 @@ function prepararComandosNotaCreditoFiscal(cliente, cart, pagos, facturaOriginal
         if (esElUltimoPago) {
             comandos.push(`1${pago.codigo}`);
         } else {
-            const montoFormateado = Math.round(pago.monto * 100).toString().padStart(10, '0');
+            const montoFormateado = Math.round(pago.monto * 100).toString().padStart(12, '0');
             comandos.push(`2${pago.codigo}${montoFormateado}`);
         }
     });
@@ -6649,7 +6694,7 @@ function prepararComandosNotaCreditoFiscal(cliente, cart, pagos, facturaOriginal
 }
 
 
-function prepararComandosNotaDebitoFiscal(cliente, cart, pagos, facturaOriginal, nroControlInterno = null) {
+function prepararComandosNotaDebitoFiscal(cliente, cart, pagos, facturaOriginal, nroControlInterno = null, comentario = null) {
     const comandos = [];
     const limpiarTextoHKA = (texto) => {
         if (!texto) return "";
@@ -6676,6 +6721,17 @@ function prepararComandosNotaDebitoFiscal(cliente, cart, pagos, facturaOriginal,
 
     if (nroControlInterno) {
         comandos.push(`i01CTRL INT: ${limpiarTextoHKA(nroControlInterno)}`);
+    }
+
+    // COMENTARIOS FISCALES (Comando @)
+    if (comentario && comentario.trim()) {
+        const lineas = comentario.trim().toUpperCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^A-Z0-9 +-/*.]/g, ' ')
+            .match(/.{1,40}/g) || [];
+        lineas.slice(0, 4).forEach(linea => {
+            comandos.push(`@${linea.trim()}`);
+        });
     }
 
     // 🟢 2. DATOS DE LA FACTURA ORIGINAL AFECTADA (OBLIGATORIO PARA EL SENIAT)
@@ -6749,6 +6805,14 @@ function prepararComandosNotaDebitoFiscal(cliente, cart, pagos, facturaOriginal,
     // 🟢 4. SUBTOTALIZAR
     comandos.push('3');
 
+    // 4.5 CÓDIGO DE BARRAS AL PIE (si está habilitado)
+    if (window.configBarrasFiscal && window.configBarrasFiscal.habilitado && nroControlInterno) {
+        const mapaComandos = { 'EAN13': 'y2', 'ITF': 'y5', 'CODE39': 'y4', 'CODE128': 'y6', 'QR': 'y7', 'PDF417': 'y8' };
+        const prefijo = mapaComandos[window.configBarrasFiscal.tipo_codigo] || 'y6';
+        const maxChars = window.configBarrasFiscal.max_caracteres || 20;
+        const dato = String(nroControlInterno).substring(0, maxChars);
+        comandos.push(`${prefijo}${dato}`);
+    }
     
     // 5. MEDIOS DE PAGO DINÁMICOS Y CONDICIÓN MAESTRA IGTF
     let esSPE = false;
@@ -6778,7 +6842,7 @@ function prepararComandosNotaDebitoFiscal(cliente, cart, pagos, facturaOriginal,
         if (esElUltimoPago) {
             comandos.push(`1${pago.codigo}`);
         } else {
-            const montoFormateado = Math.round(pago.monto * 100).toString().padStart(10, '0');
+            const montoFormateado = Math.round(pago.monto * 100).toString().padStart(12, '0');
             comandos.push(`2${pago.codigo}${montoFormateado}`);
         }
     });

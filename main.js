@@ -2986,16 +2986,28 @@ ipcMain.handle('consultar-estado-fiscal', async (event, puerto) => {
             const lrcS1 = calcularLRC(comandoS1, ETX);
             const tramaS1 = Buffer.concat([STX, comandoS1, ETX, Buffer.from([lrcS1])]);
             
+            const comandoS3 = Buffer.from("S3", "latin1");
+            const lrcS3 = calcularLRC(comandoS3, ETX);
+            const tramaS3 = Buffer.concat([STX, comandoS3, ETX, Buffer.from([lrcS3])]);
+            
+            const comandoS5 = Buffer.from("S5", "latin1");
+            const lrcS5 = calcularLRC(comandoS5, ETX);
+            const tramaS5 = Buffer.concat([STX, comandoS5, ETX, Buffer.from([lrcS5])]);
+            
             let bufferRecepcion = "";
-            let estadoENQEnviado = true;
+            let estado = 'ENQ'; // 'ENQ', 'S1', 'S3', 'S5'
             let reintentoENQHecho = false;
             let timeoutConsultas;
+            
+            let datosS1 = { serial: "DESC", nroFac: "S/N", flag21: "No detectado" };
+            let rawS3Content = "";
+            let rawS5Content = "";
 
             port.on("data", (data) => {
                 bufferRecepcion += data.toString("latin1");
                 
                 if (data.includes(0x15)) {
-                    if (estadoENQEnviado && !reintentoENQHecho) {
+                    if (estado === 'ENQ' && !reintentoENQHecho) {
                         console.log("[FISCAL] NAK inicial en estado-fiscal. Auto-reintentando ENQ tras 200ms...");
                         reintentoENQHecho = true;
                         bufferRecepcion = "";
@@ -3003,11 +3015,11 @@ ipcMain.handle('consultar-estado-fiscal', async (event, puerto) => {
                         return;
                     }
                     clearTimeout(timeoutConsultas);
-                    return closeAndResolve({ success: false, errorType: "HKA_ERROR", msg: "Impresora rechazÃ³ consulta (NAK)." });
+                    return closeAndResolve({ success: false, errorType: "HKA_ERROR", msg: "Impresora rechazó consulta (NAK)." });
                 }
                 if (data.includes(0x03)) {
-                    if (estadoENQEnviado) {
-                        estadoENQEnviado = false;
+                    if (estado === 'ENQ') {
+                        estado = 'S1';
                         // Extraemos la respuesta de ENQ (STX STS1 STS2 ETX LRC)
                         const stxIndex = bufferRecepcion.indexOf('\x02');
                         const etxIndex = bufferRecepcion.indexOf('\x03');
@@ -3021,38 +3033,58 @@ ipcMain.handle('consultar-estado-fiscal', async (event, puerto) => {
                         // Si no hay error, pedimos el Serial (S1)
                         bufferRecepcion = "";
                         port.write(tramaS1);
-                    } else {
-                        // Respuesta del S1
-                        clearTimeout(timeoutConsultas);
+                    } else if (estado === 'S1') {
+                        estado = 'S3';
                         try {
                             const contenido = bufferRecepcion.split('\x02')[1].split('\x03')[0];
-                            let serial = "DESC";
-                            let nroFac = "S/N";
-                            let flag21 = "No detectado";
                             if (contenido.includes('\n')) {
                                 const partes = contenido.split('\n').map(p => p.trim()); 
-                                serial = partes[13] ? partes[13] : "DESC";        
+                                datosS1.serial = partes[13] ? partes[13] : "DESC";        
                                 if (partes.length >= 14) {
                                     const facturaReal = parseInt(partes[2], 10);
-                                    if (!isNaN(facturaReal) && facturaReal > 0) nroFac = facturaReal.toString().padStart(8, '0');
+                                    if (!isNaN(facturaReal) && facturaReal > 0) datosS1.nroFac = facturaReal.toString().padStart(8, '0');
                                 }
                             } else {
                                 // Fallback: parseo por posición fija sólo si la trama no tiene saltos de línea
-                                // Estrategia 1: buscar serial por patrón conocido (8-10 chars alfanuméricos al final)
                                 const serialMatch = contenido.match(/([A-Z0-9]{6,12})\s*$/);
-                                if (serialMatch) serial = serialMatch[1];
+                                if (serialMatch) datosS1.serial = serialMatch[1];
                                 
-                                // Estrategia 2: buscar 8 dígitos consecutivos para el número de factura
                                 const facMatch = contenido.match(/(\d{8})/g);
                                 if (facMatch && facMatch.length >= 3) {
                                     const facturaReal = parseInt(facMatch[2], 10);
-                                    if (!isNaN(facturaReal) && facturaReal > 0) nroFac = facturaReal.toString().padStart(8, '0');
+                                    if (!isNaN(facturaReal) && facturaReal > 0) datosS1.nroFac = facturaReal.toString().padStart(8, '0');
                                 }
                             }
-                            closeAndResolve({ success: true, msg: "Máquina en línea", serial: serial, nroFactura: nroFac, flag21: flag21 });
                         } catch (e) {
-                            closeAndResolve({ success: true, msg: "Máquina en línea (Serial no leído)" });
+                            console.error("Error parseando S1:", e);
                         }
+                        bufferRecepcion = "";
+                        port.write(tramaS3);
+                    } else if (estado === 'S3') {
+                        estado = 'S5';
+                        try {
+                            rawS3Content = bufferRecepcion.split('\x02')[1].split('\x03')[0];
+                        } catch (e) {
+                            console.error("Error parseando S3:", e);
+                        }
+                        bufferRecepcion = "";
+                        port.write(tramaS5);
+                    } else if (estado === 'S5') {
+                        clearTimeout(timeoutConsultas);
+                        try {
+                            rawS5Content = bufferRecepcion.split('\x02')[1].split('\x03')[0];
+                        } catch (e) {
+                            console.error("Error parseando S5:", e);
+                        }
+                        closeAndResolve({ 
+                            success: true, 
+                            msg: "Máquina en línea", 
+                            serial: datosS1.serial, 
+                            nroFactura: datosS1.nroFac, 
+                            flag21: datosS1.flag21,
+                            s3_tasas: rawS3Content,
+                            s5_memoria: rawS5Content
+                        });
                     }
                 }
             });
@@ -3174,6 +3206,8 @@ ipcMain.handle('emitir-tramas-hka', async (event, tramas, puerto) => {
             const ETX = Buffer.from([0x03]);
             let timeoutOperacion; 
             let leyendoStatusFinal = false; 
+            let esperandoS2 = false;
+            let bufferS2 = "";
 
             console.log(`\n[FISCAL] ðŸš€ Iniciando facturaciÃ³n con ${tramas.length} comandos.`);
 
@@ -3249,10 +3283,44 @@ ipcMain.handle('emitir-tramas-hka', async (event, tramas, puerto) => {
                     return;
                 }
 
+                if (esperandoS2) {
+                    bufferS2 += data.toString('latin1');
+                    if (data.includes(0x03)) {
+                        clearTimeout(timeoutOperacion);
+                        try {
+                            const contenidoS2 = bufferS2.split('\x02')[1].split('\x03')[0];
+                            let montoRestante = contenidoS2;
+                            const match13 = contenidoS2.match(/\d{10,14}/g);
+                            if (match13 && match13.length >= 3) {
+                                montoRestante = match13[2];
+                            }
+                            console.log('[FISCAL] S2 Monto restante según impresora: ' + montoRestante);
+                        } catch (e) {
+                            console.error("[FISCAL] Error parseando S2:", e);
+                        }
+                        esperandoS2 = false;
+                        enviarSiguienteComando();
+                    }
+                    return;
+                }
+
                 if (!leyendoStatusFinal) {
                     if (data.includes(0x06)) {
                         index++;
-                        setTimeout(enviarSiguienteComando, 250); 
+                        const esComandoPagoParcial = /^2(0[1-9]|1[0-9]|2[0-4])/.test(tramas[index - 1]);
+                        if (esComandoPagoParcial) {
+                            esperandoS2 = true;
+                            bufferS2 = "";
+                            const comandoS2 = Buffer.from('S2', 'latin1');
+                            const lrcS2 = calcularLRC(comandoS2, ETX);
+                            const tramaS2 = Buffer.concat([STX, comandoS2, ETX, Buffer.from([lrcS2])]);
+                            port.write(tramaS2);
+                            timeoutOperacion = setTimeout(() => {
+                                closeAndResolve({ success: false, errorType: 'HKA_ERROR', msg: "Timeout esperando S2 tras pago parcial" });
+                            }, 5000);
+                        } else {
+                            setTimeout(enviarSiguienteComando, 250); 
+                        }
                     } 
                     else if (data.includes(0x15)) { 
                         clearTimeout(timeoutOperacion);
@@ -4343,14 +4411,70 @@ ipcMain.handle('extraer-reporte-fiscal', async (event, tipoReporte, puerto) => {
                         }
                     } catch (e) {}
 
+                    let parsedFields = {
+                        numeroZ: "N/A",
+                        ultimaFactura: "N/A",
+                        fechaEmision: new Date().toISOString().split('T')[0],
+                        horaEmision: new Date().toTimeString().split(' ')[0],
+                        exento: 0,
+                        base1: 0,
+                        impuesto1: 0,
+                        base2: 0,
+                        impuesto2: 0,
+                        base3: 0,
+                        impuesto3: 0,
+                        igtf: 0
+                    };
+
+                    try {
+                        const dataOnly = dataLimpia.substring(2); // Remover STS1 y STS2 (primeros 2 bytes)
+                        if (dataOnly.length >= 200) {
+                            const formatDate = (str) => (str && str.length === 6) ? `20${str.substring(4,6)}-${str.substring(2,4)}-${str.substring(0,2)}` : parsedFields.fechaEmision;
+                            const formatTime = (str) => (str && str.length === 4) ? `${str.substring(0,2)}:${str.substring(2,4)}:00` : parsedFields.horaEmision;
+                            const parseAmount = (str) => str ? parseInt(str, 10) / 100 : 0;
+
+                            if (dataOnly.length < 300) {
+                                // Grupo 1 (Legacy: SRP-350, HSP7000, TALLY-1125, etc. ~217 chars)
+                                parsedFields.numeroZ = dataOnly.substring(0, 4);
+                                parsedFields.fechaEmision = formatDate(dataOnly.substring(4, 10));
+                                parsedFields.ultimaFactura = dataOnly.substring(10, 18);
+                                
+                                parsedFields.exento = parseAmount(dataOnly.substring(28, 41));
+                                parsedFields.base1 = parseAmount(dataOnly.substring(41, 54));
+                                parsedFields.impuesto1 = parseAmount(dataOnly.substring(54, 67));
+                                parsedFields.base2 = parseAmount(dataOnly.substring(67, 80));
+                                parsedFields.impuesto2 = parseAmount(dataOnly.substring(80, 93));
+                                parsedFields.base3 = parseAmount(dataOnly.substring(93, 106));
+                                parsedFields.impuesto3 = parseAmount(dataOnly.substring(106, 119));
+                            } else {
+                                // Grupo 2 (Expandido: SRP-812, DT-230, HKA-80, PP9, etc. ~595 chars)
+                                parsedFields.numeroZ = dataOnly.substring(0, 4);
+                                parsedFields.fechaEmision = formatDate(dataOnly.substring(4, 10));
+                                parsedFields.horaEmision = formatTime(dataOnly.substring(10, 14));
+                                parsedFields.ultimaFactura = dataOnly.substring(14, 22);
+                                
+                                parsedFields.exento = parseAmount(dataOnly.substring(56, 74));
+                                parsedFields.base1 = parseAmount(dataOnly.substring(74, 92));
+                                parsedFields.impuesto1 = parseAmount(dataOnly.substring(92, 110));
+                                parsedFields.base2 = parseAmount(dataOnly.substring(110, 128));
+                                parsedFields.impuesto2 = parseAmount(dataOnly.substring(128, 146));
+                                parsedFields.base3 = parseAmount(dataOnly.substring(146, 164));
+                                parsedFields.impuesto3 = parseAmount(dataOnly.substring(164, 182));
+
+                                if (dataOnly.length >= 595) {
+                                    parsedFields.igtf = parseAmount(dataOnly.substring(506, 524)); // Valor IGTF Ventas
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.error('[FISCAL] Error parseando data U0X/U0Z:', e);
+                    }
+
                     closeAndResolve({ 
                         success: true, 
                         data: {
                             rawData: dataLimpia,
-                            numeroZ: "N/A",
-                            ultimaFactura: "N/A",
-                            fechaEmision: new Date().toISOString().split('T')[0],
-                            horaEmision: new Date().toTimeString().split(' ')[0]
+                            ...parsedFields
                         } 
                     });
                 }
