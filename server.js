@@ -845,6 +845,63 @@ server.get('/api/maestro/obtener-clientes', (req, res) => {
     }
 });
 
+server.get('/api/maestro/buscar-productos-local', (req, res) => {
+    try {
+        const query = req.query.query || '';
+        const empresaId = req.query.empresaId;
+        const term = `%${query.trim()}%`;
+        let stmt;
+        if (empresaId && empresaId !== 'undefined') {
+            stmt = serverDb.prepare(`
+                SELECT * FROM productos_locales
+                WHERE company_id = ? AND status != -1
+                AND (nombre LIKE ? OR codigo LIKE ? OR categoria LIKE ?)
+                ORDER BY nombre ASC LIMIT 60
+            `);
+            res.json(stmt.all(empresaId, term, term, term));
+        } else {
+            stmt = serverDb.prepare(`
+                SELECT * FROM productos_locales
+                WHERE status != -1
+                AND (nombre LIKE ? OR codigo LIKE ? OR categoria LIKE ?)
+                ORDER BY nombre ASC LIMIT 60
+            `);
+            res.json(stmt.all(term, term, term));
+        }
+    } catch (error) {
+        console.error("❌ Error en Maestro buscando productos locales:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+server.get('/api/maestro/buscar-producto-por-codigo', (req, res) => {
+    try {
+        const codigo = req.query.codigo || '';
+        const empresaId = req.query.empresaId;
+        const codigoLimpio = String(codigo).trim();
+        if (!codigoLimpio) return res.json(null);
+        let stmt;
+        if (empresaId && empresaId !== 'undefined') {
+            stmt = serverDb.prepare(`
+                SELECT * FROM productos_locales
+                WHERE company_id = ? AND codigo = ? AND status != -1 AND status != 0
+                LIMIT 1
+            `);
+            res.json(stmt.get(empresaId, codigoLimpio) || null);
+        } else {
+            stmt = serverDb.prepare(`
+                SELECT * FROM productos_locales
+                WHERE codigo = ? AND status != -1 AND status != 0
+                LIMIT 1
+            `);
+            res.json(stmt.get(codigoLimpio) || null);
+        }
+    } catch (error) {
+        console.error("❌ Error en Maestro buscando producto por código:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 server.delete('/api/maestro/eliminar-cliente/:rif', (req, res) => {
     try {
         serverDb.prepare('DELETE FROM clientes_maestro WHERE rif = ?').run(req.params.rif);

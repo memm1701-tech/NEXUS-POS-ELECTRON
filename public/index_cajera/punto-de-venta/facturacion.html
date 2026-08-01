@@ -6505,8 +6505,10 @@ function prepararComandosFacturaFiscal(cliente, cart, pagos, nroControlInterno =
 
     // 3.5 CÓDIGO DE BARRAS AL PIE (si está habilitado)
     if (window.configBarrasFiscal && window.configBarrasFiscal.habilitado && nroControlInterno) {
-        const mapaComandos = { 'EAN13': 'y2', 'ITF': 'y5', 'CODE39': 'y4', 'CODE128': 'y6', 'QR': 'y7', 'PDF417': 'y8' };
-        const prefijo = mapaComandos[window.configBarrasFiscal.tipo_codigo] || 'y6';
+        // La mayoría de las impresoras HKA interpretan 'y' como el comando base y cualquier número extra como dato.
+        // Si el usuario configuró CODE128 y sale un 6, es porque la impresora no usa y6, sino y.
+        const mapaComandos = { 'EAN13': 'y', 'ITF': 'y', 'CODE39': 'y', 'CODE128': 'y', 'QR': 'y', 'PDF417': 'y' };
+        const prefijo = mapaComandos[window.configBarrasFiscal.tipo_codigo] || 'y';
         const maxChars = window.configBarrasFiscal.max_caracteres || 20;
         const dato = String(nroControlInterno).substring(0, maxChars);
         comandos.push(`${prefijo}${dato}`);

@@ -1456,6 +1456,13 @@ ipcMain.handle('sincronizar-productos-lote', async (event, productos) => {
 // ═══════════════════════════════════════════════════════════════════
 ipcMain.handle('buscar-productos-local', async (event, { query, empresaId }) => {
     try {
+        if (!config.isServer) {
+            const ipMaestro = getIpMaestro();
+            const url = `http://${ipMaestro}:3000/api/maestro/buscar-productos-local?query=${encodeURIComponent(query || '')}&empresaId=${encodeURIComponent(empresaId || '')}`;
+            const reqFetch = await fetch(url);
+            return await reqFetch.json();
+        }
+
         const term = `%${(query || '').trim()}%`;
         let stmt;
         if (empresaId) {
@@ -1493,6 +1500,13 @@ ipcMain.handle('buscar-productos-local', async (event, { query, empresaId }) => 
 // ═══════════════════════════════════════════════════════════════════
 ipcMain.handle('buscar-producto-por-codigo', async (event, { codigo, empresaId }) => {
     try {
+        if (!config.isServer) {
+            const ipMaestro = getIpMaestro();
+            const url = `http://${ipMaestro}:3000/api/maestro/buscar-producto-por-codigo?codigo=${encodeURIComponent(codigo || '')}&empresaId=${encodeURIComponent(empresaId || '')}`;
+            const reqFetch = await fetch(url);
+            return await reqFetch.json();
+        }
+
         const codigoLimpio = String(codigo || '').trim();
         if (!codigoLimpio) return null;
         let stmt;
@@ -4493,7 +4507,7 @@ ipcMain.handle('extraer-reporte-fiscal', async (event, tipoReporte, puerto) => {
 
             timeoutEspera = setTimeout(() => {
                 closeAndResolve({ success: false, msg: "Timeout esperando extraccion del reporte " + tipoReporte });
-            }, 5000);
+            }, 25000);
 
             port.write(trama);
         });
