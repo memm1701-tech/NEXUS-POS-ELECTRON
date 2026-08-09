@@ -1666,7 +1666,21 @@ function filterProducts(query, type, resultsId) {
     // Debounce de 280ms: evita saturar el backend mientras el usuario escribe
     _filterDebounceTimer = setTimeout(async () => {
         try {
-            const resultadosDB = await window.nexusAPI.buscarProductosLocal(query.trim(), window.companyId);
+            let resultadosDB = null;
+            if (window.esCajaHija && window.SERVER_URL) {
+                try {
+                    const resp = await fetch(`${window.SERVER_URL}/api/maestro/buscar-productos-local?query=${encodeURIComponent(query.trim())}&empresaId=${window.companyId}`);
+                    if (resp.ok) resultadosDB = await resp.json();
+                } catch (e) {
+                    console.log("Fallo fetch al maestro, usando fallback local para filterProducts");
+                }
+            }
+            
+            // Fallback a SQLite local si no hay resultados o falló red
+            if (!resultadosDB) {
+                resultadosDB = await window.nexusAPI.buscarProductosLocal(query.trim(), window.companyId);
+            }
+
             if (!resultadosDB || resultadosDB.length === 0) {
                 renderAutocompleteResults([], resultsId, type);
                 return;
@@ -4678,7 +4692,21 @@ function _mapearProductoCaja(p) {
 async function fetchProducts() {
     if (!window.companyId) return;
     try {
-        const categoriasDB = await window.nexusAPI.obtenerCategoriasLocal();
+        let categoriasDB = null;
+        if (window.esCajaHija && window.SERVER_URL) {
+            try {
+                const resp = await fetch(`${window.SERVER_URL}/api/maestro/categorias-local?empresaId=${window.companyId}`);
+                if (resp.ok) categoriasDB = await resp.json();
+            } catch (e) {
+                console.log("Fallo fetch al maestro, usando fallback local para fetchProducts");
+            }
+        }
+        
+        // Fallback a SQLite local
+        if (!categoriasDB) {
+            categoriasDB = await window.nexusAPI.obtenerCategoriasLocal();
+        }
+        
         window.globalCategories = categoriasDB || [];
         // allProducts ya no se llena aquí. Se usará como caché de resultados de búsqueda.
         allProducts = [];
@@ -4925,7 +4953,20 @@ function setupBarcodeSearchListener() {
             // 🚀 OPTIMIZACIÓN: Busca primero en caché, luego en backend
             let product = allProducts.find(p => String(p.codigo) === code);
             if (!product && window.nexusAPI && window.nexusAPI.buscarProductoPorCodigo) {
-                const rawDB = await window.nexusAPI.buscarProductoPorCodigo(code, window.companyId);
+                let rawDB = null;
+                if (window.esCajaHija && window.SERVER_URL) {
+                    try {
+                        const resp = await fetch(`${window.SERVER_URL}/api/maestro/buscar-producto-por-codigo?codigo=${encodeURIComponent(code)}&empresaId=${window.companyId}`);
+                        if (resp.ok) rawDB = await resp.json();
+                    } catch (e) {
+                        console.log("Fallo fetch al maestro, usando fallback local para código de barras");
+                    }
+                }
+                
+                if (!rawDB) {
+                    rawDB = await window.nexusAPI.buscarProductoPorCodigo(code, window.companyId);
+                }
+                
                 if (rawDB) product = _mapearProductoCaja(rawDB);
             }
 

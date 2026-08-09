@@ -257,6 +257,116 @@ window.descargandoFondo = false;
     let app = null;
     let db = null;
 
+    // --- LÓGICA Y VIGILANTE DE VENCIMIENTO DEL PLAN DE EMPRESA ---
+    function esPlanVencido(planObjeto) {
+        if (!planObjeto) return false;
+        try {
+            let plan = planObjeto;
+            if (typeof planObjeto === 'string') {
+                plan = JSON.parse(planObjeto);
+            }
+            const fechaStr = plan.fecha_vencimiento || (plan.plan && plan.plan.fecha_vencimiento);
+            if (!fechaStr) return false;
+
+            const fVenc = new Date(fechaStr + "T00:00:00");
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+
+            return hoy > fVenc;
+        } catch (e) {
+            console.error("Error al verificar vencimiento del plan:", e);
+            return false;
+        }
+    }
+
+    let modalSuspensionActivo = false;
+
+    function mostrarAlertaSuspensionSesionActiva() {
+        if (modalSuspensionActivo) return;
+        modalSuspensionActivo = true;
+
+        let segundosRestantes = 30;
+
+        const modalSaaS = document.createElement('div');
+        modalSaaS.id = 'modal-plan-vencido-suspension';
+        modalSaaS.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            background: rgba(0,0,0,0.6); display: flex; align-items: center; 
+            justify-content: center; z-index: 999999; backdrop-filter: blur(5px);
+        `;
+        
+        modalSaaS.innerHTML = `
+            <div style="background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 420px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border: 1px solid rgba(239,68,68,0.2);">
+                <i class="material-icons" style="font-size: 55px; color: #ef4444;">error_outline</i>
+                <h2 style="font-size: 22px; color: #1f2937; margin: 15px 0 10px; font-weight: bold;">Servicio Suspendido</h2>
+                <p style="color: #4b5563; font-size: 15px; line-height: 1.5; margin-bottom: 15px;">
+                    Nos entristece profundamente informarte que tu plan ha sido pausado por falta de pago.<br><br>
+                    Nos duele mucho dejar de acompañarte. Para reactivarlo, por favor contacta a soporte y regulariza tu plan.
+                </p>
+                <div style="background: #fef2f2; border: 1px solid #fee2e2; border-radius: 8px; padding: 10px; margin-bottom: 20px;">
+                    <p style="color: #991b1b; font-size: 14px; font-weight: bold; margin: 0;">
+                        La sesión se cerrará automáticamente en <span id="contadorCierrePlan" style="font-size: 18px; color: #dc2626;">30</span> segundos...
+                    </p>
+                </div>
+                <button id="cerrarModalSuspensionBtn" style="background: #ef4444; color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold; transition: background 0.2s;">
+                    Entendido (Cerrar Sesión)
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(modalSaaS);
+
+        const ejecutarCierreSesion = async () => {
+            clearInterval(timerInterval);
+            try {
+                localStorage.setItem('explicit_logout', 'true');
+                if (window.nexusAPI && window.nexusAPI.cerrarSesionLocal) {
+                    await window.nexusAPI.cerrarSesionLocal();
+                }
+            } catch (e) {
+                console.error("Error al cerrar sesión local:", e);
+            }
+            
+            // Llama a la API de Electron para cerrar la ventana principal y reabrir el login sin errores de marco
+            if (window.nexusAPI && window.nexusAPI.cerrarYVolverAlLogin) {
+                window.nexusAPI.cerrarYVolverAlLogin();
+            } else {
+                window.location.href = 'index.html';
+            }
+        };
+
+        const contadorEl = document.getElementById('contadorCierrePlan');
+        const timerInterval = setInterval(() => {
+            segundosRestantes--;
+            if (contadorEl) contadorEl.textContent = segundosRestantes;
+            if (segundosRestantes <= 0) {
+                ejecutarCierreSesion();
+            }
+        }, 1000);
+
+        const btnCerrar = document.getElementById('cerrarModalSuspensionBtn');
+        if (btnCerrar) {
+            btnCerrar.onclick = () => {
+                ejecutarCierreSesion();
+            };
+        }
+    }
+
+    function iniciarVigilanteHorarioPlan(companyId) {
+        // Revisa periódicamente cada 60 segundos si el plan ya venció
+        setInterval(async () => {
+            if (modalSuspensionActivo) return;
+            try {
+                const planLocal = await window.nexusAPI.obtenerPlanLocal(companyId);
+                if (esPlanVencido(planLocal)) {
+                    mostrarAlertaSuspensionSesionActiva();
+                }
+            } catch (e) {
+                console.error("Error en vigilante horario de plan:", e);
+            }
+        }, 60000);
+    }
+
     async function activarVigilanteFirebase(companyId) {
         if (!navigator.onLine) return;
 
@@ -274,6 +384,13 @@ window.descargandoFondo = false;
             onSnapshot(docRef, async (docSnap) => {
                 if (docSnap.exists() && docSnap.data().plan) {
                     const planNube = docSnap.data().plan;
+
+                    // VERIFICACIÓN DE VENCIMIENTO EN TIEMPO REAL DESDE NUBE
+                    if (esPlanVencido(planNube)) {
+                        mostrarAlertaSuspensionSesionActiva();
+                        return;
+                    }
+
                     const planLocalFresco = await window.nexusAPI.obtenerPlanLocal(companyId);
 
                     const esPlanDistinto = !planLocalFresco ||
@@ -688,6 +805,11 @@ async function iniciarSincronizacionSilenciosa() {
             }
         } catch (error) {
             console.log("⏸️ Sincronización de inventario en pausa (Red inestable o timeout).");
+            // Reintento rápido si es caja hija y se pierde conexión
+            if (window.esCajaHija) {
+                console.log("🔄 [CAJERA] Reintentando conexión con maestro en 5 segundos...");
+                setTimeout(descargarActualizacionesDeInventario, 5000);
+            }
         } finally {
             window.descargandoFondo = false;
         }
@@ -698,8 +820,12 @@ async function iniciarSincronizacionSilenciosa() {
 
         window.descargandoCategorias = true;
         try {
-            // Hacemos la petición a la ruta que me pasaste en tu backend
-            const response = await fetch(`${SERVER_URL}/api/maestro/categorias/${currentCompanyId}`, {
+            // Usar el endpoint apropiado si es caja hija vs si es sincronización normal
+            const endpoint = window.esCajaHija 
+                ? `${SERVER_URL}/api/maestro/categorias-local?empresaId=${currentCompanyId}`
+                : `${SERVER_URL}/api/maestro/categorias/${currentCompanyId}`;
+                
+            const response = await fetch(endpoint, {
                 signal: AbortSignal.timeout(30000)
             });
 
@@ -720,6 +846,11 @@ async function iniciarSincronizacionSilenciosa() {
             }
         } catch (error) {
             console.log("⏸️ Sincronización de categorías en pausa (Red inestable o timeout).");
+            // Reintento rápido si es caja hija y se pierde conexión
+            if (window.esCajaHija) {
+                console.log("🔄 [CAJERA] Reintentando conexión con maestro (categorías) en 5 segundos...");
+                setTimeout(descargarActualizacionesDeCategorias, 5000);
+            }
         } finally {
             window.descargandoCategorias = false;
         }
@@ -739,11 +870,23 @@ async function inicializarDashboard() {
                 // 🔥 CORRECCIÓN DEL CANDADO: Acepta booleano o texto
                 respaldoActivo = config.respaldo_datos === true || config.respaldo_datos === 'true' || config.respaldoActivo === true || config.respaldoActivo === 'true';
                 
-                if (respaldoActivo && ipSegura) {
+                window.esCajaHija = (config.isServer === false || config.isServer === 'false');
+                window.SERVER_URL = null;
+                
+                // 🔥 CAJA HIJA: Siempre se conecta al maestro, sin importar el respaldo
+                if (window.esCajaHija && ipSegura) {
                     SERVER_URL = `http://${ipSegura}:${puertoSeguro}`;
-                    console.log("📡 Servidor Maestro detectado en cajera:", SERVER_URL);
-                } else {
-                    console.log("🔌 Cajera operando en Modo Local estricto.");
+                    window.SERVER_URL = SERVER_URL;
+                    console.log("📡 Servidor Maestro detectado en cajera hija:", SERVER_URL);
+                } 
+                // 🔥 CAJA MAESTRA CON RESPALDO VPS
+                else if (!window.esCajaHija && respaldoActivo && ipSegura) {
+                    SERVER_URL = `http://${ipSegura}:${puertoSeguro}`;
+                    window.SERVER_URL = SERVER_URL;
+                    console.log("📡 VPS configurado en caja maestra:", SERVER_URL);
+                }
+                else {
+                    console.log("🔌 Operando en Modo Local estricto.");
                 }
             }
 
@@ -755,6 +898,14 @@ async function inicializarDashboard() {
                 
                 // === APLICAR RESTRICCIONES SAAS ===
                 const planLocal = await window.nexusAPI.obtenerPlanLocal(sesion.companyId);
+
+                // === VERIFICACIÓN DE VENCIMIENTO DEL PLAN EN ARRANQUE ===
+                if (esPlanVencido(planLocal) || (sesion.company_data && esPlanVencido(sesion.company_data)) || (sesion.companyData && esPlanVencido(sesion.companyData))) {
+                    ocultarLoading();
+                    mostrarAlertaSuspensionSesionActiva();
+                    return;
+                }
+
                 if (typeof aplicarRestriccionesSaaS === "function") {
                     aplicarRestriccionesSaaS(planLocal || { nombre_plan: 'SIN PLAN', permisos: [] });
                 }
@@ -784,8 +935,9 @@ async function inicializarDashboard() {
                 descargarActualizacionesDeInventario();
                 descargarActualizacionesDeCategorias();
                 
-                // Activar conexión en tiempo real con el plan en Firebase
+                // Activar conexión en tiempo real y vigilante por horario con el plan
                 activarVigilanteFirebase(currentCompanyId);
+                iniciarVigilanteHorarioPlan(currentCompanyId);
 
             } else {
                 console.warn("🚫 Sesión inválida o rol incorrecto. Volviendo al login.");

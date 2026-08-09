@@ -845,6 +845,23 @@ server.get('/api/maestro/obtener-clientes', (req, res) => {
     }
 });
 
+server.get('/api/maestro/categorias-local', (req, res) => {
+    try {
+        const empresaId = req.query.empresaId;
+        let stmt;
+        if (empresaId && empresaId !== 'undefined') {
+            stmt = serverDb.prepare('SELECT * FROM categorias_locales WHERE company_id = ? ORDER BY nombre ASC');
+            res.json(stmt.all(empresaId));
+        } else {
+            stmt = serverDb.prepare('SELECT * FROM categorias_locales ORDER BY nombre ASC');
+            res.json(stmt.all());
+        }
+    } catch (error) {
+        console.error("❌ Error en Maestro obteniendo categorias locales:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 server.get('/api/maestro/buscar-productos-local', (req, res) => {
     try {
         const query = req.query.query || '';
