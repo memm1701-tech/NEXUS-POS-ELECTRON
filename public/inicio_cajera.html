@@ -659,8 +659,10 @@ async function iniciarSincronizacionSilenciosa() {
     let esDeNube = false;
 
     try {
-        // 1. Intentar descargar desde el Servidor Maestro en la Nube (VPS) si está Online
-        if (navigator.onLine && SERVER_URL && currentCompanyId && !window.descargandoTasa) {
+        // 1. Intentar descargar desde el Servidor Maestro (VPS o LAN) si está disponible
+        // 🔥 CAJA HIJA: No depende de navigator.onLine, intenta conectar al maestro por LAN directamente
+        const puedeConectar = (window.esCajaHija && SERVER_URL) || (navigator.onLine && SERVER_URL);
+        if (puedeConectar && currentCompanyId && !window.descargandoTasa) {
             window.descargandoTasa = true;
             try {
                 const response = await fetch(`${SERVER_URL}/api/maestro/tasa/${currentCompanyId}`, {
@@ -718,7 +720,9 @@ async function iniciarSincronizacionSilenciosa() {
 }
 
     async function descargarActualizacionesDeInventario() {
-        if (!navigator.onLine || !SERVER_URL || !currentCompanyId || window.descargandoFondo) return;
+        // 🔥 CAJA HIJA: No depende de navigator.onLine, intenta conectar al maestro por LAN
+        const puedeConectar = (window.esCajaHija && SERVER_URL) || (navigator.onLine && SERVER_URL);
+        if (!puedeConectar || !currentCompanyId || window.descargandoFondo) return;
 
         window.descargandoFondo = true;
         try {
@@ -816,7 +820,9 @@ async function iniciarSincronizacionSilenciosa() {
     }
 
     async function descargarActualizacionesDeCategorias() {
-        if (!navigator.onLine || !SERVER_URL || !currentCompanyId || window.descargandoCategorias) return;
+        // 🔥 CAJA HIJA: No depende de navigator.onLine, intenta conectar al maestro por LAN
+        const puedeConectar = (window.esCajaHija && SERVER_URL) || (navigator.onLine && SERVER_URL);
+        if (!puedeConectar || !currentCompanyId || window.descargandoCategorias) return;
 
         window.descargandoCategorias = true;
         try {

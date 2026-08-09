@@ -1669,19 +1669,24 @@ function filterProducts(query, type, resultsId) {
             let resultadosDB = null;
             if (window.esCajaHija && window.SERVER_URL) {
                 try {
-                    const resp = await fetch(`${window.SERVER_URL}/api/maestro/buscar-productos-local?query=${encodeURIComponent(query.trim())}&empresaId=${window.companyId}`);
-                    if (resp.ok) resultadosDB = await resp.json();
+                    const resp = await fetch(`${window.SERVER_URL}/api/maestro/buscar-productos-local?query=${encodeURIComponent(query.trim())}&empresaId=${window.companyId}`, {
+                        signal: AbortSignal.timeout(4000)
+                    });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        if (Array.isArray(data)) resultadosDB = data;
+                    }
                 } catch (e) {
-                    console.log("Fallo fetch al maestro, usando fallback local para filterProducts");
+                    console.log("⚠️ Fallo fetch al maestro, usando fallback local para filterProducts");
                 }
             }
             
             // Fallback a SQLite local si no hay resultados o falló red
-            if (!resultadosDB) {
+            if (!Array.isArray(resultadosDB)) {
                 resultadosDB = await window.nexusAPI.buscarProductosLocal(query.trim(), window.companyId);
             }
 
-            if (!resultadosDB || resultadosDB.length === 0) {
+            if (!Array.isArray(resultadosDB) || resultadosDB.length === 0) {
                 renderAutocompleteResults([], resultsId, type);
                 return;
             }
@@ -4695,10 +4700,15 @@ async function fetchProducts() {
         let categoriasDB = null;
         if (window.esCajaHija && window.SERVER_URL) {
             try {
-                const resp = await fetch(`${window.SERVER_URL}/api/maestro/categorias-local?empresaId=${window.companyId}`);
-                if (resp.ok) categoriasDB = await resp.json();
+                const resp = await fetch(`${window.SERVER_URL}/api/maestro/categorias-local?empresaId=${window.companyId}`, {
+                    signal: AbortSignal.timeout(4000)
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (Array.isArray(data)) categoriasDB = data;
+                }
             } catch (e) {
-                console.log("Fallo fetch al maestro, usando fallback local para fetchProducts");
+                console.log("⚠️ Fallo fetch al maestro, usando fallback local para fetchProducts");
             }
         }
         
@@ -4925,8 +4935,28 @@ function setupBarcodeSearchListener() {
         clearTimeout(_barcodeDebounce);
         _barcodeDebounce = setTimeout(async () => {
             try {
-                const resultadosDB = await window.nexusAPI.buscarProductosLocal(query, window.companyId);
-                const filteredProducts = (resultadosDB || [])
+                let resultadosDB = null;
+                if (window.esCajaHija && window.SERVER_URL) {
+                    try {
+                        const resp = await fetch(`${window.SERVER_URL}/api/maestro/buscar-productos-local?query=${encodeURIComponent(query)}&empresaId=${window.companyId}`, {
+                            signal: AbortSignal.timeout(4000)
+                        });
+                        if (resp.ok) {
+                            const data = await resp.json();
+                            if (Array.isArray(data)) resultadosDB = data;
+                        }
+                    } catch (e) {
+                        console.log("⚠️ Fallo fetch al maestro, usando fallback local para barcode input");
+                    }
+                }
+                
+                if (!Array.isArray(resultadosDB)) {
+                    resultadosDB = await window.nexusAPI.buscarProductosLocal(query, window.companyId);
+                }
+
+                if (!Array.isArray(resultadosDB)) resultadosDB = [];
+
+                const filteredProducts = resultadosDB
                     .map(_mapearProductoCaja)
                     .filter(p => p.codigo && String(p.codigo).toLowerCase().includes(query.toLowerCase()));
                 renderAutocompleteResults(filteredProducts, 'barcode-autocomplete-results', 'code');
@@ -4956,10 +4986,17 @@ function setupBarcodeSearchListener() {
                 let rawDB = null;
                 if (window.esCajaHija && window.SERVER_URL) {
                     try {
-                        const resp = await fetch(`${window.SERVER_URL}/api/maestro/buscar-producto-por-codigo?codigo=${encodeURIComponent(code)}&empresaId=${window.companyId}`);
-                        if (resp.ok) rawDB = await resp.json();
+                        const resp = await fetch(`${window.SERVER_URL}/api/maestro/buscar-producto-por-codigo?codigo=${encodeURIComponent(code)}&empresaId=${window.companyId}`, {
+                            signal: AbortSignal.timeout(4000)
+                        });
+                        if (resp.ok) {
+                            const data = await resp.json();
+                            if (data && typeof data === 'object' && !data.error) {
+                                rawDB = data;
+                            }
+                        }
                     } catch (e) {
-                        console.log("Fallo fetch al maestro, usando fallback local para código de barras");
+                        console.log("⚠️ Fallo fetch al maestro, usando fallback local para código de barras");
                     }
                 }
                 
