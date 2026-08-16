@@ -1662,15 +1662,32 @@ function filterProducts(query, type, resultsId) {
 
     clearTimeout(_filterDebounceTimer);
 
-    if (!query || !query.trim()) {
+    const inputId = (type === 'name') ? 'product-search' : 'barcode-search';
+    const currentInput = document.getElementById(inputId);
+
+    if (!query || !query.trim() || (currentInput && !currentInput.value.trim())) {
         const el = document.getElementById(resultsId);
-        if (el) el.style.display = 'none';
+        if (el) {
+            el.style.display = 'none';
+            el.innerHTML = '';
+        }
         return;
     }
 
     // Debounce de 250ms: evita saturar el backend mientras el usuario escribe
     _filterDebounceTimer = setTimeout(async () => {
         try {
+            // Verificación previa: si el input fue borrado mientras corría el timer
+            const inputActual = document.getElementById(inputId);
+            if (inputActual && (!inputActual.value || !inputActual.value.trim())) {
+                const el = document.getElementById(resultsId);
+                if (el) {
+                    el.style.display = 'none';
+                    el.innerHTML = '';
+                }
+                return;
+            }
+
             let resultadosDB = null;
 
             // 1. Puente IPC unificado (Maneja maestro o local automáticamente)
@@ -1691,6 +1708,17 @@ function filterProducts(query, type, resultsId) {
                 } catch (e) {
                     console.log("⚠️ Fallo fetch directo al maestro para filterProducts");
                 }
+            }
+
+            // Doble verificación: si el usuario borró el campo durante la llamada asíncrona
+            const inputPostFetch = document.getElementById(inputId);
+            if (inputPostFetch && (!inputPostFetch.value || !inputPostFetch.value.trim())) {
+                const el = document.getElementById(resultsId);
+                if (el) {
+                    el.style.display = 'none';
+                    el.innerHTML = '';
+                }
+                return;
             }
 
             if (!Array.isArray(resultadosDB) || resultadosDB.length === 0) {
@@ -4814,31 +4842,59 @@ function setupSearchListener() {
     
     if (!searchInput) return;
 
-    // 1. RASTREO DE ENFOQUE
+    // Función para mostrar / re-renderizar resultados si hay texto
+    const reactivarDesplegableSiHayTexto = () => {
+        const query = searchInput.value.trim();
+        if (query) {
+            if (resultsContainer && resultsContainer.children.length > 0) {
+                resultsContainer.style.display = 'block';
+            } else {
+                filterProducts(query, 'name', 'autocomplete-results');
+            }
+        } else {
+            if (resultsContainer) {
+                resultsContainer.style.display = 'none';
+                resultsContainer.innerHTML = '';
+            }
+        }
+    };
+
+    // 1. RASTREO DE ENFOQUE (Focus con mouse o atajo F1)
+    searchInput.addEventListener('focus', () => {
+        lastUsedInputId = 'product-search';
+        reactivarDesplegableSiHayTexto();
+    });
+
     searchInput.addEventListener('focusin', () => {
         lastUsedInputId = 'product-search';
+        reactivarDesplegableSiHayTexto();
+    });
+
+    searchInput.addEventListener('click', (e) => {
+        e.stopPropagation();
+        reactivarDesplegableSiHayTexto();
     });
 
     // 2. BÚSQUEDA DINÁMICA CON DETECCIÓN DE ESCÁNER
     searchInput.addEventListener('input', async (event) => {
-
         // RESET DE SEGURIDAD: Limpiamos selección anterior para no arrastrar productos
         selectedProduct = null;
         
         const query = event.target.value.trim(); 
         
         if (!query) {
-            resultsContainer.style.display = 'none';
+            clearTimeout(_filterDebounceTimer);
+            if (resultsContainer) {
+                resultsContainer.style.display = 'none';
+                resultsContainer.innerHTML = '';
+            }
             return;
         }
 
         // --- LÓGICA DE DETECCIÓN AUTOMÁTICA DE BARCODE ---
-        // Si el usuario escanea teniendo el foco aquí, entrará una cadena numérica larga.
-        // El regex /^\d{7,}$/ detecta si son solo números de 7 o más dígitos.
         const isPotentialBarcode = /^\d{7,}$/.test(query); 
 
         if (isPotentialBarcode) {
-            // 🚀 OPTIMIZACIÓN: Busca primero en caché, luego en backend
             let product = allProducts.find(p => String(p.codigo) === query);
             if (!product && window.nexusAPI && window.nexusAPI.buscarProductoPorCodigo) {
                 const rawDB = await window.nexusAPI.buscarProductoPorCodigo(query, window.companyId);
@@ -4847,16 +4903,14 @@ function setupSearchListener() {
             
             if (product) {
                 console.log(`🚀 Escáner detectado en barra de búsqueda. Producto: ${product.nombre}`);
-                
-                // 1. Limpiamos la barra y cerramos sugerencias de inmediato
                 searchInput.value = '';
-                resultsContainer.style.display = 'none';
-                
-                // 2. Lo asignamos y usamos la función nativa para añadir al carrito
+                if (resultsContainer) {
+                    resultsContainer.style.display = 'none';
+                    resultsContainer.innerHTML = '';
+                }
                 selectedProduct = product;
                 addItem(); 
-                
-                return; // Cortamos el flujo para no buscar por nombre
+                return;
             }
         }
 
@@ -4864,36 +4918,33 @@ function setupSearchListener() {
         filterProducts(query, 'name', 'autocomplete-results');
     });
 
-
     // 3. NAVEGACIÓN, SELECCIÓN Y ESCÁNER (TECLAS)
     searchInput.addEventListener('keydown', (e) => {
-        
-        // --- LÓGICA DE ENTER (Escáner vs Selección Manual) ---
         if (e.key === 'Enter') {
-            
-            // A. Si viene del flujo de variables del escáner global
             if (typeof scannedBarcode !== 'undefined' && scannedBarcode.length > 4) { 
                 e.preventDefault();
                 const cleanBarcode = scannedBarcode.trim();
                 processBarcodeScan(cleanBarcode);
                 scannedBarcode = ''; 
                 searchInput.value = '';
+                if (resultsContainer) {
+                    resultsContainer.style.display = 'none';
+                    resultsContainer.innerHTML = '';
+                }
                 return; 
             }
 
-            // B. Si es selección del menú con las flechas
-            let items = resultsContainer.querySelectorAll('.autocomplete-item');
+            let items = resultsContainer ? resultsContainer.querySelectorAll('.autocomplete-item') : [];
             if (typeof productFocus !== 'undefined' && productFocus > -1 && items[productFocus]) {
                 e.preventDefault();
                 e.stopImmediatePropagation();
                 items[productFocus].click();
-                productFocus = -1; // Reseteamos la posición
+                productFocus = -1;
                 return;
             }
         }
         
-        // --- NAVEGACIÓN CON FLECHAS ---
-        let items = resultsContainer.querySelectorAll('.autocomplete-item');
+        let items = resultsContainer ? resultsContainer.querySelectorAll('.autocomplete-item') : [];
         if (items.length === 0) return;
 
         if (e.key === "ArrowDown") {
@@ -4908,16 +4959,23 @@ function setupSearchListener() {
             productFocus--;
             if (productFocus < 0) productFocus = items.length - 1;
             applyHighlight(items, productFocus);
+        } else if (e.key === "Escape") {
+            if (resultsContainer) resultsContainer.style.display = 'none';
         }
     });
     
+    // 4. CLICK EN CUALQUIER PARTE DEL FRONTEND -> OCULTAR RESULTADOS
     document.addEventListener('click', (e) => {
+        if (resultsContainer && !searchInput.contains(e.target) && !resultsContainer.contains(e.target)) {
+            resultsContainer.style.display = 'none';
+        }
+
         const btnPrincipal = e.target.closest('#btn-alerta-deuda-principal');
         if (btnPrincipal) {
             console.log("🖱️ Forzando apertura de Estado de Cuenta...");
             e.preventDefault();
             e.stopPropagation();
-            window.verDetallesDeuda(); // Esta función crea el modal dinámico en document.body
+            window.verDetallesDeuda();
         }
     });
 }
@@ -4927,20 +4985,53 @@ function setupBarcodeSearchListener() {
     const resultsContainer = document.getElementById('barcode-autocomplete-results');
     if (!barcodeInput) return;
 
-    // 🚀 OPTIMIZACIÓN: Busca por código en el backend con debounce
+    const reactivarBarcodeSiHayTexto = () => {
+        const query = barcodeInput.value.trim();
+        if (query) {
+            if (resultsContainer && resultsContainer.children.length > 0) {
+                resultsContainer.style.display = 'block';
+            }
+        } else {
+            if (resultsContainer) {
+                resultsContainer.style.display = 'none';
+                resultsContainer.innerHTML = '';
+            }
+        }
+    };
+
+    barcodeInput.addEventListener('focus', reactivarBarcodeSiHayTexto);
+    barcodeInput.addEventListener('focusin', reactivarBarcodeSiHayTexto);
+    barcodeInput.addEventListener('click', (e) => {
+        e.stopPropagation();
+        reactivarBarcodeSiHayTexto();
+    });
+
     let _barcodeDebounce = null;
     barcodeInput.addEventListener('input', (event) => {
         selectedProduct = null; 
 
         const query = event.target.value.trim();
         if (!query) {
-            resultsContainer.style.display = 'none';
+            clearTimeout(_barcodeDebounce);
+            if (resultsContainer) {
+                resultsContainer.style.display = 'none';
+                resultsContainer.innerHTML = '';
+            }
             return;
         }
 
         clearTimeout(_barcodeDebounce);
         _barcodeDebounce = setTimeout(async () => {
             try {
+                const inputActual = document.getElementById('barcode-search');
+                if (inputActual && (!inputActual.value || !inputActual.value.trim())) {
+                    if (resultsContainer) {
+                        resultsContainer.style.display = 'none';
+                        resultsContainer.innerHTML = '';
+                    }
+                    return;
+                }
+
                 let resultadosDB = null;
                 if (window.nexusAPI && window.nexusAPI.buscarProductosLocal) {
                     resultadosDB = await window.nexusAPI.buscarProductosLocal(query, window.companyId);
@@ -4972,21 +5063,18 @@ function setupBarcodeSearchListener() {
         }, 250);
     });
         
-    
     barcodeInput.addEventListener('keydown', async (e) => {
         if (e.key === "Enter") {
             e.preventDefault();
             const code = barcodeInput.value.trim();
             if (!code) return;
 
-            // 🔥 FILTRO ANTI-REBOTE
             const now = Date.now();
             if (code === lastScannedCodeGlobal && (now - lastScannedTimestamp) < 600) return;
             
             lastScannedCodeGlobal = code;
             lastScannedTimestamp = now;
 
-            // 🚀 OPTIMIZACIÓN: Busca primero en caché, luego en backend
             let product = allProducts.find(p => String(p.codigo) === code);
             if (!product && window.nexusAPI && window.nexusAPI.buscarProductoPorCodigo) {
                 let rawDB = await window.nexusAPI.buscarProductoPorCodigo(code, window.companyId);
@@ -5014,6 +5102,10 @@ function setupBarcodeSearchListener() {
                 selectedProduct = product;
                 addItem(); 
                 barcodeInput.value = '';
+                if (resultsContainer) {
+                    resultsContainer.style.display = 'none';
+                    resultsContainer.innerHTML = '';
+                }
             } else {
                 if (typeof messageBox === 'function') messageBox("Producto no encontrado.", 'bg-red-500');
             }
