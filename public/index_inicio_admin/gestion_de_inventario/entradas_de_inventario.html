@@ -738,7 +738,7 @@
 
     async function cargarCatalogoProductos() {
         const brutos = await window.nexusAPI.obtenerProductosLocal(idEmpresa);
-        listaProductos = brutos.map(p => {
+        listaProductos = (brutos || []).map(p => {
             let info = typeof p.datos_json === 'string' ? JSON.parse(p.datos_json) : (p.datos_json || {});
             return {
                 id: p.id || p.producto_ID,
@@ -750,37 +750,13 @@
         });
     }
 
+    let cargandoInventario = false;
     window.cargarInventarioEntradas = async function() {
-        if (!idSucursalSeleccionada) return;
+        if (!idSucursalSeleccionada || cargandoInventario) return;
+        cargandoInventario = true;
         try {
-            // 🌐 Si hay conexión y VPS activo, intentar sincronizar stock del VPS directamente a SQLite
-            if (respaldoActivo && SERVER_URL && navigator.onLine) {
-                try {
-                    const resVPS = await fetch(`${SERVER_URL}/api/maestro/stock/sincronizar?company_id=${encodeURIComponent(idEmpresa)}`, {
-                        signal: AbortSignal.timeout(4000)
-                    });
-                    if (resVPS.ok) {
-                        const stocksVPS = await resVPS.json();
-                        if (Array.isArray(stocksVPS) && stocksVPS.length > 0) {
-                            for (const s of stocksVPS) {
-                                await window.nexusAPI.guardarStockSucursal({
-                                    productoId: s.producto_id,
-                                    sucursalId: s.sucursal_id,
-                                    companyId: idEmpresa,
-                                    cantidad: parseFloat(s.cantidad_real || 0),
-                                    operacion: 'FIJAR',
-                                    datosStock: { estado_sync: 1 }
-                                });
-                            }
-                        }
-                    }
-                } catch (vpsErr) {
-                    // Fallback silencioso a base de datos local
-                }
-            }
-
             const todos = await window.nexusAPI.obtenerProductosLocal(idEmpresa);
-            const productosBase = todos.filter(p => p.company_id === idEmpresa);
+            const productosBase = (todos || []).filter(p => p.company_id === idEmpresa);
             
             // 🛡️ Utilizamos el puente IPC puro para evitar la colisión de puertos
             const stockCentral = await window.nexusAPI.obtenerInventarioSucursal({
@@ -789,7 +765,7 @@
             });
 
             const inventarioFinal = productosBase.map(prod => {
-                const servidorData = stockCentral.find(s => s.producto_id === prod.id);
+                const servidorData = (stockCentral || []).find(s => s.producto_id === prod.id);
                 return { ...prod, stock_sucursal: servidorData ? servidorData.cantidad_real : 0 };
             });
 
@@ -799,7 +775,11 @@
 
             datosInventarioActual = inventarioFinal;
             aplicarFiltrosInventario();
-        } catch (e) { console.error("❌ Error carga stock:", e); }
+        } catch (e) { 
+            console.error("❌ Error carga stock:", e); 
+        } finally {
+            cargandoInventario = false;
+        }
     };
 
     window.renderizarTablaEntradas = function(lista) {
@@ -814,7 +794,6 @@
             const stock = item.stock_sucursal || 0;
             const cat = mapaCategorias[item.categoria] || item.categoria || "General";
             const nombreMayuscula = (item.nombre || '').toUpperCase();
-            const safeNombre = (item.nombre || '').replace(/'/g, "\\'");
 
             htmlBuffer += `<tr>
                 <td style="font-weight: bold; color: #2c3e50;">${nombreMayuscula}</td>
@@ -823,7 +802,7 @@
                 <td class="text-center font-bold text-blue-600">${stock}</td>
                 <td>
                     <div class="action-buttons">
-                        <button class="edit-stock-btn" onclick="prepararEdicionStockEntrada('${item.id}', '${safeNombre}', ${stock})">EDITAR</button>
+                        <button class="edit-stock-btn" onclick="prepararEdicionStockEntrada('${item.id}')">EDITAR</button>
                     </div>
                 </td>
             </tr>`;
@@ -883,7 +862,7 @@
             const resLocal = await window.nexusAPI.guardarStockSucursal(payloadLocal);
             let exitoLocal = resLocal && resLocal.success;
 
-            if (!exitoLocal) throw new Error(resLocal.error || 'Error cr�tico al registrar la entrada en disco local.');
+            if (!exitoLocal) throw new Error(resLocal.error || 'Error crítico al registrar la entrada en disco local.');
 
             if (!exitoVPS && respaldoActivo && SERVER_URL && window.nexusAPI.encolarSincronizacion) {
                 await window.nexusAPI.encolarSincronizacion({ 
@@ -894,11 +873,11 @@
             }
 
             if (exitoVPS) {
-                mostrarAlerta('? �XITO: Stock registrado y sincronizado en la nube.', 'success');
+                mostrarAlerta('✅ ÉXITO: Stock registrado y sincronizado en la nube.', 'success');
             } else if (respaldoActivo && SERVER_URL) {
-                mostrarAlerta('? GUARDADO LOCAL: A�adido a la cola de sincronizaci�n (Sin conexi�n/VPS fall�).', 'warning');
+                mostrarAlerta('⚠️ GUARDADO LOCAL: Añadido a la cola de sincronización (Sin conexión/VPS falló).', 'warning');
             } else {
-                mostrarAlerta('? �XITO: Stock registrado (Modo 100% Local).', 'success');
+                mostrarAlerta('✅ ÉXITO: Stock registrado (Modo 100% Local).', 'success');
             }
 
             limpiarFormulario();
@@ -914,14 +893,24 @@
         }
     };
 
-    window.prepararEdicionStockEntrada = (id, nombre, stock) => {
+    window.prepararEdicionStockEntrada = (id) => {
+        const item = (datosInventarioActual || []).find(p => p.id === id) || (listaProductos || []).find(p => p.id === id);
+        if (!item) {
+            console.warn("No se encontró el producto para editar:", id);
+            return;
+        }
         idProductoSeleccionado = id;
         modoEdicion = true;
-        entradaBusquedaProducto.value = nombre;
+        entradaBusquedaProducto.value = item.nombre || '';
+        const stock = parseFloat(item.stock_sucursal !== undefined ? item.stock_sucursal : 0);
         entradaCantidad.value = stock;
-        visorStockFinal.value = stock;
+        visorStockFinal.value = stock.toFixed(2);
+        factorEmpaqueSeleccionado = 1;
+        actualizarSelectEmpaques(id, item.unit || item.unidad || 'UN');
         botonRegistrar.textContent = "Actualizar Stock Total (Fijar)";
-        botonRegistrar.classList.replace('bg-blue-600', 'bg-amber-500');
+        if (botonRegistrar.classList.contains('bg-blue-600')) {
+            botonRegistrar.classList.replace('bg-blue-600', 'bg-amber-500');
+        }
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -967,7 +956,7 @@
         const empaques = await window.nexusAPI.obtenerEmpaquePorProducto(id);
         selectorEmpaque.innerHTML = `<option value="1">Unidad (1.00 ${unidad})</option>`;
         selectorEmpaque.disabled = false;
-        empaques.forEach(e => {
+        (empaques || []).forEach(e => {
             const opt = document.createElement('option');
             opt.value = e.factor_cantidad;
             opt.textContent = `${e.nombre_unidad} (x${e.factor_cantidad})`;
@@ -978,8 +967,13 @@
     }
 
     function recalcular() {
-        const total = (parseFloat(entradaCantidad.value) || 0) * factorEmpaqueSeleccionado;
-        visorStockFinal.value = total.toFixed(2);
+        const cant = parseFloat(entradaCantidad.value) || 0;
+        if (modoEdicion) {
+            visorStockFinal.value = cant.toFixed(2);
+        } else {
+            const total = cant * factorEmpaqueSeleccionado;
+            visorStockFinal.value = total.toFixed(2);
+        }
     }
 
     selectorEmpaque.addEventListener('change', (e) => { factorEmpaqueSeleccionado = parseFloat(e.target.value); recalcular(); });
@@ -990,6 +984,11 @@
         entradaCantidad.value = '';
         visorStockFinal.value = '0';
         idProductoSeleccionado = null;
+        modoEdicion = false;
+        botonRegistrar.textContent = "Registrar Entrada de Inventario";
+        if (botonRegistrar.classList.contains('bg-amber-500')) {
+            botonRegistrar.classList.replace('bg-amber-500', 'bg-blue-600');
+        }
     }
 
     function mostrarAlerta(m, t) {
@@ -1000,12 +999,23 @@
         setTimeout(() => a.remove(), 3000);
     }
 
-    // 🔄 Auto-refresco reactivo si se sincroniza stock desde el VPS en segundo plano
-    window.addEventListener('stock-actualizado-vps', () => {
-        if (typeof window.cargarInventarioEntradas === 'function' && idSucursalSeleccionada) {
-            window.cargarInventarioEntradas();
-        }
-    });
+    // 🔄 Auto-refresco reactivo con Debounce
+    let timerRefrescoStock = null;
+    function refrescarTablaDebounced() {
+        if (timerRefrescoStock) clearTimeout(timerRefrescoStock);
+        timerRefrescoStock = setTimeout(() => {
+            if (typeof window.cargarInventarioEntradas === 'function' && idSucursalSeleccionada) {
+                window.cargarInventarioEntradas();
+            }
+        }, 300);
+    }
+
+    const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+    if (api && api.onStockCambiado) {
+        api.onStockCambiado(refrescarTablaDebounced);
+    }
+
+    window.addEventListener('stock-actualizado-vps', refrescarTablaDebounced);
 
     inicializarModulo();
 </script>

@@ -619,6 +619,9 @@ server.put('/api/maestro/metodos-pago/:id', (req, res) => {
             });
             transaccion(items);
             console.log(`🏁 Transacción de stock finalizada con éxito.\n`);
+            if (process.send) {
+                try { process.send({ tipo: 'stock-actualizado' }); } catch(e) {}
+            }
             res.json({ exito: true });
         } catch (e) {
             console.error("❌ Error en servidor Maestro (registrar-entrada):", e.message);
@@ -685,6 +688,9 @@ server.put('/api/maestro/metodos-pago/:id', (req, res) => {
             });
             transaccion(items);
             console.log(`✅ [API MAESTRO] Descuento de stock por venta exitoso.\n`);
+            if (process.send) {
+                try { process.send({ tipo: 'stock-actualizado' }); } catch(e) {}
+            }
             res.json({ exito: true });
         } catch (e) { 
             console.error("❌ [API MAESTRO] Error en descuento global:", e.message);
@@ -1514,44 +1520,6 @@ server.post('/api/maestro/registrar-venta', (req, res) => {
             v.base_imponible, v.monto_iva, v.monto_igtf, v.monto_total,
             v.tasa_bcv, v.metodo_pago, v.datos_json, v.ganancia_venta || 0
         );
-
-        // EXTRAER KARDEX
-        let prodArray = [];
-        try {
-            if (v.datos_json) {
-                const parsed = JSON.parse(v.datos_json);
-                prodArray = Array.isArray(parsed) ? parsed : (parsed.productos || parsed.items || []);
-            }
-        } catch(e) {}
-
-        for (const item of prodArray) {
-            // Descontar inventario local
-            const sIdTarget = item.sucursal_id || v.branch_id;
-            
-            // OBTENER STOCK PREVIO
-            let stockPrevio = 0;
-            const rowStock = serverDb.prepare('SELECT cantidad_real FROM stock_maestro WHERE producto_id = ? AND sucursal_id = ?').get(item.id, sIdTarget);
-            if (rowStock) stockPrevio = parseFloat(rowStock.cantidad_real || 0);
-
-            // Obtener company_id
-            const rowComp = serverDb.prepare('SELECT company_id FROM stock_maestro WHERE producto_id = ? LIMIT 1').get(item.id);
-            const compId = rowComp ? rowComp.company_id : v.company_id;
-
-            if (sIdTarget) {
-                // FIX: Actualiza SOLO en la sucursal donde se hizo la venta
-                serverDb.prepare('UPDATE stock_maestro SET cantidad_real = cantidad_real - ?, ultima_sincronizacion = CURRENT_TIMESTAMP WHERE producto_id = ? AND sucursal_id = ?').run(item.cantidad, item.id, sIdTarget);
-                try {
-                    serverDb.prepare(`INSERT INTO movimientos_stock_maestro (company_id, sucursal_id, producto_id, cantidad, tipo_movimiento) VALUES (?, ?, ?, ?, ?)`)
-                            .run(compId, sIdTarget, item.id, -Math.abs(item.cantidad), 'VENTA');
-                } catch(e) {}
-            } else {
-                serverDb.prepare('UPDATE stock_maestro SET cantidad_real = cantidad_real - ?, ultima_sincronizacion = CURRENT_TIMESTAMP WHERE producto_id = ?').run(item.cantidad, item.id);
-                try {
-                    serverDb.prepare(`INSERT INTO movimientos_stock_maestro (company_id, sucursal_id, producto_id, cantidad, tipo_movimiento) VALUES (?, ?, ?, ?, ?)`)
-                            .run(compId, 'GLOBAL', item.id, -Math.abs(item.cantidad), 'VENTA');
-                } catch(e) {}
-            }
-        }
 
         res.json({ exito: true });
     } catch (e) {

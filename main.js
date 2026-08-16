@@ -212,12 +212,23 @@ if (config.isServer) {
         });
 
         cerebroProcess.on('spawn', () => {
-            console.log("âœ… [NEXUS MASTER] Servidor Maestro ejecutÃ¡ndose correctamente.");
+            console.log("✅ [NEXUS MASTER] Servidor Maestro ejecutándose correctamente.");
+        });
+
+        cerebroProcess.on('message', (msg) => {
+            if (msg && msg.tipo === 'stock-actualizado') {
+                try {
+                    BrowserWindow.getAllWindows().forEach(v => {
+                        if (!v.isDestroyed()) v.webContents.send('stock-actualizado-global');
+                    });
+                } catch(eWin) {}
+            }
         });
 
         cerebroProcess.on('error', (err) => {
-            console.error("âŒ [NEXUS MASTER] Error al arrancar:", err.message);
+            console.error("❌ [NEXUS MASTER] Error al arrancar:", err.message);
         });
+
         if (app) {
             app.on('before-quit', () => {
                 console.log("ðŸ›‘ Apagando Servidor Maestro...");
@@ -3147,6 +3158,11 @@ ipcMain.handle('verificar-y-descontar-stock-maestro', async (event, datos) => {
 
             transaccion(productosFisicos); // âœ… Pasamos solo los fÃ­sicos
             console.log("âš¡ Stock descontado directamente en la DB Maestra");
+            try {
+                BrowserWindow.getAllWindows().forEach(v => {
+                    if (!v.isDestroyed()) v.webContents.send('stock-actualizado-global');
+                });
+            } catch(eWin) {}
             return { exito: true };
         } else {
             // ðŸŒ MODO CLIENTE: PeticiÃ³n por red al servidor
@@ -3233,6 +3249,11 @@ ipcMain.handle('guardar-stock-sucursal', async (event, { productoId, sucursalId,
                             .run(companyId, sucursalId, productoId, diferencia, tipoMov, estadoSyncParam);
                 } catch(e) { console.error("Error guardando movimiento Kardex IPC local:", e.message); }
             }
+            try {
+                BrowserWindow.getAllWindows().forEach(v => {
+                    if (!v.isDestroyed()) v.webContents.send('stock-actualizado-global');
+                });
+            } catch(eWin) {}
             return { success: true, msg: "Stock de sucursal actualizado correctamente." };
         }
         return { success: false, error: "Configuración inválida." };

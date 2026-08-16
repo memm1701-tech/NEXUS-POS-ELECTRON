@@ -53,6 +53,7 @@ contextBridge.exposeInMainWorld('nexusAPI', {
     verificarYDescontarStockMaestro: (datos) => ipcRenderer.invoke('verificar-y-descontar-stock-maestro', datos),
     obtenerVentaPorId: (id) => ipcRenderer.invoke('obtener-venta-por-id', id),
     onProductosCambiados: (callback) => {ipcRenderer.removeAllListeners('productos-actualizados'); ipcRenderer.on('productos-actualizados', () => callback());},
+    onStockCambiado: (callback) => {ipcRenderer.removeAllListeners('stock-actualizado-global'); ipcRenderer.on('stock-actualizado-global', () => callback());},
     
     // MÓDULO EMPLEADOS
     guardarEmpleadoLocal: (empleado) => ipcRenderer.invoke('guardar-empleado-local', empleado),
