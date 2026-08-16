@@ -5054,11 +5054,11 @@ function setupBarcodeSearchListener() {
     }
     
 // --- MÓDULO LOCAL DE CLIENTES (NEXUS POS) ---
+// --- MÓDULO LOCAL DE CLIENTES (NEXUS POS) ---
 const GestorClientes = {
-    lista: [], 
     selectedCustomer: null,
     isAddingClient: false,
-    ultimoIdBuscado: null, // 🔥 PROPIEDAD INTEGRADA PARA ELIMINAR EL BUG
+    ultimoIdBuscado: null,
 
     // Referencias al DOM (Mismos IDs de tu HTML)
     ui: {
@@ -5077,17 +5077,7 @@ const GestorClientes = {
     },
 
     async inicializar() {
-        await this.cargarTodos();
         this.configurarEventos();
-    },
-
-    async cargarTodos() {
-        try {
-            const clientesDB = await window.nexusAPI.obtenerClientesLocal();
-            this.lista = clientesDB || [];
-        } catch (e) {
-            console.error("Error cargando clientes en SQlite:", e);
-        }
     },
 
     async buscarCliente() {
@@ -5096,8 +5086,6 @@ const GestorClientes = {
 
         const searchValueRaw = this.ui.searchInput.value.trim();
         this.ultimoIdBuscado = searchValueRaw; // 🔥 GUARDAMOS EL VALOR BUSCADO PARA COMPARAR EN EL ENTER
-        
-        const searchValue = searchValueRaw.toUpperCase();
         
         // Resetear la vista antes de buscar
         this.ui.foundMessage.classList.add('hidden');
@@ -5113,24 +5101,57 @@ const GestorClientes = {
 
         isSearchingClient = true; // Activamos el bloqueo
         
-        // 🔥 PREPARAMOS LOS DATOS PARA UNA BÚSQUEDA A PRUEBA DE BALAS
         const searchNormalizado = normalizarIdentificacion(searchValueRaw);
         const searchLimpio = searchValueRaw.replace(/[-\s]/g, '').toUpperCase();
 
-        console.log(`🔍 Buscando cliente (Local): ${searchNormalizado}`);
+        console.log(`🔍 Buscando cliente en vivo en Base de Datos: ${searchNormalizado}`);
 
-        // --- BÚSQUEDA 100% LOCAL (Instantánea) ---
-        let clienteEncontrado = this.lista.find(c => {
-            const rifDB = c.rif.toUpperCase();
-            const rifDBLimpio = rifDB.replace(/[-\s]/g, '');
+        let clienteEncontrado = null;
+
+        try {
+            // 🔥 CONSULTA DIRECTA Y EN TIEMPO REAL A LA BASE DE DATOS
+            let resultados = null;
+            if (window.nexusAPI && window.nexusAPI.buscarClienteLocal) {
+                resultados = await window.nexusAPI.buscarClienteLocal(searchValueRaw);
+            }
             
-            // Compara: Exacto formateado, exacto limpio, o asumiendo V / J
-            return rifDB === searchNormalizado || 
-                   rifDBLimpio === searchLimpio || 
-                   rifDBLimpio === ('V' + searchLimpio) ||
-                   rifDBLimpio === ('J' + searchLimpio) ||
-                   c.nombre.toUpperCase().includes(searchValue);
-        });
+            // Fallback HTTP directo al Maestro si es caja hija y no hubo resultados por IPC
+            if ((!Array.isArray(resultados) || resultados.length === 0) && window.SERVER_URL && window.esCajaHija) {
+                try {
+                    const resp = await fetch(`${window.SERVER_URL}/api/maestro/buscar-cliente?query=${encodeURIComponent(searchValueRaw)}`, {
+                        signal: AbortSignal.timeout(4000)
+                    });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        if (Array.isArray(data)) resultados = data;
+                    }
+                } catch(e) {}
+            }
+
+            // Fallback secundario si aún no hay resultados
+            if (!Array.isArray(resultados) || resultados.length === 0) {
+                if (window.nexusAPI && window.nexusAPI.obtenerClientesLocal) {
+                    const todos = await window.nexusAPI.obtenerClientesLocal();
+                    if (Array.isArray(todos)) resultados = todos;
+                }
+            }
+
+            if (Array.isArray(resultados) && resultados.length > 0) {
+                clienteEncontrado = resultados.find(c => {
+                    const rifDB = (c.rif || c.ci || '').toUpperCase();
+                    const rifDBLimpio = rifDB.replace(/[-\s]/g, '');
+                    const nombreDB = (c.nombre || c.name || '').toUpperCase();
+                    
+                    return rifDB === searchNormalizado || 
+                           rifDBLimpio === searchLimpio || 
+                           rifDBLimpio === ('V' + searchLimpio) ||
+                           rifDBLimpio === ('J' + searchLimpio) ||
+                           nombreDB.includes(searchValueRaw.toUpperCase());
+                }) || resultados[0];
+            }
+        } catch (errDB) {
+            console.error("❌ Error buscando cliente en base de datos:", errDB);
+        }
 
         // --- Procesamiento del Resultado ---
         if (clienteEncontrado) {
@@ -5140,6 +5161,7 @@ const GestorClientes = {
             selectedCustomer = clienteEncontrado;
             selectedCustomer.name = clienteEncontrado.nombre;
             selectedCustomer.ci = clienteEncontrado.rif;
+            selectedCustomer.rif = clienteEncontrado.rif;
             
             this.ui.foundName.textContent = clienteEncontrado.nombre;
             this.ui.foundId.textContent = clienteEncontrado.rif;
@@ -5151,10 +5173,8 @@ const GestorClientes = {
             }
             
         } else {
-            // Al no depender de Internet, mostramos el prompt de registro inmediatamente
-            console.log("❌ Cliente no está en el PC. Abriendo registro de una vez.");
+            console.log("❌ Cliente no está en la base de datos. Abriendo registro.");
             this.ui.newPrompt.classList.remove('hidden');
-            // 🔥 PRECARGAMOS EL RIF YA FORMATEADO BONITO
             this.ui.newId.value = searchNormalizado; 
         }
 
@@ -5163,11 +5183,10 @@ const GestorClientes = {
 
     limpiarSeleccion() {
         this.selectedCustomer = null;
-        this.ultimoIdBuscado = null; // 🔥 LIMPIAMOS EL RASTRO AL DESELECCIONAR
+        this.ultimoIdBuscado = null;
         if (this.ui.searchInput) this.ui.searchInput.value = '';
         if (this.ui.foundMessage) this.ui.foundMessage.classList.add('hidden');
 
-        // Limpiar avisos de deuda al deseleccionar
         const btnDeudaPrin = document.getElementById('btn-alerta-deuda-principal');
         if(btnDeudaPrin) btnDeudaPrin.classList.add('hidden');
     },
@@ -5179,8 +5198,7 @@ const GestorClientes = {
         setTimeout(() => this.ui.newName.focus(), 100);
     },
     
-async agregarCliente() {
-        // 1. ESCUDO ANTIBLOQUEO: Usamos 'this' para referirnos a la variable del objeto
+    async agregarCliente() {
         if (this.isAddingClient) return;
 
         const nombre = this.ui.newName.value.trim();
@@ -5192,7 +5210,6 @@ async agregarCliente() {
             return;
         }
 
-        // 🔥 LA MAGIA OCURRE AQUÍ: Pasamos el input por el normalizador inteligente
         let rifFinal = normalizarIdentificacion(idInput);
 
         if (!validarRIF(rifFinal)) {
@@ -5200,47 +5217,44 @@ async agregarCliente() {
             return;
         }
 
-        this.isAddingClient = true; // 🔒 Bloqueamos el proceso
+        this.isAddingClient = true;
 
         try {
             const sesion = await window.nexusAPI.obtenerSesionLocal();
             const companyIdActual = sesion ? sesion.companyId : 'DEFAULT';
 
-            // --- CAPTURA DE LOS NUEVOS CAMPOS ---
             const telefonoInput = document.getElementById('new-client-phone') ? document.getElementById('new-client-phone').value.trim() : '';
             const correoInput = document.getElementById('new-client-email') ? document.getElementById('new-client-email').value.trim() : '';
             const esEspecial = document.getElementById('new-client-special') ? document.getElementById('new-client-special').checked : false;
 
             const objetoCliente = {
-                rif: rifFinal, // Ahora sí se guarda como J-06500004-0
+                rif: rifFinal,
                 nombre: nombre,
                 direccion: direccion,
                 telefono: telefonoInput || "00000000000", 
                 correo: correoInput || "sin@correo.com", 
-                es_contribuyente_especial: esEspecial ? 1 : 0, // 1 si, 0 no
-                // 🔥 CORRECCIÓN CRUCIAL: Ajustados a lo que espera la consulta SQL en main.js
+                es_contribuyente_especial: esEspecial ? 1 : 0,
                 company_id: companyIdActual, 
-                empresa_ID: companyIdActual, // Lo mantenemos por si otra parte de tu código viejo lo usa
+                empresa_ID: companyIdActual,
                 datos_json: '{}',
                 estado_sync: 0,
                 fecha_modificacion: new Date().toISOString()
             };
 
-            // 1. Guardado local prioritario (SQLite)
+            // Guardado directo en base de datos
             const resultado = await window.nexusAPI.guardarClienteLocal(objetoCliente);
 
             if (resultado && !resultado.error) {
-                // --- ACTUALIZACIÓN VISUAL Y DE MEMORIA ---
                 this.selectedCustomer = objetoCliente;
                 selectedCustomer = objetoCliente; 
                 selectedCustomer.name = objetoCliente.nombre;
                 selectedCustomer.rif = objetoCliente.rif;
+                selectedCustomer.ci = objetoCliente.rif;
                 
                 this.ui.foundName.textContent = objetoCliente.nombre;
                 this.ui.foundId.textContent = objetoCliente.rif;
                 this.ui.foundMessage.classList.remove('hidden');
 
-                // --- LIMPIEZA DE INTERFAZ ---
                 this.ui.addForm.classList.add('hidden');
                 this.ui.newPrompt.classList.add('hidden'); 
                 this.ui.newName.value = '';
@@ -5248,18 +5262,16 @@ async agregarCliente() {
                 this.ui.newAddress.value = '';
                 this.ui.searchInput.value = '';
 
-                // Limpieza de los nuevos campos agregados
                 if (document.getElementById('new-client-phone')) document.getElementById('new-client-phone').value = '';
                 if (document.getElementById('new-client-email')) document.getElementById('new-client-email').value = '';
                 if (document.getElementById('new-client-special')) document.getElementById('new-client-special').checked = false;
 
-                await this.cargarTodos(); 
                 if (typeof messageBox === 'function') messageBox(`Cliente registrado y seleccionado.`, 'bg-green-500');
             }
         } catch (err) {
             console.error("Error al agregar cliente:", err);
         } finally {
-            this.isAddingClient = false; // 🔓 Liberamos el bloqueo siempre al finalizar
+            this.isAddingClient = false;
         }
     },
 
@@ -7041,10 +7053,15 @@ window.procesarRetencion = async function(event) {
         const rifCliente = document.getElementById('rif-search-retencion').value.trim();
         let datosCliente = { rif: rifCliente, nombre: "CONTRIBUYENTE", tipo_id: rifCliente.charAt(0) };
 
-        // Intentar rescatar el nombre del cliente
-        if (window.GestorClientes && window.GestorClientes.lista) {
-            const clienteEncontrado = window.GestorClientes.lista.find(x => x.rif.replace(/[-\s]/g, '').toUpperCase() === rifCliente.replace(/[-\s]/g, '').toUpperCase());
-            if (clienteEncontrado) datosCliente.nombre = clienteEncontrado.nombre;
+        // Intentar rescatar el nombre del cliente directamente de la base de datos
+        if (rifCliente && window.nexusAPI && window.nexusAPI.buscarClienteLocal) {
+            try {
+                const searchRes = await window.nexusAPI.buscarClienteLocal(rifCliente);
+                if (Array.isArray(searchRes) && searchRes.length > 0) {
+                    const c = searchRes.find(x => (x.rif || x.ci || '').replace(/[-\s]/g, '').toUpperCase() === rifCliente.replace(/[-\s]/g, '').toUpperCase()) || searchRes[0];
+                    if (c && c.nombre) datosCliente.nombre = c.nombre;
+                }
+            } catch (e) {}
         }
 
         // 1. Obtener Correlativo Interno Maestro (RET-XXXX)
@@ -7347,21 +7364,31 @@ if (gdInput) {
                 : searchValueRaw.toUpperCase();
             const searchLimpio = searchValueRaw.replace(/[-\s]/g, '').toUpperCase();
 
-            // 3. Buscar en la memoria caché global (A prueba de fallos de propiedades vacías)
-            const listaClientes = (window.GestorClientes && window.GestorClientes.lista) ? window.GestorClientes.lista : [];
-
-            let clienteEncontrado = listaClientes.find(c => {
-                // Protegemos el código por si el cliente se guardó con .ci en lugar de .rif
-                const rifDB = (c.rif || c.ci || '').toUpperCase();
-                const nombreDB = (c.nombre || c.name || '').toUpperCase();
-                const rifDBLimpio = rifDB.replace(/[-\s]/g, '');
-                
-                return rifDB === searchNormalizado || 
-                       rifDBLimpio === searchLimpio || 
-                       rifDBLimpio === ('V' + searchLimpio) ||
-                       rifDBLimpio === ('J' + searchLimpio) ||
-                       nombreDB.includes(searchValueRaw.toUpperCase());
-            });
+            // 3. Buscar directamente en la base de datos en tiempo real
+            let clienteEncontrado = null;
+            try {
+                let searchRes = null;
+                if (window.nexusAPI && window.nexusAPI.buscarClienteLocal) {
+                    searchRes = await window.nexusAPI.buscarClienteLocal(searchValueRaw);
+                }
+                if (!Array.isArray(searchRes) || searchRes.length === 0) {
+                    if (window.nexusAPI && window.nexusAPI.obtenerClientesLocal) {
+                        searchRes = await window.nexusAPI.obtenerClientesLocal();
+                    }
+                }
+                if (Array.isArray(searchRes) && searchRes.length > 0) {
+                    clienteEncontrado = searchRes.find(c => {
+                        const rifDB = (c.rif || c.ci || '').toUpperCase();
+                        const nombreDB = (c.nombre || c.name || '').toUpperCase();
+                        const rifDBLimpio = rifDB.replace(/[-\s]/g, '');
+                        return rifDB === searchNormalizado || 
+                               rifDBLimpio === searchLimpio || 
+                               rifDBLimpio === ('V' + searchLimpio) ||
+                               rifDBLimpio === ('J' + searchLimpio) ||
+                               nombreDB.includes(searchValueRaw.toUpperCase());
+                    }) || searchRes[0];
+                }
+            } catch(e) {}
 
             // 4. Lógica de resultados
             if (clienteEncontrado) {

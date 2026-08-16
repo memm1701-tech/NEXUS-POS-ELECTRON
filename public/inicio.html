@@ -6,6 +6,7 @@
     <title>NEXUS POS GOBAL - Sistema de Facturación</title>
     <link rel="icon" type="image/png" href="logo_nexus.png">
     <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <link href="../node_modules/@fortawesome/fontawesome-free/css/all.min.css" rel="stylesheet">
     <link href="../node_modules/material-icons/iconfont/material-icons.css" rel="stylesheet">
     <script src="tailwindcss.js"></script>
 <style>
@@ -166,9 +167,20 @@
             transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s; opacity: 1; transform: translateX(0); visibility: visible;
         }
 
+        .sidebar-nav ul li a i {
+            margin-right: 0.75rem;
+            font-size: 1.15rem;
+            width: 20px;
+            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
         .sidebar.collapsed .sidebar-header img { width: 45px !important; height: 45px !important; margin-top: 45px; transition: all 0.3s ease; }
         .sidebar.collapsed .sidebar-nav ul li a { font-size: 0; justify-content: center; padding-left: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-        .sidebar.collapsed .sidebar-nav ul li a i.material-icons { margin-right: 0; font-size: 24px; transition: transform 0.3s ease; }
+        .sidebar.collapsed .sidebar-nav ul li a i { margin-right: 0; font-size: 22px; transition: transform 0.3s ease; }
         
         .main-content.expanded { margin-left: 80px; width: calc(100% - 80px); }
 
@@ -214,7 +226,7 @@
 
             .sidebar:not(.open) .sidebar-nav .dropdown > ul { display: none !important; }
             .sidebar:not(.open) .sidebar-nav ul li a { font-size: 0; justify-content: center; padding-left: 0; }
-            .sidebar:not(.open) .sidebar-nav ul li a i.material-icons { margin-right: 0; font-size: 24px; }
+            .sidebar:not(.open) .sidebar-nav ul li a i { margin-right: 0; font-size: 22px; }
             .sidebar:not(.open) .sidebar-header img { width: 45px !important; height: 45px !important; margin-top: 30px; }
 
             /* MOSTRAR TEXTOS: Cuando se expande (.open) */
@@ -225,7 +237,7 @@
             }
             .sidebar.open .sidebar-header img { width: 120px !important; height: 120px !important; margin-top: 0; }
             .sidebar.open .sidebar-nav ul li a { font-size: 1rem; justify-content: flex-start; padding-left: 1rem; }
-            .sidebar.open .sidebar-nav ul li a i.material-icons { margin-right: 10px; }
+            .sidebar.open .sidebar-nav ul li a i { margin-right: 10px; }
         }
 
         /* =========================================
@@ -283,119 +295,119 @@
 
             <nav class="sidebar-nav">
                 <ul>
-                    <li><a href="#" data-page="index_inicio_admin/inicio/house.html"><i class="material-icons">home</i> Inicio</a></li>
+                    <li><a href="#" data-page="index_inicio_admin/inicio/house.html"><i class="fa-solid fa-house"></i> Inicio</a></li>
                     
                     <li class="dropdown">
-                        <a href="#"><i class="material-icons">store</i>Tienda online</a>
+                        <a href="#"><i class="fa-solid fa-store"></i> Tienda online</a>
                         <ul>
-                            <li><a href="#" id="tienda-online-link"><i class="material-icons">store</i>Tienda</a></li>
-                            <li><a href="#" data-page="index_inicio_admin/tienda_online/configuracion.html"><i class="material-icons">settings</i> Configuracion</a></li>
+                            <li><a href="#" id="tienda-online-link"><i class="fa-solid fa-store"></i> Tienda</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/tienda_online/configuracion.html"><i class="fa-solid fa-gear"></i> Configuracion</a></li>
                         </ul>
                     </li>
 
                     <li class="dropdown">
-                        <a href="#"><i class="material-icons">bar_chart</i> Estadísticas</a>
+                        <a href="#"><i class="fa-solid fa-chart-simple"></i> Estadísticas</a>
                         <ul>
-                            <li><a href="#" data-page="index_inicio_admin/estadisticas/generales.html"><i class="material-icons">show_chart</i> Generales</a></li>
-                            <li><a href="#" data-page="index_inicio_admin/estadisticas/especificas.html"><i class="material-icons">trending_up</i> Específicas</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/estadisticas/generales.html"><i class="fa-solid fa-chart-line"></i> Generales</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/estadisticas/especificas.html"><i class="fa-solid fa-chart-pie"></i> Específicas</a></li>
                         </ul>
                     </li>
 
                     <li class="dropdown">
-                        <a href="#"><i class="material-icons">cases</i> Administración</a>
+                        <a href="#"><i class="fa-solid fa-briefcase"></i> Administración</a>
                         <ul>
-                            <li><a href="#" data-page="index_inicio_admin/administracion/cuentas_cobrar.html"><i class="material-icons">request_quote</i> Cuentas por cobrar</a></li>
-                            <li><a href="#" data-page="index_inicio_admin/administracion/cuentas_pagar.html"><i class="material-icons">receipt_long</i> Cuentas por pagar</a></li>
-                            <li><a href="#" data-page="index_inicio_admin/administracion/gestion_de_empleados.html"><i class="material-icons">badge</i> Gestión de Empleados</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/administracion/cuentas_cobrar.html"><i class="fa-solid fa-file-invoice-dollar"></i> Cuentas por cobrar</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/administracion/cuentas_pagar.html"><i class="fa-solid fa-receipt"></i> Cuentas por pagar</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/administracion/gestion_de_empleados.html"><i class="fa-solid fa-id-badge"></i> Gestión de Empleados</a></li>
                         </ul>
                     </li>
 
                     <li class="dropdown">
-                        <a href="#"><i class="material-icons">inventory</i> Gestión de inventario</a>
+                        <a href="#"><i class="fa-solid fa-box-open"></i> Gestión de inventario</a>
                         <ul>
-                            <li><a href="#" data-page="index_inicio_admin/gestion_de_inventario/inventario.html"><i class="material-icons">inventory_2</i> Inventario</a></li>
-                            <li><a href="#" data-page="index_inicio_admin/gestion_de_inventario/entradas_de_inventario.html"><i class="material-icons">add_box</i> Entradas de inventario</a></li>
-                            <li><a href="#" data-page="index_inicio_admin/gestion_de_inventario/salidas_de_inventario.html"><i class="material-icons">unarchive</i> Salidas de inventario</a></li>
-                            <li><a href="#" data-page="index_inicio_admin/gestion_de_inventario/traspasos_de_inventario.html"><i class="material-icons">sync_alt</i> Traspasos de inventario</a></li>
-                            <li><a href="#" data-page="index_inicio_admin/gestion_de_inventario/integracion_de_inventario_por_excel.html"><i class="material-icons">table_view</i> Integración De Inventario Por Excel</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/gestion_de_inventario/inventario.html"><i class="fa-solid fa-cube"></i> Inventario</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/gestion_de_inventario/entradas_de_inventario.html"><i class="fa-solid fa-arrow-right-to-bracket"></i> Entradas de inventario</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/gestion_de_inventario/salidas_de_inventario.html"><i class="fa-solid fa-arrow-right-from-bracket"></i> Salidas de inventario</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/gestion_de_inventario/traspasos_de_inventario.html"><i class="fa-solid fa-right-left"></i> Traspasos de inventario</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/gestion_de_inventario/integracion_de_inventario_por_excel.html"><i class="fa-solid fa-cloud-arrow-down"></i> Integración De Inventario Por Excel</a></li>
                         </ul>
                     </li>
 
                     <li class="dropdown">
-                        <a href="#"><i class="material-icons">payments</i> Movimientos de caja</a>
+                        <a href="#"><i class="fa-solid fa-arrows-rotate"></i> Movimientos de caja</a>
                         <ul>
-                            <li><a href="#" data-page="index_inicio_admin/movimientos_de_caja/historial_de_cierres.html"><i class="material-icons">history</i> Historial de Cierres</a></li>
-                            <li><a href="#" data-page="index_inicio_admin/movimientos_de_caja/historial_de_ventas.html"><i class="material-icons">list_alt</i> Historial de Ventas</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/movimientos_de_caja/historial_de_cierres.html"><i class="fa-solid fa-clock-rotate-left"></i> Historial de Cierres</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/movimientos_de_caja/historial_de_ventas.html"><i class="fa-solid fa-file-lines"></i> Historial de Ventas</a></li>
                         </ul>
                     </li>
 
                     <li>
                         <a href="#" onclick="loadPageContent('index_inicio_admin/tasa_del_dia/cambiar_valor_global.html'); return false;">
-                            <i class="material-icons">attach_money</i> Tasa del dia
+                            <i class="fa-solid fa-dollar-sign"></i> Tasa del dia
                         </a>
                     </li>
                     
                     <li class="dropdown">
-                        <a href="#"><i class="material-icons">storage</i> Datos básicos</a>
+                        <a href="#"><i class="fa-solid fa-database"></i> Datos básicos</a>
                         <ul>
-                            <li><a href="#" data-page="index_inicio_admin/datos_basicos/usuarios.html"><i class="material-icons">group</i>Gestión de Cajeras</a></li>
-                            <li><a href="#" data-page="index_inicio_admin\datos_basicos\gestion_de_clientes.html"><i class="material-icons">person_pin</i>Gestión de Clientes</a></li>
-                            <li><a href="#" data-page="index_inicio_admin/datos_basicos/gestion_de_proveedores.html"><i class="material-icons">local_shipping</i> Gestión de Proveedores</a></li>
-                            <li><a href="#" data-page="index_inicio_admin/datos_basicos/metodos_de_pago.html"><i class="material-icons">payment</i> Métodos de Pago</a></li>
-                            <li><a href="#" data-page="index_inicio_admin/datos_basicos/categoria_de_productos.html"><i class="material-icons">category</i> Categoria de producto</a></li>
-                            <li><a href="#" data-page="index_inicio_admin/datos_basicos/unidades_de_empaque.html"><i class="material-icons">straighten</i> Unidades de Empaque</a></li>
-                            <li><a href="#" data-page="index_inicio_admin/datos_basicos/sucursales.html "><i class="material-icons">location_city</i> Sucursales</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/datos_basicos/usuarios.html"><i class="fa-solid fa-users-gear"></i> Gestión de Cajeras</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/datos_basicos/gestion_de_clientes.html"><i class="fa-solid fa-user-group"></i> Gestión de Clientes</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/datos_basicos/gestion_de_proveedores.html"><i class="fa-solid fa-truck-fast"></i> Gestión de Proveedores</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/datos_basicos/metodos_de_pago.html"><i class="fa-solid fa-credit-card"></i> Métodos de Pago</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/datos_basicos/categoria_de_productos.html"><i class="fa-solid fa-tags"></i> Categoria de producto</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/datos_basicos/unidades_de_empaque.html"><i class="fa-solid fa-boxes-packing"></i> Unidades de Empaque</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/datos_basicos/sucursales.html"><i class="fa-solid fa-building"></i> Sucursales</a></li>
                         </ul>
                     </li>
 
                     <li class="dropdown">
-                        <a href="#"><i class="material-icons">lock</i>Generador De Claves</a>
+                        <a href="#"><i class="fa-solid fa-key"></i> Generador De Claves</a>
                         <ul>
-                            <li><a href="#" data-page="index_inicio_admin/generador_de_claves/Generar_clave_de_administrador.html">Generar Clave De Administrador </a></li>
+                            <li><a href="#" data-page="index_inicio_admin/generador_de_claves/Generar_clave_de_administrador.html"><i class="fa-solid fa-lock"></i> Generar Clave De Administrador</a></li>
                         </ul>
                     </li>
 
                     <li class="dropdown">
-                        <a href="#"><i class="material-icons">backup</i> Respaldo de datos</a>
+                        <a href="#"><i class="fa-solid fa-floppy-disk"></i> Respaldo de datos</a>
                         <ul>
                             <li>
                                 <a href="#" data-page="index_inicio_admin/respaldo_de_datos/respaldo.html">
-                                    <i class="material-icons" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">cloud_download</i> Respaldar datos
+                                    <i class="fa-solid fa-cloud-arrow-up"></i> Respaldar datos
                                 </a>
                             </li>
                             <li>
                                 <a href="#" data-page="index_inicio_admin/respaldo_de_datos/restaurar.html">
-                                    <i class="material-icons" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">settings_backup_restore</i> Restaurar datos
+                                    <i class="fa-solid fa-cloud-arrow-down"></i> Restaurar datos
                                 </a>
                             </li>
                         </ul>
                     </li>
                     <li class="dropdown">
-                        <a href="#"><i class="material-icons">currency_exchange</i> Cambios masivos de precios</a>
+                        <a href="#"><i class="fa-solid fa-money-bill-trend-up"></i> Cambios masivos de precios</a>
                         <ul>
-                            <li><a href="#" data-page="index_inicio_admin/cambios_masivos_de_precios/actualizar_precios.html">Actualizar precios</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/cambios_masivos_de_precios/actualizar_precios.html"><i class="fa-solid fa-tags"></i> Actualizar precios</a></li>
                         </ul>
                     </li>
                     <li class="dropdown">
-                        <a href="#"><i class="material-icons">qr_code</i>códigos de barra</a>
+                        <a href="#"><i class="fa-solid fa-barcode"></i> Códigos de barra</a>
                         <ul>
-                            <li><a href="#" data-page="index_inicio_admin/generador_de_codigos_de_barra/generar_codigos.html">Generar códigos</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/generador_de_codigos_de_barra/generar_codigos.html"><i class="fa-solid fa-qrcode"></i> Generar códigos</a></li>
                         </ul>
                     </li>
 
                     <li class="dropdown">
-                        <a href="#"><i class="material-icons">settings</i> Configuración</a>
+                        <a href="#"><i class="fa-solid fa-gear"></i> Configuración</a>
                         <ul>
-                            <li><a href="#" data-page="index_inicio_admin/configuracion/general_y_otros.html">Configuración del Sistema</a></li>
-                            <li><a href="#" onclick="sessionStorage.setItem('pendingFiscalTarget', 'configuracion_fiscal.html')" data-page="index_inicio_admin/configuracion/login_fiscal.html">Configuración Fiscal</a></li>
-                            <li><a href="#" onclick="sessionStorage.setItem('pendingFiscalTarget', 'auditoria_fiscal.html')" data-page="index_inicio_admin/configuracion/login_fiscal.html">Auditoría Fiscal</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/configuracion/general_y_otros.html"><i class="fa-solid fa-sliders"></i> Configuración del Sistema</a></li>
+                            <li><a href="#" onclick="sessionStorage.setItem('pendingFiscalTarget', 'configuracion_fiscal.html')" data-page="index_inicio_admin/configuracion/login_fiscal.html"><i class="fa-solid fa-file-invoice"></i> Configuración Fiscal</a></li>
+                            <li><a href="#" onclick="sessionStorage.setItem('pendingFiscalTarget', 'auditoria_fiscal.html')" data-page="index_inicio_admin/configuracion/login_fiscal.html"><i class="fa-solid fa-shield-halved"></i> Auditoría Fiscal</a></li>
                         </ul>
                     </li>
-                    <li><a href="#" onclick="document.getElementById('zoom-modal').classList.remove('hidden'); return false;"><i class="material-icons">aspect_ratio</i> Apariencia</a></li>
+                    <li><a href="#" onclick="document.getElementById('zoom-modal').classList.remove('hidden'); return false;"><i class="fa-solid fa-display"></i> Apariencia</a></li>
 
-                    <li><a href="#" data-page="help.html"><i class="material-icons">help_outline</i> Ayuda</a></li>
-                    <li><a href="#" data-page="index_inicio_admin/acerca_de.html"><i class="material-icons">info</i> Acerca de</a></li>
-                    <li id="logout-menu-item"><a href="#"><i class="material-icons">exit_to_app</i> Cerrar sesión</a></li>
+                    <li><a href="#" data-page="help.html"><i class="fa-solid fa-circle-question"></i> Ayuda</a></li>
+                    <li><a href="#" data-page="index_inicio_admin/acerca_de.html"><i class="fa-solid fa-circle-info"></i> Acerca de</a></li>
+                    <li id="logout-menu-item"><a href="#"><i class="fa-solid fa-right-from-bracket"></i> Cerrar sesión</a></li>
                 </ul>
             </nav>
         </aside>

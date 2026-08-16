@@ -1961,6 +1961,47 @@ ipcMain.handle('obtener-clientes-local', async () => {
     }
 });
 
+ipcMain.handle('buscar-cliente-local', async (event, query) => {
+    try {
+        const queryLimpia = (query || '').trim();
+        if (!queryLimpia) return [];
+
+        if (config.isServer && masterDbDirect) {
+            const term = `%${queryLimpia}%`;
+            const cleanQuery = queryLimpia.replace(/[-\s]/g, '').toUpperCase();
+            const cleanTerm = `%${cleanQuery}%`;
+            let results = masterDbDirect.prepare(`
+                SELECT * FROM clientes_maestro 
+                WHERE rif LIKE ? 
+                   OR REPLACE(REPLACE(UPPER(rif), '-', ''), ' ', '') LIKE ?
+                   OR UPPER(nombre) LIKE ? 
+                   OR telefono LIKE ?
+                ORDER BY nombre ASC LIMIT 30
+            `).all(term, cleanTerm, `%${queryLimpia.toUpperCase()}%`, term);
+
+            if ((!results || results.length === 0) && db) {
+                try {
+                    results = db.prepare(`
+                        SELECT * FROM clientes_locales 
+                        WHERE rif LIKE ? 
+                           OR REPLACE(REPLACE(UPPER(rif), '-', ''), ' ', '') LIKE ?
+                           OR UPPER(nombre) LIKE ? 
+                           OR telefono LIKE ?
+                        ORDER BY nombre ASC LIMIT 30
+                    `).all(term, cleanTerm, `%${queryLimpia.toUpperCase()}%`, term);
+                } catch(e) {}
+            }
+            return results || [];
+        } else {
+            const respuesta = await llamarMaestro('GET', `/api/maestro/buscar-cliente?query=${encodeURIComponent(queryLimpia)}`, null, { timeout: 6000, reintentos: 1 });
+            return Array.isArray(respuesta.data) ? respuesta.data : [];
+        }
+    } catch (e) {
+        console.error("Error al buscar cliente en base de datos:", e);
+        return [];
+    }
+});
+
 ipcMain.handle('eliminar-cliente-local', async (event, rif) => {
     try {
         if (config.isServer && masterDbDirect) {

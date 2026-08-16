@@ -28,6 +28,7 @@ contextBridge.exposeInMainWorld('nexusAPI', {
 
 
     obtenerClientesLocal: () => ipcRenderer.invoke('obtener-clientes-local'),
+    buscarClienteLocal: (query) => ipcRenderer.invoke('buscar-cliente-local', query),
     guardarTasaBCV: (tasa) => ipcRenderer.invoke('guardar-tasa-bcv', tasa),
     obtenerTasaBCV: () => ipcRenderer.invoke('obtener-tasa-bcv'),
     obtenerHistorialTasas: () => ipcRenderer.invoke('obtener-historial-tasas'),

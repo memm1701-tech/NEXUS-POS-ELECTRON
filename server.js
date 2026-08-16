@@ -879,6 +879,48 @@ server.get('/api/maestro/obtener-clientes', (req, res) => {
     }
 });
 
+server.get('/api/maestro/buscar-cliente', (req, res) => {
+    try {
+        const query = (req.query.query || '').trim();
+        if (!query) return res.json([]);
+        const term = `%${query}%`;
+        const cleanQuery = query.replace(/[-\s]/g, '').toUpperCase();
+        const cleanTerm = `%${cleanQuery}%`;
+
+        let results = [];
+        try {
+            const stmt = serverDb.prepare(`
+                SELECT * FROM clientes_maestro 
+                WHERE rif LIKE ? 
+                   OR REPLACE(REPLACE(UPPER(rif), '-', ''), ' ', '') LIKE ?
+                   OR UPPER(nombre) LIKE ? 
+                   OR telefono LIKE ?
+                ORDER BY nombre ASC LIMIT 30
+            `);
+            results = stmt.all(term, cleanTerm, `%${query.toUpperCase()}%`, term);
+        } catch(eDb) {}
+
+        if ((!results || results.length === 0) && getPosDb()) {
+            try {
+                const stmtLocal = getPosDb().prepare(`
+                    SELECT * FROM clientes_locales 
+                    WHERE rif LIKE ? 
+                       OR REPLACE(REPLACE(UPPER(rif), '-', ''), ' ', '') LIKE ?
+                       OR UPPER(nombre) LIKE ? 
+                       OR telefono LIKE ?
+                    ORDER BY nombre ASC LIMIT 30
+                `);
+                results = stmtLocal.all(term, cleanTerm, `%${query.toUpperCase()}%`, term);
+            } catch(ePos) {}
+        }
+
+        res.json(results || []);
+    } catch (error) {
+        console.error("❌ Error en Maestro buscando cliente:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 server.get('/api/maestro/categorias-local', (req, res) => {
     try {
         const empresaId = req.query.empresaId;

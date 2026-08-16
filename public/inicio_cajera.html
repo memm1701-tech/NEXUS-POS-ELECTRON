@@ -7,6 +7,7 @@
     <title>NEXUS POS - Cajera Dashboard</title>
     <link rel="icon" type="image/png" href="logo_nexus.png">
     <link href="../node_modules/material-icons/iconfont/material-icons.css" rel="stylesheet">
+    <link href="../node_modules/@fortawesome/fontawesome-free/css/all.min.css" rel="stylesheet">
     <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
     <script src="tailwindcss.js"></script>
     <style>
@@ -79,7 +80,17 @@
             border-bottom-left-radius: 0; 
         }
         
-        .sidebar-nav a .material-icons { margin-right: 0.75rem; font-size: 1.25rem; color: #fff; }
+        .sidebar-nav a i {
+            margin-right: 0.75rem;
+            font-size: 1.15rem;
+            width: 20px;
+            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            flex-shrink: 0;
+        }
         .sidebar-nav .dropdown > a { position: relative; padding-right: 2.5rem; }
         .sidebar-nav .dropdown > a::after {
             content: 'expand_more'; font-family: 'Material Icons'; position: absolute; right: 1rem; top: 50%;
@@ -157,7 +168,7 @@
         /* Ajustar Logo e Iconos */
         .sidebar.collapsed .sidebar-header img { width: 45px !important; height: 45px !important; margin-top: 35px; }
         .sidebar.collapsed .sidebar-nav ul li a { font-size: 0; justify-content: center; padding-left: 0; }
-        .sidebar.collapsed .sidebar-nav ul li a i.material-icons { margin-right: 0; font-size: 24px; transition: margin 0.3s ease;}
+        .sidebar.collapsed .sidebar-nav ul li a i { margin-right: 0; font-size: 22px; transition: margin 0.3s ease;}
         .sidebar.collapsed .sidebar-nav .dropdown > a::after { display: none; }
         .sidebar.collapsed .sidebar-nav li.active > a { padding-left: 0; }
     </style>
@@ -199,34 +210,34 @@
 
             <nav class="sidebar-nav">
                 <ul>
-                    <li><a href="#" id="home-link" data-page="index_cajera/inicio/home_cashier_content.html"><i class="material-icons">home</i> Inicio</a></li>
+                    <li><a href="#" id="home-link" data-page="index_cajera/inicio/home_cashier_content.html"><i class="fa-solid fa-house"></i> Inicio</a></li>
                     <li class="dropdown">
-                        <a href="#"><i class="material-icons">point_of_sale</i> Punto de venta</a>
+                        <a href="#"><i class="fa-solid fa-cash-register"></i> Punto de venta</a>
                         <ul>
-                            <li><a href="#" data-page="index_cajera/punto-de-venta/facturacion.html"><i class="material-icons">receipt_long</i> Facturación</a></li>
-                            <li><a href="#" data-page="index_cajera/punto-de-venta/login.html"><i class="material-icons">attach_money</i> Cierre de Caja</a></li>
+                            <li><a href="#" data-page="index_cajera/punto-de-venta/facturacion.html"><i class="fa-solid fa-receipt"></i> Facturación</a></li>
+                            <li><a href="#" data-page="index_cajera/punto-de-venta/login.html"><i class="fa-solid fa-vault"></i> Cierre de Caja</a></li>
                         </ul>
                     </li>
                     <li class="dropdown">
-                        <a href="#"><i class="material-icons">payments</i> Movimientos de caja</a>
+                        <a href="#"><i class="fa-solid fa-arrows-rotate"></i> Movimientos de caja</a>
                         <ul>
-                            <li><a href="#" data-page="index_cajera/movimientos_de_caja/gestion_de_ingresos.html"><i class="material-icons">add_circle</i> Gestion de Ingresos</a></li>
-                            <li><a href="#" data-page="index_cajera/movimientos_de_caja/gestion_de_gastos.html"><i class="material-icons">remove_circle</i> Gestión de Gastos</a></li>
-                            <li><a href="#" data-page="index_cajera/movimientos_de_caja/login.html"><i class="material-icons">list_alt</i> Anulación y Modificación</a></li>
-                            <li><a href="#" data-page="index_cajera/movimientos_de_caja/login_auditoria.html"><i class="material-icons">security</i> Auditoría</a></li>
+                            <li><a href="#" data-page="index_cajera/movimientos_de_caja/gestion_de_ingresos.html"><i class="fa-solid fa-circle-plus"></i> Gestion de Ingresos</a></li>
+                            <li><a href="#" data-page="index_cajera/movimientos_de_caja/gestion_de_gastos.html"><i class="fa-solid fa-circle-minus"></i> Gestión de Gastos</a></li>
+                            <li><a href="#" data-page="index_cajera/movimientos_de_caja/login.html"><i class="fa-solid fa-file-circle-xmark"></i> Anulación y Modificación</a></li>
+                            <li><a href="#" data-page="index_cajera/movimientos_de_caja/login_auditoria.html"><i class="fa-solid fa-shield-halved"></i> Auditoría</a></li>
                         </ul>
                     </li>
                     <li class="dropdown">
-                        <a href="#"><i class="material-icons">settings</i> Configuración</a>
+                        <a href="#"><i class="fa-solid fa-gear"></i> Configuración</a>
                         <ul>
-                            <li><a href="#" onclick="sessionStorage.setItem('pendingConfigTarget', 'index_cajera/configuracion/configuracion.html')" data-page="index_cajera/login.html"><i class="material-icons">settings_applications</i> General</a></li>
-                            <li><a href="#" onclick="sessionStorage.setItem('pendingConfigTarget', 'index_cajera/configuracion/configuracion_fiscal.html')" data-page="index_cajera/login.html"><i class="material-icons">receipt</i> Fiscal</a></li>
+                            <li><a href="#" onclick="sessionStorage.setItem('pendingConfigTarget', 'index_cajera/configuracion/configuracion.html')" data-page="index_cajera/login.html"><i class="fa-solid fa-sliders"></i> General</a></li>
+                            <li><a href="#" onclick="sessionStorage.setItem('pendingConfigTarget', 'index_cajera/configuracion/configuracion_fiscal.html')" data-page="index_cajera/login.html"><i class="fa-solid fa-file-invoice"></i> Fiscal</a></li>
                         </ul>
                     </li>
-                    <li><a href="#" onclick="document.getElementById('zoom-modal').classList.remove('hidden'); return false;"><i class="material-icons">aspect_ratio</i> Apariencia</a></li>
-                    <li><a href="#" data-page="ayuda.html"><i class="material-icons">help_outline</i> Ayuda</a></li>
-                    <li><a href="#" data-page="index_cajera/acerca_de.html"><i class="material-icons">info</i> Acerca de</a></li>
-                    <li><a id="logout-btn" href="javascript:void(0)" role="button"><i class="material-icons">exit_to_app</i> Cerrar sesión</a></li>
+                    <li><a href="#" onclick="document.getElementById('zoom-modal').classList.remove('hidden'); return false;"><i class="fa-solid fa-display"></i> Apariencia</a></li>
+                    <li><a href="#" data-page="ayuda.html"><i class="fa-solid fa-circle-question"></i> Ayuda</a></li>
+                    <li><a href="#" data-page="index_cajera/acerca_de.html"><i class="fa-solid fa-circle-info"></i> Acerca de</a></li>
+                    <li><a id="logout-btn" href="javascript:void(0)" role="button"><i class="fa-solid fa-right-from-bracket"></i> Cerrar sesión</a></li>
                 </ul>
             </nav>
         </aside>
@@ -884,20 +895,25 @@ async function inicializarDashboard() {
                 window.esCajaHija = (config.isServer === false || config.isServer === 'false');
                 window.SERVER_URL = null;
                 
-                // 🔥 CAJA HIJA: Siempre se conecta al maestro por LAN en el puerto 3000
-                if (window.esCajaHija && ipSegura && ipSegura !== 'localhost') {
-                    SERVER_URL = `http://${ipSegura}:3000`;
-                    window.SERVER_URL = SERVER_URL;
-                    console.log("📡 Servidor Maestro detectado en cajera hija:", SERVER_URL);
+                // 🔥 CAJA HIJA: Siempre se conecta al maestro por LAN en el puerto 3000 y DESACTIVA RESPALDO VPS
+                if (window.esCajaHija) {
+                    respaldoActivo = false;
+                    if (ipSegura && ipSegura !== 'localhost') {
+                        SERVER_URL = `http://${ipSegura}:3000`;
+                        window.SERVER_URL = SERVER_URL;
+                        console.log("📡 Servidor Maestro detectado en cajera hija (Respaldo VPS desactivado):", SERVER_URL);
+                    }
                 } 
                 // 🔥 CAJA MAESTRA CON RESPALDO VPS
-                else if (!window.esCajaHija && respaldoActivo && (config.vpsIp || config.serverIp)) {
-                    SERVER_URL = `http://${config.vpsIp || config.serverIp}:${config.vpsPort || 4010}`;
-                    window.SERVER_URL = SERVER_URL;
-                    console.log("📡 VPS configurado en caja maestra:", SERVER_URL);
-                }
                 else {
-                    console.log("🔌 Operando en Modo Local estricto.");
+                    respaldoActivo = config.respaldo_datos === true || config.respaldo_datos === 'true' || config.respaldoActivo === true || config.respaldoActivo === 'true';
+                    if (respaldoActivo && (config.vpsIp || config.serverIp)) {
+                        SERVER_URL = `http://${config.vpsIp || config.serverIp}:${config.vpsPort || 4010}`;
+                        window.SERVER_URL = SERVER_URL;
+                        console.log("📡 VPS configurado en caja maestra:", SERVER_URL);
+                    } else {
+                        console.log("🔌 Operando en Modo Local estricto en caja maestra.");
+                    }
                 }
             }
 
@@ -940,11 +956,13 @@ async function inicializarDashboard() {
                 const homeLink = document.getElementById('home-link');
                 if (homeLink) homeLink.closest("li").classList.add("active");
 
-                // 🔥 ARRANQUE EN FRÍO INMEDIATO
-                iniciarSincronizacionSilenciosa();
+                // 🔥 ARRANQUE EN FRÍO INMEDIATO (Solo en Servidor Maestro con Respaldo VPS Activo)
+                if (!window.esCajaHija && respaldoActivo) {
+                    iniciarSincronizacionSilenciosa();
+                    descargarActualizacionesDeInventario();
+                    descargarActualizacionesDeCategorias();
+                }
                 fetchDollarRate();
-                descargarActualizacionesDeInventario();
-                descargarActualizacionesDeCategorias();
                 
                 // Activar conexión en tiempo real y vigilante por horario con el plan
                 activarVigilanteFirebase(currentCompanyId);
