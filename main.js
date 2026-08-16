@@ -1641,56 +1641,77 @@ ipcMain.handle('buscar-producto-por-codigo', async (event, { codigo, empresaId }
 
 ipcMain.handle('guardar-venta-local', async (event, v) => {
     try {
-        // --- ðŸ”’ CALCULO ROBUSTO DE GANANCIA EN EL BACKEND ---
+        // --- 🛡️ CALCULO ROBUSTO DE GANANCIA EN EL BACKEND ---
         try {
             let gananciaTotal = 0;
             let parsedData = JSON.parse(v.datos_json);
             let productos = parsedData.productos || [];
+            let tasaBcv = parseFloat(v.tasa_bcv) || 1;
             
             for (let prod of productos) {
+                // REGLA DE NEGOCIO: Los abonos a deudas no generan ganancias
+                if (prod.id === 'PAGO-DEUDA' || (prod.codigo && String(prod.codigo).toUpperCase() === 'DEUDA')) {
+                    prod.ganancia_unitaria = 0;
+                    continue;
+                }
+
                 let costo = 0;
-                let stmtProd = db.prepare("SELECT precio_compra, datos_json, porcentaje_ganancia FROM productos_locales WHERE id = ?");
+                let stmtProd = db.prepare("SELECT precio, precio_compra, datos_json, porcentaje_ganancia FROM productos_locales WHERE id = ?");
                 let dbProd = stmtProd.get(prod.id);
                 
                 if (dbProd) {
-                    if (dbProd.precio_compra) costo = parseFloat(dbProd.precio_compra);
-                    else if (dbProd.datos_json) {
+                    if (dbProd.precio_compra !== null && dbProd.precio_compra !== undefined && parseFloat(dbProd.precio_compra) > 0) {
+                        costo = parseFloat(dbProd.precio_compra);
+                    } else if (dbProd.datos_json) {
                         try {
                             let dj = JSON.parse(dbProd.datos_json);
-                            if (dj.costo) costo = parseFloat(dj.costo);
+                            if (dj.precio_compra) costo = parseFloat(dj.precio_compra);
+                            else if (dj.costo) costo = parseFloat(dj.costo);
+                            else if (dj.precios && dj.precios.p1 && dj.precios.p1.compra) costo = parseFloat(dj.precios.p1.compra);
                         } catch(e){}
                     }
+                }
+
+                if (!costo && prod.precio_compra) {
+                    costo = parseFloat(prod.precio_compra) || 0;
+                } else if (!costo && prod.costo) {
+                    costo = parseFloat(prod.costo) || 0;
                 }
                 
                 let precioVenta = parseFloat(prod.precio) || 0;
                 let monedaProd = (prod.moneda || 'USD').toUpperCase();
-                let tasaBcv = parseFloat(v.tasa_bcv) || 1;
                 let ganancia = 0;
 
-                // Tomamos la ganancia pre-calculada del carrito, si no existe calculamos por costo DB
-                if (prod.ganancia_unitaria !== undefined) {
+                // Cálculo prioritario: precio de venta (base) - costo (compra)
+                if (costo > 0 || dbProd) {
+                    ganancia = precioVenta - costo;
+                } else if (prod.ganancia_unitaria !== undefined && prod.ganancia_unitaria !== null && parseFloat(prod.ganancia_unitaria) < precioVenta) {
                     ganancia = parseFloat(prod.ganancia_unitaria) || 0;
                 } else {
                     ganancia = precioVenta - costo;
                 }
 
-                // Normalización vital a USD para evitar sumar papas con manzanas
-                if (monedaProd === 'BS') {
+                if (isNaN(ganancia) || ganancia < 0) ganancia = 0;
+
+                // Normalización a USD si el producto se vendió en bolívares
+                if (monedaProd === 'BS' || monedaProd === 'VES') {
                     ganancia = ganancia / tasaBcv;
                 }
 
-                // REGLA DE NEGOCIO: Los abonos a deudas no generan ganancias
-                if (prod.id === 'PAGO-DEUDA' || prod.codigo === 'DEUDA') {
-                    ganancia = 0;
-                }
+                prod.ganancia_unitaria = parseFloat(ganancia.toFixed(4));
 
                 let cantidad = parseFloat(prod.cantidad || prod.quantity || 1);
                 gananciaTotal += (ganancia * cantidad);
             }
+
+            // Actualizamos los datos_json con los objetos corregidos
+            parsedData.productos = productos;
+            v.datos_json = JSON.stringify(parsedData);
+
             v.ganancia_venta = parseFloat(gananciaTotal.toFixed(2));
-            console.log("âœ… Ganancia calculada de forma segura en el backend:", v.ganancia_venta);
+            console.log("✅ Ganancia calculada de forma segura en el backend:", v.ganancia_venta);
         } catch(e) {
-            console.error("â Œ Error calculando ganancia en backend:", e);
+            console.error("❌ Error calculando ganancia en backend:", e);
         }
         // ----------------------------------------------------
         // ðŸ”’ RED DE SEGURIDAD: Si el frontend envÃ­a datos_hka separado, fusionarlo dentro de datos_json

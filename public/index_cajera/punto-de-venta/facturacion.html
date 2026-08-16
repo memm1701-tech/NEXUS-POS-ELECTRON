@@ -2041,39 +2041,37 @@ function updateCartAndRender(producto, cantidad) {
     let totalItem = baseImponible + montoIva;
 
     // CALCULAR GANANCIA AL AGREGAR
-      let gananciaUnit = 0;
-      let precioVentaCalc = parseFloat(producto.precio_venta || producto.precio) || 0;
-      let precioCompraCalc = 0;
+    let gananciaUnit = 0;
+    let precioVentaCalc = precioUnitario;
+    let precioCompraCalc = 0;
 
-      // 1. Intentar sacar de datos_json
-      if (producto.datos_json) {
-          try {
-              const dj = typeof producto.datos_json === 'string' ? JSON.parse(producto.datos_json) : producto.datos_json;
-              if (dj.ganancia !== undefined) gananciaUnit = parseFloat(dj.ganancia);
-          } catch(e) {}
-      }
+    if (producto.id === 'PAGO-DEUDA' || (producto.codigo && String(producto.codigo).toUpperCase() === 'DEUDA')) {
+        gananciaUnit = 0;
+    } else {
+        // 1. Extraer precio de compra / costo
+        if (producto.precio_compra !== undefined && producto.precio_compra !== null && producto.precio_compra !== "") {
+            precioCompraCalc = parseFloat(producto.precio_compra) || 0;
+        } else if (producto.costo !== undefined && producto.costo !== null && producto.costo !== "") {
+            precioCompraCalc = parseFloat(producto.costo) || 0;
+        } else if (producto.datos_json) {
+            try {
+                const dj = typeof producto.datos_json === 'string' ? JSON.parse(producto.datos_json) : producto.datos_json;
+                if (dj.precio_compra !== undefined) precioCompraCalc = parseFloat(dj.precio_compra) || 0;
+                else if (dj.costo !== undefined) precioCompraCalc = parseFloat(dj.costo) || 0;
+                else if (dj.precios && dj.precios.p1 && dj.precios.p1.compra) precioCompraCalc = parseFloat(dj.precios.p1.compra) || 0;
+            } catch(e) {}
+        }
 
-      // 2. Si no hay ganancia explicitamente, calcularla de la resta
-      if (gananciaUnit === 0) {
-          if (producto.precio_compra !== undefined) {
-              precioCompraCalc = parseFloat(producto.precio_compra) || 0;
-          } else if (producto.costo !== undefined) {
-              precioCompraCalc = parseFloat(producto.costo) || 0;
-          } else if (producto.datos_json) {
-              try {
-                  const dj = typeof producto.datos_json === 'string' ? JSON.parse(producto.datos_json) : producto.datos_json;
-                  if (dj.costo !== undefined) precioCompraCalc = parseFloat(dj.costo) || 0;
-              } catch(e) {}
-          }
-          gananciaUnit = precioVentaCalc - precioCompraCalc;
-      }
+        // 2. Ganancia unitaria = Precio de Venta (base imponible) - Precio de Compra (costo)
+        gananciaUnit = precioVentaCalc - precioCompraCalc;
+        if (isNaN(gananciaUnit) || gananciaUnit < 0) gananciaUnit = 0;
+    }
 
-      // Asegurar que la ganancia no sea NaN
-      if (isNaN(gananciaUnit)) gananciaUnit = 0;
-
-      const itemCarrito = {
-          ganancia_unitaria: gananciaUnit,
-          id: producto.producto_ID || producto.id,
+    const itemCarrito = {
+        ganancia_unitaria: parseFloat(gananciaUnit.toFixed(4)),
+        precio_compra: precioCompraCalc,
+        costo: precioCompraCalc,
+        id: producto.producto_ID || producto.id,
         nombre: producto.nombre,
         codigo: producto.codigo || 'S/C',
         cantidad: cantidad,
@@ -2083,19 +2081,16 @@ function updateCartAndRender(producto, cantidad) {
         baseImponible: baseImponible,
         montoIva: montoIva,
         subtotal: totalItem,
-        moneda: producto.currency || 'BS'
+        moneda: producto.currency || producto.moneda || 'BS'
     };
 
     const indexExistente = cart.findIndex(item => item.id === itemCarrito.id);
     
     if (indexExistente > -1) {
         cart[indexExistente].cantidad += cantidad;
-        
-        // 👇 --- INICIO DE CÓDIGO MODIFICADO (Recálculo para existente) --- 👇
         cart[indexExistente].baseImponible = cart[indexExistente].precio * cart[indexExistente].cantidad;
         cart[indexExistente].montoIva = cart[indexExistente].baseImponible * (cart[indexExistente].tasaIva / 100);
         cart[indexExistente].subtotal = cart[indexExistente].baseImponible + cart[indexExistente].montoIva;
-        // 👆 --- FIN DE CÓDIGO MODIFICADO --- 👆
     } else {
         cart.push(itemCarrito);
     }
@@ -2106,7 +2101,7 @@ function updateCartAndRender(producto, cantidad) {
 
 window.updateItemTier = function(index, newTier) {
     const item = cart[index];
-    const originalProduct = allProducts.find(p => p.id === item.id);
+    const originalProduct = (typeof allProducts !== 'undefined' ? allProducts : []).find(p => p.id === item.id);
     
     if (!originalProduct || !originalProduct.precios) {
         messageBox("Este producto no tiene niveles de precios definidos en memoria.", 'bg-red-500');
@@ -2121,9 +2116,12 @@ window.updateItemTier = function(index, newTier) {
         return;
     }
 
-    const nuevoPrecio = parseFloat(tierData.venta);
+    const nuevoPrecio = parseFloat(tierData.venta) || 0;
+    const nuevoCosto = parseFloat(tierData.compra !== undefined ? tierData.compra : (item.precio_compra || originalProduct.precio_compra || 0)) || 0;
+    
     item.tier = newTier;
     item.precio = nuevoPrecio;
+    item.ganancia_unitaria = Math.max(0, parseFloat((nuevoPrecio - nuevoCosto).toFixed(4)));
     
     let tasaIva = parseFloat(item.tasaIva || 16);
     
@@ -2133,11 +2131,9 @@ window.updateItemTier = function(index, newTier) {
         item.tasaIva = 0;
     }
 
-    // 👇 --- INICIO DE CÓDIGO MODIFICADO --- 👇
     item.baseImponible = item.precio * item.cantidad;
     item.montoIva = item.baseImponible * (tasaIva / 100);
     item.subtotal = item.baseImponible + item.montoIva;
-    // 👆 --- FIN DE CÓDIGO MODIFICADO --- 👆
 
     localStorage.setItem('cart', JSON.stringify(cart));
     renderCart();
@@ -3582,6 +3578,7 @@ async function processSale() {
         let totalGananciaFactura = 0;
         try {
             cart.forEach(item => {
+                if (item.id === 'PAGO-DEUDA' || (item.codigo && String(item.codigo).toUpperCase() === 'DEUDA')) return;
                 let g = parseFloat(item.ganancia_unitaria) || 0;
                 let c = parseFloat(item.cantidad || item.quantity) || 1;
                 totalGananciaFactura += (g * c);
@@ -4693,10 +4690,13 @@ function mostrarConfirmacion(mensaje) {
 
 // 🚀 FUNCIÓN AUXILIAR: Convierte una fila cruda de SQLite al formato de producto esperado por la caja
 function _mapearProductoCaja(p) {
+    if (!p) return null;
     let monedaReal = p.currency || p.moneda || 'BS';
     let unidadReal = p.unit || 'UN';
     let alicuotaReal = p.tipo_alicuota;
     let preciosMulti = null;
+    let precioCompraReal = parseFloat(p.precio_compra) || 0;
+    let gananciaReal = 0;
 
     if (p.datos_json) {
         try {
@@ -4705,7 +4705,16 @@ function _mapearProductoCaja(p) {
             if (d.unit) unidadReal = d.unit;
             if (d.precios) preciosMulti = d.precios;
             if (d.tipo_alicuota !== undefined && d.tipo_alicuota !== null) alicuotaReal = d.tipo_alicuota;
+            if (d.precio_compra !== undefined && !precioCompraReal) precioCompraReal = parseFloat(d.precio_compra) || 0;
+            else if (d.costo !== undefined && !precioCompraReal) precioCompraReal = parseFloat(d.costo) || 0;
+            else if (d.precios && d.precios.p1 && d.precios.p1.compra && !precioCompraReal) precioCompraReal = parseFloat(d.precios.p1.compra) || 0;
+            if (d.ganancia !== undefined) gananciaReal = parseFloat(d.ganancia) || 0;
         } catch (e) {}
+    }
+
+    const precioVentaReal = parseFloat(p.precio_venta || p.precio || 0);
+    if (!gananciaReal && precioVentaReal > 0) {
+        gananciaReal = Math.max(0, precioVentaReal - precioCompraReal);
     }
 
     const cats = window.globalCategories || [];
@@ -4715,13 +4724,20 @@ function _mapearProductoCaja(p) {
         id: p.producto_ID || p.id,
         nombre: p.nombre || p.name,
         codigo: p.codigo || p.code,
-        precio: parseFloat(p.precio_venta || p.precio || 0),
+        precio: precioVentaReal,
+        precio_venta: precioVentaReal,
+        precio_compra: precioCompraReal,
+        costo: precioCompraReal,
+        ganancia: gananciaReal,
+        datos_json: p.datos_json || null,
+        porcentaje_ganancia: p.porcentaje_ganancia || 0,
         precios: preciosMulti,
         imagen: p.imagen || '',
         iva: (alicuotaReal !== undefined && alicuotaReal !== null) ? alicuotaReal : '16',
         stock: p.stock || 0,
         categoria: categoriaNombre,
         currency: monedaReal,
+        moneda: monedaReal,
         isUSD: monedaReal === 'USD' || false,
         unit: unidadReal
     };
