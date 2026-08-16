@@ -500,31 +500,90 @@ server.put('/api/maestro/metodos-pago/:id', (req, res) => {
     }
 });
 
-    server.post('/api/maestro/registrar-entrada', (req, res) => {
-        const { items, sucursalId, companyId } = req.body; 
-        
+    // 1. ENDPOINT: SINCRONIZAR / CREAR / EDITAR PRODUCTO (UPSERT)
+    server.post(['/api/maestro/inventario/sincronizar', '/api/maestro/sincronizar-producto'], (req, res) => {
+        try {
+            const prod = req.body;
+            const id = prod.id || prod.producto_ID;
+            const companyId = prod.company_id || prod.empresa_ID;
+            if (!id || !companyId) {
+                return res.status(400).json({ error: "Faltan campos obligatorios: id o company_id" });
+            }
+
+            const activeDb = getPosDb() || serverDb;
+            const stmt = activeDb.prepare(`
+                INSERT INTO productos_locales (
+                    id, company_id, branch_id, codigo, nombre, precio, precio_compra,
+                    porcentaje_ganancia, categoria, status, imagen, datos_json,
+                    estado_sync, fecha_modificacion
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
+                ON CONFLICT(id) DO UPDATE SET
+                    company_id = excluded.company_id,
+                    branch_id = excluded.branch_id,
+                    codigo = excluded.codigo,
+                    nombre = excluded.nombre,
+                    precio = excluded.precio,
+                    precio_compra = excluded.precio_compra,
+                    porcentaje_ganancia = excluded.porcentaje_ganancia,
+                    categoria = excluded.categoria,
+                    status = excluded.status,
+                    imagen = excluded.imagen,
+                    datos_json = excluded.datos_json,
+                    estado_sync = 1,
+                    fecha_modificacion = CURRENT_TIMESTAMP
+            `);
+
+            const datosJsonStr = typeof prod.datos_json === 'string' ? prod.datos_json : JSON.stringify(prod);
+            stmt.run(
+                id,
+                companyId,
+                prod.branch_id || 'principal',
+                prod.codigo || '',
+                prod.nombre || '',
+                parseFloat(prod.precio_venta || prod.precio || 0),
+                parseFloat(prod.precio_compra || (prod.precios && prod.precios.p1 && prod.precios.p1.compra) || 0),
+                parseFloat(prod.porcentaje_ganancia || (prod.precios && prod.precios.p1 && prod.precios.p1.porcentaje) || 0),
+                prod.categoria || 'General',
+                prod.status !== undefined ? prod.status : 1,
+                prod.imagen || '',
+                datosJsonStr
+            );
+
+            res.json({ success: true, id: id });
+        } catch (e) {
+            console.error("❌ Error en servidor Maestro (inventario/sincronizar):", e.message);
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    // 2. ENDPOINT: REGISTRAR ENTRADA / AJUSTES DE STOCK MASIVOS
+    server.post(['/api/maestro/inventario/registrar-entrada', '/api/maestro/registrar-entrada'], (req, res) => {
+        const { items, sucursalId, sucursal_id, companyId, company_id } = req.body; 
+        const sIdGlobal = sucursalId || sucursal_id;
+        const cIdGlobal = companyId || company_id;
+
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ exito: false, error: "Datos de entrada malformados" });
+        }
+
         console.log(`\n📦 [API MAESTRO] --- NUEVA PETICIÓN DE ALTERACIÓN DE STOCK ---`);
-        console.log(`➡️ Sucursal Petición: ${sucursalId || 'No enviada'} | Empresa: ${companyId || 'No enviada'}`);
+        console.log(`➡️ Sucursal: ${sIdGlobal || 'No enviada'} | Empresa: ${cIdGlobal || 'No enviada'}`);
 
         try {
             const transaccion = serverDb.transaction((productos) => {
                 for (const item of productos) {
-                    // Usamos la sucursalId que viene en el cuerpo de la petición
-                    const sId = sucursalId || item.sucursalId;
-                    const cId = companyId || item.companyId;
-
-                    // 🔥 LOG ESTRICTO PARA AUDITORÍA 🔥
-                    console.log(`🔹 Procesando Item ID: ${item.id}`);
-                    console.log(`   - Cantidad recibida (Para operar): ${item.cantidad}`);
-                    console.log(`   - Operación: ${item.operacion}`);
-                    console.log(`   - Sucursal destino: ${sId}`);
+                    const sId = sIdGlobal || item.sucursalId || item.sucursal_id || 'principal';
+                    const cId = cIdGlobal || item.companyId || item.company_id || 'DEFAULT';
+                    const itemId = item.id || item.producto_id;
+                    const op = String(item.operacion || 'SUMAR').toUpperCase();
 
                     // OBTENER STOCK PREVIO
                     let stockPrevio = 0;
-                    const rowStock = serverDb.prepare('SELECT cantidad_real FROM stock_maestro WHERE producto_id = ? AND sucursal_id = ?').get(item.id, sId);
+                    const rowStock = serverDb.prepare('SELECT cantidad_real FROM stock_maestro WHERE producto_id = ? AND sucursal_id = ?').get(itemId, sId);
                     if (rowStock) stockPrevio = parseFloat(rowStock.cantidad_real || 0);
 
-                    const sql = item.operacion === 'FIJAR' 
+                    const sql = (op === 'FIJAR') 
                         ? `INSERT INTO stock_maestro (producto_id, sucursal_id, company_id, cantidad_real, ultima_sincronizacion)
                         VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
                         ON CONFLICT(producto_id, sucursal_id) DO UPDATE SET
@@ -536,12 +595,12 @@ server.put('/api/maestro/metodos-pago/:id', (req, res) => {
                         cantidad_real = stock_maestro.cantidad_real + excluded.cantidad_real,
                         ultima_sincronizacion = CURRENT_TIMESTAMP`;
 
-                    serverDb.prepare(sql).run(item.id, sId, cId, item.cantidad);
+                    serverDb.prepare(sql).run(itemId, sId, cId, item.cantidad);
 
                     // REGISTRAR MOVIMIENTO KARDEX
                     let diferencia = 0;
                     let tipoMov = '';
-                    if (item.operacion === 'FIJAR') {
+                    if (op === 'FIJAR') {
                         diferencia = parseFloat(item.cantidad) - stockPrevio;
                         tipoMov = diferencia >= 0 ? 'AJUSTE_POSITIVO' : 'AJUSTE_NEGATIVO';
                     } else {
@@ -552,70 +611,74 @@ server.put('/api/maestro/metodos-pago/:id', (req, res) => {
                     if (diferencia !== 0) {
                         try {
                             serverDb.prepare(`INSERT INTO movimientos_stock_maestro (company_id, sucursal_id, producto_id, cantidad, tipo_movimiento) VALUES (?, ?, ?, ?, ?)`)
-                                    .run(cId, sId, item.id, diferencia, tipoMov);
+                                    .run(cId, sId, itemId, diferencia, tipoMov);
                         } catch(e) { console.error("Error guardando movimiento:", e.message); }
                     }
-                    console.log(`✅ Base de datos actualizada para: ${item.id}`);
+                    console.log(`✅ Base de datos actualizada para: ${itemId}`);
                 }
             });
             transaccion(items);
-            console.log(`🏁 Transacción finalizada con éxito.\n`);
-            res.json({ exito: true, mensaje: "Stock por sucursal actualizado." });
+            console.log(`🏁 Transacción de stock finalizada con éxito.\n`);
+            res.json({ exito: true });
         } catch (e) {
             console.error("❌ Error en servidor Maestro (registrar-entrada):", e.message);
             res.status(500).json({ exito: false, error: e.message });
         }
     });
 
-    // --- 5. ENDPOINT: DESCONTAR STOCK GLOBAL (Ventas) ---
-    // --- 5. ENDPOINT: DESCONTAR STOCK GLOBAL (Ventas) ---
-    server.post('/api/maestro/descontar-stock', (req, res) => {
-        const { items, sucursalId } = req.body; // Aseguramos capturar sucursalId si viene
+    // 3. ENDPOINT: DESCONTAR STOCK POR VENTA (CON KARDEX)
+    server.post(['/api/maestro/inventario/descontar-stock-venta', '/api/maestro/descontar-stock'], (req, res) => {
+        const { items, sucursalId, sucursal_id, companyId, company_id, factura_ref, tipo_movimiento } = req.body;
+        const sIdGlobal = sucursalId || sucursal_id;
+        const cIdGlobal = companyId || company_id;
+        const refFactura = factura_ref || '';
+        const tipoMovimiento = tipo_movimiento || 'VENTA';
         
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ exito: false, error: "Payload incompleto" });
+        }
+
         console.log(`\n🛒 [API MAESTRO] --- NUEVA PETICIÓN DE VENTA (DESCUENTO) ---`);
         
         try {
             const transaccion = serverDb.transaction((productos) => {
-                // Validación previa
+                // Validación de existencias
                 for (const item of productos) {
-                    const sIdTarget = sucursalId || item.sucursalId;
+                    const itemId = item.id || item.producto_id;
+                    const sIdTarget = sIdGlobal || item.sucursalId || item.sucursal_id;
                     
                     let row;
                     if (sIdTarget) {
-                        row = serverDb.prepare('SELECT cantidad_real FROM stock_maestro WHERE producto_id = ? AND sucursal_id = ?').get(item.id, sIdTarget);
+                        row = serverDb.prepare('SELECT cantidad_real FROM stock_maestro WHERE producto_id = ? AND sucursal_id = ?').get(itemId, sIdTarget);
                     } else {
-                        // Si no mandan sucursal, buscamos globalmente (Peligroso si hay varias sucursales)
-                        row = serverDb.prepare('SELECT cantidad_real FROM stock_maestro WHERE producto_id = ?').get(item.id);
+                        row = serverDb.prepare('SELECT cantidad_real FROM stock_maestro WHERE producto_id = ?').get(itemId);
                     }
 
                     if (!row || row.cantidad_real < item.cantidad) {
-                        throw new Error(`Stock insuficiente para: ${item.nombre || item.id}. Actual: ${row ? row.cantidad_real : 0}, Solicitado: ${item.cantidad}`);
+                        throw new Error(`Stock insuficiente para: ${item.nombre || itemId}. Actual: ${row ? row.cantidad_real : 0}, Solicitado: ${item.cantidad}`);
                     }
                 }
                 
-                // Descuento real
+                // Descuento y registro en Kardex
                 for (const item of productos) { 
-                    const sIdTarget = sucursalId || item.sucursalId;
-                    console.log(`📉 VENTA - DESCONTANDO: ${item.cantidad} unidades | ID: ${item.id}`);
-                    console.log(`   - Sucursal afectada: ${sIdTarget || 'TODAS LAS SUCURSALES (Advertencia)'}`);
+                    const itemId = item.id || item.producto_id;
+                    const sIdTarget = sIdGlobal || item.sucursalId || item.sucursal_id;
+                    console.log(`📉 VENTA - DESCONTANDO: ${item.cantidad} unidades | ID: ${itemId}`);
                     
-                    // Obtener company_id
-                    const rowComp = serverDb.prepare('SELECT company_id FROM stock_maestro WHERE producto_id = ? LIMIT 1').get(item.id);
-                    const compId = rowComp ? rowComp.company_id : 'DEFAULT';
+                    const rowComp = serverDb.prepare('SELECT company_id FROM stock_maestro WHERE producto_id = ? LIMIT 1').get(itemId);
+                    const compId = cIdGlobal || (rowComp ? rowComp.company_id : 'DEFAULT');
 
                     if (sIdTarget) {
-                        // 🔥 FIX: Actualiza SOLO en la sucursal donde se hizo la venta
-                        serverDb.prepare('UPDATE stock_maestro SET cantidad_real = cantidad_real - ?, ultima_sincronizacion = CURRENT_TIMESTAMP WHERE producto_id = ? AND sucursal_id = ?').run(item.cantidad, item.id, sIdTarget);
+                        serverDb.prepare('UPDATE stock_maestro SET cantidad_real = cantidad_real - ?, ultima_sincronizacion = CURRENT_TIMESTAMP WHERE producto_id = ? AND sucursal_id = ?').run(item.cantidad, itemId, sIdTarget);
                         try {
-                            serverDb.prepare(`INSERT INTO movimientos_stock_maestro (company_id, sucursal_id, producto_id, cantidad, tipo_movimiento) VALUES (?, ?, ?, ?, ?)`)
-                                    .run(compId, sIdTarget, item.id, -Math.abs(item.cantidad), 'VENTA');
+                            serverDb.prepare(`INSERT INTO movimientos_stock_maestro (company_id, sucursal_id, producto_id, cantidad, tipo_movimiento, referencia_id) VALUES (?, ?, ?, ?, ?, ?)`)
+                                    .run(compId, sIdTarget, itemId, -Math.abs(item.cantidad), tipoMovimiento, refFactura);
                         } catch(e) {}
                     } else {
-                        // Lógica anterior (puede causar descuento doble si el producto está en 2 sucursales)
-                        serverDb.prepare('UPDATE stock_maestro SET cantidad_real = cantidad_real - ?, ultima_sincronizacion = CURRENT_TIMESTAMP WHERE producto_id = ?').run(item.cantidad, item.id);
+                        serverDb.prepare('UPDATE stock_maestro SET cantidad_real = cantidad_real - ?, ultima_sincronizacion = CURRENT_TIMESTAMP WHERE producto_id = ?').run(item.cantidad, itemId);
                         try {
-                            serverDb.prepare(`INSERT INTO movimientos_stock_maestro (company_id, sucursal_id, producto_id, cantidad, tipo_movimiento) VALUES (?, ?, ?, ?, ?)`)
-                                    .run(compId, 'GLOBAL', item.id, -Math.abs(item.cantidad), 'VENTA');
+                            serverDb.prepare(`INSERT INTO movimientos_stock_maestro (company_id, sucursal_id, producto_id, cantidad, tipo_movimiento, referencia_id) VALUES (?, ?, ?, ?, ?, ?)`)
+                                    .run(compId, 'GLOBAL', itemId, -Math.abs(item.cantidad), tipoMovimiento, refFactura);
                         } catch(e) {}
                     }
                 }
@@ -625,7 +688,7 @@ server.put('/api/maestro/metodos-pago/:id', (req, res) => {
             res.json({ exito: true });
         } catch (e) { 
             console.error("❌ [API MAESTRO] Error en descuento global:", e.message);
-            res.status(400).json({ exito: false, mensaje: e.message }); 
+            res.status(400).json({ exito: false, error: e.message, mensaje: e.message }); 
         }
     });
 
@@ -655,6 +718,89 @@ server.get('/api/maestro/stock', (req, res) => {
         res.json(filas);
     } catch (e) {
         console.error("❌ Error en stock maestro:", e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Sincronización de stock modificados/creados
+server.get('/api/maestro/stock/sincronizar', (req, res) => {
+    const { company_id, desde } = req.query;
+    try {
+        let query = `SELECT producto_id, sucursal_id, company_id, cantidad_real, ultima_sincronizacion FROM stock_maestro WHERE company_id = ?`;
+        const params = [company_id];
+        if (desde && desde !== '2000-01-01T00:00:00.000Z') {
+            query += ` AND (ultima_sincronizacion > ? OR ultima_sincronizacion IS NULL)`;
+            params.push(desde);
+        }
+        const filas = serverDb.prepare(query).all(...params);
+        res.json(filas);
+    } catch (e) {
+        console.error("❌ Error en stock/sincronizar:", e.message);
+        res.json([]);
+    }
+});
+
+// Endpoints de gestión de sucursales
+server.get('/api/maestro/sucursales/:companyId', (req, res) => {
+    const { companyId } = req.params;
+    try {
+        const sucursales = serverDb.prepare("SELECT * FROM sucursales WHERE company_id = ?").all(companyId);
+        res.json(sucursales);
+    } catch (e) {
+        res.json([]);
+    }
+});
+
+server.get('/api/maestro/sucursales', (req, res) => {
+    const { empresaId, companyId } = req.query;
+    const comp = empresaId || companyId;
+    try {
+        if (comp) {
+            const sucursales = serverDb.prepare("SELECT * FROM sucursales WHERE company_id = ?").all(comp);
+            res.json(sucursales);
+        } else {
+            const sucursales = serverDb.prepare("SELECT * FROM sucursales").all();
+            res.json(sucursales);
+        }
+    } catch (e) {
+        res.json([]);
+    }
+});
+
+server.post('/api/maestro/sucursales/sincronizar', (req, res) => {
+    const sucursal = req.body;
+    try {
+        const stmt = serverDb.prepare(`
+            INSERT INTO sucursales (id, company_id, nombre, direccion, telefono, estado_sync, fecha_modificacion)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                nombre = excluded.nombre,
+                direccion = excluded.direccion,
+                telefono = excluded.telefono,
+                fecha_modificacion = excluded.fecha_modificacion,
+                estado_sync = excluded.estado_sync
+        `);
+        stmt.run(
+            sucursal.id,
+            sucursal.company_id || sucursal.empresa_ID,
+            sucursal.nombre,
+            sucursal.direccion,
+            sucursal.telefono,
+            1,
+            sucursal.fecha_modificacion || new Date().toISOString()
+        );
+        res.json({ exito: true, success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+server.delete('/api/maestro/sucursales/:id', (req, res) => {
+    const { id } = req.params;
+    try {
+        serverDb.prepare("DELETE FROM sucursales WHERE id = ?").run(id);
+        res.json({ exito: true });
+    } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });

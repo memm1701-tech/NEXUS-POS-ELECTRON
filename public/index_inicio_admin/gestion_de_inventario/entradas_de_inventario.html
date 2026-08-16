@@ -753,6 +753,32 @@
     window.cargarInventarioEntradas = async function() {
         if (!idSucursalSeleccionada) return;
         try {
+            // 🌐 Si hay conexión y VPS activo, intentar sincronizar stock del VPS directamente a SQLite
+            if (respaldoActivo && SERVER_URL && navigator.onLine) {
+                try {
+                    const resVPS = await fetch(`${SERVER_URL}/api/maestro/stock/sincronizar?company_id=${encodeURIComponent(idEmpresa)}`, {
+                        signal: AbortSignal.timeout(4000)
+                    });
+                    if (resVPS.ok) {
+                        const stocksVPS = await resVPS.json();
+                        if (Array.isArray(stocksVPS) && stocksVPS.length > 0) {
+                            for (const s of stocksVPS) {
+                                await window.nexusAPI.guardarStockSucursal({
+                                    productoId: s.producto_id,
+                                    sucursalId: s.sucursal_id,
+                                    companyId: idEmpresa,
+                                    cantidad: parseFloat(s.cantidad_real || 0),
+                                    operacion: 'FIJAR',
+                                    datosStock: { estado_sync: 1 }
+                                });
+                            }
+                        }
+                    }
+                } catch (vpsErr) {
+                    // Fallback silencioso a base de datos local
+                }
+            }
+
             const todos = await window.nexusAPI.obtenerProductosLocal(idEmpresa);
             const productosBase = todos.filter(p => p.company_id === idEmpresa);
             
@@ -973,6 +999,13 @@
         document.body.appendChild(a);
         setTimeout(() => a.remove(), 3000);
     }
+
+    // 🔄 Auto-refresco reactivo si se sincroniza stock desde el VPS en segundo plano
+    window.addEventListener('stock-actualizado-vps', () => {
+        if (typeof window.cargarInventarioEntradas === 'function' && idSucursalSeleccionada) {
+            window.cargarInventarioEntradas();
+        }
+    });
 
     inicializarModulo();
 </script>

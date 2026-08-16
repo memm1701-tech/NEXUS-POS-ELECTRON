@@ -2932,40 +2932,129 @@ ipcMain.handle('guardar-sucursal-local', async (event, sucursal) => {
 
 ipcMain.handle('obtener-sucursales-local', async (event, companyId) => {
     try {
-        return db.prepare("SELECT * FROM sucursales WHERE company_id = ?").all(companyId);
+        let comp = companyId;
+        if (!comp) {
+            try {
+                const sesion = db.prepare("SELECT valor FROM configuracion WHERE clave = 'sesion_activa'").get();
+                if (sesion && sesion.valor) comp = JSON.parse(sesion.valor).companyId;
+            } catch(e) {}
+        }
+
+        let sucursales = [];
+        if (config.isServer && masterDbDirect) {
+            try {
+                if (comp) {
+                    sucursales = masterDbDirect.prepare("SELECT * FROM sucursales WHERE company_id = ?").all(comp);
+                } else {
+                    sucursales = masterDbDirect.prepare("SELECT * FROM sucursales").all();
+                }
+            } catch(e) {}
+        }
+        
+        if (!sucursales || sucursales.length === 0) {
+            try {
+                if (comp) {
+                    sucursales = db.prepare("SELECT * FROM sucursales WHERE company_id = ?").all(comp);
+                } else {
+                    sucursales = db.prepare("SELECT * FROM sucursales").all();
+                }
+            } catch(e) {}
+        }
+        
+        // Si sigue vacío y es caja hija (isServer = false), intentar consultar al maestro local en LAN
+        if ((!sucursales || sucursales.length === 0) && !config.isServer) {
+            const ipMaestro = getIpMaestro();
+            if (ipMaestro) {
+                try {
+                    const resp = await axios.get(`http://${ipMaestro}:3000/api/maestro/sucursales/${comp || ''}`, { timeout: 5000 });
+                    if (Array.isArray(resp.data) && resp.data.length > 0) {
+                        return resp.data;
+                    }
+                } catch(e) {}
+            }
+        }
+
+        return Array.isArray(sucursales) ? sucursales : [];
     } catch (e) {
-        return { error: e.message };
+        console.error("❌ Error al obtener sucursales local:", e.message);
+        return [];
     }
 });
 
 
 ipcMain.handle('obtener-inventario-sucursal', async (event, { companyId, sucursalId }) => {
     try {
-        if (config.isServer && masterDbDirect) {
-            // ðŸ”¥ MODO SERVIDOR: Lee directo del Cerebro
-            const stmt = masterDbDirect.prepare(`
-                SELECT producto_id, cantidad_real
-                FROM stock_maestro
-                WHERE company_id = ? AND sucursal_id = ?
-            `);
-            return stmt.all(companyId, sucursalId);
+        let comp = companyId;
+        if (!comp) {
+            try {
+                const sesion = db.prepare("SELECT valor FROM configuracion WHERE clave = 'sesion_activa'").get();
+                if (sesion && sesion.valor) comp = JSON.parse(sesion.valor).companyId;
+            } catch(e) {}
+        }
+
+        if (config.isServer) {
+            // 🔥 MODO SERVIDOR (isServer = true): Lee directo de la base de datos local / cerebro (localhost)
+            if (masterDbDirect) {
+                if (sucursalId && sucursalId !== 'undefined' && sucursalId !== 'null') {
+                    return masterDbDirect.prepare(`
+                        SELECT producto_id, cantidad_real
+                        FROM stock_maestro
+                        WHERE company_id = ? AND sucursal_id = ?
+                    `).all(comp, sucursalId);
+                } else {
+                    return masterDbDirect.prepare(`
+                        SELECT producto_id, SUM(cantidad_real) as cantidad_real
+                        FROM stock_maestro
+                        WHERE company_id = ?
+                        GROUP BY producto_id
+                    `).all(comp);
+                }
+            } else {
+                if (sucursalId && sucursalId !== 'undefined' && sucursalId !== 'null') {
+                    return db.prepare(`
+                        SELECT producto_id, stock as cantidad_real
+                        FROM inventario_sucursales
+                        WHERE company_id = ? AND sucursal_id = ?
+                    `).all(comp, sucursalId);
+                } else {
+                    return db.prepare(`
+                        SELECT producto_id, SUM(stock) as cantidad_real
+                        FROM inventario_sucursales
+                        WHERE company_id = ?
+                        GROUP BY producto_id
+                    `).all(comp);
+                }
+            }
         } else {
-            // 🌐 MODO CLIENTE: Petición por red al servidor con retry
-            const respuesta = await llamarMaestro('GET', `/api/maestro/stock?sucursalId=${sucursalId}&companyId=${companyId}`, null, { timeout: 8000, reintentos: 2 });
-            return respuesta.data;
+            // 🌐 MODO CLIENTE: Petición por red al servidor maestro en LAN con retry
+            const endpoint = (sucursalId && sucursalId !== 'undefined' && sucursalId !== 'null')
+                ? `/api/maestro/stock?sucursalId=${encodeURIComponent(sucursalId)}&companyId=${encodeURIComponent(comp)}`
+                : `/api/maestro/stock?companyId=${encodeURIComponent(comp)}`;
+            const respuesta = await llamarMaestro('GET', endpoint, null, { timeout: 8000, reintentos: 2 });
+            return Array.isArray(respuesta.data) ? respuesta.data : [];
         }
     } catch (e) {
-        console.warn("âš ï¸  Puerto 3000 bloqueado o Maestro offline. Leyendo stock desde respaldo local SQLite...");
-        // ðŸ›¡ï¸  FALLBACK: Si falla (por Expo o red), lee directamente de la base de datos local
+        console.warn("⚠️ Fallback: Leyendo stock desde inventario_sucursales SQLite...");
         try {
-            const stmt = db.prepare(`
-                SELECT producto_id, stock as cantidad_real
-                FROM inventario_sucursales
-                WHERE company_id = ? AND sucursal_id = ?
-            `);
-            return stmt.all(companyId, sucursalId);
+            let comp = companyId;
+            if (sucursalId && sucursalId !== 'undefined' && sucursalId !== 'null') {
+                const stmt = db.prepare(`
+                    SELECT producto_id, stock as cantidad_real
+                    FROM inventario_sucursales
+                    WHERE company_id = ? AND sucursal_id = ?
+                `);
+                return stmt.all(comp, sucursalId);
+            } else {
+                const stmt = db.prepare(`
+                    SELECT producto_id, SUM(stock) as cantidad_real
+                    FROM inventario_sucursales
+                    WHERE company_id = ?
+                    GROUP BY producto_id
+                `);
+                return stmt.all(comp);
+            }
         } catch (errorLocal) {
-            console.error("â Œ Error profundo leyendo inventario local:", errorLocal.message);
+            console.error("❌ Error profundo leyendo inventario local:", errorLocal.message);
             return [];
         }
     }

@@ -459,6 +459,7 @@
             // 🔥 CAPTURA BLINDADA: Busca en camelCase o exactamente como está en el .env
             window.SERVER_IP = config.serverIp || config.SERVER_IP;
             window.SERVER_PORT = config.serverPort || config.SERVER_PORT;
+            window.esServidorLocal = (config.isServer === true || config.isServer === 'true');
 
             // 🔥 CORRECCIÓN DEL CANDADO: Acepta tanto el booleano (true) como el texto ('true')
             if ((config.respaldo_datos === true || config.respaldo_datos === 'true') && navigator.onLine) {
@@ -506,6 +507,12 @@
                 // 3. ACTIVAR VIGILANTES EN SEGUNDO PLANO
                 activarVigilanteFirebase(sesion.companyId);
                 iniciarVigilanteHorarioPlan(sesion.companyId);
+
+                // 4. DESCARGA DELTA INICIAL DE PRODUCTOS Y STOCK DESDE EL VPS
+                if (respaldoActivo && SERVER_URL && navigator.onLine) {
+                    descargarYValidarInventarioGlobal(sesion.companyId);
+                    descargarYValidarStockGlobal(sesion.companyId);
+                }
 
             } else {
                 window.location.href = 'index.html'; 
@@ -1363,9 +1370,10 @@ if (logoutBtn) {
                 iniciarSincronizacionSilenciosa();
             }
 
-            if (estadoConexion && window.currentCompanyId) {
+            // 3. Descarga en segundo plano de Inventario y Stock (Delta Sync) cada 30 segundos
+            if (estadoConexion && window.currentCompanyId && respaldoActivo && SERVER_URL) {
                 contadorDescargas++;
-                if (contadorDescargas >= 60) { // 60 ticks = 60 segundos
+                if (contadorDescargas >= 30) { // 30 ticks = 30 segundos
                     contadorDescargas = 0;
                     descargarYValidarInventarioGlobal(window.currentCompanyId);
                     descargarYValidarStockGlobal(window.currentCompanyId);
@@ -1475,17 +1483,17 @@ async function descargarYValidarStockGlobal(companyId) {
         const claveStorage = `last_sync_stock_${companyId}`;
         const ultimaRevision = localStorage.getItem(claveStorage) || '2000-01-01T00:00:00.000Z';
 
-        // OJO: Asumimos que el VPS dispone (o dispondrá) de este endpoint para descargar stocks modificados
-        // Si el endpoint no existe, simplemente arrojará 404 de manera silenciosa en fondo.
         const response = await fetch(`${SERVER_URL}/api/maestro/stock/sincronizar?company_id=${companyId}&desde=${encodeURIComponent(ultimaRevision)}`, {
-            signal: AbortSignal.timeout(30000) 
+            signal: AbortSignal.timeout(15000) 
         });
         
-        if (!response.ok) throw new Error(`Error HTTP Stock: ${response.status}`);
+        if (!response.ok) {
+            return; 
+        }
         
         const stockServidor = await response.json();
         
-        if (stockServidor.length === 0) {
+        if (!Array.isArray(stockServidor) || stockServidor.length === 0) {
             localStorage.setItem(claveStorage, new Date().toISOString());
             return; 
         }
@@ -1498,18 +1506,19 @@ async function descargarYValidarStockGlobal(companyId) {
                 companyId: companyId,
                 cantidad: s.cantidad_real,
                 operacion: 'FIJAR',
-                datosStock: { estado_sync: 1 } // 1 para no re-subirlo a la cola
+                datosStock: { estado_sync: 1 }
             });
             procesados++;
         }
 
         if (procesados > 0) {
-            console.log(`📥 [DOWNLOAD STOCK GLOBAL] ${procesados} stocks NUEVOS/MODIFICADOS inyectados.`);
+            console.log(`📥 [DOWNLOAD STOCK GLOBAL] ${procesados} stocks sincronizados desde VPS.`);
+            window.dispatchEvent(new CustomEvent('stock-actualizado-vps', { detail: { cantidad: procesados } }));
         }
         localStorage.setItem(claveStorage, new Date().toISOString());
 
     } catch (error) {
-        // Fallo silencioso
+        // Fallo silencioso en background
     } finally {
         window.descargandoStockFondo = false;
     }
