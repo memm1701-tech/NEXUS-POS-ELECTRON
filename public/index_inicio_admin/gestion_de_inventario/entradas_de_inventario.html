@@ -244,18 +244,15 @@
         background-color: #c53030;
     }
 
-    .table-scroll-wrapper {
-        max-height: 600px;
-        overflow-y: auto;
-        border: 1px solid #e2e8f0;
+    .table-responsive-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
         border-radius: 10px;
+        width: 100%;
+        max-width: 100%;
+        display: block;
+        border: 1px solid #e2e8f0;
         box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    }
-
-    #entrada-inventory-table th {
-        position: sticky;
-        top: 0;
-        z-index: 10;
     }
 
     #entrada-inventory-search-input {
@@ -414,28 +411,34 @@
         <div class="table-container">
             <h2>Inventario Actual (Sucursal)</h2>
             
+            <!-- A-Z FILTER CONTAINER -->
+            <div id="az-filter-container" style="display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 15px; justify-content: flex-start;"></div>
+
             <div id="entrada-inventory-search-group" class="mb-4 text-left">
                 <label for="entrada-inventory-search-input" class="font-bold text-sm block mb-1">Buscar Producto en Inventario:</label>
                 <input type="text" id="entrada-inventory-search-input" placeholder="Escribe el nombre del producto..." class="w-full p-2 border border-gray-300 rounded-md">
             </div>
 
-            <div style="overflow-x: auto;">
-                <div class="table-scroll-wrapper"> 
-                    <table id="entrada-inventory-table">
-                        <thead>
-                            <tr>
-                                <th>Producto</th>
-                                <th>Categoría</th>
-                                <th>Unidad Base</th>
-                                <th>Stock (Unidad/Empaque)</th>
-                                <th>Acción</th> 
-                            </tr>
-                        </thead>
-                        <tbody id="entrada-inventory-table-body">
-                            <tr><td colspan="5" class="placeholder-message">Selecciona una sucursal para ver el inventario.</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+            <div class="table-responsive-wrapper"> 
+                <table id="entrada-inventory-table">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th>Unidad Base</th>
+                            <th>Stock (Unidad/Empaque)</th>
+                            <th>Acción</th> 
+                        </tr>
+                    </thead>
+                    <tbody id="entrada-inventory-table-body">
+                        <tr><td colspan="5" class="placeholder-message">Selecciona una sucursal para ver el inventario.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- PAGINATION CONTAINER -->
+            <div id="pagination-container" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
+                <!-- Javascript will populate this -->
             </div>
         </div>
     </div>
@@ -470,6 +473,10 @@
     let datosInventarioActual = [];
     let mapaCategorias = {};
     let modoEdicion = false;
+    let currentLetterFilter = '';
+    const ITEMS_PER_PAGE = 250;
+    let currentPage = 1;
+    let totalItems = 0;
     
     // Variables para el servidor VPS (Xeon)
     let SERVER_URL = null;
@@ -490,6 +497,7 @@
     async function inicializarModulo() {
         console.log("🚀 [NEXUS] Inicializando Entradas de Inventario...");
         try {
+            drawAZFilter();
             const api = window.nexusAPI;
             const sesion = await api.obtenerSesionLocal();
             if (sesion && sesion.companyId) {
@@ -528,16 +536,204 @@
         }
     }
 
+    // --- FILTROS A-Z Y PAGINACIÓN ---
+    function drawAZFilter() {
+        const container = document.getElementById('az-filter-container');
+        if (!container) return;
+        
+        const letters = ['Todos', 'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z', '#'];
+        
+        if (container.children.length === letters.length) {
+            Array.from(container.children).forEach((btn, i) => {
+                const letter = letters[i];
+                const isSelected = (letter === 'Todos' && currentLetterFilter === '') || (letter === currentLetterFilter);
+                btn.style.backgroundColor = isSelected ? '#007bff' : '#f8f9fa';
+                btn.style.color = isSelected ? 'white' : '#333';
+                btn.style.borderColor = isSelected ? '#007bff' : '#ccc';
+            });
+            return;
+        }
+        
+        container.innerHTML = '';
+        letters.forEach(letter => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = letter;
+            btn.style.padding = '5px 10px';
+            btn.style.border = '1px solid #ccc';
+            btn.style.borderRadius = '5px';
+            btn.style.cursor = 'pointer';
+            btn.style.fontWeight = 'bold';
+            btn.style.fontSize = '12px';
+            btn.style.transition = 'all 0.2s';
+            
+            const isSelected = (letter === 'Todos' && currentLetterFilter === '') || (letter === currentLetterFilter);
+            btn.style.backgroundColor = isSelected ? '#007bff' : '#f8f9fa';
+            btn.style.color = isSelected ? 'white' : '#333';
+            btn.style.borderColor = isSelected ? '#007bff' : '#ccc';
+            
+            btn.addEventListener('click', () => {
+                currentLetterFilter = (letter === 'Todos') ? '' : letter;
+                currentPage = 1;
+                aplicarFiltrosInventario(true);
+            });
+            
+            container.appendChild(btn);
+        });
+    }
+
+    function drawPagination() {
+        const container = document.getElementById('pagination-container');
+        if (!container) return;
+        container.innerHTML = '';
+        
+        const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+        if (totalPages <= 1 || currentLetterFilter) return; // No se requiere paginación si se filtra por A-Z o es 1 página
+        
+        // Botón Anterior
+        const btnPrev = document.createElement('button');
+        btnPrev.type = 'button';
+        btnPrev.textContent = 'Anterior';
+        btnPrev.disabled = currentPage === 1;
+        btnPrev.style.padding = '8px 12px';
+        btnPrev.style.cursor = btnPrev.disabled ? 'not-allowed' : 'pointer';
+        btnPrev.style.opacity = btnPrev.disabled ? '0.5' : '1';
+        btnPrev.style.borderRadius = '5px';
+        btnPrev.style.border = '1px solid #ccc';
+        btnPrev.style.backgroundColor = '#f8f9fa';
+        btnPrev.style.fontWeight = 'bold';
+        btnPrev.addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                aplicarFiltrosInventario(false);
+            }
+        });
+        container.appendChild(btnPrev);
+        
+        // Indicador de página
+        const indicator = document.createElement('span');
+        indicator.textContent = `Página ${currentPage} de ${totalPages} (${totalItems} items)`;
+        indicator.style.fontWeight = 'bold';
+        indicator.style.color = '#555';
+        container.appendChild(indicator);
+        
+        // Botón Siguiente
+        const btnNext = document.createElement('button');
+        btnNext.type = 'button';
+        btnNext.textContent = 'Siguiente';
+        btnNext.disabled = currentPage >= totalPages;
+        btnNext.style.padding = '8px 12px';
+        btnNext.style.cursor = btnNext.disabled ? 'not-allowed' : 'pointer';
+        btnNext.style.opacity = btnNext.disabled ? '0.5' : '1';
+        btnNext.style.borderRadius = '5px';
+        btnNext.style.border = '1px solid #ccc';
+        btnNext.style.backgroundColor = '#f8f9fa';
+        btnNext.style.fontWeight = 'bold';
+        btnNext.addEventListener('click', () => {
+            if (currentPage < totalPages) {
+                currentPage++;
+                aplicarFiltrosInventario(false);
+            }
+        });
+        container.appendChild(btnNext);
+    }
+
+    function matchLetterFilter(nombre, filter) {
+        if (!filter || filter === 'Todos') return true;
+        if (!nombre) return false;
+        const cleanNombre = nombre.trim();
+        if (!cleanNombre) return false;
+        
+        const firstChar = cleanNombre.charAt(0).toUpperCase();
+        const normalizedFirst = firstChar.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        
+        if (filter === '#') {
+            return !/[A-Z]/.test(normalizedFirst);
+        }
+        return normalizedFirst === filter.toUpperCase();
+    }
+
+    function aplicarFiltrosInventario(resetPage = true) {
+        if (resetPage) {
+            currentPage = 1;
+        }
+        drawAZFilter();
+        if (!datosInventarioActual || datosInventarioActual.length === 0) {
+            if (!idSucursalSeleccionada) {
+                if (cuerpoTablaInventario) cuerpoTablaInventario.innerHTML = '<tr><td colspan="5" class="placeholder-message">Selecciona una sucursal para ver el inventario.</td></tr>';
+            } else {
+                if (cuerpoTablaInventario) cuerpoTablaInventario.innerHTML = '<tr><td colspan="5" class="placeholder-message">Sin productos vinculados.</td></tr>';
+            }
+            totalItems = 0;
+            drawPagination();
+            return;
+        }
+
+        const term = (entradaBusquedaInventario ? entradaBusquedaInventario.value : '').trim().toLowerCase();
+        
+        const filtrados = datosInventarioActual.filter(item => {
+            const matchLetter = matchLetterFilter(item.nombre, currentLetterFilter);
+            
+            let matchSearch = true;
+            if (term) {
+                const nombre = (item.nombre || '').toLowerCase();
+                const cat = (mapaCategorias[item.categoria] || item.categoria || '').toLowerCase();
+                const cod = (item.codigo || '').toLowerCase();
+                matchSearch = nombre.includes(term) || cat.includes(term) || cod.includes(term);
+            }
+            
+            return matchLetter && matchSearch;
+        });
+
+        totalItems = filtrados.length;
+        const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+        if (currentPage > totalPages && totalPages > 0) {
+            currentPage = totalPages;
+        }
+
+        let itemsAMostrar;
+        if (currentLetterFilter || term) {
+            itemsAMostrar = filtrados;
+        } else {
+            const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+            itemsAMostrar = filtrados.slice(offset, offset + ITEMS_PER_PAGE);
+        }
+
+        window.renderizarTablaEntradas(itemsAMostrar);
+        drawPagination();
+    }
+
     // --- 4. Gestión de Datos ---
     async function cargarSucursalesLocal() {
         const sucursales = await window.nexusAPI.obtenerSucursalesLocal(idEmpresa);
-        selectorSucursal.innerHTML = '<option value="" disabled selected>Seleccione sucursal</option>';
-        sucursales.forEach(s => {
+        selectorSucursal.innerHTML = '';
+
+        if (!sucursales || sucursales.length === 0) {
+            selectorSucursal.innerHTML = '<option value="" disabled selected>No hay sucursales registradas</option>';
+            return;
+        }
+
+        if (sucursales.length === 1) {
+            // Regla: Si hay una sola sucursal, seleccionarla automáticamente y cargar su información
+            const s = sucursales[0];
             const opt = document.createElement('option');
             opt.value = s.id;
             opt.textContent = s.nombre;
+            opt.selected = true;
             selectorSucursal.appendChild(opt);
-        });
+            
+            idSucursalSeleccionada = s.id;
+            await window.cargarInventarioEntradas();
+        } else {
+            // Si hay más de una sucursal, solicitar la selección primero
+            selectorSucursal.innerHTML = '<option value="" disabled selected>Seleccione sucursal</option>';
+            sucursales.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.nombre;
+                selectorSucursal.appendChild(opt);
+            });
+        }
     }
 
     async function cargarCatalogoProductos() {
@@ -576,7 +772,7 @@
             });
 
             datosInventarioActual = inventarioFinal;
-            window.renderizarTablaEntradas(datosInventarioActual);
+            aplicarFiltrosInventario();
         } catch (e) { console.error("❌ Error carga stock:", e); }
     };
 
@@ -729,15 +925,15 @@
 
     selectorSucursal.addEventListener('change', (e) => {
         idSucursalSeleccionada = e.target.value;
+        currentLetterFilter = '';
+        if (entradaBusquedaInventario) entradaBusquedaInventario.value = '';
         window.cargarInventarioEntradas();
     });
 
     botonRegistrar.addEventListener('click', window.registrarEntradaStock);
 
-    entradaBusquedaInventario.addEventListener('input', (e) => {
-        const term = e.target.value.toLowerCase();
-        const filtrados = datosInventarioActual.filter(i => i.nombre.toLowerCase().includes(term));
-        window.renderizarTablaEntradas(filtrados);
+    entradaBusquedaInventario.addEventListener('input', () => {
+        aplicarFiltrosInventario();
     });
 
     // --- 8. Helpers ---

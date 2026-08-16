@@ -1648,7 +1648,6 @@ const style = document.createElement('style');
 // Ya NO filtra el array allProducts en el navegador — eso causaba el colapso con catálogos grandes.
 let _filterDebounceTimer = null;
 function filterProducts(query, type, resultsId) {
-    // Reiniciar el foco según el tipo
     if (type === 'name') {
         productFocus = -1;
     } else {
@@ -1663,42 +1662,45 @@ function filterProducts(query, type, resultsId) {
         return;
     }
 
-    // Debounce de 280ms: evita saturar el backend mientras el usuario escribe
+    // Debounce de 250ms: evita saturar el backend mientras el usuario escribe
     _filterDebounceTimer = setTimeout(async () => {
         try {
             let resultadosDB = null;
-            if (window.esCajaHija && window.SERVER_URL) {
+
+            // 1. Puente IPC unificado (Maneja maestro o local automáticamente)
+            if (window.nexusAPI && window.nexusAPI.buscarProductosLocal) {
+                resultadosDB = await window.nexusAPI.buscarProductosLocal(query.trim(), window.companyId);
+            }
+
+            // 2. Si no hay resultados por IPC y tenemos conexión HTTP directa con el Maestro
+            if ((!Array.isArray(resultadosDB) || resultadosDB.length === 0) && window.SERVER_URL) {
                 try {
-                    const resp = await fetch(`${window.SERVER_URL}/api/maestro/buscar-productos-local?query=${encodeURIComponent(query.trim())}&empresaId=${window.companyId}`, {
+                    const resp = await fetch(`${window.SERVER_URL}/api/maestro/buscar-productos-local?query=${encodeURIComponent(query.trim())}&empresaId=${window.companyId || ''}`, {
                         signal: AbortSignal.timeout(4000)
                     });
                     if (resp.ok) {
                         const data = await resp.json();
-                        if (Array.isArray(data)) resultadosDB = data;
+                        if (Array.isArray(data) && data.length > 0) resultadosDB = data;
                     }
                 } catch (e) {
-                    console.log("⚠️ Fallo fetch al maestro, usando fallback local para filterProducts");
+                    console.log("⚠️ Fallo fetch directo al maestro para filterProducts");
                 }
-            }
-            
-            // Fallback a SQLite local si no hay resultados o falló red
-            if (!Array.isArray(resultadosDB)) {
-                resultadosDB = await window.nexusAPI.buscarProductosLocal(query.trim(), window.companyId);
             }
 
             if (!Array.isArray(resultadosDB) || resultadosDB.length === 0) {
                 renderAutocompleteResults([], resultsId, type);
                 return;
             }
-            // Convertimos las filas SQLite al formato que espera el render
+
+            // Convertimos las filas al formato que espera el render
             const productosFormateados = resultadosDB.map(_mapearProductoCaja);
-            // Actualizamos el caché de allProducts con los resultados recientes
             allProducts = productosFormateados;
             renderAutocompleteResults(productosFormateados, resultsId, type);
         } catch (e) {
             console.error('❌ Error en filterProducts backend:', e);
+            renderAutocompleteResults([], resultsId, type);
         }
-    }, 280);
+    }, 250);
 }
 
     let currentInvoiceId = null;
@@ -4698,7 +4700,11 @@ async function fetchProducts() {
     if (!window.companyId) return;
     try {
         let categoriasDB = null;
-        if (window.esCajaHija && window.SERVER_URL) {
+        if (window.nexusAPI && window.nexusAPI.obtenerCategoriasLocal) {
+            categoriasDB = await window.nexusAPI.obtenerCategoriasLocal(window.companyId);
+        }
+
+        if ((!Array.isArray(categoriasDB) || categoriasDB.length === 0) && window.SERVER_URL) {
             try {
                 const resp = await fetch(`${window.SERVER_URL}/api/maestro/categorias-local?empresaId=${window.companyId}`, {
                     signal: AbortSignal.timeout(4000)
@@ -4708,19 +4714,13 @@ async function fetchProducts() {
                     if (Array.isArray(data)) categoriasDB = data;
                 }
             } catch (e) {
-                console.log("⚠️ Fallo fetch al maestro, usando fallback local para fetchProducts");
+                console.log("⚠️ Fallo fetch al maestro para categorías");
             }
         }
         
-        // Fallback a SQLite local
-        if (!categoriasDB) {
-            categoriasDB = await window.nexusAPI.obtenerCategoriasLocal();
-        }
-        
-        window.globalCategories = categoriasDB || [];
-        // allProducts ya no se llena aquí. Se usará como caché de resultados de búsqueda.
+        window.globalCategories = Array.isArray(categoriasDB) ? categoriasDB : [];
         allProducts = [];
-        console.log('✅ [CAJA] Categorías cargadas. Búsqueda de productos ahora es bajo demanda (SQLite).');
+        console.log('✅ [CAJA] Categorías cargadas (' + window.globalCategories.length + '). Búsqueda de productos bajo demanda.');
     } catch (error) {
         console.error('❌ Error cargando categorías en facturación:', error);
     }
@@ -4936,24 +4936,24 @@ function setupBarcodeSearchListener() {
         _barcodeDebounce = setTimeout(async () => {
             try {
                 let resultadosDB = null;
-                if (window.esCajaHija && window.SERVER_URL) {
+                if (window.nexusAPI && window.nexusAPI.buscarProductosLocal) {
+                    resultadosDB = await window.nexusAPI.buscarProductosLocal(query, window.companyId);
+                }
+
+                if ((!Array.isArray(resultadosDB) || resultadosDB.length === 0) && window.SERVER_URL) {
                     try {
-                        const resp = await fetch(`${window.SERVER_URL}/api/maestro/buscar-productos-local?query=${encodeURIComponent(query)}&empresaId=${window.companyId}`, {
+                        const resp = await fetch(`${window.SERVER_URL}/api/maestro/buscar-productos-local?query=${encodeURIComponent(query)}&empresaId=${window.companyId || ''}`, {
                             signal: AbortSignal.timeout(4000)
                         });
                         if (resp.ok) {
                             const data = await resp.json();
-                            if (Array.isArray(data)) resultadosDB = data;
+                            if (Array.isArray(data) && data.length > 0) resultadosDB = data;
                         }
                     } catch (e) {
-                        console.log("⚠️ Fallo fetch al maestro, usando fallback local para barcode input");
+                        console.log("⚠️ Fallo fetch al maestro para barcode input");
                     }
                 }
                 
-                if (!Array.isArray(resultadosDB)) {
-                    resultadosDB = await window.nexusAPI.buscarProductosLocal(query, window.companyId);
-                }
-
                 if (!Array.isArray(resultadosDB)) resultadosDB = [];
 
                 const filteredProducts = resultadosDB
@@ -4983,10 +4983,11 @@ function setupBarcodeSearchListener() {
             // 🚀 OPTIMIZACIÓN: Busca primero en caché, luego en backend
             let product = allProducts.find(p => String(p.codigo) === code);
             if (!product && window.nexusAPI && window.nexusAPI.buscarProductoPorCodigo) {
-                let rawDB = null;
-                if (window.esCajaHija && window.SERVER_URL) {
+                let rawDB = await window.nexusAPI.buscarProductoPorCodigo(code, window.companyId);
+                
+                if ((!rawDB || rawDB.error) && window.SERVER_URL) {
                     try {
-                        const resp = await fetch(`${window.SERVER_URL}/api/maestro/buscar-producto-por-codigo?codigo=${encodeURIComponent(code)}&empresaId=${window.companyId}`, {
+                        const resp = await fetch(`${window.SERVER_URL}/api/maestro/buscar-producto-por-codigo?codigo=${encodeURIComponent(code)}&empresaId=${window.companyId || ''}`, {
                             signal: AbortSignal.timeout(4000)
                         });
                         if (resp.ok) {
@@ -4996,15 +4997,11 @@ function setupBarcodeSearchListener() {
                             }
                         }
                     } catch (e) {
-                        console.log("⚠️ Fallo fetch al maestro, usando fallback local para código de barras");
+                        console.log("⚠️ Fallo fetch al maestro para código de barras");
                     }
                 }
                 
-                if (!rawDB) {
-                    rawDB = await window.nexusAPI.buscarProductoPorCodigo(code, window.companyId);
-                }
-                
-                if (rawDB) product = _mapearProductoCaja(rawDB);
+                if (rawDB && !rawDB.error) product = _mapearProductoCaja(rawDB);
             }
 
             if (product) {
@@ -8589,8 +8586,64 @@ window.chequearDeudaGlobal = async function(rif) {
     }
 };
 
+async function asegurarConfiguracionRedMaestra() {
+    try {
+        if (window.nexusAPI && window.nexusAPI.obtenerConfigServer) {
+            const cfg = await window.nexusAPI.obtenerConfigServer();
+            let ipMaestro = null;
+            if (window.nexusAPI && window.nexusAPI.obtenerIpMaestro) {
+                ipMaestro = await window.nexusAPI.obtenerIpMaestro();
+            }
+            const ipSegura = ipMaestro || cfg.serverIP || cfg.serverIp;
+            window.esCajaHija = (cfg.isServer === false || cfg.isServer === 'false');
+            if (window.esCajaHija && ipSegura && ipSegura !== 'localhost') {
+                window.SERVER_URL = `http://${ipSegura}:3000`;
+            }
+        }
+    } catch(e) {
+        console.warn("⚠️ Error en asegurarConfiguracionRedMaestra:", e);
+    }
+}
+
+window.fetchDollarRate = async function() {
+    try {
+        if (typeof parent !== 'undefined' && parent !== window && typeof parent.fetchDollarRate === 'function') {
+            await parent.fetchDollarRate();
+            if (parent.window && parent.window.dolarExchangeRate) {
+                window.dolarExchangeRate = parent.window.dolarExchangeRate;
+            }
+        }
+        
+        let tasa = null;
+        if (window.nexusAPI && window.nexusAPI.obtenerConfiguracion) {
+            const val = await window.nexusAPI.obtenerConfiguracion('TASA_BCV');
+            if (val) tasa = parseFloat(val);
+        }
+        if (!tasa && window.SERVER_URL) {
+            try {
+                const resp = await fetch(`${window.SERVER_URL}/api/maestro/tasa/${window.companyId || ''}`);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data && data.tasa) tasa = parseFloat(data.tasa);
+                }
+            } catch(e) {}
+        }
+        if (tasa && tasa > 0) {
+            window.dolarExchangeRate = tasa;
+            const tasaDisplay = document.getElementById('tasa-bcv-display') || document.getElementById('tasa-actual-display');
+            if (tasaDisplay) tasaDisplay.textContent = tasa.toFixed(2);
+            if (typeof calculatePaymentSummary === 'function') calculatePaymentSummary();
+            else if (typeof renderCart === 'function') renderCart();
+        }
+    } catch(e) {
+        console.warn("Error sincronizando tasa en facturación:", e);
+    }
+};
+
 async function arrancarSistema() {
     console.time("⏱️ Tiempo de carga Nexus"); 
+    
+    await asegurarConfiguracionRedMaestra();
     
     // 1. CARGAMOS LA CONFIGURACIÓN DEL MAESTRO (Única fuente de la verdad para el IGTF)
     await cargarConfiguracionFiscalMaestra();
@@ -8615,6 +8668,7 @@ async function arrancarSistema() {
 
         await Promise.all([
             fetchProducts(),
+            window.fetchDollarRate(),
             (typeof GestorClientes !== 'undefined') ? GestorClientes.inicializar() : Promise.resolve(),
             (typeof fetchFacturaConfig === 'function') ? fetchFacturaConfig() : Promise.resolve(),
             (typeof loadBorradoresFromServer === 'function') ? loadBorradoresFromServer() : Promise.resolve(),
@@ -8672,6 +8726,18 @@ async function iniciarDetectorCambios() {
                 if (event.data === 'CAMBIO_DETECTADO') {
                     console.log('⚡ PULSO RECIBIDO: Alguien actualizó los borradores.');
                     loadBorradoresFromServer();
+                } else if (event.data === 'CAMBIO_PRODUCTOS') {
+                    console.log('⚡ PULSO RECIBIDO: Productos actualizados en el Maestro.');
+                    allProducts = []; // Forzamos a buscar en DB/Maestro en la próxima escritura
+                    if (typeof messageBox === 'function') messageBox("Catálogo actualizado en segundo plano", "bg-emerald-500");
+                    window.dispatchEvent(new CustomEvent('productosActualizadosBackground'));
+                } else if (event.data === 'CAMBIO_TASA') {
+                    console.log('⚡ PULSO RECIBIDO: Tasa actualizada en el Maestro.');
+                    if (typeof fetchDollarRate === 'function') fetchDollarRate();
+                    if (typeof messageBox === 'function') messageBox("Tasa actualizada en segundo plano", "bg-emerald-500");
+                } else if (event.data === 'CAMBIO_CATEGORIAS') {
+                    console.log('⚡ PULSO RECIBIDO: Categorías actualizadas en el Maestro.');
+                    if (typeof fetchProducts === 'function') fetchProducts();
                 }
             };
 

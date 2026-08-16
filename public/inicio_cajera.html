@@ -650,74 +650,78 @@ async function iniciarSincronizacionSilenciosa() {
     }
 
     async function fetchDollarRate() {
-    const dollarRateInput = document.getElementById('dollar-exchange-rate');
-    const lastUpdatedTimestamp = document.getElementById('last-updated-timestamp');
-    
-    if (!dollarRateInput || !lastUpdatedTimestamp) return;
+        const dollarRateInput = document.getElementById('dollar-exchange-rate');
+        const lastUpdatedTimestamp = document.getElementById('last-updated-timestamp');
+        
+        if (!dollarRateInput || !lastUpdatedTimestamp) return;
 
-    let tasaParaMostrar = 0;
-    let esDeNube = false;
+        let tasaParaMostrar = 0;
+        let esDeNube = false;
+        let esDeMaestro = false;
 
-    try {
-        // 1. Intentar descargar desde el Servidor Maestro (VPS o LAN) si está disponible
-        // 🔥 CAJA HIJA: No depende de navigator.onLine, intenta conectar al maestro por LAN directamente
-        const puedeConectar = (window.esCajaHija && SERVER_URL) || (navigator.onLine && SERVER_URL);
-        if (puedeConectar && currentCompanyId && !window.descargandoTasa) {
-            window.descargandoTasa = true;
-            try {
-                const response = await fetch(`${SERVER_URL}/api/maestro/tasa/${currentCompanyId}`, {
-                    signal: AbortSignal.timeout(4000)
-                });
-                if (response.ok) {
-                    const dataTasa = await response.json();
-                    if (dataTasa && dataTasa.tasa) {
-                        tasaParaMostrar = parseFloat(dataTasa.tasa);
-                        // Guardamos la tasa fresca en el SQLite local automáticamente
-                        await window.nexusAPI.guardarConfiguracion('TASA_BCV', tasaParaMostrar.toString());
-                        esDeNube = true;
+        try {
+            // 1. Intentar descargar desde el Servidor Maestro (LAN) o VPS si está disponible
+            const puedeConectar = (window.esCajaHija && SERVER_URL) || (navigator.onLine && SERVER_URL);
+            if (puedeConectar && currentCompanyId && !window.descargandoTasa) {
+                window.descargandoTasa = true;
+                try {
+                    const response = await fetch(`${SERVER_URL}/api/maestro/tasa/${currentCompanyId}`, {
+                        signal: AbortSignal.timeout(4000)
+                    });
+                    if (response.ok) {
+                        const dataTasa = await response.json();
+                        if (dataTasa && dataTasa.tasa) {
+                            tasaParaMostrar = parseFloat(dataTasa.tasa);
+                            await window.nexusAPI.guardarConfiguracion('TASA_BCV', tasaParaMostrar.toString());
+                            if (window.esCajaHija) esDeMaestro = true;
+                            else esDeNube = true;
+                        }
                     }
+                } catch (e) {
+                    console.log("⏸️ Sincronización de tasa en pausa (Red inestable), usando respaldo local.");
+                } finally {
+                    window.descargandoTasa = false;
                 }
-            } catch (e) {
-                console.log("⏸️ Sincronización de tasa en pausa (Red inestable), usando respaldo local.");
-            } finally {
-                window.descargandoTasa = false;
             }
-        }
 
-        // 2. Si no se pudo obtener de la nube, leemos directamente del SQLite local
-        if (!esDeNube) {
-            const tasaSistema = await window.nexusAPI.obtenerConfiguracion('TASA_BCV');
-            if (tasaSistema) {
-                tasaParaMostrar = parseFloat(tasaSistema);
-                console.log("💾 [SYNC TASA] Cargada desde SQLite local:", tasaParaMostrar);
+            // 2. Si no se pudo obtener de la red, leemos directamente del SQLite local
+            if (!esDeNube && !esDeMaestro) {
+                const tasaSistema = await window.nexusAPI.obtenerConfiguracion('TASA_BCV');
+                if (tasaSistema) {
+                    tasaParaMostrar = parseFloat(tasaSistema);
+                    console.log("💾 [SYNC TASA] Cargada desde SQLite local:", tasaParaMostrar);
+                }
             }
-        }
 
-        // 3. Renderizar en el Sidebar y propagar la tasa a las vistas hijas
-        if (tasaParaMostrar > 0) {
-            dollarRateInput.value = tasaParaMostrar.toFixed(2);
-            const fechaHoy = new Date().toLocaleDateString('es-VE');
-            lastUpdatedTimestamp.textContent = esDeNube 
-                ? `Sincronizada (Cloud VPS): ${fechaHoy}` 
-                : `Sincronizada (DB Local): ${fechaHoy}`;
-            
-            // Sincronizamos la variable global del entorno de ejecución
-            window.dolarExchangeRate = tasaParaMostrar;
+            // 3. Renderizar en el Sidebar y propagar la tasa a las vistas hijas
+            if (tasaParaMostrar > 0) {
+                dollarRateInput.value = tasaParaMostrar.toFixed(2);
+                const fechaHoy = new Date().toLocaleDateString('es-VE');
+                if (esDeMaestro) {
+                    lastUpdatedTimestamp.textContent = `Sincronizada (Servidor Maestro): ${fechaHoy}`;
+                } else if (esDeNube) {
+                    lastUpdatedTimestamp.textContent = `Sincronizada (Cloud VPS): ${fechaHoy}`;
+                } else {
+                    lastUpdatedTimestamp.textContent = `Sincronizada (DB Local): ${fechaHoy}`;
+                }
+                
+                // Sincronizamos la variable global del entorno de ejecución
+                window.dolarExchangeRate = tasaParaMostrar;
 
-            // 🔥 ALARMA EN TIEMPO REAL: Notifica a facturacion.html para recalcular instantáneamente
-            window.dispatchEvent(new CustomEvent('tasaActualizadaBackground', { 
-                detail: { tasa: tasaParaMostrar } 
-            }));
-        } else {
+                // 🔥 ALARMA EN TIEMPO REAL: Notifica a facturacion.html para recalcular instantáneamente
+                window.dispatchEvent(new CustomEvent('tasaActualizadaBackground', { 
+                    detail: { tasa: tasaParaMostrar } 
+                }));
+            } else {
+                dollarRateInput.value = "0.00";
+                lastUpdatedTimestamp.textContent = "Tasa no establecida";
+            }
+        } catch (error) {
+            console.error("❌ Error crítico al procesar la tasa de cambio:", error);
             dollarRateInput.value = "0.00";
-            lastUpdatedTimestamp.textContent = "Tasa no establecida";
+            lastUpdatedTimestamp.textContent = "Error de lectura";
         }
-    } catch (error) {
-        console.error("❌ Error crítico al procesar la tasa de cambio:", error);
-        dollarRateInput.value = "0.00";
-        lastUpdatedTimestamp.textContent = "Error de lectura";
     }
-}
 
     async function descargarActualizacionesDeInventario() {
         // 🔥 CAJA HIJA: No depende de navigator.onLine, intenta conectar al maestro por LAN
@@ -865,29 +869,30 @@ async function iniciarSincronizacionSilenciosa() {
 async function inicializarDashboard() {
         console.log("⚙️ Ejecutando inicialización del Dashboard...");
         try {
-            // --- NUEVO: Extraer configuración blindada del Servidor Maestro ---
+            // --- Extraer configuración blindada del Servidor Maestro ---
             if (window.nexusAPI && window.nexusAPI.obtenerConfigServer) {
                 const config = await window.nexusAPI.obtenerConfigServer();
                 
-                // 🔥 CAPTURA BLINDADA: Igual que en inicio.html
-                const ipSegura = config.serverIp || config.SERVER_IP;
-                const puertoSeguro = config.serverPort || config.SERVER_PORT;
+                let ipMaestro = null;
+                if (window.nexusAPI && window.nexusAPI.obtenerIpMaestro) {
+                    ipMaestro = await window.nexusAPI.obtenerIpMaestro();
+                }
+                const ipSegura = ipMaestro || config.serverIP || config.serverIp;
                 
-                // 🔥 CORRECCIÓN DEL CANDADO: Acepta booleano o texto
                 respaldoActivo = config.respaldo_datos === true || config.respaldo_datos === 'true' || config.respaldoActivo === true || config.respaldoActivo === 'true';
                 
                 window.esCajaHija = (config.isServer === false || config.isServer === 'false');
                 window.SERVER_URL = null;
                 
-                // 🔥 CAJA HIJA: Siempre se conecta al maestro, sin importar el respaldo
-                if (window.esCajaHija && ipSegura) {
-                    SERVER_URL = `http://${ipSegura}:${puertoSeguro}`;
+                // 🔥 CAJA HIJA: Siempre se conecta al maestro por LAN en el puerto 3000
+                if (window.esCajaHija && ipSegura && ipSegura !== 'localhost') {
+                    SERVER_URL = `http://${ipSegura}:3000`;
                     window.SERVER_URL = SERVER_URL;
                     console.log("📡 Servidor Maestro detectado en cajera hija:", SERVER_URL);
                 } 
                 // 🔥 CAJA MAESTRA CON RESPALDO VPS
-                else if (!window.esCajaHija && respaldoActivo && ipSegura) {
-                    SERVER_URL = `http://${ipSegura}:${puertoSeguro}`;
+                else if (!window.esCajaHija && respaldoActivo && (config.vpsIp || config.serverIp)) {
+                    SERVER_URL = `http://${config.vpsIp || config.serverIp}:${config.vpsPort || 4010}`;
                     window.SERVER_URL = SERVER_URL;
                     console.log("📡 VPS configurado en caja maestra:", SERVER_URL);
                 }

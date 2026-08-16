@@ -7,7 +7,7 @@ contextBridge.exposeInMainWorld('nexusAPI', {
     obtenerProductosPaginados: (params) => ipcRenderer.invoke('obtener-productos-paginados', params),
     buscarProductosLocal: (query, empresaId) => ipcRenderer.invoke('buscar-productos-local', { query, empresaId }),
     buscarProductoPorCodigo: (codigo, empresaId) => ipcRenderer.invoke('buscar-producto-por-codigo', { codigo, empresaId }),
-    obtenerCategoriasLocal: () => ipcRenderer.invoke('obtener-categorias-local'),
+    obtenerCategoriasLocal: (empresaId) => ipcRenderer.invoke('obtener-categorias-local', empresaId),
     sincronizarCategoriaServidor: (cat) => ipcRenderer.invoke('sincronizar-categoria-servidor', cat),
     eliminarCategoriaLocal: (id) => ipcRenderer.invoke('eliminar-categoria-local', id),
     sincronizarCategoriasLocal: (categories) => ipcRenderer.invoke('sincronizar-categorias-local', categories),

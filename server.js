@@ -11,6 +11,20 @@ const Database = require('better-sqlite3');
 const dbDir = path.join(process.env.APPDATA, 'nexus-pos', 'data');
 const configPath = path.join(dbDir, 'config.json');
 const serverDbPath = path.join(dbDir, 'nexus-local-server.db');
+const posDbPath = path.join(dbDir, 'nexus_pos.db');
+
+let posDb = null;
+function getPosDb() {
+    if (!posDb && fs.existsSync(posDbPath)) {
+        try {
+            posDb = new Database(posDbPath, { timeout: 15000 });
+            posDb.pragma('journal_mode = WAL');
+        } catch(e) {
+            console.error("❌ Error abriendo nexus_pos.db en server.js:", e.message);
+        }
+    }
+    return posDb;
+}
 
 if (!fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true });
@@ -47,6 +61,7 @@ if (fs.existsSync(configPath)) {
 if (config.isServer) {
     const serverDb = new Database(serverDbPath, { timeout: 15000 });
     serverDb.pragma('journal_mode = WAL');
+    getPosDb();
     
     // Inicialización de Tablas Maestras automatizada con ESQUEMA_MAESTRO
     const ESQUEMA_MAESTRO = {
@@ -292,9 +307,23 @@ server.get('/api/maestro/buscar-factura/:criterio', (req, res) => {
 server.get('/api/maestro/configuracion/:clave', (req, res) => {
     try {
         const { clave } = req.params;
+        let valor = null;
         const stmt = serverDb.prepare(`SELECT valor FROM configuraciones_maestras WHERE clave = ?`);
         const resultado = stmt.get(clave);
-        res.json({ exito: true, valor: resultado ? resultado.valor : null });
+        if (resultado && resultado.valor !== undefined && resultado.valor !== null) {
+            valor = resultado.valor;
+        } else {
+            const activeDb = getPosDb();
+            if (activeDb) {
+                try {
+                    const row = activeDb.prepare(`SELECT valor FROM configuracion WHERE clave = ?`).get(clave);
+                    if (row && row.valor !== undefined && row.valor !== null) {
+                        valor = row.valor;
+                    }
+                } catch(e) {}
+            }
+        }
+        res.json({ exito: true, valor: valor });
     } catch (error) {
         console.error("❌ Error al leer configuración maestra:", error.message);
         res.status(500).json({ exito: false, error: error.message });
@@ -837,8 +866,13 @@ server.post('/api/maestro/guardar-cliente', (req, res) => {
 
 server.get('/api/maestro/obtener-clientes', (req, res) => {
     try {
-        const clientes = serverDb.prepare('SELECT * FROM clientes_maestro ORDER BY nombre ASC').all();
-        res.json(clientes);
+        let clientes = serverDb.prepare('SELECT * FROM clientes_maestro ORDER BY nombre ASC').all();
+        if ((!clientes || clientes.length === 0) && getPosDb()) {
+            try {
+                clientes = getPosDb().prepare('SELECT * FROM clientes_locales ORDER BY nombre ASC').all();
+            } catch(e) {}
+        }
+        res.json(clientes || []);
     } catch (error) {
         console.error("❌ Error obteniendo clientes del Maestro:", error.message);
         res.status(500).json({ error: error.message });
@@ -848,12 +882,13 @@ server.get('/api/maestro/obtener-clientes', (req, res) => {
 server.get('/api/maestro/categorias-local', (req, res) => {
     try {
         const empresaId = req.query.empresaId;
+        const activeDb = getPosDb() || serverDb;
         let stmt;
         if (empresaId && empresaId !== 'undefined') {
-            stmt = serverDb.prepare('SELECT * FROM categorias_locales WHERE company_id = ? ORDER BY nombre ASC');
+            stmt = activeDb.prepare('SELECT * FROM categorias_locales WHERE company_id = ? ORDER BY nombre ASC');
             res.json(stmt.all(empresaId));
         } else {
-            stmt = serverDb.prepare('SELECT * FROM categorias_locales ORDER BY nombre ASC');
+            stmt = activeDb.prepare('SELECT * FROM categorias_locales ORDER BY nombre ASC');
             res.json(stmt.all());
         }
     } catch (error) {
@@ -867,9 +902,10 @@ server.get('/api/maestro/buscar-productos-local', (req, res) => {
         const query = req.query.query || '';
         const empresaId = req.query.empresaId;
         const term = `%${query.trim()}%`;
+        const activeDb = getPosDb() || serverDb;
         let stmt;
         if (empresaId && empresaId !== 'undefined') {
-            stmt = serverDb.prepare(`
+            stmt = activeDb.prepare(`
                 SELECT * FROM productos_locales
                 WHERE company_id = ? AND status != -1
                 AND (nombre LIKE ? OR codigo LIKE ? OR categoria LIKE ?)
@@ -877,7 +913,7 @@ server.get('/api/maestro/buscar-productos-local', (req, res) => {
             `);
             res.json(stmt.all(empresaId, term, term, term));
         } else {
-            stmt = serverDb.prepare(`
+            stmt = activeDb.prepare(`
                 SELECT * FROM productos_locales
                 WHERE status != -1
                 AND (nombre LIKE ? OR codigo LIKE ? OR categoria LIKE ?)
@@ -897,16 +933,17 @@ server.get('/api/maestro/buscar-producto-por-codigo', (req, res) => {
         const empresaId = req.query.empresaId;
         const codigoLimpio = String(codigo).trim();
         if (!codigoLimpio) return res.json(null);
+        const activeDb = getPosDb() || serverDb;
         let stmt;
         if (empresaId && empresaId !== 'undefined') {
-            stmt = serverDb.prepare(`
+            stmt = activeDb.prepare(`
                 SELECT * FROM productos_locales
                 WHERE company_id = ? AND codigo = ? AND status != -1 AND status != 0
                 LIMIT 1
             `);
             res.json(stmt.get(empresaId, codigoLimpio) || null);
         } else {
-            stmt = serverDb.prepare(`
+            stmt = activeDb.prepare(`
                 SELECT * FROM productos_locales
                 WHERE codigo = ? AND status != -1 AND status != 0
                 LIMIT 1
@@ -916,6 +953,138 @@ server.get('/api/maestro/buscar-producto-por-codigo', (req, res) => {
     } catch (error) {
         console.error("❌ Error en Maestro buscando producto por código:", error.message);
         res.status(500).json({ error: error.message });
+    }
+});
+
+server.get('/api/maestro/obtener-productos', (req, res) => {
+    try {
+        const empresaId = req.query.empresaId;
+        const activeDb = getPosDb() || serverDb;
+        let stmt;
+        if (empresaId && empresaId !== 'undefined') {
+            stmt = activeDb.prepare(`SELECT * FROM productos_locales WHERE company_id = ? AND status != -1 ORDER BY nombre ASC`);
+            res.json(stmt.all(empresaId));
+        } else {
+            stmt = activeDb.prepare(`SELECT * FROM productos_locales WHERE status != -1 ORDER BY nombre ASC`);
+            res.json(stmt.all());
+        }
+    } catch (error) {
+        console.error("❌ Error en Maestro obteniendo productos:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+server.get('/api/maestro/obtener-productos-paginados', (req, res) => {
+    try {
+        const empresaId = req.query.empresaId;
+        const limit = parseInt(req.query.limit) || 350;
+        const offset = parseInt(req.query.offset) || 0;
+        const letterFilter = req.query.letterFilter || '';
+        const searchQuery = req.query.searchQuery || '';
+        const activeDb = getPosDb() || serverDb;
+
+        let baseQuery = `FROM productos_locales WHERE status != -1`;
+        const params = [];
+
+        if (empresaId && empresaId !== 'undefined') {
+            baseQuery += ` AND company_id = ?`;
+            params.push(empresaId);
+        }
+
+        if (searchQuery) {
+            const term = `%${searchQuery.trim()}%`;
+            baseQuery += ` AND (nombre LIKE ? OR codigo LIKE ? OR categoria LIKE ?)`;
+            params.push(term, term, term);
+        } else if (letterFilter) {
+            if (letterFilter === '#') {
+                baseQuery += ` AND (UPPER(SUBSTR(nombre, 1, 1)) < 'A' OR UPPER(SUBSTR(nombre, 1, 1)) > 'Z')`;
+            } else {
+                baseQuery += ` AND nombre LIKE ?`;
+                params.push(`${letterFilter}%`);
+            }
+        }
+
+        const countStmt = activeDb.prepare(`SELECT COUNT(*) as total ${baseQuery}`);
+        const countResult = countStmt.get(...params);
+        const totalCount = countResult ? countResult.total : 0;
+
+        let data = [];
+        if (limit === -1) {
+            const dataStmt = activeDb.prepare(`SELECT * ${baseQuery} ORDER BY nombre ASC`);
+            data = dataStmt.all(...params);
+        } else {
+            const dataStmt = activeDb.prepare(`SELECT * ${baseQuery} ORDER BY nombre ASC LIMIT ? OFFSET ?`);
+            data = dataStmt.all(...params, limit, offset);
+        }
+
+        res.json({ data, totalCount });
+    } catch (error) {
+        console.error("❌ Error en Maestro obteniendo productos paginados:", error.message);
+        res.status(500).json({ data: [], totalCount: 0, error: error.message });
+    }
+});
+
+server.get(['/api/maestro/tasa', '/api/maestro/tasa/:companyId'], (req, res) => {
+    try {
+        let tasa = null;
+        const activeDb = getPosDb();
+        if (activeDb) {
+            try {
+                const row = activeDb.prepare("SELECT valor FROM configuracion WHERE clave = 'TASA_BCV' OR clave = 'dollarRate' ORDER BY fecha_actualizacion DESC LIMIT 1").get();
+                if (row && row.valor) tasa = parseFloat(row.valor);
+            } catch(e) {}
+            if (!tasa) {
+                try {
+                    const rowTasa = activeDb.prepare("SELECT valor FROM historial_tasas ORDER BY fecha DESC LIMIT 1").get();
+                    if (rowTasa && rowTasa.valor) tasa = parseFloat(rowTasa.valor);
+                } catch(e) {}
+            }
+        }
+        if (!tasa) {
+            try {
+                const rowM = serverDb.prepare("SELECT valor FROM configuraciones_maestras WHERE clave = 'TASA_BCV' OR clave = 'dollarRate' LIMIT 1").get();
+                if (rowM && rowM.valor) tasa = parseFloat(rowM.valor);
+            } catch(e) {}
+        }
+        if (!tasa && config && config.tasa_bcv) {
+            tasa = parseFloat(config.tasa_bcv);
+        }
+        res.json({ tasa: tasa || 1, success: true });
+    } catch(error) {
+        console.error("❌ Error en Maestro obteniendo tasa:", error.message);
+        res.status(500).json({ error: error.message, tasa: 1 });
+    }
+});
+
+server.get('/api/maestro/configuracion-fiscal', (req, res) => {
+    try {
+        const activeDb = getPosDb();
+        if (activeDb) {
+            const row = activeDb.prepare('SELECT * FROM configuracion_fiscal WHERE id = 1').get();
+            if (row) return res.json(row);
+        }
+        res.json({ id: 1, iva_exento: 0, iva_general: 16, iva_reducido: 8, iva_anadida: 31, igtf_porcentaje: 3 });
+    } catch (error) {
+        res.json({ id: 1, iva_exento: 0, iva_general: 16, iva_reducido: 8, iva_anadida: 31, igtf_porcentaje: 3 });
+    }
+});
+
+server.get(['/api/maestro/unidades-empaque', '/api/maestro/unidades-empaque/:productId'], (req, res) => {
+    try {
+        const productId = req.params.productId;
+        const activeDb = getPosDb();
+        if (activeDb) {
+            if (productId) {
+                const rows = activeDb.prepare('SELECT * FROM unidades_empaque WHERE product_id = ? ORDER BY factor_cantidad ASC').all(productId);
+                return res.json(rows);
+            } else {
+                const rows = activeDb.prepare('SELECT * FROM unidades_empaque ORDER BY factor_cantidad ASC').all();
+                return res.json(rows);
+            }
+        }
+        res.json([]);
+    } catch (error) {
+        res.json([]);
     }
 });
 
@@ -977,6 +1146,16 @@ server.delete('/api/maestro/eliminar-borrador/:id', (req, res) => {
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
+});
+
+server.get('/api/maestro/notificar-cambio/:tipo', (req, res) => {
+    const { tipo } = req.params;
+    cajasEscuchando.forEach(caja => {
+        try {
+            caja.write(`data: CAMBIO_${tipo.toUpperCase()}\n\n`);
+        } catch(e){}
+    });
+    res.json({ exito: true });
 });
 
 server.get('/api/maestro/borradores-stream', (req, res) => {

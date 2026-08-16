@@ -76,11 +76,44 @@ console.log("ðŸŒ IP DEL SERVIDOR:", process.env.SERVER_IP || 'No configurad
 
 // Puente para el Frontend
 ipcMain.handle('get-config', () => {
-    return {
-        serverIp: process.env.SERVER_IP || '',
-        serverPort: process.env.SERVER_PORT || 4010,
-        respaldo_datos: process.env.respaldo_datos === 'true' 
-    };
+    let maestroIp = null;
+    try {
+        maestroIp = getIpMaestro();
+    } catch (e) {}
+
+    const isServer = (config.isServer === true || config.isServer === 'true');
+    const vpsIp = process.env.SERVER_IP || '';
+    const vpsPort = parseInt(process.env.SERVER_PORT) || 4010;
+    const respaldo = (process.env.respaldo_datos === 'true');
+
+    if (isServer) {
+        return {
+            isServer: true,
+            serverIP: vpsIp,
+            serverIp: vpsIp,
+            serverPort: vpsPort,
+            SERVER_IP: vpsIp,
+            SERVER_PORT: vpsPort,
+            vpsIp: vpsIp,
+            vpsPort: vpsPort,
+            respaldo_datos: respaldo,
+            respaldoActivo: respaldo
+        };
+    } else {
+        const lanIp = maestroIp || config.serverIP || '';
+        return {
+            isServer: false,
+            serverIP: lanIp,
+            serverIp: lanIp,
+            serverPort: 3000,
+            SERVER_IP: lanIp,
+            SERVER_PORT: 3000,
+            vpsIp: vpsIp,
+            vpsPort: vpsPort,
+            respaldo_datos: false,
+            respaldoActivo: false
+        };
+    }
 });
 
 ipcMain.handle('validar-clave-fiscal', (event, clave) => {
@@ -1096,6 +1129,12 @@ ipcMain.handle('guardar-tasa-bcv', async (event, tasa) => {
     try {
         const stmt = db.prepare(`INSERT OR REPLACE INTO configuracion (clave, valor, fecha_actualizacion) VALUES ('TASA_BCV', ?, ?)`);
         stmt.run(tasa.toString(), new Date().toISOString());
+        
+        // 🔥 Notificar a las cajas hijas que la tasa cambió
+        if (config.isServer) {
+            axios.get('http://127.0.0.1:3000/api/maestro/notificar-cambio/tasa').catch(() => {});
+        }
+
         return { success: true };
     } catch (error) {
         console.error("â Œ Error al guardar tasa:", error);
@@ -1325,21 +1364,30 @@ ipcMain.on('cerrar-y-volver-login', (event) => {
 
 ipcMain.handle('obtener-productos-local', async (event, empresaId) => {
     try {
-        console.log(`ðŸ“‚ Solicitando productos locales para la empresa: ${empresaId}`);
+        console.log(`📁 Solicitando productos locales para la empresa: ${empresaId}`);
+        if (!config.isServer) {
+            const ipMaestro = getIpMaestro();
+            if (ipMaestro) {
+                const url = `http://${ipMaestro}:3000/api/maestro/obtener-productos?empresaId=${encodeURIComponent(empresaId || '')}`;
+                const reqFetch = await fetch(url, { signal: AbortSignal.timeout(10000) });
+                if (reqFetch.ok) {
+                    const data = await reqFetch.json();
+                    if (Array.isArray(data)) return data;
+                }
+            }
+        }
         
         let stmt;
         if (empresaId) {
-
-            stmt = db.prepare(`SELECT * FROM productos_locales WHERE company_id = ?`);
+            stmt = db.prepare(`SELECT * FROM productos_locales WHERE company_id = ? AND status != -1 ORDER BY nombre ASC`);
             return stmt.all(empresaId);
         } else {
-
-            stmt = db.prepare(`SELECT * FROM productos_locales`);
+            stmt = db.prepare(`SELECT * FROM productos_locales WHERE status != -1 ORDER BY nombre ASC`);
             return stmt.all();
         }
         
     } catch (e) {
-        console.error("â Œ Error en obtener-productos-local:", e);
+        console.error("❌ Error en obtener-productos-local:", e);
         return []; 
     }
 });
@@ -1349,6 +1397,17 @@ ipcMain.handle('obtener-productos-local', async (event, empresaId) => {
 // ═══════════════════════════════════════════════════════════════════
 ipcMain.handle('obtener-productos-paginados', async (event, { empresaId, limit = 350, offset = 0, letterFilter = '', searchQuery = '' }) => {
     try {
+        if (!config.isServer) {
+            const ipMaestro = getIpMaestro();
+            if (ipMaestro) {
+                const url = `http://${ipMaestro}:3000/api/maestro/obtener-productos-paginados?empresaId=${encodeURIComponent(empresaId || '')}&limit=${limit}&offset=${offset}&letterFilter=${encodeURIComponent(letterFilter || '')}&searchQuery=${encodeURIComponent(searchQuery || '')}`;
+                const reqFetch = await fetch(url, { signal: AbortSignal.timeout(10000) });
+                if (reqFetch.ok) {
+                    return await reqFetch.json();
+                }
+            }
+        }
+
         let baseQuery = `FROM productos_locales WHERE status != -1`;
         const params = [];
 
@@ -1363,7 +1422,7 @@ ipcMain.handle('obtener-productos-paginados', async (event, { empresaId, limit =
             params.push(term, term, term);
         } else if (letterFilter) {
             if (letterFilter === '#') {
-                baseQuery += ` AND UPPER(SUBSTR(nombre, 1, 1)) < 'A' OR UPPER(SUBSTR(nombre, 1, 1)) > 'Z'`;
+                baseQuery += ` AND (UPPER(SUBSTR(nombre, 1, 1)) < 'A' OR UPPER(SUBSTR(nombre, 1, 1)) > 'Z')`;
             } else {
                 baseQuery += ` AND nombre LIKE ?`;
                 params.push(`${letterFilter}%`);
@@ -1372,13 +1431,16 @@ ipcMain.handle('obtener-productos-paginados', async (event, { empresaId, limit =
 
         const countStmt = db.prepare(`SELECT COUNT(*) as total ${baseQuery}`);
         const countResult = countStmt.get(...params);
-        const totalCount = countResult.total;
+        const totalCount = countResult ? countResult.total : 0;
 
-        const dataQuery = `SELECT * ${baseQuery} ORDER BY nombre ASC LIMIT ? OFFSET ?`;
-        params.push(limit, offset);
-        
-        const dataStmt = db.prepare(dataQuery);
-        const data = dataStmt.all(...params);
+        let data = [];
+        if (limit === -1) {
+            const dataStmt = db.prepare(`SELECT * ${baseQuery} ORDER BY nombre ASC`);
+            data = dataStmt.all(...params);
+        } else {
+            const dataStmt = db.prepare(`SELECT * ${baseQuery} ORDER BY nombre ASC LIMIT ? OFFSET ?`);
+            data = dataStmt.all(...params, limit, offset);
+        }
 
         return { data, totalCount };
     } catch (e) {
@@ -1442,6 +1504,11 @@ ipcMain.handle('sincronizar-productos-lote', async (event, productos) => {
             if (!ventana.isDestroyed()) ventana.webContents.send('productos-actualizados');
         });
 
+        // 🔥 Notificar a las cajas hijas (SSE) que el catálogo cambió
+        if (config.isServer) {
+            axios.get('http://127.0.0.1:3000/api/maestro/notificar-cambio/productos').catch(() => {});
+        }
+
         return { success: true, ...resultado };
     } catch (e) {
         console.error("❌ Error en sincronizar-productos-lote:", e);
@@ -1458,9 +1525,14 @@ ipcMain.handle('buscar-productos-local', async (event, { query, empresaId }) => 
     try {
         if (!config.isServer) {
             const ipMaestro = getIpMaestro();
-            const url = `http://${ipMaestro}:3000/api/maestro/buscar-productos-local?query=${encodeURIComponent(query || '')}&empresaId=${encodeURIComponent(empresaId || '')}`;
-            const reqFetch = await fetch(url);
-            return await reqFetch.json();
+            if (ipMaestro) {
+                const url = `http://${ipMaestro}:3000/api/maestro/buscar-productos-local?query=${encodeURIComponent(query || '')}&empresaId=${encodeURIComponent(empresaId || '')}`;
+                const reqFetch = await fetch(url, { signal: AbortSignal.timeout(6000) });
+                if (reqFetch.ok) {
+                    const data = await reqFetch.json();
+                    if (Array.isArray(data)) return data;
+                }
+            }
         }
 
         const term = `%${(query || '').trim()}%`;
@@ -1502,9 +1574,14 @@ ipcMain.handle('buscar-producto-por-codigo', async (event, { codigo, empresaId }
     try {
         if (!config.isServer) {
             const ipMaestro = getIpMaestro();
-            const url = `http://${ipMaestro}:3000/api/maestro/buscar-producto-por-codigo?codigo=${encodeURIComponent(codigo || '')}&empresaId=${encodeURIComponent(empresaId || '')}`;
-            const reqFetch = await fetch(url);
-            return await reqFetch.json();
+            if (ipMaestro) {
+                const url = `http://${ipMaestro}:3000/api/maestro/buscar-producto-por-codigo?codigo=${encodeURIComponent(codigo || '')}&empresaId=${encodeURIComponent(empresaId || '')}`;
+                const reqFetch = await fetch(url, { signal: AbortSignal.timeout(6000) });
+                if (reqFetch.ok) {
+                    const data = await reqFetch.json();
+                    if (data && typeof data === 'object' && !data.error) return data;
+                }
+            }
         }
 
         const codigoLimpio = String(codigo || '').trim();
@@ -2394,12 +2471,28 @@ ipcMain.handle('marcar-como-sincronizado', async (event, tabla, idElemento) => {
     }
 });
 
-ipcMain.handle('obtener-categorias-local', async () => {
+ipcMain.handle('obtener-categorias-local', async (event, empresaId) => {
     try {
-        const stmt = db.prepare('SELECT * FROM categorias_locales ORDER BY nombre ASC');
+        if (!config.isServer) {
+            const ipMaestro = getIpMaestro();
+            if (ipMaestro) {
+                const url = `http://${ipMaestro}:3000/api/maestro/categorias-local?empresaId=${encodeURIComponent(empresaId || '')}`;
+                const reqFetch = await fetch(url, { signal: AbortSignal.timeout(6000) });
+                if (reqFetch.ok) {
+                    const data = await reqFetch.json();
+                    if (Array.isArray(data)) return data;
+                }
+            }
+        }
+        let stmt;
+        if (empresaId) {
+            stmt = db.prepare('SELECT * FROM categorias_locales WHERE company_id = ? ORDER BY nombre ASC');
+            return stmt.all(empresaId);
+        }
+        stmt = db.prepare('SELECT * FROM categorias_locales ORDER BY nombre ASC');
         return stmt.all();
     } catch (e) {
-        console.error("Error al obtener categorÃ­as locales:", e);
+        console.error("Error al obtener categorías locales:", e);
         return [];
     }
 });
@@ -4288,14 +4381,21 @@ ipcMain.handle('leer-config-maestra', async (event, clave) => {
     try {
         if (config.isServer && masterDbDirect) {
             const row = masterDbDirect.prepare('SELECT valor FROM configuraciones_maestras WHERE clave = ?').get(clave);
-            return row ? { valor: row.valor } : null;
+            if (row) return { exito: true, valor: row.valor };
+            if (db) {
+                try {
+                    const rowLocal = db.prepare('SELECT valor FROM configuracion WHERE clave = ?').get(clave);
+                    if (rowLocal) return { exito: true, valor: rowLocal.valor };
+                } catch(eDb) {}
+            }
+            return { exito: true, valor: null };
         } else {
             const respuesta = await llamarMaestro('GET', `/api/maestro/configuracion/${clave}`, null, { timeout: 8000, reintentos: 1 });
             return respuesta.data;
         }
     } catch (e) {
         console.error('Error leer-config-maestra:', e);
-        return null;
+        return { exito: false, valor: null, error: e.message };
     }
 });
 
@@ -4346,6 +4446,14 @@ ipcMain.handle('guardar-config-maestra', async (event, datos) => {
 
 ipcMain.handle('obtener-configuracion-fiscal', async () => {
     try {
+        if (!config.isServer) {
+            const ipMaestro = getIpMaestro();
+            if (ipMaestro) {
+                const url = `http://${ipMaestro}:3000/api/maestro/configuracion-fiscal`;
+                const reqFetch = await fetch(url, { signal: AbortSignal.timeout(6000) });
+                if (reqFetch.ok) return await reqFetch.json();
+            }
+        }
         const row = db.prepare('SELECT * FROM configuracion_fiscal WHERE id = 1').get();
         return row || null;
     } catch (err) {
@@ -4517,20 +4625,42 @@ ipcMain.handle('extraer-reporte-fiscal', async (event, tipoReporte, puerto) => {
 // --- HANDLERS RECUPERADOS: SALIDAS Y EMPAQUES ---
 ipcMain.handle('obtener-empaque-por-producto', async (event, productId) => {
     try {
+        if (!config.isServer) {
+            const ipMaestro = getIpMaestro();
+            if (ipMaestro) {
+                const url = `http://${ipMaestro}:3000/api/maestro/unidades-empaque/${encodeURIComponent(productId || '')}`;
+                const reqFetch = await fetch(url, { signal: AbortSignal.timeout(6000) });
+                if (reqFetch.ok) {
+                    const data = await reqFetch.json();
+                    if (Array.isArray(data)) return data;
+                }
+            }
+        }
         const query = "SELECT * FROM unidades_empaque WHERE product_id = ?";
         return db.prepare(query).all(productId);
     } catch (e) {
-        console.error("? Error obtener empaque:", e);
+        console.error("❌ Error obtener empaque:", e);
         return [];
     }
 });
 
 ipcMain.handle('obtener-unidades-empaque-local', async (event, companyId) => {
     try {
+        if (!config.isServer) {
+            const ipMaestro = getIpMaestro();
+            if (ipMaestro) {
+                const url = `http://${ipMaestro}:3000/api/maestro/unidades-empaque`;
+                const reqFetch = await fetch(url, { signal: AbortSignal.timeout(6000) });
+                if (reqFetch.ok) {
+                    const data = await reqFetch.json();
+                    if (Array.isArray(data)) return data;
+                }
+            }
+        }
         const query = "SELECT * FROM unidades_empaque WHERE company_id = ?";
         return db.prepare(query).all(companyId);
     } catch (e) {
-        console.error("Error obtener unidades empaque:", e);
+        console.error("❌ Error obtener unidades empaque:", e);
         return [];
     }
 });
