@@ -331,26 +331,26 @@ setTimeout(() => {
             <h1 class="text-3xl font-bold text-gray-800">Sistema de Facturación</h1>
         </div>
         
-<div class="flex flex-col md:flex-row md:items-end justify-between mb-[1px] space-y-4 md:space-y-0">
-    <div class="w-full md:w-1/2">
-        <h2 class="text-xl font-bold text-gray-800 mb-4">Seleccionar Cliente (C)</h2>
+<div class="flex flex-col lg:flex-row lg:items-end justify-between gap-3 mb-2">
+    <div class="w-full lg:flex-1 lg:max-w-xl">
+        <h2 class="text-lg sm:text-xl font-bold text-gray-800 mb-2">Seleccionar Cliente (C)</h2>
         <div class="flex items-center space-x-2">
-            <input type="text" id="client-search" placeholder="Buscar por Cédula o Nombre..." class="flex-1 rounded-none border-gray-300 shadow-sm sm:text-sm p-2 outline-none border">
-            <button id="search-client-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-none shadow-md transition duration-300 ease-in-out">Buscar</button>
+            <input type="text" id="client-search" placeholder="Buscar por Cédula o Nombre..." class="flex-1 min-w-0 rounded-none border-gray-300 shadow-sm text-sm p-2 outline-none border focus:ring-1 focus:ring-blue-500">
+            <button id="search-client-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 sm:px-4 rounded-none shadow-md transition duration-200 text-xs sm:text-sm whitespace-nowrap flex-shrink-0">Buscar</button>
         </div>
     </div>
 
-    <div class="flex items-center">
+    <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap flex-shrink-0 self-start sm:self-auto">
         <button id="btn-doc-fiscales" 
                 onclick="window.abrirModalDocFiscales()" 
-                class="bg-gray-800 hover:bg-gray-900 text-white font-bold py-2.5 px-4 rounded-none shadow-lg transition duration-300 ease-in-out flex items-center mr-[5px]">
-            <i class="fas fa-file-invoice-dollar mr-2"></i> Documentos Fiscales y Ajustes
+                class="bg-gray-800 hover:bg-gray-900 text-white font-bold py-2 px-3 sm:px-4 rounded-none shadow-md transition duration-200 flex items-center justify-center text-xs sm:text-sm whitespace-nowrap">
+            <i class="fas fa-file-invoice-dollar mr-1.5 sm:mr-2"></i> Documentos Fiscales y Ajustes
         </button>
         
         <button id="btn-catalog" 
                 onclick="openExtendedSearchModal()" 
-                class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-6 rounded-none shadow-lg transition duration-300 ease-in-out flex items-center">
-            <i class="fas fa-boxes mr-2"></i> CATÁLOGO (P)
+                class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-3 sm:px-5 rounded-none shadow-md transition duration-200 flex items-center justify-center text-xs sm:text-sm whitespace-nowrap">
+            <i class="fas fa-boxes mr-1.5 sm:mr-2"></i> CATÁLOGO (P)
         </button>
     </div>
 </div>
@@ -7350,7 +7350,7 @@ const gdIconoCheck = document.getElementById('gd_icono_check');
 
 if (gdInput) {
     // Evento para capturar la tecla ENTER
-    gdInput.addEventListener('keydown', (e) => {
+    gdInput.addEventListener('keydown', async (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
             e.stopPropagation(); // Evita que se cruce con atajos de la pantalla de fondo
