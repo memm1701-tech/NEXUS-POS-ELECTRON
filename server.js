@@ -921,6 +921,29 @@ server.get('/api/maestro/buscar-cliente', (req, res) => {
     }
 });
 
+server.get('/api/maestro/inventario/:companyId', (req, res) => {
+    try {
+        const companyId = req.params.companyId;
+        const desde = req.query.desde;
+        const activeDb = getPosDb() || serverDb;
+        let query = 'SELECT * FROM productos_locales WHERE 1=1';
+        let params = [];
+        if (companyId && companyId !== 'undefined') {
+            query += ' AND company_id = ?';
+            params.push(companyId);
+        }
+        if (desde && desde !== 'undefined') {
+            query += ' AND fecha_modificacion > ?';
+            params.push(desde);
+        }
+        query += ' ORDER BY nombre ASC';
+        const rows = activeDb.prepare(query).all(...params);
+        res.json(rows || []);
+    } catch(e) {
+        res.json([]);
+    }
+});
+
 server.get('/api/maestro/categorias-local', (req, res) => {
     try {
         const empresaId = req.query.empresaId;

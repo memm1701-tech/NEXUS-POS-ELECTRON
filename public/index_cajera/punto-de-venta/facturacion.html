@@ -71,8 +71,14 @@ async function cargarMetodosFacturacion() {
         
         // Adjuntar listeners de recálculo dinámicamente
         container.querySelectorAll('.payment-input').forEach(input => {
-            input.addEventListener('input', calculatePaymentSummary);
-            input.addEventListener('change', calculatePaymentSummary);
+            input.addEventListener('input', () => {
+                if (typeof window.calculatePaymentSummary === 'function') window.calculatePaymentSummary();
+                else if (typeof calculatePaymentSummary === 'function') calculatePaymentSummary();
+            });
+            input.addEventListener('change', () => {
+                if (typeof window.calculatePaymentSummary === 'function') window.calculatePaymentSummary();
+                else if (typeof calculatePaymentSummary === 'function') calculatePaymentSummary();
+            });
         });
         
         // Enlazar gatillo de Pago Móvil

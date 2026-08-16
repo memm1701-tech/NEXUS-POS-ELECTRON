@@ -546,21 +546,17 @@ window.descargandoFondo = false;
                 dynamicContentArea.innerHTML = html;
                 const scripts = dynamicContentArea.querySelectorAll('script');
                 scripts.forEach(oldScript => {
-                    if (oldScript.src) {
-                        const newScript = document.createElement('script');
-                        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-                        if (oldScript.parentNode) {
-                            oldScript.parentNode.replaceChild(newScript, oldScript);
-                        }
-                    } else {
-                        try {
-                            const scriptContent = oldScript.text || oldScript.textContent || oldScript.innerHTML || "";
-                            if (scriptContent.trim()) {
-                                window.eval(scriptContent);
-                            }
-                        } catch (e) {
-                            console.error("SyntaxError in dynamically loaded script:", e);
-                        }
+                    const newScript = document.createElement('script');
+                    Array.from(oldScript.attributes).forEach(attr => {
+                        newScript.setAttribute(attr.name, attr.value);
+                    });
+                    
+                    if (!oldScript.src) {
+                        newScript.textContent = oldScript.text || oldScript.textContent || oldScript.innerHTML || "";
+                    }
+                    
+                    if (oldScript.parentNode) {
+                        oldScript.parentNode.replaceChild(newScript, oldScript);
                     }
                 });
             })
@@ -735,9 +731,7 @@ async function iniciarSincronizacionSilenciosa() {
     }
 
     async function descargarActualizacionesDeInventario() {
-        // 🔥 CAJA HIJA: No depende de navigator.onLine, intenta conectar al maestro por LAN
-        const puedeConectar = (window.esCajaHija && SERVER_URL) || (navigator.onLine && SERVER_URL);
-        if (!puedeConectar || !currentCompanyId || window.descargandoFondo) return;
+        if (window.esCajaHija || !respaldoActivo || !SERVER_URL || !currentCompanyId || window.descargandoFondo) return;
 
         window.descargandoFondo = true;
         try {
@@ -767,16 +761,19 @@ async function iniciarSincronizacionSilenciosa() {
 
                 for (const pServidor of productosServidor) {
                     const idServidor = pServidor.producto_ID || pServidor.id || pServidor.producto_id;
+                    const estadoLocal = estadosLocales[idServidor];
                     
-                    if (estadosLocales[idServidor] === 0) {
+                    if (estadoLocal === 0) {
                         omitidos++;
                         continue; 
                     }
 
                     let datosParsed = {};
-                    try {
-                        datosParsed = typeof pServidor.datos_json === 'string' ? JSON.parse(pServidor.datos_json) : (pServidor.datos_json || {});
-                    } catch(e) {}
+                    if (typeof pServidor.datos_json === 'string') {
+                        try { datosParsed = JSON.parse(pServidor.datos_json); } catch (e) { datosParsed = {}; }
+                    } else if (typeof pServidor.datos_json === 'object' && pServidor.datos_json !== null) {
+                        datosParsed = pServidor.datos_json;
+                    }
 
                     const productoParaValidar = {
                         id: idServidor,
@@ -823,28 +820,18 @@ async function iniciarSincronizacionSilenciosa() {
                 localStorage.setItem(claveStorage, new Date().toISOString());
             }
         } catch (error) {
-            console.log("⏸️ Sincronización de inventario en pausa (Red inestable o timeout).");
-            // Reintento rápido si es caja hija y se pierde conexión
-            if (window.esCajaHija) {
-                console.log("🔄 [CAJERA] Reintentando conexión con maestro en 5 segundos...");
-                setTimeout(descargarActualizacionesDeInventario, 5000);
-            }
+            console.log("⏸️ Sincronización de inventario en pausa.");
         } finally {
             window.descargandoFondo = false;
         }
     }
 
     async function descargarActualizacionesDeCategorias() {
-        // 🔥 CAJA HIJA: No depende de navigator.onLine, intenta conectar al maestro por LAN
-        const puedeConectar = (window.esCajaHija && SERVER_URL) || (navigator.onLine && SERVER_URL);
-        if (!puedeConectar || !currentCompanyId || window.descargandoCategorias) return;
+        if (window.esCajaHija || !respaldoActivo || !SERVER_URL || !currentCompanyId || window.descargandoCategorias) return;
 
         window.descargandoCategorias = true;
         try {
-            // Usar el endpoint apropiado si es caja hija vs si es sincronización normal
-            const endpoint = window.esCajaHija 
-                ? `${SERVER_URL}/api/maestro/categorias-local?empresaId=${currentCompanyId}`
-                : `${SERVER_URL}/api/maestro/categorias/${currentCompanyId}`;
+            const endpoint = `${SERVER_URL}/api/maestro/categorias/${currentCompanyId}`;
                 
             const response = await fetch(endpoint, {
                 signal: AbortSignal.timeout(30000)
@@ -866,12 +853,7 @@ async function iniciarSincronizacionSilenciosa() {
                 }
             }
         } catch (error) {
-            console.log("⏸️ Sincronización de categorías en pausa (Red inestable o timeout).");
-            // Reintento rápido si es caja hija y se pierde conexión
-            if (window.esCajaHija) {
-                console.log("🔄 [CAJERA] Reintentando conexión con maestro (categorías) en 5 segundos...");
-                setTimeout(descargarActualizacionesDeCategorias, 5000);
-            }
+            console.log("⏸️ Sincronización de categorías en pausa.");
         } finally {
             window.descargandoCategorias = false;
         }
@@ -1147,6 +1129,7 @@ async function inicializarDashboard() {
 
     let contadorLatidos = 0; 
     let contadorDescargas = 0; 
+    let contadorRate = 0; 
 
     setInterval(async () => {
         // console.log("💓 [Radar Cajera] Bucle activo...");
@@ -1181,17 +1164,23 @@ async function inicializarDashboard() {
         }
 
         if (estadoConexion) {
-            if (!sincronizando) {
-                iniciarSincronizacionSilenciosa();
+            if (!window.esCajaHija && respaldoActivo) {
+                if (!sincronizando) {
+                    iniciarSincronizacionSilenciosa();
+                }
+
+                contadorDescargas++;
+                if (contadorDescargas >= 5) {
+                    contadorDescargas = 0;
+                    descargarActualizacionesDeInventario();
+                    descargarActualizacionesDeCategorias();
+                }
             }
 
-            // 🔥 SE REDUJO A 15 SEGUNDOS PARA QUE SE SIENTA "EN TIEMPO REAL"
-            contadorDescargas++;
-            if (contadorDescargas >= 5) {
-                contadorDescargas = 0;
-                descargarActualizacionesDeInventario();
-                descargarActualizacionesDeCategorias();
-                fetchDollarRate(); 
+            contadorRate++;
+            if (contadorRate >= 10) {
+                contadorRate = 0;
+                fetchDollarRate();
             }
         }
     }, 1000);
