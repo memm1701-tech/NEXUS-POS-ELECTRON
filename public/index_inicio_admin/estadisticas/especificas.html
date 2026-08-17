@@ -1,14 +1,15 @@
 <style>
     /* VARIABLES CSS Y CONTENEDOR PRINCIPAL */
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap');
 
     .estadisticas-container {
-        --color-primary: #0284c7; /* Azul bcv/generales */
-        --color-success: #059669; /* Verde generales */
-        --color-background: #ffffff; /* Gris generales */
-        --color-text: #1f2937; /* Negro/Gris oscuro generales */
+        --color-primary: #0284c7; /* Azul Nexus */
+        --color-primary-hover: #0369a1;
+        --color-success: #059669; /* Verde éxito */
+        --color-background: #f8fafc;
+        --color-text: #1f2937;
         --color-card-bg: #ffffff;
-        --color-border: #f3f4f6;
+        --color-border: #e2e8f0;
 
         font-family: 'Roboto', sans-serif;
         background-color: var(--color-background);
@@ -19,7 +20,7 @@
         box-sizing: border-box; 
     }
 
-    /* Estilo del encabezado idéntico a generales.html */
+    /* Encabezado */
     .estadisticas-container .stats-header {
         display: flex;
         justify-content: space-between;
@@ -28,271 +29,391 @@
     }
     .estadisticas-container .stats-header h1 {
         font-size: 1.75rem;
-        color: #1f2937;
+        color: #0f172a;
         margin: 0;
         font-weight: 700;
+        letter-spacing: -0.02em;
     }
     .estadisticas-container .stats-header p {
-        color: #6b7280;
-        margin-top: 8px;
+        color: #64748b;
+        margin-top: 6px;
         margin-bottom: 0;
+        font-size: 0.95rem;
     }
 
     .estadisticas-container h2 {
-        font-size: 1.1rem;
-        color: #374151;
+        font-size: 1.15rem;
+        color: #1e293b;
         margin-top: 0;
-        margin-bottom: 20px;
+        margin-bottom: 16px;
         font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
-
-
-    /* Estilo Base de Tarjetas internas */
+    /* Tarjetas */
     .estadisticas-container .card {
         background-color: var(--color-card-bg);
-        border: 1px solid #f3f4f6;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        margin-bottom: 32px;
+        border: 1px solid var(--color-border);
+        border-radius: 14px;
+        padding: 22px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+        margin-bottom: 28px;
         box-sizing: border-box;
+        transition: box-shadow 0.2s ease;
+    }
+    .estadisticas-container .card:hover {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
     }
 
     /* ------------------ SECCIÓN GANANCIAS ------------------ */
     .estadisticas-container .section-ganancias {
-        min-height: 400px;
+        min-height: 440px;
     }
 
     .estadisticas-container .ganancias-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 15px;
+        margin-bottom: 16px;
         flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .estadisticas-container .selector-periodo {
+        display: inline-flex;
+        background: #f1f5f9;
+        padding: 4px;
+        border-radius: 10px;
+        gap: 3px;
+        border: 1px solid #e2e8f0;
     }
 
     .estadisticas-container .selector-periodo button {
-        background-color: white;
-        color: var(--color-text);
-        border: 1px solid var(--color-border);
-        padding: 8px 15px;
+        background-color: transparent;
+        color: #475569;
+        border: none;
+        padding: 6px 14px;
         cursor: pointer;
-        margin-right: 5px;
-        border-radius: 4px;
-        transition: all 0.2s;
+        border-radius: 7px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        font-family: inherit;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
     }
 
-    .estadisticas-container .selector-periodo button.active,
     .estadisticas-container .selector-periodo button:hover {
-        background-color: var(--color-primary);
-        color: white;
+        color: #0f172a;
+        background-color: rgba(255, 255, 255, 0.6);
+    }
+
+    .estadisticas-container .selector-periodo button.active {
+        background-color: #ffffff;
+        color: var(--color-primary);
+        font-weight: 700;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Barra de Rango de Fechas Personalizado */
+    .custom-date-bar {
+        display: none;
+        align-items: center;
+        gap: 12px;
+        background: #f8fafc;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        padding: 10px 16px;
+        margin-bottom: 18px;
+        animation: fadeInDown 0.2s ease;
+        flex-wrap: wrap;
+    }
+    .custom-date-bar.activo {
+        display: flex;
+    }
+
+    .custom-date-bar-mini {
+        display: none;
+        align-items: center;
+        gap: 6px;
+        background: #f8fafc;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 8px 10px;
+        margin-top: 10px;
+        margin-bottom: 10px;
+        animation: fadeInDown 0.2s ease;
+        flex-wrap: wrap;
+    }
+    .custom-date-bar-mini.activo {
+        display: flex;
+    }
+
+    .date-input-group {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .date-input-group label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #475569;
+    }
+    .date-input-group input[type="date"] {
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-size: 0.82rem;
+        color: #0f172a;
+        background: #ffffff;
+        outline: none;
+        font-family: inherit;
+        transition: border-color 0.2s ease;
+    }
+    .date-input-group input[type="date"]:focus {
         border-color: var(--color-primary);
+        box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
+    }
+
+    .btn-aplicar-rango {
+        background: var(--color-primary);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 6px 14px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        transition: all 0.2s ease;
+    }
+    .btn-aplicar-rango:hover {
+        background: var(--color-primary-hover);
+    }
+
+    .btn-mini-aplicar {
+        background: var(--color-primary);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .btn-mini-aplicar:hover {
+        background: var(--color-primary-hover);
+    }
+
+    @keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-6px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .estadisticas-container .total-ganancia {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .estadisticas-container .total-ganancia .label {
+        font-size: 0.9rem;
+        color: #64748b;
+        font-weight: 500;
     }
 
     .estadisticas-container .total-ganancia .valor-ganancia {
         font-size: 2rem;
-        font-weight: bold;
+        font-weight: 800;
         color: var(--color-success);
-        margin-right: 10px;
+        letter-spacing: -0.02em;
     }
 
     .estadisticas-container .total-ganancia .variacion-ganancia {
-        font-weight: 500;
-        font-size: 0.9rem;
-        padding: 2px 8px;
-        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.8rem;
+        padding: 3px 10px;
+        border-radius: 20px;
     }
 
     .estadisticas-container .positivo {
         color: var(--color-success);
-        background-color: rgba(25, 135, 84, 0.1);
-    }
-    
-    .estadisticas-container .negativo {
-        color: var(--color-primary);
-        background-color: rgba(220, 53, 69, 0.1);
+        background-color: rgba(5, 150, 105, 0.1);
+        border: 1px solid rgba(5, 150, 105, 0.2);
     }
 
     .estadisticas-container .grafico-placeholder {
-        height: 300px;
-        background-color: var(--color-background);
+        height: 320px;
+        background-color: #ffffff;
         display: flex;
         justify-content: center;
         align-items: center;
-        border-radius: 4px;
-        border: 1px dashed var(--color-border);
-        margin-top: 15px;
+        border-radius: 10px;
+        margin-top: 10px;
     }
 
     /* ------------------ SECCIÓN KPIs RÁPIDOS (GRID) ------------------ */
-    .kpi-card {
-        flex-direction: column;
-        align-items: stretch;
-        padding: 15px;
+    .estadisticas-container .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 28px;
     }
+
+    .kpi-card {
+        display: flex;
+        flex-direction: column;
+        background-color: var(--color-card-bg);
+        border: 1px solid var(--color-border);
+        border-radius: 14px;
+        padding: 18px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        box-sizing: border-box;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px -2px rgba(0,0,0,0.08);
+    }
+
     .kpi-card-header {
         display: flex;
-        justify-content: flex-end;
-        margin-bottom: 15px;
-        border-bottom: 1px solid #f3f4f6;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        border-bottom: 1px solid #f1f5f9;
         padding-bottom: 10px;
+        flex-wrap: wrap;
+        gap: 8px;
     }
+
+    .kpi-card-header .kpi-badge {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
     .kpi-card-body {
         display: flex;
         align-items: center;
-    }
-    .selector-mini button {
-        padding: 4px 8px;
-        font-size: 0.75rem;
-        margin-right: 2px;
-    }
-    
-    .estadisticas-container .kpi-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* 3 columnas en desktop */
-        gap: 20px;
-        margin-bottom: 30px;
+        padding-top: 4px;
     }
 
-    .estadisticas-container .kpi-card {
-        display: flex;
-        align-items: center;
-        background-color: var(--color-card-bg);
-        border: 1px solid #f3f4f6;
-        border-radius: 12px;
-        padding: 18px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        box-sizing: border-box;
+    .selector-mini {
+        padding: 2px !important;
+        border-radius: 8px !important;
+    }
+    .selector-mini button {
+        padding: 3px 7px !important;
+        font-size: 0.72rem !important;
     }
 
     .estadisticas-container .kpi-icon {
-        font-size: 2.5rem;
-        color: var(--color-primary); /* Color de acento */
+        width: 52px;
+        height: 52px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.6rem;
         margin-right: 15px;
-        padding: 10px;
-        border-radius: 50%;
-        background-color: #f7e0e2; /* Fondo suave para el ícono */
+        flex-shrink: 0;
     }
+    .kpi-icon.icon-gold { background: #fef3c7; color: #d97706; }
+    .kpi-icon.icon-blue { background: #e0f2fe; color: #0284c7; }
+    .kpi-icon.icon-emerald { background: #d1fae5; color: #059669; }
 
-    .estadisticas-container .kpi-info p {
-        margin: 0;
-        line-height: 1.4;
+    .estadisticas-container .kpi-info {
+        overflow: hidden;
+        width: 100%;
     }
-
     .estadisticas-container .kpi-title {
-        font-size: 0.7rem;
-        color: #6b7280;
+        font-size: 0.72rem;
+        color: #64748b;
         margin: 0;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.025em;
-    }
-
-    .estadisticas-container .kpi-valor {
-        font-size: 1.2rem;
         font-weight: 700;
-        color: #111827;
-        margin: 0;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
     }
-
+    .estadisticas-container .kpi-valor {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 4px 0 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
     .estadisticas-container .kpi-detalle {
-        font-size: 0.75rem;
-        color: #9ca3af;
-        margin-top: 4px;
+        font-size: 0.78rem;
+        color: #64748b;
+        margin: 0;
     }
 
     /* ------------------ SECCIÓN ROTACIÓN DE INVENTARIO ------------------ */
-    .estadisticas-container .rotacion-inventario {
-        display: flex;
-        flex-direction: column;
-    }
-
     .estadisticas-container .rotacion-content {
         display: flex;
         align-items: center;
-        gap: 40px;
-        padding-top: 10px;
+        gap: 36px;
+        padding-top: 14px;
     }
 
     .estadisticas-container .rotacion-valor-grande {
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 15px;
+        justify-content: center;
+        padding: 16px 24px;
         border-right: 1px solid var(--color-border);
+        min-width: 140px;
     }
 
     .estadisticas-container .rotacion-valor-grande .valor-principal {
-        font-size: 3rem;
-        font-weight: bold;
-        color: var(--color-success); /* Verde para un KPI de eficiencia */
+        font-size: 2.8rem;
+        font-weight: 800;
+        color: var(--color-success);
+        letter-spacing: -0.03em;
     }
 
     .estadisticas-container .rotacion-valor-grande .label-principal {
-        font-size: 1rem;
-        color: #6c757d;
+        font-size: 0.85rem;
+        color: #64748b;
+        font-weight: 600;
+        text-transform: uppercase;
     }
 
     .estadisticas-container .rotacion-detalle p {
         margin-bottom: 8px;
         line-height: 1.5;
-    }
-
-    .estadisticas-container .btn-info-rotacion {
-        display: inline-block;
-        color: var(--color-primary);
-        text-decoration: none;
-        font-weight: bold;
-        margin-top: 10px;
-    }
-
-    /* ------------------ RESPONSIVE (Ajuste para móviles o tablets) ------------------ */
-    @media (max-width: 992px) {
-        .estadisticas-container .ganancias-header {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-        
-        .estadisticas-container .total-ganancia {
-            margin-top: 15px;
-        }
-
-        .estadisticas-container .kpi-grid {
-            grid-template-columns: 1fr; /* Una columna en móvil */
-        }
-
-        .estadisticas-container .rotacion-content {
-            flex-direction: column;
-            gap: 20px;
-            align-items: flex-start;
-        }
-        
-        .estadisticas-container .rotacion-valor-grande {
-            border-right: none;
-            border-bottom: 1px solid var(--color-border);
-            padding-bottom: 15px;
-            width: 100%;
-        }
+        font-size: 0.92rem;
+        color: #334155;
     }
 
     /* TOOLTIP PERSONALIZADO */
     .custom-tooltip {
         position: absolute;
         pointer-events: none;
-        background: rgba(20, 24, 33, 0.95);
+        background: #0f172a;
         color: #fff;
         padding: 14px 18px;
-        border-radius: 8px;
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
-        font-size: 0.85rem;
-        font-family: Arial, sans-serif;
+        border-radius: 10px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+        font-size: 0.82rem;
+        font-family: inherit;
         z-index: 9999;
         min-width: 260px;
-        transition: opacity 0.25s ease, transform 0.2s ease;
+        transition: opacity 0.2s ease, transform 0.15s ease;
         opacity: 0;
         transform: translateY(5px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.1);
         backdrop-filter: blur(8px);
         display: none;
     }
@@ -302,11 +423,11 @@
     }
     .custom-tooltip h4 {
         margin: 0 0 10px 0;
-        font-size: 0.95rem;
+        font-size: 0.9rem;
         border-bottom: 1px solid rgba(255, 255, 255, 0.15);
         padding-bottom: 6px;
-        color: #dc3545; /* Rojo primario */
-        font-weight: bold;
+        color: #38bdf8;
+        font-weight: 700;
     }
     .custom-tooltip ul {
         list-style: none;
@@ -327,124 +448,226 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 160px;
+        max-width: 150px;
     }
     .custom-tooltip .item-value {
-        color: #198754; /* Verde */
-        font-weight: bold;
+        color: #34d399;
+        font-weight: 700;
+    }
+
+    @media (max-width: 900px) {
+        .estadisticas-container .rotacion-content {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 16px;
+        }
+        .estadisticas-container .rotacion-valor-grande {
+            border-right: none;
+            border-bottom: 1px solid var(--color-border);
+            width: 100%;
+            padding-bottom: 16px;
+        }
     }
 </style>
 
 <div class="estadisticas-container">
     <div id="kpi-tooltip" class="custom-tooltip"></div>
+    
     <div class="stats-header">
         <div>
             <h1>Estadísticas Específicas</h1>
-            <p>Análisis detallado de ventas y ganancias del negocio.</p>
+            <p>Análisis detallado de ganancias, tendencias de venta, rotación y rendimiento por sucursal.</p>
         </div>
     </div>
 
+    <!-- TARJETA 1: GANANCIAS ESTIMADAS (GRÁFICA) -->
     <section class="section-ganancias card">
-        <h2>Ganancias Estimadas</h2>
         <div class="ganancias-header">
-            <div class="selector-periodo">
+            <div>
+                <h2>📈 Ganancias Estimadas</h2>
+            </div>
+            <div class="selector-periodo" id="selector-ganancias">
                 <button class="btn-periodo" data-periodo="dia">Día</button>
                 <button class="btn-periodo active" data-periodo="semana">Semana</button>
                 <button class="btn-periodo" data-periodo="mes">Mes</button>
                 <button class="btn-periodo" data-periodo="anual">Año</button>
+                <button class="btn-periodo" data-periodo="personalizado">📅 Rango</button>
             </div>
             <div class="total-ganancia">
-                <span class="label">Ganancia Neta Total:</span>
-                <span class="valor-ganancia">$8,542.15</span>
-                <span class="variacion-ganancia positivo">▲ 12% vs Periodo Anterior</span>
+                <span class="label">Ganancia Neta:</span>
+                <span class="valor-ganancia" id="ganancia-total-val">$0.00</span>
+                <span class="variacion-ganancia positivo" id="ganancia-variacion-badge">Semana actual</span>
             </div>
         </div>
-        <div class="grafico-placeholder">
-            <p>Aquí se cargaría el gráfico de tendencias de ganancias</p>
+
+        <!-- Barra de Fechas Personalizadas para Ganancias -->
+        <div class="custom-date-bar" id="datebar-ganancias">
+            <div class="date-input-group">
+                <label>Desde:</label>
+                <input type="date" id="fecha-desde-ganancias">
+            </div>
+            <div class="date-input-group">
+                <label>Hasta:</label>
+                <input type="date" id="fecha-hasta-ganancias">
+            </div>
+            <button class="btn-aplicar-rango" id="btn-aplicar-ganancias">
+                <span style="font-size: 14px;">🔍</span> Filtrar
+            </button>
+        </div>
+
+        <div class="grafico-placeholder" id="grafico-container">
+            <p style="color: #94a3b8;">Cargando gráfica de ganancias...</p>
         </div>
     </section>
 
+    <!-- TARJETAS KPIS RÁPIDOS -->
     <section class="kpi-grid">
+        
+        <!-- KPI 1: PRODUCTO MÁS VENDIDO -->
         <div class="kpi-card producto-top">
             <div class="kpi-card-header">
+                <span class="kpi-badge">Ranking #1</span>
                 <div class="selector-periodo selector-mini" id="selector-producto">
                     <button class="btn-periodo-producto" data-periodo="dia">Día</button>
                     <button class="btn-periodo-producto active" data-periodo="semana">Semana</button>
                     <button class="btn-periodo-producto" data-periodo="mes">Mes</button>
                     <button class="btn-periodo-producto" data-periodo="anual">Año</button>
+                    <button class="btn-periodo-producto" data-periodo="personalizado">📅</button>
                 </div>
             </div>
+
+            <!-- Selector de fecha mini producto -->
+            <div class="custom-date-bar-mini" id="datebar-producto">
+                <div class="date-input-group">
+                    <input type="date" id="fecha-desde-producto">
+                </div>
+                <div class="date-input-group">
+                    <input type="date" id="fecha-hasta-producto">
+                </div>
+                <button class="btn-mini-aplicar" id="btn-aplicar-producto">✓</button>
+            </div>
+
             <div class="kpi-card-body">
-                <div class="kpi-icon">🥇</div>
+                <div class="kpi-icon icon-gold">🥇</div>
                 <div class="kpi-info">
                     <p class="kpi-title">Producto Más Vendido</p>
-                    <p class="kpi-valor">Cargando...</p>
-                    <p class="kpi-detalle">...</p>
+                    <p class="kpi-valor" id="kpi-prod-nombre">Cargando...</p>
+                    <p class="kpi-detalle" id="kpi-prod-detalle">0 unidades vendidas</p>
                 </div>
             </div>
         </div>
 
+        <!-- KPI 2: CLIENTE VIP -->
         <div class="kpi-card cliente-vip">
             <div class="kpi-card-header">
+                <span class="kpi-badge">Cliente VIP</span>
                 <div class="selector-periodo selector-mini" id="selector-cliente">
                     <button class="btn-periodo-cliente" data-periodo="dia">Día</button>
                     <button class="btn-periodo-cliente active" data-periodo="semana">Semana</button>
                     <button class="btn-periodo-cliente" data-periodo="mes">Mes</button>
                     <button class="btn-periodo-cliente" data-periodo="anual">Año</button>
+                    <button class="btn-periodo-cliente" data-periodo="personalizado">📅</button>
                 </div>
             </div>
+
+            <!-- Selector de fecha mini cliente -->
+            <div class="custom-date-bar-mini" id="datebar-cliente">
+                <div class="date-input-group">
+                    <input type="date" id="fecha-desde-cliente">
+                </div>
+                <div class="date-input-group">
+                    <input type="date" id="fecha-hasta-cliente">
+                </div>
+                <button class="btn-mini-aplicar" id="btn-aplicar-cliente">✓</button>
+            </div>
+
             <div class="kpi-card-body">
-                <div class="kpi-icon">👤</div>
+                <div class="kpi-icon icon-blue">👤</div>
                 <div class="kpi-info">
-                    <p class="kpi-title">Cliente VIP (TOP)</p>
-                    <p class="kpi-valor">Cargando...</p>
-                    <p class="kpi-detalle">...</p>
+                    <p class="kpi-title">Cliente VIP (Mayor Compra)</p>
+                    <p class="kpi-valor" id="kpi-cli-nombre">Cargando...</p>
+                    <p class="kpi-detalle" id="kpi-cli-detalle">$0.00 en compras</p>
                 </div>
             </div>
         </div>
 
+        <!-- KPI 3: SUCURSAL CON MÁS VENTAS -->
         <div class="kpi-card sucursal-lider">
             <div class="kpi-card-header">
+                <span class="kpi-badge">Rendimiento Sucursales</span>
                 <div class="selector-periodo selector-mini" id="selector-sucursal">
                     <button class="btn-periodo-sucursal" data-periodo="dia">Día</button>
                     <button class="btn-periodo-sucursal active" data-periodo="semana">Semana</button>
                     <button class="btn-periodo-sucursal" data-periodo="mes">Mes</button>
                     <button class="btn-periodo-sucursal" data-periodo="anual">Año</button>
+                    <button class="btn-periodo-sucursal" data-periodo="personalizado">📅</button>
                 </div>
             </div>
+
+            <!-- Selector de fecha mini sucursal -->
+            <div class="custom-date-bar-mini" id="datebar-sucursal">
+                <div class="date-input-group">
+                    <input type="date" id="fecha-desde-sucursal">
+                </div>
+                <div class="date-input-group">
+                    <input type="date" id="fecha-hasta-sucursal">
+                </div>
+                <button class="btn-mini-aplicar" id="btn-aplicar-sucursal">✓</button>
+            </div>
+
             <div class="kpi-card-body">
-                <div class="kpi-icon">📍</div>
+                <div class="kpi-icon icon-emerald">📍</div>
                 <div class="kpi-info">
-                    <p class="kpi-title">Sucursal con Más Ventas</p>
-                    <p class="kpi-valor" style="color: #6c757d; font-style: italic;">En desarrollo</p>
-                    <p class="kpi-detalle">Próximamente disponible</p>
+                    <p class="kpi-title">Sucursal Líder en Ventas</p>
+                    <p class="kpi-valor" id="kpi-suc-nombre">Cargando...</p>
+                    <p class="kpi-detalle" id="kpi-suc-detalle">0 ventas registradas</p>
                 </div>
             </div>
         </div>
+
     </section>
     
+    <!-- TARJETA 4: ROTACIÓN DE INVENTARIO -->
     <section class="card rotacion-inventario">
-        <div class="ganancias-header" style="margin-bottom:0;">
-            <h2>🔄 Tasa de Rotación de Inventario</h2>
-            <div class="selector-periodo">
+        <div class="ganancias-header" style="margin-bottom: 0;">
+            <div>
+                <h2>🔄 Tasa de Rotación de Inventario</h2>
+            </div>
+            <div class="selector-periodo" id="selector-rotacion">
                 <button class="btn-periodo-rotacion" data-periodo="dia">Día</button>
                 <button class="btn-periodo-rotacion active" data-periodo="semana">Semana</button>
                 <button class="btn-periodo-rotacion" data-periodo="mes">Mes</button>
                 <button class="btn-periodo-rotacion" data-periodo="anual">Año</button>
+                <button class="btn-periodo-rotacion" data-periodo="personalizado">📅 Rango</button>
             </div>
         </div>
+
+        <!-- Barra de Fechas Personalizadas para Rotación -->
+        <div class="custom-date-bar" id="datebar-rotacion">
+            <div class="date-input-group">
+                <label>Desde:</label>
+                <input type="date" id="fecha-desde-rotacion">
+            </div>
+            <div class="date-input-group">
+                <label>Hasta:</label>
+                <input type="date" id="fecha-hasta-rotacion">
+            </div>
+            <button class="btn-aplicar-rango" id="btn-aplicar-rotacion">
+                <span style="font-size: 14px;">🔍</span> Filtrar
+            </button>
+        </div>
+
         <div class="rotacion-content">
             <div class="rotacion-valor-grande">
-                <span class="valor-principal" id="rotacion-valor">4.5x</span>
+                <span class="valor-principal" id="rotacion-valor">0.0x</span>
                 <span class="label-principal">Veces al año</span>
             </div>
             <div class="rotacion-detalle">
-                <p><strong>Días de Inventario:</strong> <span id="rotacion-dias" style="font-weight:bold;">81 días</span></p>
-                <p id="rotacion-interpretacion"><strong>Interpretación:</strong> La rotación es saludable. Los productos permanecen en stock un promedio de 81 días.</p>
-                <p style="font-size: 0.8em; color: #6c757d;">
-                    Fórmula: $\frac{\text{Costo de Mercancía Vendida}}{\text{Inventario Promedio}}$
+                <p><strong>Días de Inventario:</strong> <span id="rotacion-dias" style="font-weight: 700; color: #0284c7;">0 días</span></p>
+                <p id="rotacion-interpretacion"><strong>Interpretación:</strong> Calculando rotación en base al stock actual y costo de ventas...</p>
+                <p style="font-size: 0.8rem; color: #64748b; margin-top: 10px;">
+                    📐 <strong>Fórmula Financiera:</strong> (Costo de Mercancía Vendida Anualizado ÷ Inventario Promedio en USD).
                 </p>
-                <a href="#" class="btn-info-rotacion">Ver más sobre el cálculo</a>
             </div>
         </div>
     </section>
@@ -452,98 +675,111 @@
 
 <script>
     (async function() {
-        const loadLightweightCharts = () => {
-            return new Promise((resolve) => {
-                if (window.LightweightCharts) return resolve();
-                const script = document.createElement('script');
-                script.src = 'https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js';
-                script.onload = resolve;
-                document.head.appendChild(script);
-            });
-        };
-
         const contenedor = document.querySelector('.estadisticas-container');
         if (!contenedor) return;
 
-        const periodoButtons = contenedor.querySelectorAll('.btn-periodo');
-        const valorGanancia = contenedor.querySelector('.valor-ganancia');
-        const graficoPlaceholder = contenedor.querySelector('.grafico-placeholder');
-        const variacionElement = contenedor.querySelector('.variacion-ganancia');
-
-        const kpiProductoNombre = contenedor.querySelector('.producto-top .kpi-valor');
-        const kpiProductoDetalle = contenedor.querySelector('.producto-top .kpi-detalle');
-        
-        const kpiClienteNombre = contenedor.querySelector('.cliente-vip .kpi-valor');
-        const kpiClienteDetalle = contenedor.querySelector('.cliente-vip .kpi-detalle');
-
         const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
-        
         const formatMoney = (monto) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(monto || 0);
 
-        // Cache global para los tooltips
+        // Cache de datos para los tooltips flotantes
         let topProductosCached = [];
         let topClientesCached = [];
+        let topSucursalesCached = [];
         let currentTasaBcv = 1;
 
-        function getFechasPorPeriodo(periodo) {
-            const hoy = new Date();
-            let inicio = new Date();
+        // Formato YYYY-MM-DD local
+        const getLocalISODate = (d) => {
+            const tzOffset = d.getTimezoneOffset() * 60000;
+            return new Date(d.getTime() - tzOffset).toISOString().split('T')[0];
+        };
+
+        const hoy = new Date();
+        const hoyStr = getLocalISODate(hoy);
+
+        // Pre-rellenar los inputs de fechas con la semana actual
+        const diaSem = hoy.getDay();
+        const diffLunes = hoy.getDate() - diaSem + (diaSem === 0 ? -6 : 1);
+        const lunesSemana = new Date(hoy.getFullYear(), hoy.getMonth(), diffLunes);
+        const lunesStr = getLocalISODate(lunesSemana);
+
+        // Inicializar valores de inputs de fecha
+        const inputsDesde = ['fecha-desde-ganancias', 'fecha-desde-producto', 'fecha-desde-cliente', 'fecha-desde-sucursal', 'fecha-desde-rotacion'];
+        const inputsHasta = ['fecha-hasta-ganancias', 'fecha-hasta-producto', 'fecha-hasta-cliente', 'fecha-hasta-sucursal', 'fecha-hasta-rotacion'];
+        inputsDesde.forEach(id => { const el = document.getElementById(id); if (el) el.value = lunesStr; });
+        inputsHasta.forEach(id => { const el = document.getElementById(id); if (el) el.value = hoyStr; });
+
+        function calcularRangoFechas(periodo, inputDesdeId, inputHastaId) {
+            const d = new Date();
+            let ini = new Date();
             let fin = new Date();
 
             if (periodo === 'dia') {
-                inicio = new Date(); 
+                ini = new Date();
                 fin = new Date();
             } else if (periodo === 'semana') {
-                const diaSemana = hoy.getDay();
-                // Si es domingo (0), la semana empezó hace 6 días (lunes). Si no, hoy - diaSemana + 1 (lunes)
-                const diff = hoy.getDate() - diaSemana + (diaSemana === 0 ? -6 : 1);
-                inicio = new Date(hoy.getFullYear(), hoy.getMonth(), diff);
-                fin = new Date(hoy.getFullYear(), hoy.getMonth(), diff + 6); // Domingo de esta semana
+                const dia = d.getDay();
+                const diff = d.getDate() - dia + (dia === 0 ? -6 : 1);
+                ini = new Date(d.getFullYear(), d.getMonth(), diff);
+                fin = new Date(d.getFullYear(), d.getMonth(), diff + 6);
             } else if (periodo === 'mes') {
-                inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-                fin = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0); // Último día del mes
+                ini = new Date(d.getFullYear(), d.getMonth(), 1);
+                fin = new Date(d.getFullYear(), d.getMonth() + 1, 0);
             } else if (periodo === 'anual') {
-                inicio = new Date(hoy.getFullYear(), 0, 1);
-                fin = new Date(hoy.getFullYear(), 11, 31); // 31 de Dic
+                ini = new Date(d.getFullYear(), 0, 1);
+                fin = new Date(d.getFullYear(), 11, 31);
+            } else if (periodo === 'personalizado') {
+                const elDesde = document.getElementById(inputDesdeId);
+                const elHasta = document.getElementById(inputHastaId);
+                const valDesde = elDesde && elDesde.value ? elDesde.value : hoyStr;
+                const valHasta = elHasta && elHasta.value ? elHasta.value : hoyStr;
+                return {
+                    fecha_inicio: valDesde,
+                    fecha_fin: valHasta
+                };
             }
 
-            const getLocalISODate = (d) => {
-                const tzOffset = d.getTimezoneOffset() * 60000;
-                return new Date(d.getTime() - tzOffset).toISOString().split('T')[0];
-            };
-            
             return {
-                fecha_inicio: getLocalISODate(inicio),
+                fecha_inicio: getLocalISODate(ini),
                 fecha_fin: getLocalISODate(fin)
             };
         }
 
-        // --- MOTOR DE GRAFICOS NATIVO (SVG) SIN INTERNET ---
-        function drawFirebaseChart(container, data) {
+        async function fetchEstadisticasAPI(fecha_inicio, fecha_fin, periodo) {
+            if (!api) throw new Error("API Nexus no disponible");
+            const sesion = await api.obtenerSesionLocal();
+            const companyId = sesion.companyId;
+            let ip = await api.obtenerIpMaestro();
+            if (!ip || ip === 'null' || ip.trim() === '') {
+                throw new Error('IP del Servidor Maestro no detectada.');
+            }
+            
+            const url = `http://${ip}:3000/api/maestro/estadisticas?fecha_inicio=${fecha_inicio}&fecha_fin=${fecha_fin}&companyId=${companyId}&periodo=${periodo}`;
+            const response = await fetch(url);
+            const res = await response.json();
+            if (!res.exito) throw new Error(res.error);
+            return { data: res.data, fecha_inicio, fecha_fin, ip, companyId, api };
+        }
+
+        // --- MOTOR DE GRÁFICO SVG NATIVO INTERACTIVO ---
+        function renderGraficoGanancias(container, data) {
             container.innerHTML = '';
-            container.style.border = '1px solid #e5e7eb';
-            container.style.borderRadius = '0.5rem';
-            container.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
-            container.style.background = '#ffffff'; // Estilo Shadcn Card
-            container.style.padding = '20px';
             container.style.position = 'relative';
 
             if (!data || data.length === 0) {
-                container.innerHTML = '<div style="display:flex; height:100%; width:100%; align-items:center; justify-content:center; color:#999;">No hay datos en este periodo</div>';
+                container.innerHTML = '<div style="display:flex; height:100%; width:100%; align-items:center; justify-content:center; color:#94a3b8; font-weight:500;">No hay datos de ventas en este periodo seleccionado</div>';
                 return;
             }
 
             const width = container.clientWidth - 40;
             const height = container.clientHeight - 40;
-            const padding = { top: 20, right: 20, bottom: 30, left: 50 };
+            const padding = { top: 25, right: 20, bottom: 35, left: 60 };
             
-            const graphWidth = width - padding.left - padding.right;
-            const graphHeight = height - padding.top - padding.bottom;
+            const graphWidth = Math.max(100, width - padding.left - padding.right);
+            const graphHeight = Math.max(100, height - padding.top - padding.bottom);
 
             let maxVal = Math.max(...data.map(d => Number(d.total_ganancia) || 0));
-            if (maxVal <= 0) maxVal = 10; // Suelo base si no hay ventas o si todo es cero
-            else maxVal = maxVal * 1.2; // 20% de headroom para que el pico quede en el aire
-            const minVal = 0;
+            if (maxVal <= 0) maxVal = 10;
+            else maxVal = maxVal * 1.15; // 15% headroom superior
 
             const xStep = graphWidth / Math.max(1, (data.length - 1));
 
@@ -555,57 +791,30 @@
             });
 
             let areaPath = `M ${points[0].x} ${padding.top + graphHeight} `;
-            points.forEach(p => {
-                areaPath += `L ${p.x} ${p.y} `;
-            });
+            points.forEach(p => { areaPath += `L ${p.x} ${p.y} `; });
             areaPath += `L ${points[points.length-1].x} ${padding.top + graphHeight} Z`;
 
             let linePath = `M ${points[0].x} ${points[0].y} `;
-            points.forEach((p, i) => {
-                if(i > 0) linePath += `L ${p.x} ${p.y} `;
-            });
+            points.forEach((p, i) => { if(i > 0) linePath += `L ${p.x} ${p.y} `; });
 
             const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
             svg.setAttribute("width", width);
             svg.setAttribute("height", height);
             svg.style.overflow = "visible";
 
-            const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
-            defs.innerHTML = `
-                <linearGradient id="areaGradient" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stop-color="var(--border, #0f172a)" stop-opacity="0.2" />
-                    <stop offset="100%" stop-color="var(--border, #0f172a)" stop-opacity="0.0" />
-                </linearGradient>
-            `;
-            svg.appendChild(defs);
-
-            const yAxis = document.createElementNS("http://www.w3.org/2000/svg", "line");
-            yAxis.setAttribute("x1", padding.left);
-            yAxis.setAttribute("y1", padding.top);
-            yAxis.setAttribute("x2", padding.left);
-            yAxis.setAttribute("y2", padding.top + graphHeight);
-            yAxis.setAttribute("stroke", "#e5e7eb");
-            svg.appendChild(yAxis);
-
-            const xAxis = document.createElementNS("http://www.w3.org/2000/svg", "line");
-            xAxis.setAttribute("x1", padding.left);
-            xAxis.setAttribute("y1", padding.top + graphHeight);
-            xAxis.setAttribute("x2", padding.left + graphWidth);
-            xAxis.setAttribute("y2", padding.top + graphHeight);
-            xAxis.setAttribute("stroke", "#e5e7eb");
-            svg.appendChild(xAxis);
-
-            for(let i=0; i<=4; i++) {
+            // Grid Lines y Ejes Y
+            for (let i = 0; i <= 4; i++) {
                 const tickY = padding.top + (graphHeight / 4) * i;
                 const val = maxVal - ((maxVal / 4) * i);
+                
                 const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                text.setAttribute("x", padding.left - 10);
+                text.setAttribute("x", padding.left - 12);
                 text.setAttribute("y", tickY + 4);
                 text.setAttribute("text-anchor", "end");
                 text.setAttribute("fill", "#64748b");
-                text.setAttribute("font-size", "12px");
-                text.setAttribute("font-family", "sans-serif");
-                text.textContent = Intl.NumberFormat(undefined, { notation: "compact" }).format(val);
+                text.setAttribute("font-size", "11px");
+                text.setAttribute("font-weight", "500");
+                text.textContent = "$" + Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 1 }).format(val);
                 svg.appendChild(text);
 
                 const gridLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
@@ -613,84 +822,87 @@
                 gridLine.setAttribute("y1", tickY);
                 gridLine.setAttribute("x2", padding.left + graphWidth);
                 gridLine.setAttribute("y2", tickY);
-                gridLine.setAttribute("stroke", "#e2e8f0");
-                gridLine.setAttribute("stroke-dasharray", "3 3");
+                gridLine.setAttribute("stroke", "#f1f5f9");
+                gridLine.setAttribute("stroke-dasharray", "4 4");
                 svg.appendChild(gridLine);
             }
 
-            const stepXLabel = Math.max(1, Math.floor(points.length / 6));
+            // Etiquetas de Eje X
+            const stepXLabel = Math.max(1, Math.floor(points.length / 8));
             points.forEach((p, i) => {
-                if(i % stepXLabel === 0 || i === points.length - 1) {
+                if (i % stepXLabel === 0 || i === points.length - 1) {
                     const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
                     text.setAttribute("x", p.x);
-                    text.setAttribute("y", padding.top + graphHeight + 20);
+                    text.setAttribute("y", padding.top + graphHeight + 22);
                     text.setAttribute("text-anchor", "middle");
-                    text.setAttribute("fill", "#666");
-                    text.setAttribute("font-size", "12px");
-                    text.setAttribute("font-family", "sans-serif");
+                    text.setAttribute("fill", "#64748b");
+                    text.setAttribute("font-size", "11px");
                     text.textContent = p.label;
                     svg.appendChild(text);
                 }
             });
 
+            // Área degradada
             const areaEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
             areaEl.setAttribute("d", areaPath);
-            areaEl.setAttribute("fill", "#2563eb");
-            areaEl.setAttribute("fill-opacity", "0.2");
+            areaEl.setAttribute("fill", "#0284c7");
+            areaEl.setAttribute("fill-opacity", "0.15");
             svg.appendChild(areaEl);
 
+            // Línea principal
             const lineEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
             lineEl.setAttribute("d", linePath);
             lineEl.setAttribute("fill", "none");
-            lineEl.setAttribute("stroke", "#2563eb"); 
-            lineEl.setAttribute("stroke-width", "2");
+            lineEl.setAttribute("stroke", "#0284c7"); 
+            lineEl.setAttribute("stroke-width", "2.5");
+            lineEl.setAttribute("stroke-linecap", "round");
             svg.appendChild(lineEl);
 
-            // Cursor vertical de Recharts
+            // Línea de rastreo del cursor
             const cursorLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
             cursorLine.setAttribute("y1", padding.top);
             cursorLine.setAttribute("y2", padding.top + graphHeight);
-            cursorLine.setAttribute("stroke", "#94a3b8");
+            cursorLine.setAttribute("stroke", "#0284c7");
             cursorLine.setAttribute("stroke-dasharray", "3 3");
             cursorLine.style.display = "none";
             svg.appendChild(cursorLine);
 
+            // Puntos interactivos
+            const circles = points.map(p => {
+                const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                circle.setAttribute("cx", p.x);
+                circle.setAttribute("cy", p.y);
+                circle.setAttribute("r", "0");
+                circle.setAttribute("fill", "#ffffff");
+                circle.setAttribute("stroke", "#0284c7");
+                circle.setAttribute("stroke-width", "2.5");
+                circle.style.transition = "r 0.15s ease";
+                circle.style.pointerEvents = "none";
+                svg.appendChild(circle);
+                return circle;
+            });
+
+            // Tooltip flotante de gráfico
             let tooltip = document.getElementById('grafico-tooltip');
             if (!tooltip) {
                 tooltip = document.createElement("div");
                 tooltip.id = 'grafico-tooltip';
                 tooltip.style.position = "absolute";
                 tooltip.style.display = "none";
-                tooltip.style.background = "#ffffff";
-                tooltip.style.color = "#020817";
-                tooltip.style.padding = "10px 14px";
-                tooltip.style.borderRadius = "0.5rem";
+                tooltip.style.background = "#0f172a";
+                tooltip.style.color = "#ffffff";
+                tooltip.style.padding = "8px 12px";
+                tooltip.style.borderRadius = "8px";
                 tooltip.style.fontSize = "12px";
-                tooltip.style.fontFamily = "sans-serif";
+                tooltip.style.fontFamily = "inherit";
                 tooltip.style.pointerEvents = "none";
                 tooltip.style.zIndex = "1000";
-                tooltip.style.border = "1px solid #e2e8f0";
-                tooltip.style.boxShadow = "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)";
+                tooltip.style.boxShadow = "0 10px 20px rgba(0,0,0,0.2)";
                 tooltip.style.transition = "opacity 0.1s ease";
-                tooltip.style.opacity = "0";
                 document.body.appendChild(tooltip);
             }
 
-            const circles = points.map(p => {
-                const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                circle.setAttribute("cx", p.x);
-                circle.setAttribute("cy", p.y);
-                circle.setAttribute("r", "0"); // Ocultos por defecto como en Shadcn hasta hacer hover
-                circle.setAttribute("fill", "#ffffff");
-                circle.setAttribute("stroke", "#2563eb");
-                circle.setAttribute("stroke-width", "2");
-                circle.style.transition = "r 0.1s ease";
-                circle.style.pointerEvents = "none"; // El hover lo maneja el overlay
-                svg.appendChild(circle);
-                return circle;
-            });
-
-            // Overlay interactivo para capturar el mouse estilo Recharts
+            // Overlay para captura de eventos del mouse
             const overlay = document.createElementNS("http://www.w3.org/2000/svg", "rect");
             overlay.setAttribute("x", padding.left);
             overlay.setAttribute("y", padding.top);
@@ -705,7 +917,6 @@
                 const rect = svg.getBoundingClientRect();
                 const mouseX = e.clientX - rect.left;
                 
-                // Encontrar el punto más cercano en X
                 let closestIdx = 0;
                 let minDiff = Infinity;
                 points.forEach((p, i) => {
@@ -719,7 +930,7 @@
                 if (activeIndex !== closestIdx) {
                     if (activeIndex > -1) circles[activeIndex].setAttribute("r", "0");
                     activeIndex = closestIdx;
-                    circles[activeIndex].setAttribute("r", "4"); // Dot activo
+                    circles[activeIndex].setAttribute("r", "5");
 
                     const p = points[activeIndex];
                     cursorLine.setAttribute("x1", p.x);
@@ -727,21 +938,17 @@
                     cursorLine.style.display = "block";
 
                     tooltip.innerHTML = `
-                        <div style="display:flex; justify-content:space-between; align-items:center; min-width:130px; gap: 12px;">
-                            <span style="color:#64748b; font-weight:500;">${p.label}</span>
-                            <div style="display:flex; align-items:center; gap:6px;">
-                                <div style="width:8px; height:8px; border-radius:2px; background:#2563eb;"></div>
-                                <span style="font-weight:600; font-family:monospace; font-size:13px;">$${p.val.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits:2})}</span>
-                            </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap: 12px;">
+                            <span style="color:#94a3b8; font-weight:500;">${p.label}</span>
+                            <span style="font-weight:700; color:#34d399;">$${p.val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                     `;
                     tooltip.style.display = "block";
                     tooltip.style.opacity = "1";
                 }
 
-                // El tooltip sigue al mouse sutilmente
                 tooltip.style.left = (e.pageX + 15) + "px";
-                tooltip.style.top = (e.pageY - 25) + "px";
+                tooltip.style.top = (e.pageY - 30) + "px";
             });
 
             overlay.addEventListener("mouseleave", () => {
@@ -749,126 +956,309 @@
                 activeIndex = -1;
                 cursorLine.style.display = "none";
                 tooltip.style.opacity = "0";
-                setTimeout(() => {
-                    if (tooltip.style.opacity === "0") tooltip.style.display = "none";
-                }, 100);
+                setTimeout(() => { if (tooltip.style.opacity === "0") tooltip.style.display = "none"; }, 150);
             });
 
             svg.appendChild(overlay);
-
             container.appendChild(svg);
-            
-            const legend = document.createElement("div");
-            legend.style.position = "absolute";
-            legend.style.top = "20px";
-            legend.style.right = "25px";
-            legend.style.display = "flex";
-            legend.style.alignItems = "center";
-            legend.innerHTML = `<div style="width:10px; height:10px; background:#2563eb; border-radius:2px; margin-right:8px;"></div> <span style="font-family:sans-serif; font-size:13px; font-weight:500; color:#64748b;">Ganancias Netas</span>`;
-            container.appendChild(legend);
         }
 
-        
-        async function fetchEstadisticas(periodo) {
-            const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
-            if (!api) throw new Error("API no detectada");
-            const sesion = await api.obtenerSesionLocal();
-            const companyId = sesion.companyId;
-            let ip = await api.obtenerIpMaestro();
-            if (!ip || ip === 'null' || ip.trim() === '') {
-                throw new Error('IP del servidor maestro no configurada. Ve a Configuración y establece la IP del servidor.');
+        // ==========================================
+        // 1. ACTUALIZAR GANANCIAS ESTIMADAS (GRÁFICA)
+        // ==========================================
+        async function actualizarGanancias(periodo = 'semana') {
+            const valGanancia = document.getElementById('ganancia-total-val');
+            const badgeVariacion = document.getElementById('ganancia-variacion-badge');
+            const graficoContainer = document.getElementById('grafico-container');
+            const datebar = document.getElementById('datebar-ganancias');
+
+            if (periodo === 'personalizado') {
+                if (datebar) datebar.classList.add('activo');
+            } else {
+                if (datebar) datebar.classList.remove('activo');
             }
-            
-            const { fecha_inicio, fecha_fin } = getFechasPorPeriodo(periodo);
-            const url = `http://${ip}:3000/api/maestro/estadisticas?fecha_inicio=${fecha_inicio}&fecha_fin=${fecha_fin}&companyId=${companyId}&periodo=${periodo}`;
-            const response = await fetch(url);
-            const res = await response.json();
-            if (!res.exito) throw new Error(res.error);
-            return { data: res.data, fecha_inicio, fecha_fin, ip, companyId, api };
-        }
 
-        async function actualizarGanancias(periodo) {
             try {
-                valorGanancia.textContent = 'Calculando...';
-                const { data, fecha_inicio, fecha_fin } = await fetchEstadisticas(periodo);
-                
-                valorGanancia.textContent = formatMoney(data.total_ganancia);
-                variacionElement.textContent = `Desde ${fecha_inicio}`;
-                variacionElement.className = "variacion-ganancia positivo"; 
-                
+                if (valGanancia) valGanancia.textContent = 'Calculando...';
+                const { fecha_inicio, fecha_fin } = calcularRangoFechas(periodo, 'fecha-desde-ganancias', 'fecha-hasta-ganancias');
+                const { data } = await fetchEstadisticasAPI(fecha_inicio, fecha_fin, periodo);
+
+                if (valGanancia) valGanancia.textContent = formatMoney(data.total_ganancia);
+                if (badgeVariacion) {
+                    badgeVariacion.textContent = `${fecha_inicio} al ${fecha_fin}`;
+                }
+
                 const serieCompleta = [];
-                const inicioDate = new Date(fecha_inicio + 'T00:00:00');
-                const finDate = new Date(fecha_fin + 'T00:00:00');
                 const mapaDatos = {};
-                if (data.serie_tiempo) data.serie_tiempo.forEach(item => { mapaDatos[item.fecha] = item; });
-                
-                if (periodo === 'dia') {
-                    // Para día, mapeamos las 24 horas del día actual (fecha_fin)
+                if (data.serie_tiempo) {
+                    data.serie_tiempo.forEach(item => { mapaDatos[item.fecha] = item; });
+                }
+
+                // Desglose por hora si el periodo es 1 solo día
+                if (periodo === 'dia' || fecha_inicio === fecha_fin) {
                     for (let h = 0; h < 24; h++) {
                         const hStr = h.toString().padStart(2, '0');
                         const stringFecha = `${fecha_fin} ${hStr}:00:00`;
-                        const labelCorto = `${hStr}:00`;
                         const item = mapaDatos[stringFecha] || { fecha: stringFecha, total_ganancia: 0 };
-                        item.label = labelCorto;
+                        item.label = `${hStr}:00`;
                         serieCompleta.push(item);
                     }
                 } else {
-                    for (let d = new Date(inicioDate); d <= finDate; d.setDate(d.getDate() + 1)) {
-                        const stringFecha = d.toISOString().split('T')[0];
+                    const iniDate = new Date(fecha_inicio + 'T00:00:00');
+                    const finDate = new Date(fecha_fin + 'T00:00:00');
+                    for (let d = new Date(iniDate); d <= finDate; d.setDate(d.getDate() + 1)) {
+                        const stringFecha = getLocalISODate(d);
                         const item = mapaDatos[stringFecha] || { fecha: stringFecha, total_ganancia: 0 };
                         item.label = stringFecha.substring(5); // MM-DD
                         serieCompleta.push(item);
                     }
                 }
-                drawFirebaseChart(graficoPlaceholder, serieCompleta);
-            } catch(e) {
-                valorGanancia.textContent = 'Error';
+
+                renderGraficoGanancias(graficoContainer, serieCompleta);
+            } catch (err) {
+                console.error("Error al actualizar ganancias:", err);
+                if (valGanancia) valGanancia.textContent = '$0.00';
             }
         }
 
-        async function actualizarTopProducto(periodo) {
+        // ==========================================
+        // FORMATEADOR INTELIGENTE DE UNIDADES
+        // ==========================================
+        function formatearCantidadConUnidad(cantidad, unidadRaw, conSufijoAccion = false) {
+            const qty = parseFloat(cantidad) || 0;
+            const u = String(unidadRaw || 'UN').trim().toUpperCase();
+            const qtyStr = (qty % 1 === 0) ? qty.toString() : qty.toFixed(2);
+
+            let labelUnidad = '';
+            let sufijo = '';
+
+            switch (u) {
+                case 'KG':
+                case 'KGS':
+                case 'KILOGRAMO':
+                case 'KILOGRAMOS':
+                case 'KILO':
+                case 'KILOS':
+                    labelUnidad = 'kg';
+                    sufijo = 'vendidos';
+                    break;
+                
+                case 'G':
+                case 'GR':
+                case 'GRS':
+                case 'GRAMO':
+                case 'GRAMOS':
+                    labelUnidad = 'g';
+                    sufijo = 'vendidos';
+                    break;
+
+                case 'L':
+                case 'LT':
+                case 'LTS':
+                case 'LITRO':
+                case 'LITROS':
+                    labelUnidad = 'L';
+                    sufijo = 'vendidos';
+                    break;
+
+                case 'ML':
+                case 'MLS':
+                case 'MILILITRO':
+                case 'MILILITROS':
+                    labelUnidad = 'ml';
+                    sufijo = 'vendidos';
+                    break;
+
+                case 'M':
+                case 'MT':
+                case 'MTS':
+                case 'METRO':
+                case 'METROS':
+                    labelUnidad = 'm';
+                    sufijo = 'vendidos';
+                    break;
+
+                case 'CM':
+                case 'CMS':
+                case 'CENTIMETRO':
+                case 'CENTIMETROS':
+                    labelUnidad = 'cm';
+                    sufijo = 'vendidos';
+                    break;
+
+                case 'PZA':
+                case 'PZAS':
+                case 'PIEZA':
+                case 'PIEZAS':
+                    labelUnidad = qty === 1 ? 'pieza' : 'piezas';
+                    sufijo = qty === 1 ? 'vendida' : 'vendidas';
+                    break;
+
+                case 'CJ':
+                case 'CJA':
+                case 'CJAS':
+                case 'CAJA':
+                case 'CAJAS':
+                    labelUnidad = qty === 1 ? 'caja' : 'cajas';
+                    sufijo = qty === 1 ? 'vendida' : 'vendidas';
+                    break;
+
+                case 'PQT':
+                case 'PQTE':
+                case 'PAQUETE':
+                case 'PAQUETES':
+                    labelUnidad = qty === 1 ? 'paquete' : 'paquetes';
+                    sufijo = qty === 1 ? 'vendido' : 'vendidos';
+                    break;
+
+                case 'DOC':
+                case 'DOCENA':
+                case 'DOCENAS':
+                    labelUnidad = qty === 1 ? 'docena' : 'docenas';
+                    sufijo = qty === 1 ? 'vendida' : 'vendidas';
+                    break;
+
+                case 'UN':
+                case 'UND':
+                case 'UDS':
+                case 'UNIDAD':
+                case 'UNIDADES':
+                default:
+                    if (u && !['UN', 'UND', 'UDS', 'UNIDAD', 'UNIDADES'].includes(u)) {
+                        labelUnidad = unidadRaw;
+                        sufijo = 'vendidos';
+                    } else {
+                        labelUnidad = qty === 1 ? 'unidad' : 'unidades';
+                        sufijo = qty === 1 ? 'vendida' : 'vendidas';
+                    }
+                    break;
+            }
+
+            if (conSufijoAccion) {
+                return `${qtyStr} ${labelUnidad} ${sufijo}`;
+            }
+            return `${qtyStr} ${labelUnidad}`;
+        }
+
+        // ==========================================
+        // 2. ACTUALIZAR PRODUCTO MÁS VENDIDO (TOP)
+        // ==========================================
+        async function actualizarTopProducto(periodo = 'semana') {
+            const elNombre = document.getElementById('kpi-prod-nombre');
+            const elDetalle = document.getElementById('kpi-prod-detalle');
+            const datebar = document.getElementById('datebar-producto');
+
+            if (periodo === 'personalizado') {
+                if (datebar) datebar.classList.add('activo');
+            } else {
+                if (datebar) datebar.classList.remove('activo');
+            }
+
             try {
-                const { data } = await fetchEstadisticas(periodo);
+                const { fecha_inicio, fecha_fin } = calcularRangoFechas(periodo, 'fecha-desde-producto', 'fecha-hasta-producto');
+                const { data } = await fetchEstadisticasAPI(fecha_inicio, fecha_fin, periodo);
                 topProductosCached = data.top_productos || [];
-                if (data.top_productos && data.top_productos.length > 0) {
-                    const topP = data.top_productos[0];
-                    kpiProductoNombre.innerHTML = `<strong>${topP.producto_nombre || "Sin nombre"}</strong>`;
-                    kpiProductoDetalle.textContent = `${topP.cantidad_vendida} unidades vendidas`;
+
+                if (topProductosCached.length > 0) {
+                    const topP = topProductosCached[0];
+                    if (elNombre) elNombre.textContent = topP.producto_nombre || "Sin nombre";
+                    if (elDetalle) elDetalle.textContent = formatearCantidadConUnidad(topP.cantidad_vendida, topP.unidad, true);
                 } else {
-                    kpiProductoNombre.textContent = "Sin datos";
-                    kpiProductoDetalle.textContent = "0 unidades";
+                    if (elNombre) elNombre.textContent = "Sin ventas";
+                    if (elDetalle) elDetalle.textContent = "0 ventas en este periodo";
                 }
                 if (hoveredCard === 'producto') renderTooltipProducto();
-            } catch(e) {}
+            } catch (err) {
+                console.error("Error en top producto:", err);
+            }
         }
 
-        async function actualizarTopCliente(periodo) {
+        // ==========================================
+        // 3. ACTUALIZAR CLIENTE VIP (TOP)
+        // ==========================================
+        async function actualizarTopCliente(periodo = 'semana') {
+            const elNombre = document.getElementById('kpi-cli-nombre');
+            const elDetalle = document.getElementById('kpi-cli-detalle');
+            const datebar = document.getElementById('datebar-cliente');
+
+            if (periodo === 'personalizado') {
+                if (datebar) datebar.classList.add('activo');
+            } else {
+                if (datebar) datebar.classList.remove('activo');
+            }
+
             try {
-                const { data } = await fetchEstadisticas(periodo);
+                const { fecha_inicio, fecha_fin } = calcularRangoFechas(periodo, 'fecha-desde-cliente', 'fecha-hasta-cliente');
+                const { data } = await fetchEstadisticasAPI(fecha_inicio, fecha_fin, periodo);
                 topClientesCached = data.top_clientes || [];
-                if (data.top_clientes && data.top_clientes.length > 0) {
-                    const topC = data.top_clientes[0];
-                    const comprasDolar = (parseFloat(topC.total_comprado) || 0) / currentTasaBcv;
-                    kpiClienteNombre.innerHTML = `<strong>${topC.cliente_nombre || "Desconocido"}</strong>`;
-                    kpiClienteDetalle.textContent = `CI/RIF: ${topC.cliente_rif} | ${formatMoney(comprasDolar)} en compras`;
+
+                if (topClientesCached.length > 0) {
+                    const topC = topClientesCached[0];
+                    const comprasDolar = (parseFloat(topC.total_comprado) || 0) / (currentTasaBcv || 1);
+                    if (elNombre) elNombre.textContent = topC.cliente_nombre || "Cliente General";
+                    if (elDetalle) elDetalle.textContent = `RIF: ${topC.cliente_rif || 'V-00000000'} | ${formatMoney(comprasDolar)}`;
                 } else {
-                    kpiClienteNombre.textContent = "Sin datos";
-                    kpiClienteDetalle.textContent = "CI/RIF: N/A | $0.00 en compras";
+                    if (elNombre) elNombre.textContent = "Sin clientes";
+                    if (elDetalle) elDetalle.textContent = "$0.00 en compras";
                 }
                 if (hoveredCard === 'cliente') renderTooltipCliente();
-            } catch(e) {}
-        }
-        
-        async function actualizarTopSucursal(periodo) {
-            // En desarrollo, no hace nada por ahora
+            } catch (err) {
+                console.error("Error en top cliente:", err);
+            }
         }
 
-        async function actualizarRotacion(periodo) {
+        // ==========================================
+        // 4. ACTUALIZAR SUCURSAL LÍDER EN VENTAS
+        // ==========================================
+        async function actualizarTopSucursal(periodo = 'semana') {
+            const elNombre = document.getElementById('kpi-suc-nombre');
+            const elDetalle = document.getElementById('kpi-suc-detalle');
+            const datebar = document.getElementById('datebar-sucursal');
+
+            if (periodo === 'personalizado') {
+                if (datebar) datebar.classList.add('activo');
+            } else {
+                if (datebar) datebar.classList.remove('activo');
+            }
+
             try {
-                const { data, ip, companyId, api } = await fetchEstadisticas(periodo);
-                const elRotacionValor = document.getElementById('rotacion-valor');
-                const elRotacionDias = document.getElementById('rotacion-dias');
-                const elRotacionInterpretacion = document.getElementById('rotacion-interpretacion');
+                const { fecha_inicio, fecha_fin } = calcularRangoFechas(periodo, 'fecha-desde-sucursal', 'fecha-hasta-sucursal');
+                const { data } = await fetchEstadisticasAPI(fecha_inicio, fecha_fin, periodo);
+                topSucursalesCached = data.top_sucursales || [];
+
+                if (topSucursalesCached.length > 0) {
+                    const topS = topSucursalesCached[0];
+                    const sucursalNombre = String(topS.branch_id).toUpperCase();
+                    if (elNombre) elNombre.textContent = sucursalNombre;
+                    if (elDetalle) elDetalle.textContent = `${topS.total_ventas_count} ventas | ${formatMoney(topS.total_usd)}`;
+                } else {
+                    if (elNombre) elNombre.textContent = "Sin ventas";
+                    if (elDetalle) elDetalle.textContent = "0 ventas en este periodo";
+                }
+                if (hoveredCard === 'sucursal') renderTooltipSucursal();
+            } catch (err) {
+                console.error("Error en top sucursal:", err);
+            }
+        }
+
+        // ==========================================
+        // 5. ACTUALIZAR ROTACIÓN DE INVENTARIO
+        // ==========================================
+        async function actualizarRotacion(periodo = 'semana') {
+            const elRotacionValor = document.getElementById('rotacion-valor');
+            const elRotacionDias = document.getElementById('rotacion-dias');
+            const elRotacionInterpretacion = document.getElementById('rotacion-interpretacion');
+            const datebar = document.getElementById('datebar-rotacion');
+
+            if (periodo === 'personalizado') {
+                if (datebar) datebar.classList.add('activo');
+            } else {
+                if (datebar) datebar.classList.remove('activo');
+            }
+
+            try {
+                const { fecha_inicio, fecha_fin } = calcularRangoFechas(periodo, 'fecha-desde-rotacion', 'fecha-hasta-rotacion');
+                const { data, ip, companyId, api } = await fetchEstadisticasAPI(fecha_inicio, fecha_fin, periodo);
 
                 const productosLocal = await api.obtenerProductosLocal(companyId);
                 let mapaStock = {};
@@ -882,110 +1272,102 @@
                 }
                 
                 let valorInventarioUSD = 0;
-                productosLocal.forEach(p => {
+                (productosLocal || []).forEach(p => {
                     const stock = mapaStock[p.id] || 0;
                     if (stock <= 0) return;
                     let info = {};
                     try { info = typeof p.datos_json === 'string' ? JSON.parse(p.datos_json) : (p.datos_json || {}); } catch(e){}
                     let costo = parseFloat(info.precio_compra || p.precio_compra || 0);
                     const moneda = p.moneda || info.moneda || 'USD';
-                    if (moneda === 'BS' || moneda === 'VES') costo = costo / currentTasaBcv;
+                    if (moneda === 'BS' || moneda === 'VES') costo = costo / (currentTasaBcv || 1);
                     valorInventarioUSD += (costo * stock);
                 });
 
-                let factorAnual = 1;
-                if (periodo === 'dia') factorAnual = 365;
-                else if (periodo === 'semana') factorAnual = 365 / 7;
-                else if (periodo === 'mes') factorAnual = 12;
-                else if (periodo === 'anual') factorAnual = 1;
+                // Cálculo de días del periodo seleccionado para anualizar con precisión
+                const iniD = new Date(fecha_inicio + 'T00:00:00');
+                const finD = new Date(fecha_fin + 'T00:00:00');
+                const diffDias = Math.max(1, Math.round((finD - iniD) / (1000 * 60 * 60 * 24)) + 1);
+                const factorAnual = 365 / diffDias;
 
                 const cogsAnualizado = (data.total_cogs || 0) * factorAnual;
                 
                 if (valorInventarioUSD > 0 && cogsAnualizado > 0) {
                     let rotacion = cogsAnualizado / valorInventarioUSD;
                     let dias = 365 / rotacion;
-                    let textoRiesgo = rotacion > 6 ? "La rotación es alta." : (rotacion >= 3 ? "La rotación es saludable." : "La rotación es baja.");
-                    elRotacionValor.textContent = `${rotacion.toFixed(1)}x`;
-                    elRotacionDias.textContent = `${dias.toFixed(0)} días`;
-                    elRotacionInterpretacion.innerHTML = `<strong>Interpretación:</strong> ${textoRiesgo} Los productos permanecen en stock un promedio de ${dias.toFixed(0)} días.`;
+                    let textoRiesgo = rotacion > 6 ? "La rotación es alta (excelente rotación de capital)." : (rotacion >= 3 ? "La rotación es saludable y equilibrada." : "La rotación es moderada/baja.");
+                    if (elRotacionValor) elRotacionValor.textContent = `${rotacion.toFixed(1)}x`;
+                    if (elRotacionDias) elRotacionDias.textContent = `${dias.toFixed(0)} días`;
+                    if (elRotacionInterpretacion) elRotacionInterpretacion.innerHTML = `<strong>Interpretación:</strong> ${textoRiesgo} Los productos tardan en promedio ${dias.toFixed(0)} días en agotarse y renovarse.`;
                 } else if (valorInventarioUSD > 0 && cogsAnualizado === 0) {
-                    elRotacionValor.textContent = '0.0x';
-                    elRotacionDias.textContent = 'N/A';
-                    elRotacionInterpretacion.innerHTML = `<strong>Interpretación:</strong> No hay ventas registradas en el periodo seleccionado, por lo que la rotación es nula.`;
+                    if (elRotacionValor) elRotacionValor.textContent = '0.0x';
+                    if (elRotacionDias) elRotacionDias.textContent = 'N/A';
+                    if (elRotacionInterpretacion) elRotacionInterpretacion.innerHTML = `<strong>Interpretación:</strong> No hay ventas registradas en el periodo seleccionado.`;
                 } else {
-                    elRotacionValor.textContent = '0.0x';
-                    elRotacionDias.textContent = 'N/A';
-                    elRotacionInterpretacion.innerHTML = `<strong>Interpretación:</strong> Sin inventario valorizado suficiente para calcular.`;
+                    if (elRotacionValor) elRotacionValor.textContent = '0.0x';
+                    if (elRotacionDias) elRotacionDias.textContent = 'N/A';
+                    if (elRotacionInterpretacion) elRotacionInterpretacion.innerHTML = `<strong>Interpretación:</strong> No hay inventario valorizado suficiente para el cálculo.`;
                 }
-            } catch(e) {}
+            } catch (err) {
+                console.error("Error en rotación:", err);
+            }
         }
-        
-        async function initTodos() {
-            try {
-                const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
-                if(api) {
-                    const tasaConfig = await api.obtenerConfiguracion('TASA_BCV');
-                    currentTasaBcv = parseFloat(tasaConfig) || 1;
-                }
-            } catch(e) {}
-            
-            actualizarGanancias('semana');
-            actualizarTopProducto('semana');
-            actualizarTopCliente('semana');
-            actualizarTopSucursal('semana');
-            actualizarRotacion('semana');
-        }
-        
-        // Disparar inicio
-        initTodos();
 
-        function bindBotonera(selectorStr, callback) {
-            const btns = document.querySelectorAll(selectorStr);
+        // ==========================================
+        // VINCULAR BOTONERAS DE PERIODOS Y FECHAS
+        // ==========================================
+        function vincularControles(selectorBotones, callback) {
+            const btns = document.querySelectorAll(selectorBotones);
             btns.forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     btns.forEach(b => b.classList.remove('active'));
-                    e.target.classList.add('active');
-                    callback(e.target.getAttribute('data-periodo'));
+                    e.currentTarget.classList.add('active');
+                    const periodo = e.currentTarget.getAttribute('data-periodo');
+                    callback(periodo);
                 });
             });
         }
-        
-        bindBotonera('.btn-periodo', actualizarGanancias);
-        bindBotonera('.btn-periodo-producto', actualizarTopProducto);
-        bindBotonera('.btn-periodo-cliente', actualizarTopCliente);
-        bindBotonera('.btn-periodo-sucursal', actualizarTopSucursal);
-        bindBotonera('.btn-periodo-rotacion', actualizarRotacion);
 
-        
+        vincularControles('.btn-periodo', actualizarGanancias);
+        vincularControles('.btn-periodo-producto', actualizarTopProducto);
+        vincularControles('.btn-periodo-cliente', actualizarTopCliente);
+        vincularControles('.btn-periodo-sucursal', actualizarTopSucursal);
+        vincularControles('.btn-periodo-rotacion', actualizarRotacion);
 
-        // Adaptabilidad al resize
-        window.addEventListener('resize', () => {
-            const btnActivo = document.querySelector('.btn-periodo.active');
-            if(btnActivo) actualizarGanancias(btnActivo.getAttribute('data-periodo'));
-        });
+        // Botones "Filtrar" de fechas personalizadas
+        const bindBotonFiltrar = (btnId, callback) => {
+            const el = document.getElementById(btnId);
+            if (el) el.addEventListener('click', () => callback('personalizado'));
+        };
+        bindBotonFiltrar('btn-aplicar-ganancias', actualizarGanancias);
+        bindBotonFiltrar('btn-aplicar-producto', actualizarTopProducto);
+        bindBotonFiltrar('btn-aplicar-cliente', actualizarTopCliente);
+        bindBotonFiltrar('btn-aplicar-sucursal', actualizarTopSucursal);
+        bindBotonFiltrar('btn-aplicar-rotacion', actualizarRotacion);
 
-        // --- SISTEMA DE TOOLTIPS CON SEGUIMIENTO DE MOUSE ---
+        // ==========================================
+        // TOOLTIPS FLOTANTES
+        // ==========================================
         const kpiTooltip = document.getElementById('kpi-tooltip');
         const cardProducto = contenedor.querySelector('.producto-top');
         const cardCliente = contenedor.querySelector('.cliente-vip');
+        const cardSucursal = contenedor.querySelector('.sucursal-lider');
 
         let tooltipTimeout = null;
         let hoveredCard = null;
 
         function showTooltip(html, e) {
             clearTimeout(tooltipTimeout);
+            if (!kpiTooltip) return;
             kpiTooltip.innerHTML = html;
             kpiTooltip.style.display = 'block';
-            // Force layout reflow
             kpiTooltip.offsetHeight;
             kpiTooltip.classList.add('visible');
             if (e) moveTooltip(e);
         }
 
         function moveTooltip(e) {
+            if (!kpiTooltip) return;
             const rect = contenedor.getBoundingClientRect();
-            
-            // Calculamos posición relativa al contenedor
             const x = e.clientX - rect.left + 15;
             const y = e.clientY - rect.top + 15;
             
@@ -994,26 +1376,19 @@
             
             let finalX = x;
             let finalY = y;
-            
-            // Límites para evitar que se desborde a la derecha o abajo
-            if (x + tooltipWidth > rect.width) {
-                finalX = e.clientX - rect.left - tooltipWidth - 15;
-            }
-            if (y + tooltipHeight > rect.height) {
-                finalY = e.clientY - rect.top - tooltipHeight - 15;
-            }
+            if (x + tooltipWidth > rect.width) finalX = e.clientX - rect.left - tooltipWidth - 15;
+            if (y + tooltipHeight > rect.height) finalY = e.clientY - rect.top - tooltipHeight - 15;
             
             kpiTooltip.style.left = finalX + 'px';
             kpiTooltip.style.top = finalY + 'px';
         }
 
         function hideTooltip() {
+            if (!kpiTooltip) return;
             kpiTooltip.classList.remove('visible');
             tooltipTimeout = setTimeout(() => {
-                if (!kpiTooltip.classList.contains('visible')) {
-                    kpiTooltip.style.display = 'none';
-                }
-            }, 200);
+                if (!kpiTooltip.classList.contains('visible')) kpiTooltip.style.display = 'none';
+            }, 180);
         }
 
         function renderTooltipProducto(e = null) {
@@ -1021,12 +1396,11 @@
                 if (hoveredCard === 'producto') hideTooltip();
                 return;
             }
-            let html = '<h4>🏆 Top Productos</h4><ul>';
+            let html = '<h4>🏆 Top 5 Productos Más Vendidos</h4><ul>';
             topProductosCached.slice(0, 5).forEach((p, idx) => {
-                const nombre = p.producto_nombre || "Desconocido";
                 html += `<li>
-                    <span>${idx + 1}. <span class="item-name">${nombre}</span></span>
-                    <span class="item-value">${p.cantidad_vendida} uds</span>
+                    <span>${idx + 1}. <span class="item-name">${p.producto_nombre || "Desconocido"}</span></span>
+                    <span class="item-value">${formatearCantidadConUnidad(p.cantidad_vendida, p.unidad, false)}</span>
                 </li>`;
             });
             html += '</ul>';
@@ -1038,43 +1412,85 @@
                 if (hoveredCard === 'cliente') hideTooltip();
                 return;
             }
-            let html = '<h4>👥 Top Clientes</h4><ul>';
+            let html = '<h4>👥 Top 5 Clientes VIP</h4><ul>';
             topClientesCached.slice(0, 5).forEach((c, idx) => {
-                const nombre = c.cliente_nombre || "Desconocido";
-                const comprasDolar = (parseFloat(c.total_comprado) || 0) / currentTasaBcv;
+                const comprasDolar = (parseFloat(c.total_comprado) || 0) / (currentTasaBcv || 1);
                 html += `<li>
                     <div style="display:flex; flex-direction:column; max-width: 150px;">
-                        <span style="font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${idx + 1}. ${nombre}</span>
-                        <span style="font-size:0.7rem; color:#aaa;">CI/RIF: ${c.cliente_rif}</span>
+                        <span style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${idx + 1}. ${c.cliente_nombre || "Cliente"}</span>
+                        <span style="font-size:0.7rem; color:#94a3b8;">${c.cliente_rif || 'V-00000000'}</span>
                     </div>
-                    <span class="item-value" style="align-self:center; color:#ffc107;">${formatMoney(comprasDolar)}</span>
+                    <span class="item-value" style="color:#f59e0b;">${formatMoney(comprasDolar)}</span>
                 </li>`;
             });
             html += '</ul>';
             showTooltip(html, e);
         }
 
-        cardProducto.addEventListener('mouseenter', (e) => {
-            hoveredCard = 'producto';
-            renderTooltipProducto(e);
-        });
-        cardProducto.addEventListener('mousemove', moveTooltip);
-        cardProducto.addEventListener('mouseleave', () => {
-            hoveredCard = null;
-            hideTooltip();
-        });
+        function renderTooltipSucursal(e = null) {
+            if (topSucursalesCached.length === 0) {
+                if (hoveredCard === 'sucursal') hideTooltip();
+                return;
+            }
+            let html = '<h4>📍 Ranking de Sucursales</h4><ul>';
+            topSucursalesCached.slice(0, 5).forEach((s, idx) => {
+                html += `<li>
+                    <div style="display:flex; flex-direction:column; max-width: 150px;">
+                        <span style="font-weight:700;">${idx + 1}. ${String(s.branch_id).toUpperCase()}</span>
+                        <span style="font-size:0.7rem; color:#94a3b8;">${s.total_ventas_count} ventas</span>
+                    </div>
+                    <span class="item-value" style="color:#34d399;">${formatMoney(s.total_usd)}</span>
+                </li>`;
+            });
+            html += '</ul>';
+            showTooltip(html, e);
+        }
 
-        cardCliente.addEventListener('mouseenter', (e) => {
-            hoveredCard = 'cliente';
-            renderTooltipCliente(e);
-        });
-        cardCliente.addEventListener('mousemove', moveTooltip);
-        cardCliente.addEventListener('mouseleave', () => {
-            hoveredCard = null;
-            hideTooltip();
-        });
+        if (cardProducto) {
+            cardProducto.addEventListener('mouseenter', (e) => { hoveredCard = 'producto'; renderTooltipProducto(e); });
+            cardProducto.addEventListener('mousemove', moveTooltip);
+            cardProducto.addEventListener('mouseleave', () => { hoveredCard = null; hideTooltip(); });
+        }
 
-        // Inicializar
+        if (cardCliente) {
+            cardCliente.addEventListener('mouseenter', (e) => { hoveredCard = 'cliente'; renderTooltipCliente(e); });
+            cardCliente.addEventListener('mousemove', moveTooltip);
+            cardCliente.addEventListener('mouseleave', () => { hoveredCard = null; hideTooltip(); });
+        }
+
+        if (cardSucursal) {
+            cardSucursal.addEventListener('mouseenter', (e) => { hoveredCard = 'sucursal'; renderTooltipSucursal(e); });
+            cardSucursal.addEventListener('mousemove', moveTooltip);
+            cardSucursal.addEventListener('mouseleave', () => { hoveredCard = null; hideTooltip(); });
+        }
+
+        // ==========================================
+        // INICIALIZACIÓN GENERAL
+        // ==========================================
+        async function inicializarModulo() {
+            try {
+                if (api) {
+                    const tasaConfig = await api.obtenerConfiguracion('TASA_BCV');
+                    currentTasaBcv = parseFloat(tasaConfig) || 1;
+                }
+            } catch (e) {}
+
+            actualizarGanancias('semana');
+            actualizarTopProducto('semana');
+            actualizarTopCliente('semana');
+            actualizarTopSucursal('semana');
+            actualizarRotacion('semana');
+        }
+
+        inicializarModulo();
+
+        window.addEventListener('resize', () => {
+            const btnActivo = document.querySelector('#selector-ganancias .btn-periodo.active');
+            if (btnActivo) {
+                const periodo = btnActivo.getAttribute('data-periodo');
+                actualizarGanancias(periodo);
+            }
+        });
 
     })();
 </script>

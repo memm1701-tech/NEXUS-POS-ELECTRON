@@ -379,9 +379,20 @@ function asegurarEsquema(dbConnection, esquema) {
                     cleanType = cleanType.replace(/NOT\s+NULL/gi, "").trim();
                 }
 
+                // SQLite no permite non-constant defaults (CURRENT_TIMESTAMP, CURRENT_DATE, etc.) en ALTER TABLE ADD COLUMN
+                const hasDynamicDefault = /DEFAULT\s+(CURRENT_TIMESTAMP|CURRENT_DATE|CURRENT_TIME|\(datetime\(.*?\)\)|\(strftime\(.*?\)\))/i.test(cleanType);
+                if (hasDynamicDefault) {
+                    cleanType = cleanType.replace(/DEFAULT\s+(CURRENT_TIMESTAMP|CURRENT_DATE|CURRENT_TIME|\(datetime\(.*?\)\)|\(strftime\(.*?\)\))/gi, "").trim();
+                }
+
                 const alterQuery = `ALTER TABLE ${tabla} ADD COLUMN ${colName} ${cleanType}`;
                 try {
                     dbConnection.prepare(alterQuery).run();
+                    if (hasDynamicDefault) {
+                        try {
+                            dbConnection.prepare(`UPDATE ${tabla} SET ${colName} = datetime('now', 'localtime') WHERE ${colName} IS NULL`).run();
+                        } catch(eUp) {}
+                    }
                     console.log(`[DB AUTO-SYNC] Columna añadida: '${colName}' (${cleanType}) en la tabla '${tabla}'`);
                 } catch (error) {
                     console.error(`[DB AUTO-SYNC] Error añadiendo columna '${colName}' a '${tabla}':`, error.message);
@@ -1290,8 +1301,18 @@ server.get('/api/maestro/estadisticas', (req, res) => {
             LIMIT 5
         `).all(companyId, fechaIni, fechaFin);
 
+        // 3. Top Productos (con Unidad de Medida Inteligente)
         const topProductos = [];
         try {
+            const prodsDb = masterDbDirect.prepare(`SELECT id, datos_json FROM productos_locales WHERE company_id = ?`).all(companyId);
+            const mapaUnidadesCatalogo = {};
+            prodsDb.forEach(p => {
+                try {
+                    const d = typeof p.datos_json === 'string' ? JSON.parse(p.datos_json) : (p.datos_json || {});
+                    mapaUnidadesCatalogo[p.id] = d.unit || d.unidad || p.unit || 'UN';
+                } catch(e){}
+            });
+
             const ventas = masterDbDirect.prepare(`SELECT datos_json FROM ventas_locales WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?`).all(companyId, fechaIni, fechaFin);
             const mapa = {};
             ventas.forEach(v => {
@@ -1300,8 +1321,19 @@ server.get('/api/maestro/estadisticas', (req, res) => {
                     const prodArray = Array.isArray(parsed) ? parsed : (parsed.productos || parsed.items || []);
                     prodArray.forEach(item => {
                         const qty = parseFloat(item.cantidad || item.quantity) || 0;
-                        if (!mapa[item.id]) mapa[item.id] = { producto_nombre: item.nombre || item.id, cantidad_vendida: 0 };
+                        const unitProd = item.unit || item.unidad || mapaUnidadesCatalogo[item.id] || 'UN';
+                        if (!mapa[item.id]) {
+                            mapa[item.id] = { 
+                                id: item.id,
+                                producto_nombre: item.nombre || item.id, 
+                                cantidad_vendida: 0,
+                                unidad: unitProd
+                            };
+                        }
                         mapa[item.id].cantidad_vendida += qty;
+                        if (unitProd && unitProd !== 'UN') {
+                            mapa[item.id].unidad = unitProd;
+                        }
                     });
                 } catch(e){}
             });
@@ -1309,8 +1341,21 @@ server.get('/api/maestro/estadisticas', (req, res) => {
             topProductos.push(...array);
         } catch(e) {}
 
+        // 3.1 Top Sucursales
+        const topSucursales = masterDbDirect.prepare(`
+            SELECT COALESCE(NULLIF(branch_id, ''), 'Principal') as branch_id, 
+                   COUNT(*) as total_ventas_count,
+                   SUM(monto_total / COALESCE(NULLIF(tasa_bcv, 0), 1)) as total_usd,
+                   SUM(ganancia_venta) as total_ganancia
+            FROM ventas_locales
+            WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?
+            GROUP BY branch_id
+            ORDER BY total_usd DESC
+            LIMIT 5
+        `).all(companyId, fechaIni, fechaFin);
+
         let serieTiempo;
-        if (periodo === 'dia') {
+        if (periodo === 'dia' || fecha_inicio === fecha_fin) {
             serieTiempo = masterDbDirect.prepare(`
                 SELECT strftime('%Y-%m-%d %H:00:00', fecha_emision) as fecha, SUM(ganancia_venta) as total_ganancia
                 FROM ventas_locales
@@ -1361,6 +1406,7 @@ server.get('/api/maestro/estadisticas', (req, res) => {
                 total_cogs,
                 top_clientes: topClientes,
                 top_productos: topProductos,
+                top_sucursales: topSucursales,
                 serie_tiempo: serieTiempo,
                 stocks_promedio: stocks_promedio
             }
@@ -3137,21 +3183,6 @@ ipcMain.handle('verificar-y-descontar-stock-maestro', async (event, datos) => {
                     } else {
                         stmtSinSucursal.run(item.cantidad, item.id);
                         try { stmtKardex.run(compId, 'GLOBAL', item.id, -Math.abs(item.cantidad), 'VENTA', 1); } catch(e) {}
-                    }
-
-                    // ☁️ ENCOLAR PARA VPS (Si está activo el respaldo)
-                    if (config.respaldo_datos === 'true' || config.respaldo_datos === true) {
-                        try {
-                            const payloadVPS = {
-                                company_id: compId,
-                                sucursal_id: sucursalReal,
-                                producto_id: item.id,
-                                operacion: 'restar',
-                                cantidad: item.cantidad
-                            };
-                            db.prepare('INSERT INTO sync_queue (operacion, tabla, datos) VALUES (?, ?, ?)')
-                              .run('UPSERT', 'movimientos_stock', JSON.stringify(payloadVPS));
-                        } catch(eQueue) { console.error("Error encolando venta de stock para VPS:", eQueue); }
                     }
                 }
             });

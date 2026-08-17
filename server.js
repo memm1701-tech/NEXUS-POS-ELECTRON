@@ -123,9 +123,20 @@ if (config.isServer) {
                         cleanType = cleanType.replace(/NOT\s+NULL/gi, "").trim();
                     }
 
+                    // SQLite no permite non-constant defaults (CURRENT_TIMESTAMP, CURRENT_DATE, etc.) en ALTER TABLE ADD COLUMN
+                    const hasDynamicDefault = /DEFAULT\s+(CURRENT_TIMESTAMP|CURRENT_DATE|CURRENT_TIME|\(datetime\(.*?\)\)|\(strftime\(.*?\)\))/i.test(cleanType);
+                    if (hasDynamicDefault) {
+                        cleanType = cleanType.replace(/DEFAULT\s+(CURRENT_TIMESTAMP|CURRENT_DATE|CURRENT_TIME|\(datetime\(.*?\)\)|\(strftime\(.*?\)\))/gi, "").trim();
+                    }
+
                     const alterQuery = `ALTER TABLE ${tabla} ADD COLUMN ${colName} ${cleanType}`;
                     try {
                         dbConnection.prepare(alterQuery).run();
+                        if (hasDynamicDefault) {
+                            try {
+                                dbConnection.prepare(`UPDATE ${tabla} SET ${colName} = datetime('now', 'localtime') WHERE ${colName} IS NULL`).run();
+                            } catch(eUp) {}
+                        }
                         console.log(`[DB AUTO-SYNC] Columna añadida: '${colName}' (${cleanType}) en la tabla '${tabla}'`);
                     } catch (error) {
                         console.error(`[DB AUTO-SYNC] Error añadiendo columna '${colName}' a '${tabla}':`, error.message);
@@ -1521,6 +1532,48 @@ server.post('/api/maestro/registrar-venta', (req, res) => {
             v.tasa_bcv, v.metodo_pago, v.datos_json, v.ganancia_venta || 0
         );
 
+        // ☁️ Encolar descuento de stock para el VPS (para ventas originadas en caja hija)
+        try {
+            const activeDb = getPosDb() || serverDb;
+            let prodArray = [];
+            if (v.datos_json) {
+                const parsed = typeof v.datos_json === 'string' ? JSON.parse(v.datos_json) : v.datos_json;
+                prodArray = Array.isArray(parsed) ? parsed : (parsed.productos || parsed.items || []);
+            }
+            const itemsDescuento = prodArray
+                .filter(p => {
+                    const nombre = String(p.nombre || '').toUpperCase();
+                    return !nombre.includes('ABONO') && !nombre.includes('DEUDA') && !nombre.includes('SERVICIO');
+                })
+                .map(p => ({
+                    id: p.id || p.producto_ID || p.producto_id,
+                    cantidad: parseFloat(p.cantidad || p.quantity || 1)
+                }));
+
+            if (itemsDescuento.length > 0) {
+                const payloadDescuento = {
+                    company_id: v.company_id,
+                    sucursal_id: v.branch_id,
+                    items: itemsDescuento,
+                    tipo_movimiento: 'VENTA',
+                    factura_ref: v.numero_factura
+                };
+                activeDb.prepare(`CREATE TABLE IF NOT EXISTS sync_queue (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    operacion TEXT,
+                    tabla TEXT,
+                    id_registro TEXT,
+                    datos TEXT,
+                    fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
+                )`).run();
+                activeDb.prepare('INSERT INTO sync_queue (operacion, tabla, datos) VALUES (?, ?, ?)')
+                    .run('CREAR', 'ventas_descuento_vps', JSON.stringify(payloadDescuento));
+                console.log(`📦 Venta de caja hija ${v.numero_factura} encolada en Servidor Maestro para sync VPS (${itemsDescuento.length} productos).`);
+            }
+        } catch (eQueue) {
+            console.warn("⚠️ No se pudo encolar venta de caja hija para VPS:", eQueue.message);
+        }
+
         res.json({ exito: true });
     } catch (e) {
         console.error("❌ Error guardando venta en Maestro:", e.message);
@@ -1639,9 +1692,18 @@ server.get('/api/maestro/estadisticas', (req, res) => {
             LIMIT 5
         `).all(companyId, fechaIni, fechaFin);
 
-        // 3. Top Productos
+        // 3. Top Productos (con Unidad de Medida Inteligente)
         const topProductos = [];
         try {
+            const prodsDb = serverDb.prepare(`SELECT id, datos_json FROM productos_locales WHERE company_id = ?`).all(companyId);
+            const mapaUnidadesCatalogo = {};
+            prodsDb.forEach(p => {
+                try {
+                    const d = typeof p.datos_json === 'string' ? JSON.parse(p.datos_json) : (p.datos_json || {});
+                    mapaUnidadesCatalogo[p.id] = d.unit || d.unidad || p.unit || 'UN';
+                } catch(e){}
+            });
+
             const ventas = serverDb.prepare(`SELECT datos_json FROM ventas_locales WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?`).all(companyId, fechaIni, fechaFin);
             const mapa = {};
             ventas.forEach(v => {
@@ -1650,8 +1712,19 @@ server.get('/api/maestro/estadisticas', (req, res) => {
                     const prodArray = Array.isArray(parsed) ? parsed : (parsed.productos || parsed.items || []);
                     prodArray.forEach(item => {
                         const qty = parseFloat(item.cantidad || item.quantity) || 0;
-                        if (!mapa[item.id]) mapa[item.id] = { producto_nombre: item.nombre || item.id, cantidad_vendida: 0 };
+                        const unitProd = item.unit || item.unidad || mapaUnidadesCatalogo[item.id] || 'UN';
+                        if (!mapa[item.id]) {
+                            mapa[item.id] = { 
+                                id: item.id,
+                                producto_nombre: item.nombre || item.id, 
+                                cantidad_vendida: 0,
+                                unidad: unitProd
+                            };
+                        }
                         mapa[item.id].cantidad_vendida += qty;
+                        if (unitProd && unitProd !== 'UN') {
+                            mapa[item.id].unidad = unitProd;
+                        }
                     });
                 } catch(e){}
             });
@@ -1659,9 +1732,22 @@ server.get('/api/maestro/estadisticas', (req, res) => {
             topProductos.push(...array);
         } catch(e) {}
 
-        // 4. Serie de tiempo
+        // 3.1 Top Sucursales
+        const topSucursales = serverDb.prepare(`
+            SELECT COALESCE(NULLIF(branch_id, ''), 'Principal') as branch_id, 
+                   COUNT(*) as total_ventas_count,
+                   SUM(monto_total / COALESCE(NULLIF(tasa_bcv, 0), 1)) as total_usd,
+                   SUM(ganancia_venta) as total_ganancia
+            FROM ventas_locales
+            WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?
+            GROUP BY branch_id
+            ORDER BY total_usd DESC
+            LIMIT 5
+        `).all(companyId, fechaIni, fechaFin);
+
+        // 4. Serie de tiempo (horaria si es 1 día, diaria si son múltiples días)
         let serieTiempo;
-        if (periodo === 'dia') {
+        if (periodo === 'dia' || fecha_inicio === fecha_fin) {
             serieTiempo = serverDb.prepare(`
                 SELECT strftime('%Y-%m-%d %H:00:00', fecha_emision) as fecha, SUM(ganancia_venta) as total_ganancia
                 FROM ventas_locales
@@ -1713,6 +1799,7 @@ server.get('/api/maestro/estadisticas', (req, res) => {
                 total_cogs,
                 top_clientes: topClientes,
                 top_productos: topProductos,
+                top_sucursales: topSucursales,
                 serie_tiempo: serieTiempo,
                 stocks_promedio: stocks_promedio
             }
