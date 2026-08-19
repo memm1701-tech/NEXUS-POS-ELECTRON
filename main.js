@@ -322,7 +322,7 @@ const ESQUEMA_LOCAL = {
     clientes_locales: { rif: "TEXT PRIMARY KEY", company_id: "TEXT", nombre: "TEXT", direccion: "TEXT", telefono: "TEXT", correo: "TEXT", datos_json: "TEXT", es_contribuyente_especial: "INTEGER DEFAULT 0", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP", saldo_deuda: "REAL DEFAULT 0" },
     configuracion: { clave: "TEXT PRIMARY KEY", valor: "TEXT", fecha_actualizacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
     historial_tasas: { fecha: "DATE PRIMARY KEY", valor: "DECIMAL(18, 8) DEFAULT 0", fuente: "TEXT DEFAULT 'BCV'" },
-    ventas_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_factura: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", monto_exento: "REAL DEFAULT 0", base_imponible: "REAL DEFAULT 0", monto_iva: "REAL DEFAULT 0", total_iva: "REAL DEFAULT 0", monto_igtf: "REAL DEFAULT 0", monto_total: "REAL DEFAULT 0", tasa_bcv: "REAL DEFAULT 1", metodo_pago: "TEXT", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", estado_cierre: "INTEGER DEFAULT 0", es_nota_credito: "INTEGER DEFAULT 0", es_nota_debito: "INTEGER DEFAULT 0", factura_afectada: "TEXT", monto_factura_afectada: "REAL DEFAULT 0", fecha_factura_afectada: "TEXT", comprobante_retencion_id: "TEXT DEFAULT NULL", ganancia_venta: "REAL DEFAULT 0" },
+    ventas_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_factura: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", monto_exento: "REAL DEFAULT 0", base_imponible: "REAL DEFAULT 0", monto_iva: "REAL DEFAULT 0", total_iva: "REAL DEFAULT 0", monto_igtf: "REAL DEFAULT 0", monto_total: "REAL DEFAULT 0", tasa_bcv: "REAL DEFAULT 1", metodo_pago: "TEXT", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", estado_cierre: "INTEGER DEFAULT 0", es_nota_credito: "INTEGER DEFAULT 0", es_nota_debito: "INTEGER DEFAULT 0", factura_afectada: "TEXT", monto_factura_afectada: "REAL DEFAULT 0", fecha_factura_afectada: "TEXT", comprobante_retencion_id: "TEXT DEFAULT NULL", ganancia_venta: "REAL DEFAULT 0", estado: "TEXT DEFAULT 'EMITIDA'", es_anulada: "INTEGER DEFAULT 0" },
     cuentas_por_cobrar: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cliente_rif: "TEXT", cliente_nombre: "TEXT", cliente_id: "TEXT", monto_deuda: "REAL DEFAULT 0", monto_pagado: "REAL DEFAULT 0", monto_bs: "REAL DEFAULT 0", monto_usd: "REAL DEFAULT 0", factura_nro: "TEXT", fecha: "TEXT", estado: "TEXT DEFAULT 'PENDIENTE'", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", venta_id: "TEXT" },
     sync_queue: { id: "INTEGER PRIMARY KEY AUTOINCREMENT", operacion: "TEXT", tabla: "TEXT", id_registro: "TEXT", datos: "TEXT", fecha_creacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
     inventario_sucursales: { producto_id: "TEXT", sucursal_id: "TEXT", company_id: "TEXT", stock: "REAL DEFAULT 0", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP", "PRIMARY KEY": "(producto_id, sucursal_id)" },
@@ -414,19 +414,25 @@ function inicializarTablas() {
             CREATE INDEX IF NOT EXISTS idx_productos_empresa ON productos_locales(company_id);
 
             -- 🧾 Índices para Ventas (Vital para que el Cierre Z sea instantáneo)
-            -- Este índice compuesto agrupa exactamente lo que busca tu función de cierre
             CREATE INDEX IF NOT EXISTS idx_ventas_cierre_compuesto 
             ON ventas_locales(company_id, branch_id, cashier_id, estado_cierre);
             
             -- Índice para buscar facturas por fecha rápidamente (Reportes)
             CREATE INDEX IF NOT EXISTS idx_ventas_fecha ON ventas_locales(fecha_emision);
+            CREATE INDEX IF NOT EXISTS idx_ventas_factura ON ventas_locales(numero_factura);
+            CREATE INDEX IF NOT EXISTS idx_ventas_estado ON ventas_locales(estado);
 
             -- 💸 Índices para Movimientos de Caja (Ingresos/Gastos)
             CREATE INDEX IF NOT EXISTS idx_movimientos_cierre 
             ON movimientos_caja_locales(company_id, tipo, estado_cierre);
+            CREATE INDEX IF NOT EXISTS idx_movimientos_fecha ON movimientos_caja_locales(fecha);
 
             -- 🤝 Índices para Cuentas por Cobrar (Créditos)
             CREATE INDEX IF NOT EXISTS idx_cxc_cliente ON cuentas_por_cobrar(cliente_rif, estado);
+
+            -- 📑 Índices para Presupuestos
+            CREATE INDEX IF NOT EXISTS idx_presupuestos_nro ON presupuestos_locales(numero_presupuesto);
+            CREATE INDEX IF NOT EXISTS idx_presupuestos_empresa ON presupuestos_locales(company_id, estado);
         `);
         console.log("⚡ Índices de base de datos SQLite verificados y optimizados.");
     } catch (error) {
@@ -446,7 +452,8 @@ function inicializarTablas() {
             cuentas_por_cobrar: { id: "INTEGER PRIMARY KEY AUTOINCREMENT", cliente_id: "TEXT", cliente_nombre: "TEXT", monto_bs: "REAL DEFAULT 0", monto_usd: "REAL DEFAULT 0", factura_nro: "TEXT", monto_pagado: "REAL DEFAULT 0", fecha: "TEXT", estado: "TEXT DEFAULT 'PENDIENTE'" },
             facturas_borradores: { id: "TEXT PRIMARY KEY", cliente_nombre: "TEXT", cliente_id: "TEXT", items: "TEXT", subtotal: "REAL DEFAULT 0", iva: "REAL DEFAULT 0", total: "REAL DEFAULT 0", metodos_pago: "TEXT", fecha: "INTEGER", usuario_id: "TEXT", sucursal_id: "TEXT", company_id: "TEXT" },
             cierres_caja_maestros: { id: "TEXT PRIMARY KEY", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", total_ventas_bs: "REAL DEFAULT 0", total_ventas_usd: "REAL DEFAULT 0", total_gastos_bs: "REAL DEFAULT 0", total_gastos_usd: "REAL DEFAULT 0", total_ingresos_bs: "REAL DEFAULT 0", total_diferencia_bs: "REAL DEFAULT 0", total_diferencia_usd: "REAL DEFAULT 0", detalle_pagos_json: "TEXT" },
-            ventas_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_factura: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", monto_exento: "REAL DEFAULT 0", base_imponible: "REAL DEFAULT 0", monto_iva: "REAL DEFAULT 0", total_iva: "REAL DEFAULT 0", monto_igtf: "REAL DEFAULT 0", monto_total: "REAL DEFAULT 0", tasa_bcv: "REAL DEFAULT 1", metodo_pago: "TEXT", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", estado_cierre: "INTEGER DEFAULT 0", es_nota_credito: "INTEGER DEFAULT 0", es_nota_debito: "INTEGER DEFAULT 0", factura_afectada: "TEXT", monto_factura_afectada: "REAL DEFAULT 0", fecha_factura_afectada: "TEXT", comprobante_retencion_id: "TEXT DEFAULT NULL", ganancia_venta: "REAL DEFAULT 0" },
+            movimientos_caja_locales: { id: "TEXT PRIMARY KEY", tipo: "TEXT", concepto: "TEXT", monto: "REAL DEFAULT 0", monto_usd: "REAL DEFAULT 0", metodo_pago: "TEXT", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP", cashier_id: "TEXT", company_id: "TEXT", branch_id: "TEXT", estado_cierre: "INTEGER DEFAULT 0" },
+            ventas_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_factura: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", monto_exento: "REAL DEFAULT 0", base_imponible: "REAL DEFAULT 0", monto_iva: "REAL DEFAULT 0", total_iva: "REAL DEFAULT 0", monto_igtf: "REAL DEFAULT 0", monto_total: "REAL DEFAULT 0", tasa_bcv: "REAL DEFAULT 1", metodo_pago: "TEXT", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", estado_cierre: "INTEGER DEFAULT 0", es_nota_credito: "INTEGER DEFAULT 0", es_nota_debito: "INTEGER DEFAULT 0", factura_afectada: "TEXT", monto_factura_afectada: "REAL DEFAULT 0", fecha_factura_afectada: "TEXT", comprobante_retencion_id: "TEXT DEFAULT NULL", ganancia_venta: "REAL DEFAULT 0", estado: "TEXT DEFAULT 'EMITIDA'", es_anulada: "INTEGER DEFAULT 0" },
             configuraciones_maestras: { clave: "TEXT PRIMARY KEY", valor: "TEXT" },
             auditoria_fiscal: { id: "TEXT PRIMARY KEY", usuario: "TEXT", accion: "TEXT", valores: "TEXT", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
             metodos_pago_maestro: { id: "TEXT PRIMARY KEY", nombre: "TEXT NOT NULL", tecla: "TEXT", tipo_moneda: "TEXT DEFAULT 'BS'", activo: "INTEGER DEFAULT 1", flag_impresora: "TEXT DEFAULT '00'" },
@@ -2028,16 +2035,116 @@ ipcMain.handle('obtener-venta-por-id', async (event, id) => {
 ipcMain.handle('obtener-factura-local', async (event, numFactura) => {
     try {
         const ip = config.isServer ? '127.0.0.1' : getIpMaestro();
-        if (!ip) return { error: true, mensaje: 'IP del servidor no configurada' };
-        const response = await llamarMaestro('GET', `/api/maestro/buscar-factura/${numFactura}`, null, { timeout: 5000 });
-        return response.data;
+        if (ip) {
+            try {
+                const response = await llamarMaestro('GET', `/api/maestro/buscar-factura/${numFactura}`, null, { timeout: 5000 });
+                if (response && response.data && response.data.total > 0) return response.data;
+            } catch(eMaestro) {}
+        }
+
+        // Búsqueda local de respaldo en SQLite
+        const criterio = String(numFactura || '').trim();
+        const soloNumeros = criterio.replace(/[^0-9]/g, '');
+        const busquedaLike = soloNumeros ? `%-${soloNumeros.padStart(8, '0')}` : criterio;
+        const targetDb = masterDbDirect || db;
+        const stmt = targetDb.prepare(`
+            SELECT * FROM ventas_locales 
+            WHERE id = ? OR numero_factura = ? OR numero_factura LIKE ?
+            ORDER BY fecha_emision DESC
+        `);
+        const resultados = stmt.all(criterio, criterio, busquedaLike);
+        return { total: resultados.length, data: resultados };
 
     } catch (error) {
-        console.error("â Œ Error de comunicaciÃ³n con el Maestro:", error.message);
+        console.error("❌ Error buscando factura:", error.message);
         return { 
             error: true, 
-            mensaje: "No se pudo conectar al Servidor Central para buscar la factura." 
+            mensaje: "No se pudo encontrar la factura en la base de datos." 
         };
+    }
+});
+
+ipcMain.handle('anular-venta-no-fiscal-local', async (event, datos) => {
+    try {
+        const { facturaId, numeroFactura, companyId, branchId, cashierId, productos, metodosReintegro, motivo, clienteNombre } = datos;
+        console.log(`🚫 [ANULACIÓN LOCAL] Procesando anulación para ${numeroFactura || facturaId}`);
+
+        // 1. Transacción local en SQLite
+        const transaccion = db.transaction(() => {
+            // A. Marcar venta local como ANULADA y poner ganancia_venta = 0
+            db.prepare(`
+                UPDATE ventas_locales 
+                SET estado = 'ANULADA', ganancia_venta = 0, estado_sync = 0
+                WHERE id = ? OR numero_factura = ?
+            `).run(facturaId || '', numeroFactura || '');
+
+            // B. Reintegrar stock en stock_maestro y kardex si estamos en servidor o db local
+            if (Array.isArray(productos) && productos.length > 0) {
+                const targetDb = (config.isServer && masterDbDirect) ? masterDbDirect : db;
+                try {
+                    const stmtStockSuc = targetDb.prepare('UPDATE stock_maestro SET cantidad_real = cantidad_real + ?, ultima_sincronizacion = CURRENT_TIMESTAMP WHERE producto_id = ? AND sucursal_id = ?');
+                    const stmtStockGlobal = targetDb.prepare('UPDATE stock_maestro SET cantidad_real = cantidad_real + ?, ultima_sincronizacion = CURRENT_TIMESTAMP WHERE producto_id = ?');
+                    const stmtKardex = targetDb.prepare('INSERT INTO movimientos_stock_maestro (company_id, sucursal_id, producto_id, cantidad, tipo_movimiento, referencia_id, estado_sync) VALUES (?, ?, ?, ?, ?, ?, 1)');
+
+                    productos.forEach(item => {
+                        const cant = parseFloat(item.cantidad || item.qty || 1);
+                        const prodId = item.id || item.producto_id || item.producto_ID;
+                        const nombre = String(item.nombre || item.name || '').toUpperCase();
+                        
+                        if (prodId && cant > 0 && !nombre.includes('ABONO') && !nombre.includes('DEUDA') && !nombre.includes('SERVICIO')) {
+                            if (branchId) {
+                                const resSuc = stmtStockSuc.run(cant, prodId, branchId);
+                                if (resSuc.changes === 0) stmtStockGlobal.run(cant, prodId);
+                            } else {
+                                stmtStockGlobal.run(cant, prodId);
+                            }
+                            try {
+                                stmtKardex.run(companyId || 'DEFAULT', branchId || 'GLOBAL', prodId, cant, 'ANULACION_VENTA', numeroFactura || facturaId);
+                            } catch(eK) {}
+                        }
+                    });
+                } catch(eStock) {
+                    console.warn("⚠️ Advertencia al actualizar stock local en anulación:", eStock.message);
+                }
+            }
+
+            // C. Registrar salidas de dinero (GASTO) en movimientos de caja para que el Cierre Z descuente de cada método
+            if (Array.isArray(metodosReintegro) && metodosReintegro.length > 0) {
+                const stmtMovCaja = db.prepare(`
+                    INSERT INTO movimientos_caja_locales (
+                        id, tipo, concepto, monto, monto_usd, metodo_pago, fecha, cashier_id, company_id, branch_id, estado_cierre
+                    ) VALUES (?, 'GASTO', ?, ?, ?, ?, datetime('now', 'localtime'), ?, ?, ?, 0)
+                `);
+
+                metodosReintegro.forEach(m => {
+                    const montoBs = parseFloat(m.montoBs || m.monto || 0);
+                    const montoUsd = parseFloat(m.montoUsd || m.monto_usd || 0);
+                    if (montoBs > 0 || montoUsd > 0) {
+                        const idMov = `ANUL-${Date.now()}-${Math.floor(Math.random()*1000)}`;
+                        const concepto = `Anulación Ticket No Fiscal #${numeroFactura || facturaId} - ${clienteNombre || 'Cliente'}`;
+                        stmtMovCaja.run(idMov, concepto, montoBs, montoUsd, m.metodo || m.metodo_pago || 'Efectivo', cashierId || 'SISTEMA', companyId || 'DEFAULT', branchId || 'GLOBAL');
+                    }
+                });
+            }
+        });
+
+        transaccion();
+
+        // 2. Sincronización con el Servidor Maestro si es nodo cliente
+        try {
+            if (config.isServer) {
+                if (win && win.webContents) win.webContents.send('stock-actualizado-global');
+            } else {
+                await llamarMaestro('POST', '/api/maestro/anular-venta', datos, { timeout: 6000, reintentos: 2 });
+            }
+        } catch(eSync) {
+            console.warn("⚠️ No se pudo sincronizar anulación con el Maestro (guardado localmente):", eSync.message);
+        }
+
+        return { success: true };
+    } catch(err) {
+        console.error("❌ Error en anular-venta-no-fiscal-local:", err);
+        return { error: err.message };
     }
 });
 
@@ -2447,13 +2554,15 @@ ipcMain.handle('generar-pdf-factura', async (event, { datosFactura, formatoPapel
         });
 
         const printOptions = {
-            margins: { marginType: 'none' },
-            printBackground: true
+            margins: { top: 0, bottom: 0, left: 0, right: 0 },
+            marginsType: 1,
+            printBackground: true,
+            preferCSSPageSize: true
         };
 
         if (formato === 'MEDIA_CARTA') {
             printOptions.landscape = true;
-            printOptions.pageSize = { width: 216000, height: 140000 };
+            printOptions.pageSize = { width: 215900, height: 139700 };
         } else if (formato === 'OFICIO') {
             printOptions.landscape = false;
             printOptions.pageSize = 'Legal';
@@ -2516,7 +2625,10 @@ ipcMain.handle('imprimir-pdf-factura', async (event, { datosFactura, formatoPape
 
         const printOptions = {
             silent: true,
-            printBackground: true
+            printBackground: true,
+            margins: { marginType: 'none', top: 0, bottom: 0, left: 0, right: 0 },
+            marginsType: 1,
+            preferCSSPageSize: true
         };
 
         if (nombreImpresora && nombreImpresora.trim()) {
@@ -2525,7 +2637,7 @@ ipcMain.handle('imprimir-pdf-factura', async (event, { datosFactura, formatoPape
 
         if (formato === 'MEDIA_CARTA') {
             printOptions.landscape = true;
-            printOptions.pageSize = { width: 216000, height: 140000 };
+            printOptions.pageSize = { width: 215900, height: 139700 };
         } else if (formato === 'OFICIO') {
             printOptions.landscape = false;
             printOptions.pageSize = 'Legal';
@@ -2552,12 +2664,15 @@ ipcMain.handle('imprimir-pdf-factura', async (event, { datosFactura, formatoPape
                 // 2. Fallback automático: Abre la ventana nativa de impresión de Windows
                 const dialogPrintOptions = {
                     silent: false,
-                    printBackground: true
+                    printBackground: true,
+                    margins: { marginType: 'none', top: 0, bottom: 0, left: 0, right: 0 },
+                    marginsType: 1,
+                    preferCSSPageSize: true
                 };
 
                 if (formato === 'MEDIA_CARTA') {
                     dialogPrintOptions.landscape = true;
-                    dialogPrintOptions.pageSize = { width: 216000, height: 140000 };
+                    dialogPrintOptions.pageSize = { width: 215900, height: 139700 };
                 } else if (formato === 'OFICIO') {
                     dialogPrintOptions.landscape = false;
                     dialogPrintOptions.pageSize = 'Legal';

@@ -22,38 +22,73 @@ function getBase64Logo() {
 
 function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
     const logoDataUrl = datos.logoBase64 || getBase64Logo();
-    
-    // Dimensiones y configuraciones por formato
+     // Dimensiones y configuraciones calibradas al 100% por formato
     const configFormatos = {
         'MEDIA_CARTA': {
             pageWidth: '216mm',
             pageHeight: '140mm',
-            padding: '8mm 10mm',
+            padding: '5mm 7mm',
             orientation: 'landscape',
-            fontSizeBase: '11px',
-            tablePadding: '6px 10px',
-            maxLogoHeight: '65px',
-            maxLogoWidth: '230px'
+            fontSizeBase: '10px',
+            logoMaxHeight: '48px',
+            logoMaxWidth: '160px',
+            docTitleSize: '15px',
+            empresaTitleSize: '11px',
+            empresaDetalleSize: '8.5px',
+            clientBoxPadding: '5px 8px',
+            clientFontSize: '9px',
+            tableHeaderPadding: '4px 6px',
+            tableRowPadding: '3.5px 6px',
+            tableFontSize: '9px',
+            totalsBoxWidth: '220px',
+            totalsFontSize: '10px',
+            totalsMainAmountSize: '13.5px',
+            cornerAccentSize: '55px',
+            cornerOverlaySize: '32px'
         },
         'CARTA': {
             pageWidth: '216mm',
             pageHeight: '279mm',
-            padding: '14mm 16mm',
+            padding: '8mm 10mm',
             orientation: 'portrait',
-            fontSizeBase: '12.5px',
-            tablePadding: '8px 12px',
-            maxLogoHeight: '80px',
-            maxLogoWidth: '260px'
+            fontSizeBase: '11.5px',
+            logoMaxHeight: '68px',
+            logoMaxWidth: '220px',
+            docTitleSize: '19px',
+            empresaTitleSize: '13px',
+            empresaDetalleSize: '9.5px',
+            clientBoxPadding: '7px 12px',
+            clientFontSize: '10.5px',
+            tableHeaderPadding: '6px 10px',
+            tableRowPadding: '6px 10px',
+            tableFontSize: '10.5px',
+            totalsBoxWidth: '260px',
+            totalsFontSize: '11px',
+            totalsMainAmountSize: '16px',
+            cornerAccentSize: '85px',
+            cornerOverlaySize: '50px'
         },
         'OFICIO': {
             pageWidth: '216mm',
             pageHeight: '356mm',
-            padding: '16mm 18mm',
+            padding: '10mm 12mm',
             orientation: 'portrait',
-            fontSizeBase: '13px',
-            tablePadding: '10px 14px',
-            maxLogoHeight: '90px',
-            maxLogoWidth: '280px'
+            fontSizeBase: '12px',
+            logoMaxHeight: '75px',
+            logoMaxWidth: '240px',
+            docTitleSize: '20px',
+            empresaTitleSize: '13.5px',
+            empresaDetalleSize: '10px',
+            clientBoxPadding: '8px 14px',
+            clientFontSize: '11px',
+            tableHeaderPadding: '7px 12px',
+            tableRowPadding: '7px 12px',
+            tableFontSize: '11px',
+            totalsBoxWidth: '280px',
+            totalsFontSize: '11.5px',
+            totalsMainAmountSize: '17px',
+            cornerAccentSize: '95px',
+            cornerOverlaySize: '55px'
         }
     };
 
@@ -115,7 +150,7 @@ function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
     if (items.length === 0) {
         filasHTML = `
             <tr>
-                <td colspan="4" style="padding: 16px; text-align: center; color: #94a3b8; font-style: italic;">
+                <td colspan="4" style="padding: 14px; text-align: center; color: #94a3b8; font-style: italic;">
                     Sin artículos registrados
                 </td>
             </tr>
@@ -130,16 +165,16 @@ function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
 
             filasHTML += `
                 <tr style="background-color: ${bgRow}; border-bottom: 1px solid #e2e8f0;">
-                    <td style="padding: ${cfg.tablePadding}; font-weight: 700; color: #1e293b; text-align: left; text-transform: uppercase;">
+                    <td style="padding: ${cfg.tableRowPadding}; font-weight: 700; color: #1e293b; text-align: left; text-transform: uppercase;">
                         ${concepto}
                     </td>
-                    <td style="padding: ${cfg.tablePadding}; text-align: center; color: #334155; font-weight: 600;">
+                    <td style="padding: ${cfg.tableRowPadding}; text-align: center; color: #334155; font-weight: 600;">
                         ${cantidad}
                     </td>
-                    <td style="padding: ${cfg.tablePadding}; text-align: right; color: #334155; font-family: 'Consolas', monospace;">
+                    <td style="padding: ${cfg.tableRowPadding}; text-align: right; color: #334155; font-family: 'Consolas', monospace;">
                         ${precio.toFixed(2)}$
                     </td>
-                    <td style="padding: ${cfg.tablePadding}; text-align: right; font-weight: 800; color: #0f172a; font-family: 'Consolas', monospace;">
+                    <td style="padding: ${cfg.tableRowPadding}; text-align: right; font-weight: 800; color: #0f172a; font-family: 'Consolas', monospace;">
                         ${totalFila.toFixed(2)}$
                     </td>
                 </tr>
@@ -169,7 +204,7 @@ function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
         html {
             width: 100%;
             height: 100%;
-            background-color: #f8fafc;
+            background-color: #f1f5f9;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -179,6 +214,7 @@ function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
             width: 100%;
             max-width: ${cfg.pageWidth};
             min-height: ${cfg.pageHeight};
+            height: 100%;
             margin: 0 auto;
             padding: ${cfg.padding};
             position: relative;
@@ -190,22 +226,28 @@ function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
         @media screen {
             html {
                 overflow-y: auto;
+                padding: 10px 0;
+                display: flex;
+                justify-content: center;
             }
             body {
                 overflow: visible;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-                margin: 12px auto 24px auto;
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+                margin: 0 auto;
+                height: auto;
             }
         }
         @media print {
             html, body {
-                width: ${cfg.pageWidth};
-                height: ${cfg.pageHeight};
-                min-height: ${cfg.pageHeight};
-                margin: 0;
-                padding: ${cfg.padding};
-                overflow: hidden;
-                box-shadow: none;
+                width: 100% !important;
+                height: 100% !important;
+                min-height: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: ${cfg.padding} !important;
+                overflow: hidden !important;
+                box-shadow: none !important;
+                background-color: #ffffff !important;
             }
         }
 
@@ -217,7 +259,7 @@ function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
             width: 0;
             height: 0;
             border-style: solid;
-            border-width: 0 0 110px 110px;
+            border-width: 0 0 ${cfg.cornerAccentSize} ${cfg.cornerAccentSize};
             border-color: transparent transparent #00bcd4 transparent;
             z-index: 1;
             opacity: 0.95;
@@ -229,130 +271,100 @@ function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
             width: 0;
             height: 0;
             border-style: solid;
-            border-width: 0 0 65px 65px;
+            border-width: 0 0 ${cfg.cornerOverlaySize} ${cfg.cornerOverlaySize};
             border-color: transparent transparent #0288d1 transparent;
             z-index: 2;
         }
 
-        /* ENCABEZADO */
-        .header {
+        /* ENCABEZADO SUPERIOR (100% ANCHO) */
+        .header-top {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            gap: 14px;
-            margin-bottom: 10px;
-            padding-bottom: 6px;
+            gap: 16px;
+            width: 100%;
+            margin-bottom: 8px;
         }
 
-        /* Columna Izquierda: Logo, Tipo de Documento y Datos de la Empresa */
-        .brand-col {
+        /* Columna Empresa y Logo */
+        .company-info-col {
             display: flex;
-            flex-direction: column;
             align-items: flex-start;
-            flex: 1.25;
+            gap: 12px;
+            flex: 1.3;
             min-width: 0;
         }
-
-        /* Contenedor flexible de Logotipo */
-        .logo-wrapper {
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            max-height: ${cfg.maxLogoHeight};
-            max-width: ${cfg.maxLogoWidth};
-            width: auto;
-            height: auto;
-            margin-bottom: 4px;
-        }
         .logo-img {
-            max-height: ${cfg.maxLogoHeight};
-            max-width: ${cfg.maxLogoWidth};
+            max-height: ${cfg.logoMaxHeight};
+            max-width: ${cfg.logoMaxWidth};
             width: auto;
             height: auto;
             object-fit: contain;
             display: block;
         }
+        .company-text {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5px;
+        }
+        .empresa-nombre-grande {
+            font-size: ${cfg.empresaTitleSize};
+            font-weight: 900;
+            color: #0f172a;
+            text-transform: uppercase;
+            letter-spacing: -0.2px;
+            line-height: 1.15;
+        }
+        .empresa-detalle {
+            font-size: ${cfg.empresaDetalleSize};
+            color: #475569;
+            line-height: 1.25;
+        }
+        .empresa-sucursal {
+            font-size: ${cfg.empresaDetalleSize};
+            font-weight: 700;
+            color: #0284c7;
+            text-transform: uppercase;
+            margin-top: 1px;
+        }
 
+        /* Columna Documento y Metadatos */
+        .doc-meta-col {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            text-align: right;
+            flex: 1;
+            min-width: 0;
+            gap: 2px;
+        }
         .title-doc {
-            font-size: 19px;
+            font-size: ${cfg.docTitleSize};
             font-weight: 900;
             letter-spacing: -0.5px;
             color: #0f172a;
             line-height: 1.1;
             text-transform: uppercase;
-            margin-top: 2px;
         }
         .subtitle-software {
-            font-size: 10px;
+            font-size: 8.5px;
             color: #64748b;
             font-weight: 500;
-            margin-top: 2px;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
         }
-        .empresa-nombre-grande {
-            font-size: 12px;
-            font-weight: 800;
-            color: #0f172a;
-            text-transform: uppercase;
-            letter-spacing: -0.2px;
-            margin-bottom: 2px;
-        }
-        .empresa-detalle {
-            font-size: 9.5px;
-            color: #475569;
-            line-height: 1.35;
-        }
-        .empresa-sucursal {
-            font-size: 9.5px;
-            font-weight: 700;
-            color: #0284c7;
-            text-transform: uppercase;
-            margin-top: 2px;
-        }
-
-        /* Columna Central: Datos del Cliente */
-        .client-col {
-            display: flex;
-            flex-direction: column;
-            gap: 3.5px;
-            font-size: 11px;
-            flex: 1.1;
-            background-color: #f1f5f9;
-            padding: 9px 14px;
-            border-radius: 8px;
-            border: none;
-        }
-        .client-row {
-            display: flex;
-            gap: 6px;
-            line-height: 1.25;
-        }
-        .client-label {
-            font-weight: 700;
-            color: #475569;
-            min-width: 68px;
-        }
-        .client-value {
-            color: #0f172a;
-            font-weight: 600;
-        }
-
-        /* Columna Derecha: Metadatos del Documento */
-        .meta-col {
-            text-align: right;
+        .meta-badge-box {
             display: flex;
             flex-direction: column;
             align-items: flex-end;
-            gap: 3px;
-            flex: 0.85;
-        }
-        .meta-date {
-            font-size: 11px;
-            color: #475569;
-            font-weight: 600;
+            gap: 1.5px;
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 4px 10px;
+            border-radius: 4px;
+            width: fit-content;
         }
         .meta-num-row {
-            font-size: 13.5px;
+            font-size: 13px;
             font-weight: 800;
             color: #1e293b;
         }
@@ -361,17 +373,60 @@ function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
             font-family: 'Consolas', monospace;
             font-weight: 900;
         }
-        .meta-control {
+        .meta-date {
             font-size: 9.5px;
+            color: #475569;
+            font-weight: 600;
+        }
+        .meta-control {
+            font-size: 8.5px;
             color: #94a3b8;
             font-family: 'Consolas', monospace;
-            margin-top: 1px;
         }
 
-        /* TABLA DE PRODUCTOS */
+        /* TARJETA DE CLIENTE (100% ANCHO, 2 COLUMNAS BALANCEADAS) */
+        .client-card {
+            width: 100%;
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: ${cfg.clientBoxPadding};
+            font-size: ${cfg.clientFontSize};
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        .client-card-col {
+            display: flex;
+            flex-direction: column;
+            gap: 2.5px;
+            flex: 1;
+        }
+        .client-row {
+            display: flex;
+            gap: 6px;
+            line-height: 1.2;
+        }
+        .client-label {
+            font-weight: 700;
+            color: #64748b;
+            min-width: 60px;
+            text-transform: uppercase;
+            font-size: 8.5px;
+        }
+        .client-value {
+            color: #0f172a;
+            font-weight: 700;
+            word-break: break-word;
+        }
+
+        /* TABLA DE PRODUCTOS (100% ANCHO) */
         .table-container {
-            flex-grow: 1;
-            margin-bottom: 10px;
+            width: 100%;
+            flex: 1 1 auto;
+            margin-bottom: 8px;
         }
         table {
             width: 100%;
@@ -379,71 +434,76 @@ function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
             border: 1px solid #cbd5e1;
             border-radius: 4px;
             overflow: hidden;
+            font-size: ${cfg.tableFontSize};
         }
         thead th {
-            background-color: #1e293b;
+            background-color: #0f172a;
             color: #ffffff;
-            font-size: 10.5px;
+            font-size: 9px;
             font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 0.6px;
-            padding: ${cfg.tablePadding};
+            letter-spacing: 0.5px;
+            padding: ${cfg.tableHeaderPadding};
         }
 
-        /* PIE DE FACTURA: FORMAS DE PAGO Y TOTALES */
+        /* PIE DE FACTURA: FORMAS DE PAGO Y TOTALES (100% ANCHO) */
         .footer-section {
+            width: 100%;
             display: flex;
             justify-content: space-between;
             align-items: flex-end;
-            gap: 16px;
+            gap: 14px;
             position: relative;
             z-index: 10;
+            margin-top: auto;
         }
 
-        /* Caja de Forma de Pago */
+        /* Caja de Forma de Pago / Validez */
         .payment-box {
             flex: 1;
             border: 1px solid #cbd5e1;
             background-color: #ffffff;
-            border-radius: 6px;
-            padding: 8px 14px;
+            border-radius: 4px;
+            padding: 6px 12px;
             box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+            font-size: 9.5px;
         }
         .payment-box-title {
-            font-size: 9.5px;
+            font-size: 8.5px;
             font-weight: 800;
             color: #64748b;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 3px;
-            margin-bottom: 5px;
+            padding-bottom: 2px;
+            margin-bottom: 4px;
         }
         .payment-box-content {
-            font-size: 11.5px;
-            color: #1e293b;
+            font-size: 10.5px;
+            color: #0f172a;
             font-weight: 700;
         }
         .payment-box-details {
-            font-size: 9px;
+            font-size: 8.5px;
             color: #64748b;
             margin-top: 2px;
         }
 
-        /* Caja de Totales (Limpia sin fondo negro) */
+        /* Caja de Totales */
         .totals-box {
-            width: 260px;
+            width: ${cfg.totalsBoxWidth};
             border: 1px solid #cbd5e1;
-            border-radius: 6px;
+            border-radius: 4px;
             overflow: hidden;
             background-color: #ffffff;
             box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+            flex-shrink: 0;
+            font-size: ${cfg.totalsFontSize};
         }
         .totals-row {
             display: flex;
             justify-content: space-between;
-            padding: 6px 14px;
-            font-size: 11.5px;
+            padding: 4px 10px;
         }
         .totals-row-subtotal {
             font-weight: 700;
@@ -453,9 +513,8 @@ function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
         .totals-row-main {
             background-color: #f8fafc;
             color: #0f172a;
-            padding: 8px 14px;
+            padding: 6px 10px;
             font-weight: 900;
-            font-size: 12.5px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -464,14 +523,14 @@ function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
         .totals-main-amount {
             color: #e11d48;
             font-family: 'Consolas', monospace;
-            font-size: 16px;
+            font-size: ${cfg.totalsMainAmountSize};
             font-weight: 900;
         }
         .totals-bs-amount {
-            font-size: 9.5px;
+            font-size: 8.5px;
             color: #64748b;
             text-align: right;
-            padding: 4px 14px;
+            padding: 3px 10px;
             background-color: #ffffff;
             border-top: 1px dashed #e2e8f0;
             font-family: 'Consolas', monospace;
@@ -484,61 +543,63 @@ function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
     <div class="corner-accent"></div>
     <div class="corner-accent-overlay"></div>
 
-    <!-- ENCABEZADO -->
-    <div class="header">
-        <!-- Columna 1: Logo, Tipo de Documento y Datos de la Empresa -->
-        <div class="brand-col">
-            ${logoDataUrl ? `
-            <div class="logo-wrapper">
-                <img src="${logoDataUrl}" class="logo-img" alt="Logo Empresa" />
-            </div>` : ''}
-            <div class="title-doc">${tipoDocumento}</div>
-            <div class="subtitle-software">${subtituloSoftware}</div>
-            ${razonSocial ? `<div class="empresa-nombre-grande">${razonSocial}</div>` : ''}
-            ${rifEmpresa ? `<div class="empresa-detalle"><strong>RIF:</strong> ${rifEmpresa}</div>` : ''}
-            ${domicilioFiscal ? `<div class="empresa-detalle">${domicilioFiscal}</div>` : ''}
-            ${contactoEmpresa ? `<div class="empresa-detalle"><strong>Teléf:</strong> ${contactoEmpresa}</div>` : ''}
-            ${sucursal ? `<div class="empresa-sucursal">📍 ${sucursal}</div>` : ''}
+    <!-- ENCABEZADO SUPERIOR: DATOS EMPRESA + TIPO DOC / NÚMERO -->
+    <div class="header-top">
+        <div class="company-info-col">
+            ${logoDataUrl ? `<img src="${logoDataUrl}" class="logo-img" alt="Logo Empresa" />` : ''}
+            <div class="company-text">
+                ${razonSocial ? `<div class="empresa-nombre-grande">${razonSocial}</div>` : ''}
+                ${rifEmpresa ? `<div class="empresa-detalle"><strong>RIF:</strong> ${rifEmpresa}</div>` : ''}
+                ${domicilioFiscal ? `<div class="empresa-detalle">${domicilioFiscal}</div>` : ''}
+                ${contactoEmpresa ? `<div class="empresa-detalle"><strong>Teléf:</strong> ${contactoEmpresa}</div>` : ''}
+                ${sucursal ? `<div class="empresa-sucursal">📍 ${sucursal}</div>` : ''}
+            </div>
         </div>
 
-        <!-- Columna 2: Datos del Cliente -->
-        <div class="client-col">
+        <div class="doc-meta-col">
+            <div class="title-doc">${tipoDocumento}</div>
+            <div class="subtitle-software">${subtituloSoftware}</div>
+            <div class="meta-badge-box">
+                <div class="meta-num-row">N° <span class="meta-num-val">${factura.numero}</span></div>
+                <div class="meta-date">Fecha: ${factura.fecha} ${factura.hora ? factura.hora : ''}</div>
+                <div class="meta-control">Control: ${factura.control}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TARJETA DE CLIENTE A 100% DE ANCHO -->
+    <div class="client-card">
+        <div class="client-card-col">
             <div class="client-row">
                 <span class="client-label">Cliente:</span>
                 <span class="client-value" style="color: #2563eb; text-transform: uppercase;">${cliente.nombre}</span>
             </div>
             <div class="client-row">
+                <span class="client-label">RIF / CI:</span>
+                <span class="client-value">${cliente.rif || 'V-00000000'}</span>
+            </div>
+        </div>
+        <div class="client-card-col">
+            <div class="client-row">
                 <span class="client-label">Domicilio:</span>
                 <span class="client-value">${cliente.direccion || 'No registrado'}</span>
             </div>
             <div class="client-row">
-                <span class="client-label">RIF/CI:</span>
-                <span class="client-value">${cliente.rif || 'V-XXXXXXXX'}</span>
+                <span class="client-label">Teléfono:</span>
+                <span class="client-value">${cliente.telefono || 'No registrado'}</span>
             </div>
-            ${cliente.telefono ? `
-            <div class="client-row">
-                <span class="client-label">Contacto:</span>
-                <span class="client-value">${cliente.telefono}</span>
-            </div>` : ''}
-        </div>
-
-        <!-- Columna 3: Metadatos del Documento -->
-        <div class="meta-col">
-            <div class="meta-date">Fecha: ${factura.fecha}</div>
-            <div class="meta-num-row">Número: <span class="meta-num-val">${factura.numero}</span></div>
-            <div class="meta-control">Control: ${factura.control}</div>
         </div>
     </div>
 
-    <!-- TABLA DE PRODUCTOS -->
+    <!-- TABLA DE PRODUCTOS A 100% DE ANCHO -->
     <div class="table-container">
         <table>
             <thead>
                 <tr>
-                    <th style="width: 55%; text-align: left;">CONCEPTO</th>
-                    <th style="width: 15%; text-align: center;">CANTIDAD</th>
-                    <th style="width: 15%; text-align: right;">PRECIO</th>
-                    <th style="width: 15%; text-align: right;">TOTAL</th>
+                    <th style="width: 52%; text-align: left;">CONCEPTO</th>
+                    <th style="width: 14%; text-align: center;">CANTIDAD</th>
+                    <th style="width: 17%; text-align: right;">PRECIO</th>
+                    <th style="width: 17%; text-align: right;">TOTAL</th>
                 </tr>
             </thead>
             <tbody>
@@ -547,7 +608,7 @@ function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
         </table>
     </div>
 
-    <!-- SECCIÓN INFERIOR: FORMAS DE PAGO Y TOTALES -->
+    <!-- SECCIÓN INFERIOR: CONDICIONES Y TOTALES (100% ANCHO) -->
     <div class="footer-section">
         <!-- Caja de Forma de Pago / Validez -->
         <div class="payment-box">
@@ -562,12 +623,12 @@ function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
                 Tasa Oficial BCV: Bs. ${factura.tasaCambio.toFixed(2)} por 1.00 USD
             </div>` : ''}
             ${esPresupuesto ? `
-            <div style="font-size: 8.5px; color: #64748b; margin-top: 4px; font-style: italic; line-height: 1.2;">
+            <div style="font-size: 8px; color: #64748b; margin-top: 3px; font-style: italic; line-height: 1.15;">
                 * No representa una factura fiscal ni compromiso de entrega hasta su facturación definitiva.
             </div>` : ''}
         </div>
 
-        <!-- Caja de Totales (Limpia, sin fondo negro) -->
+        <!-- Caja de Totales -->
         <div class="totals-box">
             <div class="totals-row totals-row-subtotal">
                 <span>SUBTOTAL</span>

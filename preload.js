@@ -203,6 +203,7 @@ contextBridge.exposeInMainWorld('nexusAPI', {
     guardarPresupuestoLocal: (datos) => ipcRenderer.invoke('guardar-presupuesto-local', datos),
     obtenerPresupuestosLocal: (filtro) => ipcRenderer.invoke('obtener-presupuestos-local', filtro),
     marcarPresupuestoFacturado: (id) => ipcRenderer.invoke('marcar-presupuesto-facturado', id),
+    anularVentaNoFiscalLocal: (datos) => ipcRenderer.invoke('anular-venta-no-fiscal-local', datos),
     consultarEstadoFiscal: (puerto) => ipcRenderer.invoke('consultar-estado-fiscal', puerto),
     consultarModeloFiscal: (puerto) => ipcRenderer.invoke('consultar-modelo-fiscal', puerto),
     emitirTramasHKA: (tramas, puerto) => ipcRenderer.invoke('emitir-tramas-hka', tramas, puerto),

@@ -73,7 +73,9 @@ if (config.isServer) {
         cuentas_por_cobrar: { id: "INTEGER PRIMARY KEY AUTOINCREMENT", cliente_id: "TEXT", cliente_nombre: "TEXT", monto_bs: "REAL DEFAULT 0", monto_usd: "REAL DEFAULT 0", factura_nro: "TEXT", monto_pagado: "REAL DEFAULT 0", fecha: "TEXT", estado: "TEXT DEFAULT 'PENDIENTE'" },
         facturas_borradores: { id: "TEXT PRIMARY KEY", cliente_nombre: "TEXT", cliente_id: "TEXT", items: "TEXT", subtotal: "REAL DEFAULT 0", iva: "REAL DEFAULT 0", total: "REAL DEFAULT 0", metodos_pago: "TEXT", fecha: "INTEGER", usuario_id: "TEXT", sucursal_id: "TEXT", company_id: "TEXT" },
         cierres_caja_maestros: { id: "TEXT PRIMARY KEY", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", total_ventas_bs: "REAL DEFAULT 0", total_ventas_usd: "REAL DEFAULT 0", total_gastos_bs: "REAL DEFAULT 0", total_gastos_usd: "REAL DEFAULT 0", total_ingresos_bs: "REAL DEFAULT 0", total_diferencia_bs: "REAL DEFAULT 0", total_diferencia_usd: "REAL DEFAULT 0", detalle_pagos_json: "TEXT" },
-        ventas_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_factura: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", monto_exento: "REAL DEFAULT 0", base_imponible: "REAL DEFAULT 0", monto_iva: "REAL DEFAULT 0", total_iva: "REAL DEFAULT 0", monto_igtf: "REAL DEFAULT 0", monto_total: "REAL DEFAULT 0", tasa_bcv: "REAL DEFAULT 1", metodo_pago: "TEXT", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", estado_cierre: "INTEGER DEFAULT 0", es_nota_credito: "INTEGER DEFAULT 0", es_nota_debito: "INTEGER DEFAULT 0", factura_afectada: "TEXT", monto_factura_afectada: "REAL DEFAULT 0", fecha_factura_afectada: "TEXT", comprobante_retencion_id: "TEXT DEFAULT NULL", ganancia_venta: "REAL DEFAULT 0" },
+        movimientos_caja_locales: { id: "TEXT PRIMARY KEY", tipo: "TEXT", concepto: "TEXT", monto: "REAL DEFAULT 0", monto_usd: "REAL DEFAULT 0", metodo_pago: "TEXT", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP", cashier_id: "TEXT", company_id: "TEXT", branch_id: "TEXT", estado_cierre: "INTEGER DEFAULT 0" },
+        ventas_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_factura: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", monto_exento: "REAL DEFAULT 0", base_imponible: "REAL DEFAULT 0", monto_iva: "REAL DEFAULT 0", total_iva: "REAL DEFAULT 0", monto_igtf: "REAL DEFAULT 0", monto_total: "REAL DEFAULT 0", tasa_bcv: "REAL DEFAULT 1", metodo_pago: "TEXT", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", estado_cierre: "INTEGER DEFAULT 0", es_nota_credito: "INTEGER DEFAULT 0", es_nota_debito: "INTEGER DEFAULT 0", factura_afectada: "TEXT", monto_factura_afectada: "REAL DEFAULT 0", fecha_factura_afectada: "TEXT", comprobante_retencion_id: "TEXT DEFAULT NULL", ganancia_venta: "REAL DEFAULT 0", estado: "TEXT DEFAULT 'EMITIDA'", es_anulada: "INTEGER DEFAULT 0" },
+        presupuestos_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_presupuesto: "TEXT UNIQUE", cliente_nombre: "TEXT", cliente_rif: "TEXT", cliente_direccion: "TEXT", cliente_telefono: "TEXT", subtotal: "REAL DEFAULT 0", monto_iva: "REAL DEFAULT 0", monto_total: "REAL DEFAULT 0", tasa_bcv: "REAL DEFAULT 1", moneda: "TEXT DEFAULT 'USD'", validez_dias: "INTEGER DEFAULT 1", estado: "TEXT DEFAULT 'EMITIDO'", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0" },
         configuraciones_maestras: { clave: "TEXT PRIMARY KEY", valor: "TEXT" },
         auditoria_fiscal: { id: "TEXT PRIMARY KEY", usuario: "TEXT", accion: "TEXT", valores: "TEXT", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
         metodos_pago_maestro: { id: "TEXT PRIMARY KEY", nombre: "TEXT NOT NULL", tecla: "TEXT", tipo_moneda: "TEXT DEFAULT 'BS'", activo: "INTEGER DEFAULT 1", flag_impresora: "TEXT DEFAULT '00'" },
@@ -149,6 +151,21 @@ if (config.isServer) {
     }
 
     asegurarEsquema(serverDb, ESQUEMA_MAESTRO);
+
+    try {
+        serverDb.exec(`
+            CREATE INDEX IF NOT EXISTS idx_ventas_cierre_compuesto ON ventas_locales(company_id, branch_id, cashier_id, estado_cierre);
+            CREATE INDEX IF NOT EXISTS idx_ventas_fecha ON ventas_locales(fecha_emision);
+            CREATE INDEX IF NOT EXISTS idx_ventas_factura ON ventas_locales(numero_factura);
+            CREATE INDEX IF NOT EXISTS idx_ventas_estado ON ventas_locales(estado);
+            CREATE INDEX IF NOT EXISTS idx_movimientos_cierre ON movimientos_caja_locales(company_id, tipo, estado_cierre);
+            CREATE INDEX IF NOT EXISTS idx_movimientos_fecha ON movimientos_caja_locales(fecha);
+            CREATE INDEX IF NOT EXISTS idx_presupuestos_nro ON presupuestos_locales(numero_presupuesto);
+            CREATE INDEX IF NOT EXISTS idx_presupuestos_empresa ON presupuestos_locales(company_id, estado);
+        `);
+    } catch(eIdx) {
+        console.warn("Aviso creando índices en serverDb:", eIdx.message);
+    }
 
 
 const checkCorr = serverDb.prepare("SELECT COUNT(*) as count FROM correlativos_maestros").get();
@@ -1671,6 +1688,76 @@ server.post('/api/maestro/registrar-venta', (req, res) => {
         res.json({ exito: true });
     } catch (e) {
         console.error("❌ Error guardando venta en Maestro:", e.message);
+        res.status(500).json({ exito: false, error: e.message });
+    }
+});
+
+server.post('/api/maestro/anular-venta', (req, res) => {
+    const { facturaId, numeroFactura, companyId, branchId, cashierId, productos, metodosReintegro, motivo, clienteNombre } = req.body;
+    console.log(`\n🚫 [API MAESTRO] Anulando Venta/Ticket: ${numeroFactura || facturaId} de Sucursal: ${branchId || 'N/A'}`);
+
+    try {
+        const transaccion = serverDb.transaction(() => {
+            // 1. Marcar venta como ANULADA y ganancia a 0
+            const stmtVenta = serverDb.prepare(`
+                UPDATE ventas_locales 
+                SET estado = 'ANULADA', ganancia_venta = 0, estado_sync = 0
+                WHERE id = ? OR numero_factura = ?
+            `);
+            stmtVenta.run(facturaId || '', numeroFactura || '');
+
+            // 2. Reintegrar stock de los productos físicos
+            if (Array.isArray(productos) && productos.length > 0) {
+                const stmtStockSuc = serverDb.prepare('UPDATE stock_maestro SET cantidad_real = cantidad_real + ?, ultima_sincronizacion = CURRENT_TIMESTAMP WHERE producto_id = ? AND sucursal_id = ?');
+                const stmtStockGlobal = serverDb.prepare('UPDATE stock_maestro SET cantidad_real = cantidad_real + ?, ultima_sincronizacion = CURRENT_TIMESTAMP WHERE producto_id = ?');
+                const stmtKardex = serverDb.prepare('INSERT INTO movimientos_stock_maestro (company_id, sucursal_id, producto_id, cantidad, tipo_movimiento, referencia_id, estado_sync) VALUES (?, ?, ?, ?, ?, ?, 1)');
+
+                productos.forEach(item => {
+                    const cant = parseFloat(item.cantidad || item.qty || 1);
+                    const prodId = item.id || item.producto_id || item.producto_ID;
+                    const nombre = String(item.nombre || item.name || '').toUpperCase();
+                    
+                    if (prodId && cant > 0 && !nombre.includes('ABONO') && !nombre.includes('DEUDA') && !nombre.includes('SERVICIO')) {
+                        if (branchId) {
+                            const resSuc = stmtStockSuc.run(cant, prodId, branchId);
+                            if (resSuc.changes === 0) stmtStockGlobal.run(cant, prodId);
+                        } else {
+                            stmtStockGlobal.run(cant, prodId);
+                        }
+                        try {
+                            stmtKardex.run(companyId || 'DEFAULT', branchId || 'GLOBAL', prodId, cant, 'ANULACION_VENTA', numeroFactura || facturaId);
+                        } catch(eK) {}
+                    }
+                });
+            }
+
+            // 3. Registrar salidas de dinero (GASTO) en movimientos de caja
+            if (Array.isArray(metodosReintegro) && metodosReintegro.length > 0) {
+                const stmtMovCaja = serverDb.prepare(`
+                    INSERT INTO movimientos_caja_locales (
+                        id, tipo, concepto, monto, monto_usd, metodo_pago, fecha, cashier_id, company_id, branch_id, estado_cierre
+                    ) VALUES (?, 'GASTO', ?, ?, ?, ?, datetime('now', 'localtime'), ?, ?, ?, 0)
+                `);
+
+                metodosReintegro.forEach(m => {
+                    const montoBs = parseFloat(m.montoBs || m.monto || 0);
+                    const montoUsd = parseFloat(m.montoUsd || m.monto_usd || 0);
+                    if (montoBs > 0 || montoUsd > 0) {
+                        const idMov = `ANUL-${Date.now()}-${Math.floor(Math.random()*1000)}`;
+                        const concepto = `Anulación Ticket No Fiscal #${numeroFactura || facturaId} - ${clienteNombre || 'Cliente'}`;
+                        stmtMovCaja.run(idMov, concepto, montoBs, montoUsd, m.metodo || m.metodo_pago || 'Efectivo', cashierId || 'SISTEMA', companyId || 'DEFAULT', branchId || 'GLOBAL');
+                    }
+                });
+            }
+        });
+
+        transaccion();
+
+        try { process.send({ tipo: 'stock-actualizado' }); } catch(e) {}
+        console.log(`✅ [API MAESTRO] Venta ${numeroFactura || facturaId} anulada y stock reintegrado con éxito.`);
+        res.json({ exito: true });
+    } catch (e) {
+        console.error("❌ Error anulando venta en Maestro:", e.message);
         res.status(500).json({ exito: false, error: e.message });
     }
 });
