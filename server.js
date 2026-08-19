@@ -1762,6 +1762,97 @@ server.post('/api/maestro/anular-venta', (req, res) => {
     }
 });
 
+// ==========================================
+// 📑 ENDPOINTS MAESTROS PARA PRESUPUESTOS / COTIZACIONES
+// ==========================================
+server.post('/api/maestro/guardar-presupuesto', (req, res) => {
+    const datos = req.body;
+    try {
+        const stmt = serverDb.prepare(`
+            INSERT OR REPLACE INTO presupuestos_locales (
+                id, company_id, branch_id, cashier_id, numero_presupuesto,
+                cliente_nombre, cliente_rif, cliente_direccion, cliente_telefono,
+                subtotal, monto_iva, monto_total, tasa_bcv, moneda, validez_dias,
+                estado, fecha_emision, datos_json, estado_sync
+            ) VALUES (
+                @id, @company_id, @branch_id, @cashier_id, @numero_presupuesto,
+                @cliente_nombre, @cliente_rif, @cliente_direccion, @cliente_telefono,
+                @subtotal, @monto_iva, @monto_total, @tasa_bcv, @moneda, @validez_dias,
+                @estado, @fecha_emision, @datos_json, 1
+            )
+        `);
+
+        stmt.run({
+            id: datos.id || `PRE-${Date.now()}`,
+            company_id: datos.company_id || '',
+            branch_id: datos.branch_id || '',
+            cashier_id: datos.cashier_id || '',
+            numero_presupuesto: datos.numero_presupuesto,
+            cliente_nombre: datos.cliente_nombre || 'CONSUMIDOR FINAL',
+            cliente_rif: datos.cliente_rif || 'V-00000000',
+            cliente_direccion: datos.cliente_direccion || '',
+            cliente_telefono: datos.cliente_telefono || '',
+            subtotal: datos.subtotal || 0,
+            monto_iva: datos.monto_iva || 0,
+            monto_total: datos.monto_total || 0,
+            tasa_bcv: datos.tasa_bcv || 1,
+            moneda: datos.moneda || 'USD',
+            validez_dias: datos.validez_dias || 1,
+            estado: datos.estado || 'EMITIDO',
+            fecha_emision: datos.fecha_emision || new Date().toISOString(),
+            datos_json: typeof datos.datos_json === 'object' ? JSON.stringify(datos.datos_json) : (datos.datos_json || '{}')
+        });
+
+        console.log(`✅ [API MAESTRO] Presupuesto guardado en cerebro: ${datos.numero_presupuesto}`);
+        res.json({ success: true, id: datos.id, numero_presupuesto: datos.numero_presupuesto });
+    } catch (e) {
+        console.error("❌ Error guardando presupuesto en Cerebro:", e.message);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+server.get('/api/maestro/obtener-presupuestos', (req, res) => {
+    const { filtro, companyId, branchId } = req.query;
+    try {
+        let query = `SELECT * FROM presupuestos_locales WHERE 1=1`;
+        const params = [];
+
+        if (companyId) {
+            query += ` AND company_id = ?`;
+            params.push(companyId);
+        }
+
+        if (filtro && filtro.trim()) {
+            const f = `%${filtro.trim()}%`;
+            query += ` AND (numero_presupuesto LIKE ? OR cliente_nombre LIKE ? OR cliente_rif LIKE ?)`;
+            params.push(f, f, f);
+        }
+
+        query += ` ORDER BY fecha_emision DESC LIMIT 100`;
+
+        const rows = serverDb.prepare(query).all(...params);
+        res.json(rows || []);
+    } catch (e) {
+        console.error("❌ Error obteniendo presupuestos en Cerebro:", e.message);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+server.post('/api/maestro/marcar-presupuesto-facturado', (req, res) => {
+    const { id } = req.body;
+    try {
+        serverDb.prepare(`
+            UPDATE presupuestos_locales 
+            SET estado = 'CONVERTIDO_A_VENTA' 
+            WHERE id = ? OR numero_presupuesto = ?
+        `).run(id, id);
+        res.json({ success: true });
+    } catch (e) {
+        console.error("❌ Error marcando presupuesto como facturado:", e.message);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 server.post('/api/maestro/registrar-reporte-fiscal', (req, res) => {
     const { tipo, z_number, json_data, branch_id, company_id } = req.body;
     console.log(`\n📄 [API MAESTRO] Recibiendo Reporte Fiscal: ${tipo} (${z_number}) de Sucursal: ${branch_id}`);

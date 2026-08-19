@@ -547,8 +547,30 @@ ipcMain.handle('guardar-guia-despacho-maestro', async (event, datos) => {
 // ==========================================
 ipcMain.handle('guardar-presupuesto-local', async (event, datos) => {
     try {
+        const payload = {
+            id: datos.id || `PRE-${Date.now()}`,
+            company_id: datos.company_id || '',
+            branch_id: datos.branch_id || '',
+            cashier_id: datos.cashier_id || '',
+            numero_presupuesto: datos.numero_presupuesto,
+            cliente_nombre: datos.cliente_nombre || 'CONSUMIDOR FINAL',
+            cliente_rif: datos.cliente_rif || 'V-00000000',
+            cliente_direccion: datos.cliente_direccion || '',
+            cliente_telefono: datos.cliente_telefono || '',
+            subtotal: parseFloat(datos.subtotal || 0),
+            monto_iva: parseFloat(datos.monto_iva || 0),
+            monto_total: parseFloat(datos.monto_total || 0),
+            tasa_bcv: parseFloat(datos.tasa_bcv || 1),
+            moneda: datos.moneda || 'USD',
+            validez_dias: parseInt(datos.validez_dias || 1),
+            estado: datos.estado || 'EMITIDO',
+            fecha_emision: datos.fecha_emision || new Date().toISOString(),
+            datos_json: typeof datos.datos_json === 'object' ? JSON.stringify(datos.datos_json) : (datos.datos_json || '{}')
+        };
+
+        // 1. Guardar en SQLite local
         const stmt = db.prepare(`
-            INSERT INTO presupuestos_locales (
+            INSERT OR REPLACE INTO presupuestos_locales (
                 id, company_id, branch_id, cashier_id, numero_presupuesto,
                 cliente_nombre, cliente_rif, cliente_direccion, cliente_telefono,
                 subtotal, monto_iva, monto_total, tasa_bcv, moneda, validez_dias,
@@ -560,49 +582,124 @@ ipcMain.handle('guardar-presupuesto-local', async (event, datos) => {
                 @estado, @fecha_emision, @datos_json, 0
             )
         `);
+        stmt.run(payload);
 
-        stmt.run({
-            id: datos.id || `PRE-${Date.now()}`,
-            company_id: datos.company_id || '',
-            branch_id: datos.branch_id || '',
-            cashier_id: datos.cashier_id || '',
-            numero_presupuesto: datos.numero_presupuesto,
-            cliente_nombre: datos.cliente_nombre || 'CONSUMIDOR FINAL',
-            cliente_rif: datos.cliente_rif || 'V-00000000',
-            cliente_direccion: datos.cliente_direccion || '',
-            cliente_telefono: datos.cliente_telefono || '',
-            subtotal: datos.subtotal || 0,
-            monto_iva: datos.monto_iva || 0,
-            monto_total: datos.monto_total || 0,
-            tasa_bcv: datos.tasa_bcv || 1,
-            moneda: datos.moneda || 'USD',
-            validez_dias: datos.validez_dias || 1,
-            estado: datos.estado || 'EMITIDO',
-            fecha_emision: datos.fecha_emision || new Date().toISOString(),
-            datos_json: typeof datos.datos_json === 'object' ? JSON.stringify(datos.datos_json) : (datos.datos_json || '{}')
-        });
+        // 2. Si es servidor y masterDbDirect está abierto, guardar en maestro directo
+        if (config.isServer && masterDbDirect) {
+            try {
+                masterDbDirect.prepare(`
+                    INSERT OR REPLACE INTO presupuestos_locales (
+                        id, company_id, branch_id, cashier_id, numero_presupuesto,
+                        cliente_nombre, cliente_rif, cliente_direccion, cliente_telefono,
+                        subtotal, monto_iva, monto_total, tasa_bcv, moneda, validez_dias,
+                        estado, fecha_emision, datos_json, estado_sync
+                    ) VALUES (
+                        @id, @company_id, @branch_id, @cashier_id, @numero_presupuesto,
+                        @cliente_nombre, @cliente_rif, @cliente_direccion, @cliente_telefono,
+                        @subtotal, @monto_iva, @monto_total, @tasa_bcv, @moneda, @validez_dias,
+                        @estado, @fecha_emision, @datos_json, 1
+                    )
+                `).run(payload);
+            } catch(eMaster) {
+                console.warn("Aviso guardando presupuesto en masterDbDirect:", eMaster.message);
+            }
+        }
+
+        // 3. Si es caja hija (isServer = false), enviar por red al servidor maestro
+        if (!config.isServer) {
+            try {
+                await llamarMaestro('POST', '/api/maestro/guardar-presupuesto', payload);
+                db.prepare(`UPDATE presupuestos_locales SET estado_sync = 1 WHERE id = ?`).run(payload.id);
+            } catch(eNet) {
+                console.warn("⚠️ [PRESUPUESTO] Servidor maestro inaccesible. Guardado en local para sincronización posterior:", eNet.message);
+            }
+        }
 
         console.log(`✅ [PRESUPUESTO] Presupuesto guardado exitosamente: ${datos.numero_presupuesto}`);
-        return { success: true, id: datos.id, numero_presupuesto: datos.numero_presupuesto };
+        return { success: true, id: payload.id, numero_presupuesto: payload.numero_presupuesto };
     } catch (error) {
         console.error("❌ Error guardando presupuesto en SQLite:", error);
         return { success: false, error: error.message };
     }
 });
 
-ipcMain.handle('obtener-presupuestos-local', async (event, filtro = '') => {
+ipcMain.handle('obtener-presupuestos-local', async (event, filtro = '', companyId = '', branchId = '') => {
     try {
-        let rows;
+        // 1. Si es caja hija, consultar primero al Servidor Maestro
+        if (!config.isServer) {
+            try {
+                const params = new URLSearchParams();
+                if (filtro) params.append('filtro', filtro);
+                if (companyId) params.append('companyId', companyId);
+                if (branchId) params.append('branchId', branchId);
+
+                const resMaestro = await llamarMaestro('GET', `/api/maestro/obtener-presupuestos?${params.toString()}`);
+                if (Array.isArray(resMaestro.data)) {
+                    // Cachear en SQLite local
+                    const insertStmt = db.prepare(`
+                        INSERT OR REPLACE INTO presupuestos_locales (
+                            id, company_id, branch_id, cashier_id, numero_presupuesto,
+                            cliente_nombre, cliente_rif, cliente_direccion, cliente_telefono,
+                            subtotal, monto_iva, monto_total, tasa_bcv, moneda, validez_dias,
+                            estado, fecha_emision, datos_json, estado_sync
+                        ) VALUES (
+                            @id, @company_id, @branch_id, @cashier_id, @numero_presupuesto,
+                            @cliente_nombre, @cliente_rif, @cliente_direccion, @cliente_telefono,
+                            @subtotal, @monto_iva, @monto_total, @tasa_bcv, @moneda, @validez_dias,
+                            @estado, @fecha_emision, @datos_json, 1
+                        )
+                    `);
+
+                    db.transaction(() => {
+                        for (const row of resMaestro.data) {
+                            insertStmt.run({
+                                id: row.id,
+                                company_id: row.company_id || '',
+                                branch_id: row.branch_id || '',
+                                cashier_id: row.cashier_id || '',
+                                numero_presupuesto: row.numero_presupuesto,
+                                cliente_nombre: row.cliente_nombre || 'CONSUMIDOR FINAL',
+                                cliente_rif: row.cliente_rif || 'V-00000000',
+                                cliente_direccion: row.cliente_direccion || '',
+                                cliente_telefono: row.cliente_telefono || '',
+                                subtotal: row.subtotal || 0,
+                                monto_iva: row.monto_iva || 0,
+                                monto_total: row.monto_total || 0,
+                                tasa_bcv: row.tasa_bcv || 1,
+                                moneda: row.moneda || 'USD',
+                                validez_dias: row.validez_dias || 1,
+                                estado: row.estado || 'EMITIDO',
+                                fecha_emision: row.fecha_emision || new Date().toISOString(),
+                                datos_json: typeof row.datos_json === 'object' ? JSON.stringify(row.datos_json) : (row.datos_json || '{}')
+                            });
+                        }
+                    })();
+
+                    return resMaestro.data;
+                }
+            } catch (eNet) {
+                console.warn("⚠️ [PRESUPUESTO] No se pudo consultar maestro vía red. Consultando base de datos local:", eNet.message);
+            }
+        }
+
+        // 2. Si es servidor o si la red falló, consultar base de datos local
+        const targetDb = (config.isServer && masterDbDirect) ? masterDbDirect : db;
+        let query = `SELECT * FROM presupuestos_locales WHERE 1=1`;
+        const params = [];
+
+        if (companyId) {
+            query += ` AND company_id = ?`;
+            params.push(companyId);
+        }
+
         if (filtro && filtro.trim()) {
             const f = `%${filtro.trim()}%`;
-            rows = db.prepare(`
-                SELECT * FROM presupuestos_locales 
-                WHERE numero_presupuesto LIKE ? OR cliente_nombre LIKE ? OR cliente_rif LIKE ?
-                ORDER BY fecha_emision DESC LIMIT 100
-            `).all(f, f, f);
-        } else {
-            rows = db.prepare(`SELECT * FROM presupuestos_locales ORDER BY fecha_emision DESC LIMIT 100`).all();
+            query += ` AND (numero_presupuesto LIKE ? OR cliente_nombre LIKE ? OR cliente_rif LIKE ?)`;
+            params.push(f, f, f);
         }
+
+        query += ` ORDER BY fecha_emision DESC LIMIT 100`;
+        const rows = targetDb.prepare(query).all(...params);
         return rows || [];
     } catch (error) {
         console.error("❌ Error obteniendo presupuestos:", error);
@@ -617,6 +714,25 @@ ipcMain.handle('marcar-presupuesto-facturado', async (event, idOPresupuesto) => 
             SET estado = 'CONVERTIDO_A_VENTA' 
             WHERE id = ? OR numero_presupuesto = ?
         `).run(idOPresupuesto, idOPresupuesto);
+
+        if (config.isServer && masterDbDirect) {
+            try {
+                masterDbDirect.prepare(`
+                    UPDATE presupuestos_locales 
+                    SET estado = 'CONVERTIDO_A_VENTA' 
+                    WHERE id = ? OR numero_presupuesto = ?
+                `).run(idOPresupuesto, idOPresupuesto);
+            } catch(eM) {}
+        }
+
+        if (!config.isServer) {
+            try {
+                await llamarMaestro('POST', '/api/maestro/marcar-presupuesto-facturado', { id: idOPresupuesto });
+            } catch(eNet) {
+                console.warn("Aviso notificando presupuesto facturado al maestro:", eNet.message);
+            }
+        }
+
         return { success: true };
     } catch (error) {
         console.error("❌ Error actualizando estado del presupuesto:", error);
