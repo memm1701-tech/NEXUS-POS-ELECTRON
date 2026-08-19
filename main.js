@@ -1884,10 +1884,14 @@ ipcMain.handle('buscar-producto-por-codigo', async (event, { codigo, empresaId }
             const ipMaestro = getIpMaestro();
             if (ipMaestro) {
                 const url = `http://${ipMaestro}:3000/api/maestro/buscar-producto-por-codigo?codigo=${encodeURIComponent(codigo || '')}&empresaId=${encodeURIComponent(empresaId || '')}`;
-                const reqFetch = await fetch(url, { signal: AbortSignal.timeout(6000) });
-                if (reqFetch.ok) {
-                    const data = await reqFetch.json();
-                    if (data && typeof data === 'object' && !data.error) return data;
+                try {
+                    const reqFetch = await fetch(url, { signal: AbortSignal.timeout(6000) });
+                    if (reqFetch.ok) {
+                        const data = await reqFetch.json();
+                        if (data && typeof data === 'object' && !data.error) return data;
+                    }
+                } catch(errFetch) {
+                    console.warn("⚠️ [buscar-producto-por-codigo] Error fetch al Maestro:", errFetch.message);
                 }
             }
         }
@@ -1895,22 +1899,22 @@ ipcMain.handle('buscar-producto-por-codigo', async (event, { codigo, empresaId }
         const codigoLimpio = String(codigo || '').trim();
         if (!codigoLimpio) return null;
         let stmt;
-        if (empresaId) {
+        if (empresaId && empresaId !== 'undefined' && empresaId.trim() !== '') {
             stmt = db.prepare(`
                 SELECT *
                 FROM productos_locales
-                WHERE company_id = ? AND codigo = ? AND status != -1 AND status != 0
+                WHERE company_id = ? AND (codigo = ? OR id = ?) AND status != -1 AND status != 0
                 LIMIT 1
             `);
-            return stmt.get(empresaId, codigoLimpio) || null;
+            return stmt.get(empresaId, codigoLimpio, codigoLimpio) || null;
         } else {
             stmt = db.prepare(`
                 SELECT *
                 FROM productos_locales
-                WHERE codigo = ? AND status != -1 AND status != 0
+                WHERE (codigo = ? OR id = ?) AND status != -1 AND status != 0
                 LIMIT 1
             `);
-            return stmt.get(codigoLimpio) || null;
+            return stmt.get(codigoLimpio, codigoLimpio) || null;
         }
     } catch (e) {
         console.error("❌ Error en buscar-producto-por-codigo:", e);
@@ -2917,6 +2921,11 @@ ipcMain.handle('sincronizar-producto-servidor', async (event, p) => {
             BrowserWindow.getAllWindows().forEach(ventana => {
                 if (!ventana.isDestroyed()) ventana.webContents.send('productos-actualizados');
             });
+            if (config.isServer) {
+                try {
+                    axios.get('http://127.0.0.1:3000/api/maestro/notificar-cambio/productos').catch(() => {});
+                } catch(e) {}
+            }
         }
 
         return resultado;

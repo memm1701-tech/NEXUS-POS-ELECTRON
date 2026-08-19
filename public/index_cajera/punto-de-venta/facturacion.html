@@ -2524,27 +2524,43 @@ window.refrescarPreciosCarrito = async function() {
         const item = cart[i];
         
         // No tocar abonos de deuda ni registros especiales
-        if (!item || item.id === 'PAGO-DEUDA' || item.codigo === 'DEUDA' || !item.codigo) continue;
+        if (!item || item.id === 'PAGO-DEUDA' || item.codigo === 'DEUDA') continue;
 
         try {
             let prodActualizado = null;
+            const identificador = item.codigo || item.id || item.producto_id;
 
-            // 1. Buscar en la base de datos local por código de barras / ID
-            if (window.nexusAPI && window.nexusAPI.buscarProductoPorCodigo) {
-                const rawDB = await window.nexusAPI.buscarProductoPorCodigo(item.codigo, window.companyId);
-                if (rawDB) {
+            // 1. Buscar en la base de datos local / Maestro por código de barras o ID
+            if (window.nexusAPI && window.nexusAPI.buscarProductoPorCodigo && identificador) {
+                const rawDB = await window.nexusAPI.buscarProductoPorCodigo(identificador, window.companyId);
+                if (rawDB && !rawDB.error) {
                     prodActualizado = (typeof _mapearProductoCaja === 'function') 
                         ? _mapearProductoCaja(rawDB) 
                         : rawDB;
                 }
             }
 
-            // 2. Si no se encontró por código, intentar buscar en allProducts en memoria
+            // 2. Si no se encontró por API local, consultar directamente al Servidor Maestro vía HTTP
+            if (!prodActualizado && window.SERVER_URL && identificador) {
+                try {
+                    const resp = await fetch(`${window.SERVER_URL}/api/maestro/buscar-producto-por-codigo?codigo=${encodeURIComponent(identificador)}&empresaId=${window.companyId || ''}`, {
+                        signal: AbortSignal.timeout(4000)
+                    });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        if (data && typeof data === 'object' && !data.error) {
+                            prodActualizado = (typeof _mapearProductoCaja === 'function') ? _mapearProductoCaja(data) : data;
+                        }
+                    }
+                } catch(e) {}
+            }
+
+            // 3. Fallback a allProducts en memoria
             if (!prodActualizado && typeof allProducts !== 'undefined' && Array.isArray(allProducts)) {
                 prodActualizado = allProducts.find(p => 
                     (p.id !== undefined && String(p.id) === String(item.id)) ||
                     (p.producto_ID !== undefined && String(p.producto_ID) === String(item.id)) ||
-                    (p.codigo && String(p.codigo).trim().toUpperCase() === String(item.codigo).trim().toUpperCase())
+                    (p.codigo && item.codigo && String(p.codigo).trim().toUpperCase() === String(item.codigo).trim().toUpperCase())
                 );
             }
 
@@ -11130,7 +11146,7 @@ window.confirmarAnulacionFinal = async function() {
 
 window.addEventListener('productosActualizadosBackground', async () => {
     console.log("🔄 [FACTURACIÓN] ¡Llegaron productos de la nube / actualización! Recargando catálogo y refrescando carrito...");
-    
+    allProducts = [];
     if (typeof fetchProducts === 'function') {
         await fetchProducts();
     }
@@ -11145,12 +11161,25 @@ window.addEventListener('productosActualizadosBackground', async () => {
     }
 });
 
+if (window.nexusAPI && typeof window.nexusAPI.onProductosCambiados === 'function') {
+    window.nexusAPI.onProductosCambiados(async () => {
+        console.log("⚡ [FACTURACIÓN] IPC productos-actualizados recibido.");
+        allProducts = [];
+        if (typeof fetchProducts === 'function') await fetchProducts();
+        if (typeof window.refrescarPreciosCarrito === 'function') await window.refrescarPreciosCarrito();
+        if (typeof renderCart === 'function') renderCart();
+    });
+}
+
 if (window.parent && window.parent !== window) {
     try {
         window.parent.addEventListener('productosActualizadosBackground', async () => {
+            allProducts = [];
+            if (typeof fetchProducts === 'function') await fetchProducts();
             if (typeof window.refrescarPreciosCarrito === 'function') {
                 await window.refrescarPreciosCarrito();
             }
+            if (typeof renderCart === 'function') renderCart();
         });
     } catch(e){}
 }

@@ -581,6 +581,15 @@ server.put('/api/maestro/metodos-pago/:id', (req, res) => {
                 datosJsonStr
             );
 
+            // Notificar a cajas hijas conectadas por SSE
+            if (Array.isArray(cajasEscuchando)) {
+                cajasEscuchando.forEach(caja => {
+                    try {
+                        caja.write('data: CAMBIO_PRODUCTOS\n\n');
+                    } catch(e){}
+                });
+            }
+
             res.json({ success: true, id: id });
         } catch (e) {
             console.error("❌ Error en servidor Maestro (inventario/sincronizar):", e.message);
@@ -1319,20 +1328,20 @@ server.get('/api/maestro/buscar-producto-por-codigo', (req, res) => {
         if (!codigoLimpio) return res.json(null);
         const activeDb = getPosDb() || serverDb;
         let stmt;
-        if (empresaId && empresaId !== 'undefined') {
+        if (empresaId && empresaId !== 'undefined' && empresaId.trim() !== '') {
             stmt = activeDb.prepare(`
                 SELECT * FROM productos_locales
-                WHERE company_id = ? AND codigo = ? AND status != -1 AND status != 0
+                WHERE company_id = ? AND (codigo = ? OR id = ?) AND status != -1 AND status != 0
                 LIMIT 1
             `);
-            res.json(stmt.get(empresaId, codigoLimpio) || null);
+            res.json(stmt.get(empresaId, codigoLimpio, codigoLimpio) || null);
         } else {
             stmt = activeDb.prepare(`
                 SELECT * FROM productos_locales
-                WHERE codigo = ? AND status != -1 AND status != 0
+                WHERE (codigo = ? OR id = ?) AND status != -1 AND status != 0
                 LIMIT 1
             `);
-            res.json(stmt.get(codigoLimpio) || null);
+            res.json(stmt.get(codigoLimpio, codigoLimpio) || null);
         }
     } catch (error) {
         console.error("❌ Error en Maestro buscando producto por código:", error.message);

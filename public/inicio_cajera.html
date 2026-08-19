@@ -731,7 +731,7 @@ async function iniciarSincronizacionSilenciosa() {
     }
 
     async function descargarActualizacionesDeInventario() {
-        if (window.esCajaHija || !respaldoActivo || !SERVER_URL || !currentCompanyId || window.descargandoFondo) return;
+        if ((!window.esCajaHija && !respaldoActivo) || !SERVER_URL || !currentCompanyId || window.descargandoFondo) return;
 
         window.descargandoFondo = true;
         try {
@@ -827,7 +827,7 @@ async function iniciarSincronizacionSilenciosa() {
     }
 
     async function descargarActualizacionesDeCategorias() {
-        if (window.esCajaHija || !respaldoActivo || !SERVER_URL || !currentCompanyId || window.descargandoCategorias) return;
+        if ((!window.esCajaHija && !respaldoActivo) || !SERVER_URL || !currentCompanyId || window.descargandoCategorias) return;
 
         window.descargandoCategorias = true;
         try {
@@ -938,9 +938,9 @@ async function inicializarDashboard() {
                 const homeLink = document.getElementById('home-link');
                 if (homeLink) homeLink.closest("li").classList.add("active");
 
-                // 🔥 ARRANQUE EN FRÍO INMEDIATO (Solo en Servidor Maestro con Respaldo VPS Activo)
-                if (!window.esCajaHija && respaldoActivo) {
-                    iniciarSincronizacionSilenciosa();
+                // 🔥 ARRANQUE EN FRÍO INMEDIATO (Servidor Maestro o Caja Hija conectada a Maestro)
+                if (window.esCajaHija || respaldoActivo) {
+                    if (!window.esCajaHija) iniciarSincronizacionSilenciosa();
                     descargarActualizacionesDeInventario();
                     descargarActualizacionesDeCategorias();
                 }
@@ -1164,8 +1164,8 @@ async function inicializarDashboard() {
         }
 
         if (estadoConexion) {
-            if (!window.esCajaHija && respaldoActivo) {
-                if (!sincronizando) {
+            if (window.esCajaHija || respaldoActivo) {
+                if (!window.esCajaHija && !sincronizando) {
                     iniciarSincronizacionSilenciosa();
                 }
 
