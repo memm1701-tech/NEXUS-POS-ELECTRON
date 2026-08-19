@@ -1341,6 +1341,58 @@ setTimeout(() => {
     </div>
 </div>
 
+<!-- MODAL DE VISTA PREVIA Y ACCIONES DE FACTURA PDF ESTÁNDAR -->
+<div id="modal-preview-pdf-factura" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[999999] flex items-center justify-center p-3 sm:p-6 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col max-h-[95vh] overflow-hidden border border-slate-200">
+        <!-- Encabezado del Modal (Blanco Limpio) -->
+        <div class="px-6 py-4 bg-white text-slate-800 flex items-center justify-between border-b border-slate-200">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg border border-blue-100">
+                    <i class="fas fa-file-invoice"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h3 class="font-bold text-base text-slate-800 tracking-wide">Documento Generado</h3>
+                        <span id="badge-formato-pdf-factura" class="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                            CARTA
+                        </span>
+                    </div>
+                    <p id="label-impresora-pdf-factura" class="text-xs text-slate-500 font-medium">Impresora Estándar</p>
+                </div>
+            </div>
+            <button onclick="window.cerrarModalPdfFactura()" class="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-2 rounded-lg transition-colors" title="Cerrar">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Visor Embebido del PDF -->
+        <div class="flex-1 bg-slate-100 p-3 min-h-[480px] flex items-center justify-center">
+            <iframe id="iframe-preview-pdf-factura" src="about:blank" class="w-full h-[62vh] rounded-xl border border-slate-300 bg-white shadow-sm" frameborder="0"></iframe>
+        </div>
+
+        <!-- Pie de Acciones -->
+        <div class="px-6 py-4 bg-white border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+            <div class="text-xs text-slate-500 flex items-center gap-2">
+                <i class="fas fa-info-circle text-blue-500 text-sm"></i>
+                <span>Documento listo para enviar a la impresora seleccionada o guardar en su equipo.</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="window.cerrarModalPdfFactura()" class="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold text-sm transition-all">
+                    Cerrar
+                </button>
+                <button id="btn-guardar-pdf-modal" onclick="window.guardarPdfFacturaActual()" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow hover:shadow-md transition-all flex items-center gap-2">
+                    <i class="fas fa-file-pdf"></i>
+                    <span>Guardar PDF</span>
+                </button>
+                <button id="btn-imprimir-pdf-modal" onclick="window.imprimirPdfFacturaActual()" class="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow hover:shadow-md transition-all flex items-center gap-2">
+                    <i class="fas fa-print"></i>
+                    <span>Imprimir</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script type="module">
 
 function updateWeightUI(isEnabled) {
@@ -2067,6 +2119,14 @@ function updateCartAndRender(producto, cantidad) {
         if (isNaN(gananciaUnit) || gananciaUnit < 0) gananciaUnit = 0;
     }
 
+    let unidadProd = producto.unit || producto.unidad || 'UN';
+    if (producto.datos_json) {
+        try {
+            const dj = typeof producto.datos_json === 'string' ? JSON.parse(producto.datos_json) : producto.datos_json;
+            if (dj.unit || dj.unidad) unidadProd = dj.unit || dj.unidad;
+        } catch(e){}
+    }
+
     const itemCarrito = {
         ganancia_unitaria: parseFloat(gananciaUnit.toFixed(4)),
         precio_compra: precioCompraCalc,
@@ -2075,6 +2135,8 @@ function updateCartAndRender(producto, cantidad) {
         nombre: producto.nombre,
         codigo: producto.codigo || 'S/C',
         cantidad: cantidad,
+        unit: unidadProd,
+        unidad: unidadProd,
         precio: precioUnitario,
         tier: 'p1', 
         tasaIva: porcentajeIva,
@@ -7878,6 +7940,210 @@ function generarComandoQR_ESC_POS(text) {
     return qr;
 }
 
+async function convertirPNGaESCPOS(base64Image, maxWidth = 384) {
+    if (!base64Image) return "";
+    return new Promise((resolve) => {
+        try {
+            const img = new Image();
+            img.onload = () => {
+                try {
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > maxWidth) {
+                        const ratio = maxWidth / width;
+                        width = maxWidth;
+                        height = Math.round(height * ratio);
+                    }
+
+                    const widthBytes = Math.ceil(width / 8);
+                    width = widthBytes * 8;
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(0, 0, width, height);
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    const imgData = ctx.getImageData(0, 0, width, height);
+                    const data = imgData.data;
+
+                    const rasterData = [];
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < widthBytes; x++) {
+                            let byteVal = 0;
+                            for (let bit = 0; bit < 8; bit++) {
+                                const px = (x * 8) + bit;
+                                const idx = (y * width + px) * 4;
+                                const r = data[idx];
+                                const g = data[idx + 1];
+                                const b = data[idx + 2];
+                                const a = data[idx + 3];
+
+                                let isBlack = false;
+                                if (a > 128) {
+                                    const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+                                    if (luminance < 170) {
+                                        isBlack = true;
+                                    }
+                                }
+
+                                if (isBlack) {
+                                    byteVal |= (1 << (7 - bit));
+                                }
+                            }
+                            rasterData.push(String.fromCharCode(byteVal));
+                        }
+                    }
+
+                    const xL = widthBytes % 256;
+                    const xH = Math.floor(widthBytes / 256);
+                    const yL = height % 256;
+                    const yH = Math.floor(height / 256);
+
+                    let escpos = "\x1B\x61\x01"; // Centrar
+                    escpos += `\x1D\x76\x30\x00${String.fromCharCode(xL)}${String.fromCharCode(xH)}${String.fromCharCode(yL)}${String.fromCharCode(yH)}`;
+                    escpos += rasterData.join('');
+                    escpos += "\x1B\x61\x00"; // Restaurar alineación
+                    escpos += "\r\n";
+
+                    resolve(escpos);
+                } catch(e) {
+                    console.warn("Error rasterizando imagen ESC/POS:", e);
+                    resolve("");
+                }
+            };
+            img.onerror = () => resolve("");
+            img.src = base64Image;
+        } catch (err) {
+            console.warn("Error cargando imagen para ESC/POS:", err);
+            resolve("");
+        }
+    });
+}
+
+window.currentGeneratedPDFData = null;
+
+window.mostrarModalPdfFactura = function({ pdfBase64, rawBufferBase64, htmlContent, datosFactura, formatoPapel, impresoraEstandar }) {
+    window.currentGeneratedPDFData = {
+        pdfBase64,
+        rawBufferBase64,
+        htmlContent,
+        datosFactura,
+        formatoPapel: formatoPapel || 'CARTA',
+        impresoraEstandar: impresoraEstandar || ''
+    };
+
+    const modal = document.getElementById('modal-preview-pdf-factura');
+    const iframe = document.getElementById('iframe-preview-pdf-factura');
+    const badgeFormato = document.getElementById('badge-formato-pdf-factura');
+    const labelImpresora = document.getElementById('label-impresora-pdf-factura');
+
+    if (badgeFormato) {
+        badgeFormato.textContent = (formatoPapel || 'CARTA').replace('_', ' ');
+    }
+
+    if (labelImpresora) {
+        labelImpresora.textContent = impresoraEstandar ? `Impresora: ${impresoraEstandar}` : 'Impresora Estándar';
+    }
+
+    if (iframe) {
+        if (htmlContent) {
+            iframe.srcdoc = htmlContent;
+        } else if (pdfBase64) {
+            iframe.src = pdfBase64;
+        }
+    }
+
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+};
+
+window.cerrarModalPdfFactura = function() {
+    const modal = document.getElementById('modal-preview-pdf-factura');
+    const iframe = document.getElementById('iframe-preview-pdf-factura');
+    if (iframe) iframe.src = 'about:blank';
+    if (modal) modal.classList.add('hidden');
+    window.currentGeneratedPDFData = null;
+};
+
+window.imprimirPdfFacturaActual = async function() {
+    if (!window.currentGeneratedPDFData) return;
+    const { datosFactura, formatoPapel, impresoraEstandar } = window.currentGeneratedPDFData;
+    
+    const btnImprimir = document.getElementById('btn-imprimir-pdf-modal');
+    if (btnImprimir) {
+        btnImprimir.disabled = true;
+        btnImprimir.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Imprimiendo...';
+    }
+
+    try {
+        const res = await window.nexusAPI.imprimirPdfFactura({
+            datosFactura,
+            formatoPapel,
+            nombreImpresora: impresoraEstandar
+        });
+
+        if (res && res.success) {
+            if (typeof messageBox === 'function') messageBox("✅ Factura enviada a la impresora.", "bg-green-500");
+        } else if (res && res.canceled) {
+            // Usuario canceló o cerró el cuadro de diálogo
+        } else {
+            if (typeof messageBox === 'function') messageBox("⚠️ No se pudo completar la impresión: " + (res?.error || "Error"), "bg-orange-500");
+        }
+    } catch(e) {
+        console.error("Error imprimiendo PDF:", e);
+        if (typeof messageBox === 'function') messageBox("❌ Error al imprimir: " + e.message, "bg-red-500");
+    } finally {
+        if (btnImprimir) {
+            btnImprimir.disabled = false;
+            btnImprimir.innerHTML = '<i class="fas fa-print mr-2"></i>Imprimir';
+        }
+    }
+};
+
+window.guardarPdfFacturaActual = async function() {
+    if (!window.currentGeneratedPDFData) return;
+    const { rawBufferBase64, pdfBase64, datosFactura } = window.currentGeneratedPDFData;
+    
+    const nroDoc = datosFactura?.factura?.numero || 'Documento';
+    const suggestedName = `Factura_${String(nroDoc).replace(/[^a-zA-Z0-9-_]/g, '')}.pdf`;
+
+    const btnGuardar = document.getElementById('btn-guardar-pdf-modal');
+    if (btnGuardar) {
+        btnGuardar.disabled = true;
+        btnGuardar.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Guardando...';
+    }
+
+    try {
+        const res = await window.nexusAPI.guardarPdfFactura({
+            rawBufferBase64,
+            pdfBase64,
+            nombreArchivoSugerido: suggestedName
+        });
+
+        if (res && res.success) {
+            if (typeof messageBox === 'function') messageBox("✅ Archivo PDF guardado exitosamente.", "bg-green-500");
+        } else if (res && res.canceled) {
+            // Cancelado por el usuario
+        } else {
+            if (typeof messageBox === 'function') messageBox("❌ Error al guardar PDF: " + (res?.error || "Error"), "bg-red-500");
+        }
+    } catch(e) {
+        console.error("Error guardando PDF:", e);
+        if (typeof messageBox === 'function') messageBox("❌ Error: " + e.message, "bg-red-500");
+    } finally {
+        if (btnGuardar) {
+            btnGuardar.disabled = false;
+            btnGuardar.innerHTML = '<i class="fas fa-file-pdf mr-2"></i>Guardar PDF';
+        }
+    }
+};
+
 async function printInvoice(saleData = null) {
     if (cart.length === 0 && window.modoOperacion !== 'NOTA_CREDITO') {
         if (typeof messageBox === 'function') messageBox("El carrito está vacío.", 'bg-red-500');
@@ -7886,14 +8152,19 @@ async function printInvoice(saleData = null) {
 
     const clienteActivo = saleData ? { 
         nombre: saleData.cliente_nombre || saleData.cliente?.nombre, 
-        rif: saleData.cliente_rif || saleData.cliente?.rif 
-    } : selectedCustomer;
+        rif: saleData.cliente_rif || saleData.cliente?.rif,
+        direccion: saleData.cliente_direccion || saleData.cliente?.direccion || 'No registrado',
+        telefono: saleData.cliente_telefono || saleData.cliente?.telefono || ''
+    } : (selectedCustomer || { nombre: 'CONSUMIDOR FINAL', rif: 'V-00000000', direccion: 'No registrado', telefono: '' });
 
     if (!clienteActivo) {
         if (typeof messageBox === 'function') messageBox("Por favor, seleccione un cliente.", 'bg-red-500');
         return;
     }
 
+    let tipoImpresora = "TERMICA";
+    let impresoraEstandar = "";
+    let tamañoPapelEstandar = "CARTA";
     let printerName = null;
     let printerSize = "58"; 
     let modoEmisionBD = "TICKET_NO_FISCAL"; 
@@ -7902,28 +8173,32 @@ async function printInvoice(saleData = null) {
         line1: "NEXUS POS", line2: "SISTEMA DE VENTAS", line3: "", line4: "", line5: "", line6: "" 
     };
 
-    const configDataRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
-    if (configDataRaw) {
-        const configFactura = JSON.parse(configDataRaw);
-        printerName = configFactura.impresoraSeleccionada;
-        if(configFactura.tamañoImpresora) printerSize = configFactura.tamañoImpresora;
-        if(configFactura.tipo_emision) modoEmisionBD = configFactura.tipo_emision;
-        if (configFactura.encabezadoFactura) {
-            encabezadoActivo = { ...encabezadoActivo, ...configFactura.encabezadoFactura };
-        }
-    }
+    let logoFactura = '';
 
-    if (!printerName) {
-        if (typeof messageBox === 'function') messageBox("⚠️ Impresora no configurada.", 'bg-yellow-500');
-        return;
+    const configDataRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
+
+    if (configDataRaw) {
+        try {
+            const configFactura = JSON.parse(configDataRaw);
+            if (configFactura.tipoImpresora) tipoImpresora = configFactura.tipoImpresora;
+            if (configFactura.impresoraEstandarSeleccionada) impresoraEstandar = configFactura.impresoraEstandarSeleccionada;
+            if (configFactura.tamañoPapelEstandar) tamañoPapelEstandar = configFactura.tamañoPapelEstandar;
+            printerName = configFactura.impresoraSeleccionada;
+            if (configFactura.tamañoImpresora) printerSize = configFactura.tamañoImpresora;
+            if (configFactura.tipo_emision) modoEmisionBD = configFactura.tipo_emision;
+            if (configFactura.logoFactura) logoFactura = configFactura.logoFactura;
+            if (configFactura.encabezadoFactura) {
+                encabezadoActivo = { ...encabezadoActivo, ...configFactura.encabezadoFactura };
+            }
+        } catch(eJson) {
+            console.error("❌ Error parseando config_factura:", eJson);
+        }
     }
 
     const modoDefinitivo = (typeof currentEmissionMode !== 'undefined' && currentEmissionMode !== 'TICKET_NO_FISCAL') 
                             ? currentEmissionMode 
                             : modoEmisionBD;
 
-    // 🔥 REESTRUCTURACIÓN: Movemos la resolución del correlativo de Nexus POS aquí arriba 
-    // para tenerlo disponible antes de entrar al bloque de impresión Fiscal HKA.
     let nroFactura, nroControl;
     if (saleData) {
         nroFactura = saleData.numero_factura || saleData.id;
@@ -7932,6 +8207,97 @@ async function printInvoice(saleData = null) {
         const correlativo = await window.nexusAPI.obtenerProximoCorrelativo(currentEmissionMode);
         nroFactura = (correlativo && correlativo.formato) ? correlativo.formato : `${currentEmissionMode.substring(0,2)}-${Math.floor(Math.random() * 900000)}`;
         nroControl = `00-${Math.floor(Math.random() * 900000)}`;
+    }
+
+    // 📄 FLUJO 1: IMPRESORA ESTÁNDAR (CARTA / OFICIO / MEDIA CARTA) -> GENERAR PDF Y MOSTRAR VISOR SUPERPUESTO
+    if (tipoImpresora === 'ESTANDAR') {
+        console.log(`📄 [FACTURACIÓN] Modo Impresora Estándar (${tamañoPapelEstandar}) detectado. Generando PDF...`);
+        
+        let condicionPago = "PAGADO";
+        if (saleData && (saleData.es_nota_credito || saleData.es_nota_debito)) {
+            condicionPago = saleData.es_nota_credito ? "NOTA DE CRÉDITO" : "NOTA DE DÉBITO";
+        } else {
+            let hayDeuda = cart.some(i => String(i.nombre || '').toUpperCase().includes('DEUDA') || String(i.nombre || '').toUpperCase().includes('CREDITO') || String(i.nombre || '').toUpperCase().includes('ABONO'));
+            if (!hayDeuda && saleData && saleData.metodo_pago) {
+                try {
+                    const mp = typeof saleData.metodo_pago === 'string' ? JSON.parse(saleData.metodo_pago) : saleData.metodo_pago;
+                    if (mp.credito || mp.deuda) hayDeuda = true;
+                } catch(e) {}
+            }
+            if (hayDeuda) condicionPago = "Crédito Pendiente";
+        }
+
+        const itemsLista = (saleData?.items || cart || []);
+        const itemsPDF = itemsLista.map(it => {
+            const cant = parseFloat(it.cantidad || it.qty || 1);
+            const prec = parseFloat(it.precio !== undefined ? it.precio : (it.price || 0));
+            const tot = parseFloat(it.subtotal !== undefined ? it.subtotal : (cant * prec));
+            return {
+                concepto: it.nombre || it.name || it.concepto || "PRODUCTO",
+                cantidad: cant,
+                precio: prec,
+                total: tot
+            };
+        });
+
+        const fechaEmision = saleData?.fecha_emision || new Date().toLocaleDateString('es-VE');
+        const horaEmision = new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+        const tasaActual = parseFloat(saleData?.tasa_bcv || window.dolarExchangeRate || 1);
+        const totalVentaBS = parseFloat(saleData?.monto_total || 0);
+
+        const datosFactura = {
+            tipoDocumento: (modoDefinitivo === 'ELECTRONICA') ? "FACTURA ELECTRÓNICA" : (modoDefinitivo === 'TICKET_NO_FISCAL' ? "NOTA DE ENTREGA" : "FACTURA"),
+            subtituloSoftware: "Software Administrativo NEXUS POS",
+            encabezadoFactura: encabezadoActivo,
+            logoBase64: logoFactura,
+            cliente: {
+                nombre: clienteActivo.nombre || "CONSUMIDOR FINAL",
+                rif: clienteActivo.rif || "V-00000000",
+                direccion: clienteActivo.direccion || "No registrado",
+                telefono: clienteActivo.telefono || ""
+            },
+            factura: {
+                numero: nroFactura,
+                control: nroControl,
+                fecha: fechaEmision,
+                hora: horaEmision,
+                condicion: condicionPago,
+                moneda: "USD",
+                tasaCambio: tasaActual
+            },
+            items: itemsPDF,
+            totalUSD: (totalVentaBS > 0 ? (totalVentaBS / tasaActual) : undefined),
+            totalBS: (totalVentaBS > 0 ? totalVentaBS : undefined)
+        };
+
+        if (typeof messageBox === 'function') messageBox("📄 Generando PDF de la venta...", "bg-blue-500");
+
+        try {
+            const resPDF = await window.nexusAPI.generarPdfFactura({ datosFactura, formatoPapel: tamañoPapelEstandar });
+            if (resPDF && resPDF.success) {
+                window.mostrarModalPdfFactura({
+                    pdfBase64: resPDF.pdfBase64,
+                    rawBufferBase64: resPDF.rawBufferBase64,
+                    htmlContent: resPDF.htmlContent,
+                    datosFactura,
+                    formatoPapel: tamañoPapelEstandar,
+                    impresoraEstandar
+                });
+                return { success: true, pdfGenerado: true };
+            } else {
+                throw new Error(resPDF?.error || "No se pudo generar el documento PDF.");
+            }
+        } catch(errPDF) {
+            console.error("❌ Error generando PDF de factura:", errPDF);
+            if (typeof messageBox === 'function') messageBox("❌ Error generando PDF: " + errPDF.message, "bg-red-500");
+            return { success: false, error: errPDF.message };
+        }
+    }
+
+    // 🖨️ FLUJO 2: IMPRESORAS TÉRMICAS O FISCALES
+    if (!printerName && modoDefinitivo !== 'FISCAL_HKA') {
+        if (typeof messageBox === 'function') messageBox("⚠️ Impresora no configurada.", 'bg-yellow-500');
+        return;
     }
 
     if (modoDefinitivo === 'FISCAL_HKA') {
@@ -7957,6 +8323,8 @@ async function printInvoice(saleData = null) {
 
         try {
             const resultadoFiscal = await window.nexusAPI.emitirTramasHKA(tramaComandos, puertoDestino);
+            console.log("📬 Respuesta Fiscal HKA:", resultadoFiscal);
+            console.groupEnd();
             
             if (resultadoFiscal && resultadoFiscal.success) {
                 if (typeof messageBox === 'function') messageBox(`✅ Factura Fiscal Impresa`, 'bg-green-500');
@@ -7984,6 +8352,8 @@ async function printInvoice(saleData = null) {
             } else {
                 if (typeof messageBox === 'function') messageBox(`❌ Error Fiscal: ${finalMsg}`, 'bg-red-500');
             }
+            console.error("❌ Error fiscal en impresión:", err);
+            console.groupEnd();
             return { success: false, error: finalMsg };
         }
     }
@@ -7993,6 +8363,8 @@ async function printInvoice(saleData = null) {
     
     let totalExentoBS = 0, baseGeneralBS = 0, ivaGeneralBS = 0, globalTotalBS = 0;
     const LINE_WIDTH = (printerSize === "80") ? 48 : 32;
+    console.log(`📏 Ancho de línea configurado (LINE_WIDTH): ${LINE_WIDTH} columnas (Impresora de ${printerSize}mm)`);
+
     const CRLF = "\r\n", SEPARATOR = "-".repeat(LINE_WIDTH) + CRLF;
 
     let tableBody = "";
@@ -8037,6 +8409,18 @@ async function printInvoice(saleData = null) {
     const totalFinalUSD = totalConIGTF_BS / (window.dolarExchangeRate || 1);
 
     let t = "\x1B\x40"; 
+
+    // Logo en la parte superior para impresoras térmicas de 80mm
+    if (printerSize === "80" && logoFactura) {
+        try {
+            const logoEscPos = await convertirPNGaESCPOS(logoFactura, 384);
+            if (logoEscPos) {
+                t += logoEscPos;
+            }
+        } catch (eLogo) {
+            console.warn("⚠️ No se pudo procesar logo para tiquera de 80mm:", eLogo);
+        }
+    }
 
     if (encabezadoActivo.line1) t += centerText(encabezadoActivo.line1.toUpperCase(), LINE_WIDTH) + CRLF;
     if (encabezadoActivo.line2) t += centerText(encabezadoActivo.line2.toUpperCase(), LINE_WIDTH) + CRLF;
@@ -8130,9 +8514,13 @@ async function printInvoice(saleData = null) {
     try {
         const result = await window.nexusAPI.imprimirTextoLibre(t, printerName);
         if (result && result.exito) {
-             if (typeof messageBox === 'function') messageBox(`✅ Ticket procesado`, 'bg-green-500');
+            if (typeof messageBox === 'function') messageBox(`✅ Ticket procesado`, 'bg-green-500');
+        } else {
+            console.error("❌ Error al imprimir:", result ? result.mensaje : "Sin respuesta");
+            if (typeof messageBox === 'function') messageBox(`Error al imprimir: ${result?.mensaje || 'Error desconocido'}`, 'bg-red-500');
         }
     } catch (error) {
+        console.error("❌ Excepción al invocar imprimirTextoLibre:", error);
         if (typeof messageBox === 'function') messageBox(`Error al imprimir: ${error.message}`, 'bg-red-500');
     }
 }

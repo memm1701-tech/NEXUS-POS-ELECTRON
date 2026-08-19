@@ -89,7 +89,9 @@ if (config.isServer) {
         sucursales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", nombre: "TEXT", direccion: "TEXT", telefono: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "TEXT" },
         unidades_empaque: { id: "TEXT PRIMARY KEY", company_id: "TEXT", product_id: "TEXT", nombre_producto: "TEXT DEFAULT ''", nombre_unidad: "TEXT", tipo_medida: "TEXT", factor_cantidad: "REAL DEFAULT 1", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP", ultima_sincronizacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
         historial_tasas: { fecha: "DATE PRIMARY KEY", valor: "DECIMAL(18, 8) DEFAULT 0", fuente: "TEXT DEFAULT 'BCV'" },
-        comprobantes_retencion: { id: "TEXT PRIMARY KEY", datos_json: "TEXT", fecha_registro: "DATETIME DEFAULT CURRENT_TIMESTAMP", estatus: "TEXT DEFAULT 'EMITIDO'" }
+        comprobantes_retencion: { id: "TEXT PRIMARY KEY", datos_json: "TEXT", fecha_registro: "DATETIME DEFAULT CURRENT_TIMESTAMP", estatus: "TEXT DEFAULT 'EMITIDO'" },
+        salidas_inventario: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", product_id: "TEXT", cantidad: "REAL DEFAULT 0", unidad: "TEXT", motivo: "TEXT", observacion: "TEXT", usuario_id: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
+        entradas_inventario: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", product_id: "TEXT", cantidad: "REAL DEFAULT 0", costo_unitario: "REAL DEFAULT 0", precio_venta: "REAL DEFAULT 0", proveedor_id: "TEXT", factura_referencia: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" }
     };
 
     function asegurarEsquema(dbConnection, esquema) {
@@ -637,6 +639,97 @@ server.put('/api/maestro/metodos-pago/:id', (req, res) => {
         } catch (e) {
             console.error("❌ Error en servidor Maestro (registrar-entrada):", e.message);
             res.status(500).json({ exito: false, error: e.message });
+        }
+    });
+
+    // 2.1 ENDPOINT: ACTUALIZAR STOCK INDIVIDUAL O MASIVO (SUMAR, RESTAR O FIJAR)
+    server.post(['/api/maestro/stock/actualizar', '/api/maestro/inventario/actualizar-stock'], (req, res) => {
+        try {
+            const body = req.body;
+            let items = [];
+
+            if (body.items && Array.isArray(body.items)) {
+                items = body.items;
+            } else if (body.producto_id || body.productoId || body.id) {
+                items = [{
+                    producto_id: body.producto_id || body.productoId || body.id,
+                    sucursal_id: body.sucursal_id || body.sucursalId || body.branch_id || body.branchId || 'principal',
+                    company_id: body.company_id || body.companyId || 'DEFAULT',
+                    operacion: body.operacion || 'sumar',
+                    cantidad: parseFloat(body.cantidad) || 0
+                }];
+            } else {
+                return res.status(400).json({ exito: false, error: "Payload incompleto" });
+            }
+
+            console.log(`\n📦 [API MAESTRO] --- ACTUALIZACIÓN DE STOCK (stock/actualizar) ---`);
+
+            const transaccion = serverDb.transaction((lista) => {
+                for (const item of lista) {
+                    const itemId = item.producto_id || item.productoId || item.id;
+                    const sId = item.sucursal_id || item.sucursalId || item.branch_id || item.branchId || 'principal';
+                    const cId = item.company_id || item.companyId || 'DEFAULT';
+                    const op = String(item.operacion || 'sumar').toLowerCase();
+                    const cant = Math.abs(parseFloat(item.cantidad) || 0);
+
+                    // OBTENER STOCK PREVIO
+                    let stockPrevio = 0;
+                    const rowStock = serverDb.prepare('SELECT cantidad_real FROM stock_maestro WHERE producto_id = ? AND sucursal_id = ?').get(itemId, sId);
+                    if (rowStock) stockPrevio = parseFloat(rowStock.cantidad_real || 0);
+
+                    let sql = '';
+                    let diferencia = 0;
+                    let tipoMov = '';
+
+                    if (op === 'fijar') {
+                        sql = `INSERT INTO stock_maestro (producto_id, sucursal_id, company_id, cantidad_real, ultima_sincronizacion)
+                            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                            ON CONFLICT(producto_id, sucursal_id) DO UPDATE SET
+                            cantidad_real = excluded.cantidad_real,
+                            ultima_sincronizacion = CURRENT_TIMESTAMP`;
+                        serverDb.prepare(sql).run(itemId, sId, cId, cant);
+                        diferencia = cant - stockPrevio;
+                        tipoMov = diferencia >= 0 ? 'AJUSTE_POSITIVO' : 'AJUSTE_NEGATIVO';
+                    } else if (op === 'restar') {
+                        sql = `INSERT INTO stock_maestro (producto_id, sucursal_id, company_id, cantidad_real, ultima_sincronizacion)
+                            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                            ON CONFLICT(producto_id, sucursal_id) DO UPDATE SET
+                            cantidad_real = stock_maestro.cantidad_real + excluded.cantidad_real,
+                            ultima_sincronizacion = CURRENT_TIMESTAMP`;
+                        serverDb.prepare(sql).run(itemId, sId, cId, -cant);
+                        diferencia = -cant;
+                        tipoMov = 'SALIDA';
+                    } else { // sumar
+                        sql = `INSERT INTO stock_maestro (producto_id, sucursal_id, company_id, cantidad_real, ultima_sincronizacion)
+                            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                            ON CONFLICT(producto_id, sucursal_id) DO UPDATE SET
+                            cantidad_real = stock_maestro.cantidad_real + excluded.cantidad_real,
+                            ultima_sincronizacion = CURRENT_TIMESTAMP`;
+                        serverDb.prepare(sql).run(itemId, sId, cId, cant);
+                        diferencia = cant;
+                        tipoMov = 'ENTRADA';
+                    }
+
+                    if (diferencia !== 0) {
+                        try {
+                            serverDb.prepare(`INSERT INTO movimientos_stock_maestro (company_id, sucursal_id, producto_id, cantidad, tipo_movimiento) VALUES (?, ?, ?, ?, ?)`)
+                                    .run(cId, sId, itemId, diferencia, tipoMov);
+                        } catch(e) {}
+                    }
+                    console.log(`✅ [stock/actualizar] Item: ${itemId} | Op: ${op} | Cant: ${cant} | Dif: ${diferencia}`);
+                }
+            });
+
+            transaccion(items);
+
+            if (process.send) {
+                try { process.send({ tipo: 'stock-actualizado' }); } catch(e) {}
+            }
+
+            return res.json({ exito: true, success: true });
+        } catch (e) {
+            console.error("❌ Error en servidor Maestro (stock/actualizar):", e.message);
+            return res.status(500).json({ exito: false, success: false, error: e.message });
         }
     });
 
@@ -1704,6 +1797,18 @@ server.get('/api/maestro/estadisticas', (req, res) => {
                 } catch(e){}
             });
 
+            // Cruzar con la tabla unidades_empaque para detectar medidas configuradas (ej: KG, Litro, etc.)
+            try {
+                const empaquesDb = serverDb.prepare(`SELECT product_id, tipo_medida, nombre_unidad FROM unidades_empaque WHERE company_id = ?`).all(companyId);
+                empaquesDb.forEach(emp => {
+                    const idProd = emp.product_id;
+                    const u = emp.tipo_medida || emp.nombre_unidad;
+                    if (idProd && u) {
+                        mapaUnidadesCatalogo[idProd] = u;
+                    }
+                });
+            } catch(eEmp) {}
+
             const ventas = serverDb.prepare(`SELECT datos_json FROM ventas_locales WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?`).all(companyId, fechaIni, fechaFin);
             const mapa = {};
             ventas.forEach(v => {
@@ -1712,7 +1817,7 @@ server.get('/api/maestro/estadisticas', (req, res) => {
                     const prodArray = Array.isArray(parsed) ? parsed : (parsed.productos || parsed.items || []);
                     prodArray.forEach(item => {
                         const qty = parseFloat(item.cantidad || item.quantity) || 0;
-                        const unitProd = item.unit || item.unidad || mapaUnidadesCatalogo[item.id] || 'UN';
+                        const unitProd = mapaUnidadesCatalogo[item.id] || item.unit || item.unidad || 'UN';
                         if (!mapa[item.id]) {
                             mapa[item.id] = { 
                                 id: item.id,
@@ -1722,7 +1827,9 @@ server.get('/api/maestro/estadisticas', (req, res) => {
                             };
                         }
                         mapa[item.id].cantidad_vendida += qty;
-                        if (unitProd && unitProd !== 'UN') {
+                        if (mapaUnidadesCatalogo[item.id]) {
+                            mapa[item.id].unidad = mapaUnidadesCatalogo[item.id];
+                        } else if (unitProd && unitProd !== 'UN') {
                             mapa[item.id].unidad = unitProd;
                         }
                     });
@@ -1732,15 +1839,17 @@ server.get('/api/maestro/estadisticas', (req, res) => {
             topProductos.push(...array);
         } catch(e) {}
 
-        // 3.1 Top Sucursales
+        // 3.1 Top Sucursales (con Resolución de Nombre)
         const topSucursales = serverDb.prepare(`
-            SELECT COALESCE(NULLIF(branch_id, ''), 'Principal') as branch_id, 
+            SELECT COALESCE(NULLIF(v.branch_id, ''), 'principal') as branch_id,
+                   COALESCE(s.nombre, NULLIF(v.branch_id, ''), 'Sucursal Principal') as sucursal_nombre,
                    COUNT(*) as total_ventas_count,
-                   SUM(monto_total / COALESCE(NULLIF(tasa_bcv, 0), 1)) as total_usd,
-                   SUM(ganancia_venta) as total_ganancia
-            FROM ventas_locales
-            WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?
-            GROUP BY branch_id
+                   SUM(v.monto_total / COALESCE(NULLIF(v.tasa_bcv, 0), 1)) as total_usd,
+                   SUM(v.ganancia_venta) as total_ganancia
+            FROM ventas_locales v
+            LEFT JOIN sucursales s ON s.id = v.branch_id
+            WHERE v.company_id = ? AND v.fecha_emision BETWEEN ? AND ?
+            GROUP BY v.branch_id
             ORDER BY total_usd DESC
             LIMIT 5
         `).all(companyId, fechaIni, fechaFin);

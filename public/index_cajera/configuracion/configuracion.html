@@ -76,23 +76,88 @@
         </div>
 
         <div class="space-y-4 text-left p-6 border border-gray-200 bg-white rounded-none">
-            <div class="mb-4">
-                <h2 class="text-lg font-semibold text-gray-800">Impresora de Tickets (Windows/OS)</h2>
-                <p class="text-sm text-gray-500">Seleccione la impresora térmica instalada en su equipo.</p>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="space-y-2">
-                    <label for="printer-select" class="block text-sm font-medium text-gray-700">Impresora:</label>
-                    <select id="printer-select" class="mt-1 block w-full pl-3 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-none shadow-sm bg-white border">
-                        <option value="">Cargando impresoras...</option>
-                    </select>
+            <!-- Header con título y conmutador tipo Translate / Tabs -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b pb-4">
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                        <i class="fas fa-print text-indigo-600"></i> Impresora del Sistema (Windows / OS)
+                    </h2>
+                    <p class="text-sm text-gray-500">Seleccione el modo y dispositivo de impresión para sus comprobantes y facturas.</p>
                 </div>
-                <div class="space-y-2">
-                    <label for="printer-size-select" class="block text-sm font-medium text-gray-700">Tamaño de Papel:</label>
-                    <select id="printer-size-select" class="mt-1 block w-full pl-3 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-none shadow-sm bg-white border">
-                        <option value="58">58 mm (Por Defecto)</option>
-                        <option value="80">80 mm</option>
-                    </select>
+                <!-- Botones tipo Translate / Segmented Control -->
+                <div class="inline-flex bg-gray-100 p-1 rounded-lg border border-gray-200 self-start sm:self-auto">
+                    <button type="button" id="tab-printer-thermal" class="px-4 py-2 text-xs md:text-sm font-bold rounded-md transition-all duration-200 bg-indigo-600 text-white shadow-sm flex items-center gap-2">
+                        <i class="fas fa-receipt"></i> Impresora Térmica (58/80 mm)
+                    </button>
+                    <button type="button" id="tab-printer-standard" class="px-4 py-2 text-xs md:text-sm font-bold rounded-md transition-all duration-200 text-gray-600 hover:text-gray-900 flex items-center gap-2">
+                        <i class="fas fa-file-invoice"></i> Impresora Estándar (Carta / Oficio)
+                    </button>
+                </div>
+            </div>
+
+            <!-- SUBPANEL 1: Impresora Térmica -->
+            <div id="panel-printer-thermal" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-2">
+                        <label for="printer-select" class="block text-sm font-medium text-gray-700">Impresora Térmica:</label>
+                        <select id="printer-select" class="mt-1 block w-full pl-3 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-none shadow-sm bg-white border">
+                            <option value="">Cargando impresoras...</option>
+                        </select>
+                    </div>
+                    <div class="space-y-2">
+                        <label for="printer-size-select" class="block text-sm font-medium text-gray-700">Tamaño de Papel Térmico:</label>
+                        <select id="printer-size-select" class="mt-1 block w-full pl-3 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-none shadow-sm bg-white border">
+                            <option value="58">58 mm (Tiquera Pequeña)</option>
+                            <option value="80">80 mm (Tiquera Ancha)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUBPANEL 2: Impresora Estándar -->
+            <div id="panel-printer-standard" class="space-y-4 hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-2">
+                        <label for="printer-standard-select" class="block text-sm font-medium text-gray-700">Impresora Estándar (Láser / Tinta / PDF):</label>
+                        <select id="printer-standard-select" class="mt-1 block w-full pl-3 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-none shadow-sm bg-white border">
+                            <option value="">Cargando impresoras...</option>
+                        </select>
+                    </div>
+                    <div class="space-y-2">
+                        <label for="printer-standard-paper-select" class="block text-sm font-medium text-gray-700">Formato de Hoja Estándar:</label>
+                        <select id="printer-standard-paper-select" class="mt-1 block w-full pl-3 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-none shadow-sm bg-white border">
+                            <option value="CARTA">Tamaño Carta (Letter)</option>
+                            <option value="OFICIO">Tamaño Oficio (Legal)</option>
+                            <option value="MEDIA_CARTA">Media Carta (Half Letter / Memo)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN: Logotipo PNG sin fondo -->
+            <div class="pt-4 border-t border-gray-200">
+                <label class="block text-sm font-semibold text-gray-800 mb-1 flex items-center gap-2">
+                    <i class="fas fa-image text-indigo-500"></i> Logotipo de Factura / Ticket (PNG sin fondo)
+                </label>
+                <p class="text-xs text-gray-500 mb-3">Suba el logotipo oficial en formato PNG con transparencia. Se imprimirá en el encabezado de las impresoras de 80mm y en las facturas de hoja completa / PDF.</p>
+                
+                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <!-- Contenedor con fondo cuadriculado de transparencia -->
+                    <div id="logo-preview-container" class="relative w-36 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden" 
+                         style="background-image: linear-gradient(45deg, #e5e7eb 25%, transparent 25%), linear-gradient(-45deg, #e5e7eb 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e7eb 75%), linear-gradient(-45deg, transparent 75%, #e5e7eb 75%); background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0px;">
+                        <img id="logo-preview-img" src="" alt="Vista previa logo" class="max-w-full max-h-full object-contain hidden" />
+                        <span id="logo-placeholder" class="text-xs text-gray-400 font-medium text-center px-2">Sin Logotipo</span>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <input type="file" id="logo-file-input" accept="image/png" class="hidden" />
+                        <button type="button" id="btn-upload-logo" class="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 text-xs md:text-sm font-bold rounded-none flex items-center gap-2 transition">
+                            <i class="fas fa-upload"></i> Seleccionar Imagen PNG
+                        </button>
+                        <button type="button" id="btn-remove-logo" class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 text-xs md:text-sm font-bold rounded-none flex items-center gap-2 transition hidden">
+                            <i class="fas fa-trash-alt"></i> Eliminar Logotipo
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -140,11 +205,31 @@
     window.allProductsConfig = [];
     window.autoProductsSelected = [];
 
+    let currentActivePrinterType = 'TERMICA';
+    let currentLogoBase64 = '';
+
     const saveConfigBtn = document.getElementById('saveConfigBtn');
     const messageBox = document.getElementById('messageBox');
     
+    // Elementos Impresora Térmica
     const printerSelect = document.getElementById('printer-select');
     const printerSizeSelect = document.getElementById('printer-size-select');
+    const tabPrinterThermal = document.getElementById('tab-printer-thermal');
+    const panelPrinterThermal = document.getElementById('panel-printer-thermal');
+
+    // Elementos Impresora Estándar
+    const printerStandardSelect = document.getElementById('printer-standard-select');
+    const printerStandardPaperSelect = document.getElementById('printer-standard-paper-select');
+    const tabPrinterStandard = document.getElementById('tab-printer-standard');
+    const panelPrinterStandard = document.getElementById('panel-printer-standard');
+
+    // Elementos Logotipo PNG
+    const logoFileInput = document.getElementById('logo-file-input');
+    const btnUploadLogo = document.getElementById('btn-upload-logo');
+    const btnRemoveLogo = document.getElementById('btn-remove-logo');
+    const logoPreviewImg = document.getElementById('logo-preview-img');
+    const logoPlaceholder = document.getElementById('logo-placeholder');
+
     const scaleVpsUrl = document.getElementById('scaleVpsUrl'); 
     const enableScaleCheckbox = document.getElementById('config-enable-scale'); 
     const multicurrencyCheckbox = document.getElementById('config-multicurrency');
@@ -157,6 +242,93 @@
     const configLine4 = document.getElementById('configLine4');
     const configLine5 = document.getElementById('configLine5');
     const configLine6 = document.getElementById('configLine6');   
+
+    // Alternar entre pestañas de impresora
+    function switchPrinterTab(type) {
+        currentActivePrinterType = type;
+        if (type === 'TERMICA') {
+            if (tabPrinterThermal) {
+                tabPrinterThermal.className = "px-4 py-2 text-xs md:text-sm font-bold rounded-md transition-all duration-200 bg-indigo-600 text-white shadow-sm flex items-center gap-2";
+            }
+            if (tabPrinterStandard) {
+                tabPrinterStandard.className = "px-4 py-2 text-xs md:text-sm font-bold rounded-md transition-all duration-200 text-gray-600 hover:text-gray-900 flex items-center gap-2";
+            }
+            if (panelPrinterThermal) panelPrinterThermal.classList.remove('hidden');
+            if (panelPrinterStandard) panelPrinterStandard.classList.add('hidden');
+        } else {
+            if (tabPrinterStandard) {
+                tabPrinterStandard.className = "px-4 py-2 text-xs md:text-sm font-bold rounded-md transition-all duration-200 bg-indigo-600 text-white shadow-sm flex items-center gap-2";
+            }
+            if (tabPrinterThermal) {
+                tabPrinterThermal.className = "px-4 py-2 text-xs md:text-sm font-bold rounded-md transition-all duration-200 text-gray-600 hover:text-gray-900 flex items-center gap-2";
+            }
+            if (panelPrinterStandard) panelPrinterStandard.classList.remove('hidden');
+            if (panelPrinterThermal) panelPrinterThermal.classList.add('hidden');
+        }
+    }
+
+    // Actualizar vista previa del logotipo
+    function updateLogoUI(base64Data) {
+        currentLogoBase64 = base64Data || '';
+        if (currentLogoBase64) {
+            if (logoPreviewImg) {
+                logoPreviewImg.src = currentLogoBase64;
+                logoPreviewImg.classList.remove('hidden');
+            }
+            if (logoPlaceholder) logoPlaceholder.classList.add('hidden');
+            if (btnRemoveLogo) btnRemoveLogo.classList.remove('hidden');
+            if (btnUploadLogo) btnUploadLogo.innerHTML = '<i class="fas fa-sync-alt"></i> Cambiar Imagen PNG';
+        } else {
+            if (logoPreviewImg) {
+                logoPreviewImg.src = '';
+                logoPreviewImg.classList.add('hidden');
+            }
+            if (logoPlaceholder) logoPlaceholder.classList.remove('hidden');
+            if (btnRemoveLogo) btnRemoveLogo.classList.add('hidden');
+            if (btnUploadLogo) btnUploadLogo.innerHTML = '<i class="fas fa-upload"></i> Seleccionar Imagen PNG';
+            if (logoFileInput) logoFileInput.value = '';
+        }
+    }
+
+    // Manejador de carga de archivo PNG
+    function handleLogoUpload(e) {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        if (file.type !== 'image/png' && !file.name.toLowerCase().endsWith('.png')) {
+            showCustomAlert("⚠️ El logotipo debe ser una imagen en formato PNG (con o sin transparencia).", "Formato no válido");
+            if (logoFileInput) logoFileInput.value = '';
+            return;
+        }
+
+        if (file.size > 2 * 1024 * 1024) {
+            showCustomAlert("⚠️ La imagen seleccionada es demasiado pesada. El tamaño máximo permitido es de 2 MB.", "Imagen muy pesada");
+            if (logoFileInput) logoFileInput.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (loadEvt) => {
+            const base64 = loadEvt.target.result;
+            updateLogoUI(base64);
+            showMessage("Logotipo cargado en memoria. Presione 'Guardar Configuración' para aplicar.", 'blue');
+        };
+        reader.onerror = (err) => {
+            console.error("Error leyendo archivo de logo:", err);
+            showCustomAlert("No se pudo procesar la imagen seleccionada.", "Error");
+        };
+        reader.readAsDataURL(file);
+    }
+
+    if (tabPrinterThermal) tabPrinterThermal.addEventListener('click', () => switchPrinterTab('TERMICA'));
+    if (tabPrinterStandard) tabPrinterStandard.addEventListener('click', () => switchPrinterTab('ESTANDAR'));
+
+    if (btnUploadLogo) btnUploadLogo.addEventListener('click', () => { if (logoFileInput) logoFileInput.click(); });
+    if (logoFileInput) logoFileInput.addEventListener('change', handleLogoUpload);
+    if (btnRemoveLogo) btnRemoveLogo.addEventListener('click', () => {
+        updateLogoUI('');
+        showMessage("Logotipo eliminado. Presione 'Guardar Configuración' para aplicar.", 'orange');
+    });
 
     window.showCustomAlert = function(message, title = "Atención") {
         return new Promise((resolve) => {
@@ -207,17 +379,31 @@
         try {
             if (!window.nexusAPI || typeof window.nexusAPI.leerImpresoras !== 'function') return [];
             const impresoras = await window.nexusAPI.leerImpresoras();
-            if (printerSelect) printerSelect.innerHTML = '<option value="">Seleccione su impresora...</option>';
+            
+            if (printerSelect) printerSelect.innerHTML = '<option value="">Seleccione su impresora térmica...</option>';
+            if (printerStandardSelect) printerStandardSelect.innerHTML = '<option value="">Seleccione su impresora estándar...</option>';
+
             if (impresoras && impresoras.length > 0) {
                 impresoras.forEach(imp => {
-                    const opt = document.createElement('option');
-                    opt.value = imp.name; 
-                    opt.textContent = imp.name + (imp.isDefault ? ' (Predeterminada)' : '');
-                    if (printerSelect) printerSelect.appendChild(opt);
+                    const label = imp.name + (imp.isDefault ? ' (Predeterminada)' : '');
+                    
+                    if (printerSelect) {
+                        const opt = document.createElement('option');
+                        opt.value = imp.name; 
+                        opt.textContent = label;
+                        printerSelect.appendChild(opt);
+                    }
+                    if (printerStandardSelect) {
+                        const optStd = document.createElement('option');
+                        optStd.value = imp.name;
+                        optStd.textContent = label;
+                        printerStandardSelect.appendChild(optStd);
+                    }
                 });
                 return impresoras.map(i => i.name);
             } else {
                 if (printerSelect) printerSelect.innerHTML = '<option value="">No hay impresoras instaladas</option>';
+                if (printerStandardSelect) printerStandardSelect.innerHTML = '<option value="">No hay impresoras instaladas</option>';
                 return [];
             }
         } catch (error) {
@@ -239,11 +425,14 @@
             const facturaDataRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
             if (facturaDataRaw) {
                 const data = JSON.parse(facturaDataRaw);
+
+                // 1. Pestaña de tipo de impresora activa
+                const savedPrinterType = data.tipoImpresora || 'TERMICA';
+                switchPrinterTab(savedPrinterType);
+
+                // 2. Impresora Térmica
                 const savedPrinter = data.impresoraSeleccionada;
                 const savedPrinterSize = data.tamañoImpresora; 
-                const headerConfig = data.encabezadoFactura; 
-                const enableMulticurrency = data.enableMulticurrency; 
-                
                 if (savedPrinter && impresorasValidas.includes(savedPrinter)) {
                     if (printerSelect) printerSelect.value = savedPrinter;
                 }
@@ -251,6 +440,28 @@
                     const validSizes = ['58', '80'];
                     printerSizeSelect.value = (savedPrinterSize && validSizes.includes(savedPrinterSize)) ? savedPrinterSize : '58';
                 }
+
+                // 3. Impresora Estándar
+                const savedStandardPrinter = data.impresoraEstandarSeleccionada;
+                const savedStandardPaper = data.tamañoPapelEstandar || 'CARTA';
+                if (savedStandardPrinter && impresorasValidas.includes(savedStandardPrinter)) {
+                    if (printerStandardSelect) printerStandardSelect.value = savedStandardPrinter;
+                }
+                if (printerStandardPaperSelect) {
+                    const validPapers = ['CARTA', 'OFICIO', 'MEDIA_CARTA'];
+                    printerStandardPaperSelect.value = validPapers.includes(savedStandardPaper) ? savedStandardPaper : 'CARTA';
+                }
+
+                // 4. Logotipo PNG
+                if (data.logoFactura) {
+                    updateLogoUI(data.logoFactura);
+                } else {
+                    updateLogoUI('');
+                }
+
+                const headerConfig = data.encabezadoFactura; 
+                const enableMulticurrency = data.enableMulticurrency;
+
                 if (headerConfig) {
                     if (configLine1) configLine1.value = headerConfig.line1 || '';
                     if (configLine2) configLine2.value = headerConfig.line2 || '';
@@ -264,6 +475,8 @@
                 
                 facturaLoaded = true;
             } else {
+                switchPrinterTab('TERMICA');
+                updateLogoUI('');
                 if (multicurrencyCheckbox) multicurrencyCheckbox.checked = false; 
             }
         } catch (error) {
@@ -351,8 +564,20 @@
             facturaData.ultimoCambio = new Date().toISOString();
             facturaData.modificadoPor = userId;
             
+            // Tipo de impresora activa
+            facturaData.tipoImpresora = currentActivePrinterType;
+
+            // Configuración Impresora Térmica
             if (printerSelect) facturaData.impresoraSeleccionada = printerSelect.value;
             if (printerSizeSelect) facturaData.tamañoImpresora = printerSizeSelect.value;
+
+            // Configuración Impresora Estándar
+            if (printerStandardSelect) facturaData.impresoraEstandarSeleccionada = printerStandardSelect.value;
+            if (printerStandardPaperSelect) facturaData.tamañoPapelEstandar = printerStandardPaperSelect.value;
+
+            // Logotipo Base64
+            facturaData.logoFactura = currentLogoBase64 || '';
+
             if (multicurrencyCheckbox) facturaData.enableMulticurrency = multicurrencyCheckbox.checked;
             if (validarEliminarCheckbox) facturaData.validarEliminarProducto = validarEliminarCheckbox.checked;
             

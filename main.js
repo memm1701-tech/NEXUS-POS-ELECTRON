@@ -18,9 +18,10 @@ const calcularLRC = (buffer, etx) => {
     lrc ^= etx[0];
     return lrc;
 };
-const { app, BrowserWindow, ipcMain, Menu, session } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, session, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const { fork, exec } = require('child_process');
 const https = require('https');
 const crypto = require('crypto');
@@ -1313,6 +1314,18 @@ server.get('/api/maestro/estadisticas', (req, res) => {
                 } catch(e){}
             });
 
+            // Cruzar con la tabla unidades_empaque para detectar medidas configuradas (ej: KG, Litro, etc.)
+            try {
+                const empaquesDb = masterDbDirect.prepare(`SELECT product_id, tipo_medida, nombre_unidad FROM unidades_empaque WHERE company_id = ?`).all(companyId);
+                empaquesDb.forEach(emp => {
+                    const idProd = emp.product_id;
+                    const u = emp.tipo_medida || emp.nombre_unidad;
+                    if (idProd && u) {
+                        mapaUnidadesCatalogo[idProd] = u;
+                    }
+                });
+            } catch(eEmp) {}
+
             const ventas = masterDbDirect.prepare(`SELECT datos_json FROM ventas_locales WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?`).all(companyId, fechaIni, fechaFin);
             const mapa = {};
             ventas.forEach(v => {
@@ -1321,7 +1334,7 @@ server.get('/api/maestro/estadisticas', (req, res) => {
                     const prodArray = Array.isArray(parsed) ? parsed : (parsed.productos || parsed.items || []);
                     prodArray.forEach(item => {
                         const qty = parseFloat(item.cantidad || item.quantity) || 0;
-                        const unitProd = item.unit || item.unidad || mapaUnidadesCatalogo[item.id] || 'UN';
+                        const unitProd = mapaUnidadesCatalogo[item.id] || item.unit || item.unidad || 'UN';
                         if (!mapa[item.id]) {
                             mapa[item.id] = { 
                                 id: item.id,
@@ -1331,7 +1344,9 @@ server.get('/api/maestro/estadisticas', (req, res) => {
                             };
                         }
                         mapa[item.id].cantidad_vendida += qty;
-                        if (unitProd && unitProd !== 'UN') {
+                        if (mapaUnidadesCatalogo[item.id]) {
+                            mapa[item.id].unidad = mapaUnidadesCatalogo[item.id];
+                        } else if (unitProd && unitProd !== 'UN') {
                             mapa[item.id].unidad = unitProd;
                         }
                     });
@@ -1341,15 +1356,17 @@ server.get('/api/maestro/estadisticas', (req, res) => {
             topProductos.push(...array);
         } catch(e) {}
 
-        // 3.1 Top Sucursales
+        // 3.1 Top Sucursales (con Resolución de Nombre)
         const topSucursales = masterDbDirect.prepare(`
-            SELECT COALESCE(NULLIF(branch_id, ''), 'Principal') as branch_id, 
+            SELECT COALESCE(NULLIF(v.branch_id, ''), 'principal') as branch_id,
+                   COALESCE(s.nombre, NULLIF(v.branch_id, ''), 'Sucursal Principal') as sucursal_nombre,
                    COUNT(*) as total_ventas_count,
-                   SUM(monto_total / COALESCE(NULLIF(tasa_bcv, 0), 1)) as total_usd,
-                   SUM(ganancia_venta) as total_ganancia
-            FROM ventas_locales
-            WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?
-            GROUP BY branch_id
+                   SUM(v.monto_total / COALESCE(NULLIF(v.tasa_bcv, 0), 1)) as total_usd,
+                   SUM(v.ganancia_venta) as total_ganancia
+            FROM ventas_locales v
+            LEFT JOIN sucursales s ON s.id = v.branch_id
+            WHERE v.company_id = ? AND v.fecha_emision BETWEEN ? AND ?
+            GROUP BY v.branch_id
             ORDER BY total_usd DESC
             LIMIT 5
         `).all(companyId, fechaIni, fechaFin);
@@ -2215,8 +2232,7 @@ ipcMain.handle('guardar-configuracion-cajera', async (event, clave, valor) => {
 ipcMain.handle('leer-impresoras', async (event) => {
     try {
         const webContents = event.sender;
-        const impresoras = await webContents.getPrintersAsync();
-        return impresoras;
+        return await webContents.getPrintersAsync();
     } catch (error) {
         console.error("❌ Error obteniendo impresoras del sistema:", error);
         return [];
@@ -2255,7 +2271,7 @@ ipcMain.handle('guardar-configuracion', async (event, clave, valor) => {
             config.showConsole = (clave === 'showConsole' || clave === 'mostrarConsola') ? (valor === true || valor === "true") : (config.showConsole || false);
             fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
 
-            // 4. LÃ³gica de PM2 (Solo si cambia isServer)
+            // 4. Lógica de PM2 (Solo si cambia isServer)
             if (clave === 'isServer') {
                 if (valor === true || valor === "true") {
                     exec(`pm2 start server.js --name "Nexus-Cerebro" --watch && pm2 save`);
@@ -2267,44 +2283,250 @@ ipcMain.handle('guardar-configuracion', async (event, clave, valor) => {
         
         return { success: true };
     } catch (error) {
-        console.error(`â Œ Error crÃ­tico al guardar configuraciÃ³n:`, error.message);
+        console.error(`❌ Error crítico al guardar configuración:`, error.message);
         return { error: error.message };
     }
 });
 
 ipcMain.handle('imprimir-texto-libre', async (event, textoTicket, nombreImpresora) => {
+    if (!nombreImpresora || !textoTicket) {
+        return { exito: false, mensaje: "Datos incompletos para impresión" };
+    }
+
     try {
-        // 1. Creamos el archivo temporal
-        const rutaArchivo = path.join(app.getPath('userData'), 'ticket_temporal.txt');
-        // Escribimos en latin1 para que los acentos y la "Ã±" salgan bien en la tiquera
+        const randomId = Math.random().toString(36).substring(7);
+        const rutaArchivo = path.join(app.getPath('userData'), `ticket_temp_${randomId}.txt`);
         fs.writeFileSync(rutaArchivo, textoTicket, 'latin1');
-        
-        // 2. Preparamos el comando RAW (Copiar archivo crudo al puerto de red local)
-        // OJO: nombreImpresora ahora DEBE ser el nombre con el que compartiste la impresora (Ej: POS58)
-        const comandoCMD = `copy /B "${rutaArchivo}" "\\\\localhost\\${nombreImpresora}"`;
 
-        // 3. Ejecutamos la impresiÃ³n directamente en CMD
+        const printerClean = nombreImpresora.trim();
+        const comandoCMD = `copy /B "${rutaArchivo}" "\\\\localhost\\${printerClean}"`;
+
         return new Promise((resolve) => {
-            console.log(`ðŸ’» Ejecutando impresiÃ³n RAW: ${comandoCMD}`);
-
             exec(comandoCMD, (error, stdout, stderr) => {
-                // Borramos el archivo temporal a los 2 segundos
                 setTimeout(() => {
-                    if (fs.existsSync(rutaArchivo)) fs.unlinkSync(rutaArchivo);
+                    try {
+                        if (fs.existsSync(rutaArchivo)) fs.unlinkSync(rutaArchivo);
+                    } catch(eClean) {}
                 }, 2000);
 
                 if (error) {
-                    console.error("â Œ Error al enviar RAW a impresora:", error.message);
-                    console.error("Detalles:", stderr);
+                    console.error("❌ Error al enviar RAW a impresora:", error.message);
                     resolve({ exito: false, mensaje: error.message });
                 } else {
-                    console.log(`ðŸ–¨ï¸  Ticket enviado exitosamente a: \\\\localhost\\${nombreImpresora}`);
+                    console.log(`🖨️ Ticket enviado a: \\\\localhost\\${printerClean}`);
                     resolve({ exito: true });
                 }
             });
         });
     } catch (error) {
+        console.error("❌ Error crítico en impresión:", error.message);
         return { exito: false, mensaje: error.message };
+    }
+});
+
+// --- GESTIÓN DE FACTURAS EN FORMATO ESTÁNDAR / PDF ---
+ipcMain.handle('generar-pdf-factura', async (event, { datosFactura, formatoPapel }) => {
+    try {
+        const { generarHTMLFactura } = require('./services/template-factura');
+        
+        let datosCompletos = { ...datosFactura };
+        try {
+            const row = db.prepare("SELECT valor FROM configuracion WHERE clave = 'config_factura'").get();
+            if (row && row.valor) {
+                const cfg = JSON.parse(row.valor);
+                if (cfg.encabezadoFactura && !datosCompletos.encabezadoFactura) {
+                    datosCompletos.encabezadoFactura = cfg.encabezadoFactura;
+                }
+                if (cfg.logoFactura && !datosCompletos.logoBase64) {
+                    datosCompletos.logoBase64 = cfg.logoFactura;
+                }
+            }
+        } catch (eDb) {
+            console.warn("⚠️ No se pudo leer config_factura para PDF:", eDb.message);
+        }
+
+        const formato = formatoPapel || 'CARTA';
+        const html = generarHTMLFactura(datosCompletos, formato);
+
+        const printWin = new BrowserWindow({
+            show: false,
+            width: 1200,
+            height: 900,
+            webPreferences: {
+                nodeIntegration: false,
+                contextIsolation: true,
+                webSecurity: false
+            }
+        });
+
+        const printOptions = {
+            margins: { marginType: 'none' },
+            printBackground: true
+        };
+
+        if (formato === 'MEDIA_CARTA') {
+            printOptions.landscape = true;
+            printOptions.pageSize = { width: 216000, height: 140000 };
+        } else if (formato === 'OFICIO') {
+            printOptions.landscape = false;
+            printOptions.pageSize = 'Legal';
+        } else {
+            printOptions.landscape = false;
+            printOptions.pageSize = 'Letter';
+        }
+
+        const dataUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
+        await printWin.loadURL(dataUrl);
+        await new Promise(r => setTimeout(r, 400));
+
+        const pdfBuffer = await printWin.webContents.printToPDF(printOptions);
+        printWin.close();
+
+        return {
+            success: true,
+            pdfBase64: `data:application/pdf;base64,${pdfBuffer.toString('base64')}`,
+            rawBufferBase64: pdfBuffer.toString('base64'),
+            htmlContent: html,
+            formato
+        };
+    } catch (err) {
+        console.error("❌ Error generando PDF de factura:", err);
+        return { success: false, error: err.message };
+    }
+});
+
+ipcMain.handle('imprimir-pdf-factura', async (event, { datosFactura, formatoPapel, nombreImpresora }) => {
+    try {
+        const { generarHTMLFactura } = require('./services/template-factura');
+        
+        let datosCompletos = { ...datosFactura };
+        try {
+            const row = db.prepare("SELECT valor FROM configuracion WHERE clave = 'config_factura'").get();
+            if (row && row.valor) {
+                const cfg = JSON.parse(row.valor);
+                if (cfg.encabezadoFactura && !datosCompletos.encabezadoFactura) {
+                    datosCompletos.encabezadoFactura = cfg.encabezadoFactura;
+                }
+                if (cfg.logoFactura && !datosCompletos.logoBase64) {
+                    datosCompletos.logoBase64 = cfg.logoFactura;
+                }
+            }
+        } catch (eDb) {}
+
+        const formato = formatoPapel || 'CARTA';
+        const html = generarHTMLFactura(datosCompletos, formato);
+
+        const printWin = new BrowserWindow({
+            show: false,
+            width: 1200,
+            height: 900,
+            webPreferences: {
+                nodeIntegration: false,
+                contextIsolation: true,
+                webSecurity: false
+            }
+        });
+
+        const printOptions = {
+            silent: true,
+            printBackground: true
+        };
+
+        if (nombreImpresora && nombreImpresora.trim()) {
+            printOptions.deviceName = nombreImpresora.trim();
+        }
+
+        if (formato === 'MEDIA_CARTA') {
+            printOptions.landscape = true;
+            printOptions.pageSize = { width: 216000, height: 140000 };
+        } else if (formato === 'OFICIO') {
+            printOptions.landscape = false;
+            printOptions.pageSize = 'Legal';
+        } else {
+            printOptions.landscape = false;
+            printOptions.pageSize = 'Letter';
+        }
+
+        const dataUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
+        await printWin.loadURL(dataUrl);
+        await new Promise(r => setTimeout(r, 400));
+
+        return new Promise((resolve) => {
+            // 1. Intento inicial de impresión directa/silenciosa
+            printWin.webContents.print(printOptions, (success, failureReason) => {
+                if (success) {
+                    try { printWin.close(); } catch(eWin) {}
+                    console.log(`🖨️ Factura impresa correctamente en modo silencioso: ${nombreImpresora || 'Default'}`);
+                    return resolve({ success: true });
+                }
+
+                console.warn(`⚠️ Impresión silenciosa no pudo completarse (${failureReason}). Desplegando cuadro de diálogo de Windows...`);
+
+                // 2. Fallback automático: Abre la ventana nativa de impresión de Windows
+                const dialogPrintOptions = {
+                    silent: false,
+                    printBackground: true
+                };
+
+                if (formato === 'MEDIA_CARTA') {
+                    dialogPrintOptions.landscape = true;
+                    dialogPrintOptions.pageSize = { width: 216000, height: 140000 };
+                } else if (formato === 'OFICIO') {
+                    dialogPrintOptions.landscape = false;
+                    dialogPrintOptions.pageSize = 'Legal';
+                } else {
+                    dialogPrintOptions.landscape = false;
+                    dialogPrintOptions.pageSize = 'Letter';
+                }
+
+                printWin.webContents.print(dialogPrintOptions, (dialogSuccess, dialogFailureReason) => {
+                    try { printWin.close(); } catch(eWin) {}
+                    if (!dialogSuccess) {
+                        console.warn("ℹ️ Diálogo de impresión cerrado o cancelado por el usuario:", dialogFailureReason);
+                        resolve({ success: false, canceled: true, error: dialogFailureReason });
+                    } else {
+                        console.log("🖨️ Factura enviada a través del cuadro de impresión de Windows exitosamente.");
+                        resolve({ success: true, viaDialog: true });
+                    }
+                });
+            });
+        });
+    } catch (err) {
+        console.error("❌ Error en imprimir-pdf-factura:", err);
+        return { success: false, error: err.message };
+    }
+});
+
+ipcMain.handle('guardar-pdf-factura', async (event, { rawBufferBase64, pdfBase64, nombreArchivoSugerido }) => {
+    try {
+        const base64Data = rawBufferBase64 || (pdfBase64 ? pdfBase64.replace(/^data:application\/pdf;base64,/, '') : '');
+        if (!base64Data) {
+            return { success: false, error: "No se proporcionaron datos del PDF para guardar." };
+        }
+
+        const focusedWindow = BrowserWindow.getFocusedWindow();
+        const defaultName = nombreArchivoSugerido || `Factura_${Date.now()}.pdf`;
+        
+        const saveDialogResult = await dialog.showSaveDialog(focusedWindow, {
+            title: 'Guardar Factura / Nota de Entrega en PDF',
+            defaultPath: path.join(app.getPath('documents'), defaultName),
+            filters: [
+                { name: 'Documentos PDF (*.pdf)', extensions: ['pdf'] }
+            ]
+        });
+
+        if (saveDialogResult.canceled || !saveDialogResult.filePath) {
+            return { success: false, canceled: true };
+        }
+
+        const buffer = Buffer.from(base64Data, 'base64');
+        fs.writeFileSync(saveDialogResult.filePath, buffer);
+        console.log(`💾 Factura guardada exitosamente en: ${saveDialogResult.filePath}`);
+
+        return { success: true, filePath: saveDialogResult.filePath };
+    } catch (err) {
+        console.error("❌ Error guardando PDF:", err);
+        return { success: false, error: err.message };
     }
 });
 
@@ -4982,7 +5204,7 @@ ipcMain.handle('eliminar-unidad-empaque-local', async (event, id) => {
 ipcMain.handle('guardar-salida-local', async (event, salida) => {
     try {
         const id = salida.id || Date.now().toString();
-        const branchId = salida.branchId || salida.sucursalId || '0';
+        const branchId = salida.branchId || salida.sucursalId || 'principal';
         const unidad = salida.unidad || 'UN';
         const motivo = salida.motivo || 'Salida';
         const observacion = salida.observacion || '';
@@ -4991,22 +5213,43 @@ ipcMain.handle('guardar-salida-local', async (event, salida) => {
 
         const query = "INSERT INTO salidas_inventario (id, company_id, branch_id, product_id, cantidad, unidad, motivo, observacion, usuario_id, estado_sync) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
-        db.prepare(query).run(
-            id,
-            salida.companyId,
-            branchId,
-            salida.productId,
-            salida.cantidad,
-            unidad,
-            motivo,
-            observacion,
-            usuarioId,
-            estado_sync
-        );
+        if (config.isServer && masterDbDirect) {
+            try {
+                masterDbDirect.prepare(query).run(
+                    id,
+                    salida.companyId,
+                    branchId,
+                    salida.productId,
+                    salida.cantidad,
+                    unidad,
+                    motivo,
+                    observacion,
+                    usuarioId,
+                    estado_sync
+                );
+            } catch(eMaster) {
+                console.error("Error guardando salida en masterDbDirect:", eMaster.message);
+            }
+        }
+
+        try {
+            db.prepare(query).run(
+                id,
+                salida.companyId,
+                branchId,
+                salida.productId,
+                salida.cantidad,
+                unidad,
+                motivo,
+                observacion,
+                usuarioId,
+                estado_sync
+            );
+        } catch(eDb) {}
 
         return { success: true };
     } catch (e) {
-        console.error("? Error guardar salida local:", e);
+        console.error("❌ Error guardar salida local:", e);
         return { success: false, message: e.message };
     }
 });
@@ -5023,9 +5266,122 @@ ipcMain.handle('obtener-salidas-local', async (event, filtro) => {
 
         query += " ORDER BY rowid DESC LIMIT 200";
 
+        if (config.isServer && masterDbDirect) {
+            try {
+                const res = masterDbDirect.prepare(query).all(params);
+                if (res && res.length > 0) return res;
+            } catch(eMaster) {}
+        }
+
         return db.prepare(query).all(params);
     } catch (e) {
-        console.error("? Error obtener salidas:", e);
+        console.error("❌ Error obtener salidas:", e);
         return [];
+    }
+});
+
+// ==========================================
+// GESTIÓN DE RESPALDOS LOCALES (BACKUP / RESTORE)
+// ==========================================
+const backupsDir = path.join(dbDir, 'backups');
+if (!fs.existsSync(backupsDir)) {
+    try { fs.mkdirSync(backupsDir, { recursive: true }); } catch(e) {}
+}
+
+ipcMain.handle('obtener-respaldos-locales', async () => {
+    try {
+        if (!fs.existsSync(backupsDir)) return [];
+        const files = fs.readdirSync(backupsDir);
+        const backups = [];
+
+        for (const file of files) {
+            if (file.endsWith('.bak') || file.endsWith('.db')) {
+                const fullPath = path.join(backupsDir, file);
+                try {
+                    const stats = fs.statSync(fullPath);
+                    backups.push({
+                        fileName: file,
+                        size: (stats.size / (1024 * 1024)).toFixed(2),
+                        createdAt: stats.birthtime || stats.mtime
+                    });
+                } catch(eStat) {}
+            }
+        }
+
+        backups.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        return backups;
+    } catch (e) {
+        console.error("❌ Error al obtener respaldos locales:", e.message);
+        return [];
+    }
+});
+
+ipcMain.handle('crear-respaldo-local', async () => {
+    try {
+        if (!fs.existsSync(backupsDir)) fs.mkdirSync(backupsDir, { recursive: true });
+        
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const hh = String(now.getHours()).padStart(2, '0');
+        const min = String(now.getMinutes()).padStart(2, '0');
+        const ss = String(now.getSeconds()).padStart(2, '0');
+        const fileName = `nexus_backup_${yyyy}-${mm}-${dd}_${hh}-${min}-${ss}.bak`;
+        const targetPath = path.join(backupsDir, fileName);
+
+        // Usamos la API atómica de backup de SQLite
+        await db.backup(targetPath);
+
+        const stats = fs.statSync(targetPath);
+        return {
+            success: true,
+            fileName: fileName,
+            size: (stats.size / (1024 * 1024)).toFixed(2)
+        };
+    } catch (e) {
+        console.error("❌ Error al crear respaldo local:", e.message);
+        return { success: false, error: e.message };
+    }
+});
+
+ipcMain.handle('eliminar-respaldo-local', async (event, fileName) => {
+    try {
+        const safeName = path.basename(fileName);
+        const targetPath = path.join(backupsDir, safeName);
+        if (fs.existsSync(targetPath)) {
+            fs.unlinkSync(targetPath);
+            return { success: true };
+        }
+        return { success: false, error: "Archivo no encontrado" };
+    } catch (e) {
+        console.error("❌ Error al eliminar respaldo local:", e.message);
+        return { success: false, error: e.message };
+    }
+});
+
+ipcMain.handle('restaurar-respaldo-local', async (event, fileName) => {
+    try {
+        const safeName = path.basename(fileName);
+        const sourcePath = path.join(backupsDir, safeName);
+        if (!fs.existsSync(sourcePath)) {
+            return { success: false, error: "Archivo de respaldo no encontrado" };
+        }
+
+        try {
+            db.close();
+        } catch(eClose) {}
+
+        fs.copyFileSync(sourcePath, dbPath);
+
+        setTimeout(() => {
+            app.relaunch();
+            app.exit(0);
+        }, 800);
+
+        return { success: true };
+    } catch (e) {
+        console.error("❌ Error al restaurar respaldo local:", e.message);
+        return { success: false, error: e.message };
     }
 });

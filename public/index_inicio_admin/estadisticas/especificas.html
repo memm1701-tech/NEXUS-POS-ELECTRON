@@ -1210,6 +1210,24 @@
         // ==========================================
         // 4. ACTUALIZAR SUCURSAL LÍDER EN VENTAS
         // ==========================================
+        let mapaNombresSucursales = {};
+
+        function resolverNombreSucursal(sucursalObj) {
+            if (!sucursalObj) return "Sucursal Desconocida";
+            if (sucursalObj.sucursal_nombre && sucursalObj.sucursal_nombre !== sucursalObj.branch_id) {
+                return sucursalObj.sucursal_nombre;
+            }
+            const bId = sucursalObj.branch_id || sucursalObj.id;
+            if (bId && mapaNombresSucursales[bId]) {
+                return mapaNombresSucursales[bId];
+            }
+            const bIdLower = String(bId || '').toLowerCase();
+            if (bIdLower === 'principal' || bIdLower === 'default' || bIdLower === '') {
+                return "Sucursal Principal";
+            }
+            return sucursalObj.sucursal_nombre || sucursalObj.nombre || bId || "Sucursal";
+        }
+
         async function actualizarTopSucursal(periodo = 'semana') {
             const elNombre = document.getElementById('kpi-suc-nombre');
             const elDetalle = document.getElementById('kpi-suc-detalle');
@@ -1228,7 +1246,7 @@
 
                 if (topSucursalesCached.length > 0) {
                     const topS = topSucursalesCached[0];
-                    const sucursalNombre = String(topS.branch_id).toUpperCase();
+                    const sucursalNombre = resolverNombreSucursal(topS);
                     if (elNombre) elNombre.textContent = sucursalNombre;
                     if (elDetalle) elDetalle.textContent = `${topS.total_ventas_count} ventas | ${formatMoney(topS.total_usd)}`;
                 } else {
@@ -1434,9 +1452,10 @@
             }
             let html = '<h4>📍 Ranking de Sucursales</h4><ul>';
             topSucursalesCached.slice(0, 5).forEach((s, idx) => {
+                const nombreBonito = resolverNombreSucursal(s);
                 html += `<li>
                     <div style="display:flex; flex-direction:column; max-width: 150px;">
-                        <span style="font-weight:700;">${idx + 1}. ${String(s.branch_id).toUpperCase()}</span>
+                        <span style="font-weight:700;">${idx + 1}. ${nombreBonito}</span>
                         <span style="font-size:0.7rem; color:#94a3b8;">${s.total_ventas_count} ventas</span>
                     </div>
                     <span class="item-value" style="color:#34d399;">${formatMoney(s.total_usd)}</span>
@@ -1472,6 +1491,23 @@
                 if (api) {
                     const tasaConfig = await api.obtenerConfiguracion('TASA_BCV');
                     currentTasaBcv = parseFloat(tasaConfig) || 1;
+
+                    if (typeof api.obtenerSucursalesLocal === 'function') {
+                        const sesion = await api.obtenerSesionLocal();
+                        const listaSuc = await api.obtenerSucursalesLocal(sesion ? sesion.companyId : null);
+                        (listaSuc || []).forEach(s => {
+                            let nom = s.nombre || s.name || s.nombre_sucursal;
+                            if (!nom && s.datos_json) {
+                                try {
+                                    const d = typeof s.datos_json === 'string' ? JSON.parse(s.datos_json) : s.datos_json;
+                                    nom = d.nombre || d.name || d.nombre_sucursal;
+                                } catch(e){}
+                            }
+                            if (s.id && nom) {
+                                mapaNombresSucursales[s.id] = nom;
+                            }
+                        });
+                    }
                 }
             } catch (e) {}
 

@@ -669,16 +669,16 @@
 
             // 🔥 3. INTENTO DE SINCRONIZACIÓN CON EL VPS EN SEGUNDO PLANO
             let exitoVPS = false;
+            const payloadVPS = {
+                company_id: idEmpresa,
+                sucursal_id: idSucursalSeleccionada,
+                producto_id: idProductoSeleccionado,
+                operacion: 'restar',
+                cantidad: totalARestar
+            };
+
             if (navigator.onLine && respaldoActivo && SERVER_URL) {
                 btnSubmit.textContent = "Sincronizando con VPS...";
-                const payloadVPS = {
-                    company_id: idEmpresa,
-                    sucursal_id: idSucursalSeleccionada,
-                    producto_id: idProductoSeleccionado,
-                    operacion: 'restar',
-                    cantidad: totalARestar
-                };
-
                 try {
                     const resVPS = await fetch(`${SERVER_URL}/api/maestro/stock/actualizar`, {
                         method: 'POST',
@@ -693,15 +693,24 @@
                         }
                     }
                 } catch (vpsError) {
-                    console.error("⚠️ Error VPS (se ignorará para mantener flujo local):", vpsError);
+                    console.error("⚠️ Error VPS (se ignorará para mantener flujo local):", vpsError.message);
                 }
+            }
+
+            // 🔥 3.1 SI EL VPS FALLÓ O ESTÁ OFFLINE, ENCOLAR EN SYNC_QUEUE
+            if (!exitoVPS && respaldoActivo && SERVER_URL && window.nexusAPI.encolarSincronizacion) {
+                await window.nexusAPI.encolarSincronizacion({ 
+                    operacion: 'UPSERT', 
+                    tabla: 'movimientos_stock', 
+                    datos: payloadVPS 
+                });
             }
 
             // 🔥 4. CONFIRMACIÓN FINAL AL USUARIO Y RECARGA
             if (exitoVPS) {
                 mostrarToast("✅ ÉXITO: Salida registrada y stock sincronizado en la nube.", "success");
             } else if (respaldoActivo && SERVER_URL) {
-                mostrarToast("✅ GUARDADO LOCAL: Sincronización con nube pendiente (Sin conexión/VPS falló).", "warning");
+                mostrarToast("⚠️ GUARDADO LOCAL: Añadido a la cola de sincronización (Sin conexión/VPS falló).", "warning");
             } else {
                 mostrarToast("✅ ÉXITO: Salida registrada (Modo 100% Local).", "success");
             }
@@ -709,7 +718,7 @@
             formulario.reset();
             idProductoSeleccionado = null;
             unidadActual = 'UN';
-            visorTotal.value = "0.00 unidad(es)";
+            visorTotal.value = "0.00 UN";
             
             // ACTUALIZAR ENTORNO VISUAL
             await prepararEntornoSucursal(); // Trae stock fresco de SQLite
@@ -729,9 +738,17 @@
         const contenedor = document.getElementById('toast-container');
         if(!contenedor) return;
         const toast = document.createElement('div');
-        const colorBase = tipo === "success" ? "bg-green-500" : "bg-red-500";
+        let colorBase = "bg-green-500";
+        let icono = "✅";
+        if (tipo === "error") {
+            colorBase = "bg-red-500";
+            icono = "❌";
+        } else if (tipo === "warning") {
+            colorBase = "bg-amber-500";
+            icono = "⚠️";
+        }
         toast.className = `${colorBase} text-white px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-300 translate-x-full opacity-0 flex items-center gap-3 font-bold`;
-        toast.innerHTML = `<span>${tipo === "success" ? '✅' : '❌'}</span><span>${mensaje}</span>`;
+        toast.innerHTML = `<span>${icono}</span><span>${mensaje}</span>`;
         contenedor.appendChild(toast);
         setTimeout(() => toast.classList.remove('translate-x-full', 'opacity-0'), 10);
         setTimeout(() => {
@@ -744,6 +761,22 @@
     document.getElementById('filtro-desde').addEventListener('change', renderizarHistorial);
     document.getElementById('filtro-hasta').addEventListener('change', renderizarHistorial);
     document.getElementById('filtro-limite').addEventListener('change', renderizarHistorial);
+
+    // Listener reactivo en tiempo real para cambios de stock desde cualquier ventana
+    let timerRefresco = null;
+    function refrescarEntornoDebounced() {
+        clearTimeout(timerRefresco);
+        timerRefresco = setTimeout(async () => {
+            await prepararEntornoSucursal();
+            await cargarHistorialSalidas();
+        }, 300);
+    }
+
+    const apiGlobal = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+    if (apiGlobal && apiGlobal.onStockCambiado) {
+        apiGlobal.onStockCambiado(refrescarEntornoDebounced);
+    }
+    window.addEventListener('stock-actualizado-vps', refrescarEntornoDebounced);
 
     // Arrancar el sistema
     inicializar();

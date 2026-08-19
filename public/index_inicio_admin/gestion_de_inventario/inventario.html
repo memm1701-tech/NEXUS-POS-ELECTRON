@@ -647,19 +647,44 @@
     });
 
     function cargarTier(tier) {
-    const data = preciosData[`p${tier}`] || { compra: 0, porcentaje: 0, venta: 0 };
-    document.getElementById('product-buy-price').value = data.compra !== undefined ? data.compra : 0;
-    document.getElementById('product-profit-percentage').value = data.porcentaje !== undefined ? data.porcentaje : 0;
-    document.getElementById('product-price').value = data.venta !== undefined ? data.venta : 0;
-}
+        const data = preciosData[`p${tier}`] || { compra: 0, porcentaje: 0, venta: 0 };
+        document.getElementById('product-buy-price').value = data.compra !== undefined ? data.compra : 0;
+        document.getElementById('product-profit-percentage').value = data.porcentaje !== undefined ? data.porcentaje : 0;
+        document.getElementById('product-price').value = data.venta !== undefined ? data.venta : 0;
 
-function guardarTierActual() {
-    preciosData[`p${currentTier}`] = {
-        compra: parseFloat(document.getElementById('product-buy-price').value) || 0,
-        porcentaje: parseFloat(document.getElementById('product-profit-percentage').value) || 0,
-        venta: parseFloat(document.getElementById('product-price').value) || 0
-    };
-}
+        const alertBox = document.getElementById('profit-warning-alert');
+        if (alertBox) {
+            if (parseFloat(data.porcentaje) > 30) {
+                alertBox.classList.remove('hidden');
+            } else {
+                alertBox.classList.add('hidden');
+            }
+        }
+    }
+
+    function guardarTierActual() {
+        const costoVal = parseFloat(document.getElementById('product-buy-price').value) || 0;
+        const porcVal = parseFloat(document.getElementById('product-profit-percentage').value) || 0;
+        const ventaVal = parseFloat(document.getElementById('product-price').value) || 0;
+
+        preciosData[`p${currentTier}`] = {
+            compra: costoVal,
+            porcentaje: porcVal,
+            venta: ventaVal
+        };
+
+        // 🔥 REGLA: Si guardamos P1, propagamos el precio de compra a P2 y P3
+        if (String(currentTier) === '1') {
+            preciosData.p2.compra = costoVal;
+            preciosData.p3.compra = costoVal;
+            if (preciosData.p2.porcentaje) {
+                preciosData.p2.venta = parseFloat((costoVal * (1 + (preciosData.p2.porcentaje / 100))).toFixed(2));
+            }
+            if (preciosData.p3.porcentaje) {
+                preciosData.p3.venta = parseFloat((costoVal * (1 + (preciosData.p3.porcentaje / 100))).toFixed(2));
+            }
+        }
+    }
 
 async function iniciarSincronizacionSilenciosa() {
     if (typeof sincronizando === 'undefined') window.sincronizando = false;
@@ -787,21 +812,46 @@ function calcularPrecios() {
     const valorPorcentaje = productProfitPercentageInput.value;
     const alertBox = document.getElementById('profit-warning-alert');
     
-    if (!alertBox) return;
+    const costo = parseFloat(valorCosto) || 0;
+    const porcentaje = parseFloat(valorPorcentaje) || 0;
 
     if (valorCosto !== "" && valorPorcentaje !== "") {
-        const costo = parseFloat(valorCosto) || 0;
-        const porcentaje = parseFloat(valorPorcentaje) || 0;
         const baseImponible = costo * (1 + (porcentaje / 100));
         productPriceInput.value = baseImponible.toFixed(2);
-        if (porcentaje > 30) {
-            alertBox.classList.remove('hidden');
-        } else {
-            alertBox.classList.add('hidden');
+        if (alertBox) {
+            if (porcentaje > 30) {
+                alertBox.classList.remove('hidden');
+            } else {
+                alertBox.classList.add('hidden');
+            }
         }
     } else {
         productPriceInput.value = "";
-        alertBox.classList.add('hidden');
+        if (alertBox) alertBox.classList.add('hidden');
+    }
+
+    const ventaCalculada = parseFloat(productPriceInput.value) || 0;
+
+    // 🔥 REGLA DE NEGOCIO:
+    // Si estamos editando el nivel 1 (P1), sincronizamos automáticamente el precio de compra
+    // en los niveles P2 y P3. Si estamos en P2 o P3, únicamente se modifica ese nivel.
+    if (String(currentTier) === "1") {
+        preciosData.p1 = { compra: costo, porcentaje: porcentaje, venta: ventaCalculada };
+        preciosData.p2.compra = costo;
+        preciosData.p3.compra = costo;
+
+        // Recalcular venta de P2 si ya tiene porcentaje configurado
+        if (preciosData.p2.porcentaje) {
+            preciosData.p2.venta = parseFloat((costo * (1 + (preciosData.p2.porcentaje / 100))).toFixed(2));
+        }
+        // Recalcular venta de P3 si ya tiene porcentaje configurado
+        if (preciosData.p3.porcentaje) {
+            preciosData.p3.venta = parseFloat((costo * (1 + (preciosData.p3.porcentaje / 100))).toFixed(2));
+        }
+    } else if (String(currentTier) === "2") {
+        preciosData.p2 = { compra: costo, porcentaje: porcentaje, venta: ventaCalculada };
+    } else if (String(currentTier) === "3") {
+        preciosData.p3 = { compra: costo, porcentaje: porcentaje, venta: ventaCalculada };
     }
 }
 
@@ -1460,6 +1510,27 @@ function clearForm() {
     const unitSelect = document.getElementById('product-unit-select');
     if (unitSelect) unitSelect.value = 'UN';
     
+    // Resetear estructura de 3 niveles de precios
+    preciosData = {
+        p1: { compra: 0, porcentaje: 0, venta: 0 },
+        p2: { compra: 0, porcentaje: 0, venta: 0 },
+        p3: { compra: 0, porcentaje: 0, venta: 0 }
+    };
+    currentTier = "1";
+    const tabs = document.querySelectorAll('.price-tab');
+    tabs.forEach(t => {
+        t.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+        t.classList.add('text-gray-500');
+    });
+    const tab1 = document.querySelector('.price-tab[data-tier="1"]');
+    if (tab1) {
+        tab1.classList.remove('text-gray-500');
+        tab1.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+    }
+    if (document.getElementById('label-buy-price')) document.getElementById('label-buy-price').textContent = `Precio Compra (P1):`;
+    if (document.getElementById('label-profit-percentage')) document.getElementById('label-profit-percentage').textContent = `Ganancia % (P1):`;
+    if (document.getElementById('label-price')) document.getElementById('label-price').textContent = `Base Imponible(P. venta) (P1):`;
+
     // 🔥 LIMPIAMOS LA IMAGEN DE LA UI Y LA VARIABLE GLOBAL
     if (typeof updateImageUI === 'function') {
         updateImageUI(null);

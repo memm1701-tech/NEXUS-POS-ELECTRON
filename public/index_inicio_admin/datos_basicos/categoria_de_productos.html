@@ -5,8 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Categorías</title>
 
-    <link href="../../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
-    <link href="../../tailwindcss.css" rel="stylesheet">
+    <script src="../../tailwindcss.js"></script>
+    <link href="../../../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <link href="../../../node_modules/@fortawesome/fontawesome-free/css/all.min.css" rel="stylesheet">
+    <link href="../../../node_modules/material-icons/iconfont/material-icons.css" rel="stylesheet">
 <style>
         body {
             font-family: 'Roboto', sans-serif;
@@ -339,8 +341,6 @@
 
         .btn-confirm-delete:hover { background-color: #b91c1c; /* hover:bg-red-700 */ }
     </style>
-
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
 <body class="bg-gray-50 font-sans overflow-y-auto">
     
@@ -1249,58 +1249,6 @@ async function handleChangeCategoryBatch() {
         changeCategoryBtn.disabled = false;
     }
 }
-        
-        // Función para mostrar alertas personalizadas
-function showCustomAlert(message, type = 'success') {
-            // 1. Crear el elemento de la alerta
-            const alertDiv = document.createElement('div');
-            alertDiv.textContent = message;
-            
-            // 2. Definir colores consistentes con Nexus POS Global
-            let backgroundColor = '#4CAF50'; // Éxito (Verde)
-            if (type === 'error') {
-                backgroundColor = '#f44336'; // Error (Rojo)
-            } else if (type === 'warning') {
-                backgroundColor = '#ff9800'; // Advertencia (Naranja)
-            } else if (type === 'info') {
-                backgroundColor = '#2196F3'; // Información (Azul)
-            }
-            
-            // 3. Aplicar estilos (Mantenemos la integridad del diseño original)
-            alertDiv.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background-color: ${backgroundColor};
-                color: white;
-                padding: 16px 24px;
-                border-radius: 8px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                z-index: 10000;
-                font-family: 'Roboto', sans-serif;
-                font-weight: 500;
-                min-width: 250px;
-                max-width: 400px;
-                opacity: 0;
-                transform: translateY(-20px);
-                transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            `;
-
-            document.body.appendChild(alertDiv);
-
-            // 4. Animación de entrada
-            requestAnimationFrame(() => {
-                alertDiv.style.opacity = '1';
-                alertDiv.style.transform = 'translateY(0)';
-            });
-
-            // 5. Animación de salida y limpieza
-            setTimeout(() => {
-                alertDiv.style.opacity = '0';
-                alertDiv.style.transform = 'translateY(-20px)';
-                setTimeout(() => alertDiv.remove(), 400);
-            }, 3500);
-        }
     </script>
 </body>
 </html>
