@@ -486,8 +486,9 @@ server.put('/api/maestro/metodos-pago/:id', (req, res) => {
                 let prefijo = 'DOC-';
                 if (tipo === 'NOTA_CREDITO') prefijo = 'NC-';
                 else if (tipo === 'NOTA_DEBITO') prefijo = 'ND-'; 
+                else if (tipo === 'PRESUPUESTO' || tipo === 'COTIZACION') prefijo = 'PRE-';
                 else if (tipo === 'RETENCION_IVA') prefijo = 'RET-';
-                else if (tipo === 'GUIA_DESPACHO') prefijo = 'GD-'; // <--- NUEVO
+                else if (tipo === 'GUIA_DESPACHO') prefijo = 'GD-';
                 else if (tipo === 'TICKET_NO_FISCAL') prefijo = 'TICK-';
                 else if (tipo === 'FORMA_LIBRE') prefijo = 'FL-';
                 else if (tipo === 'ELECTRONICA') prefijo = 'TFHKA-';

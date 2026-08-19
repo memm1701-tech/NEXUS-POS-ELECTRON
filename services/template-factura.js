@@ -60,7 +60,9 @@ function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
     const cfg = configFormatos[formatoPapel] || configFormatos['MEDIA_CARTA'];
 
     // Mapeo de tipo de documento y subtítulo
-    const tipoDocumento = (datos.factura?.tipoDocumento || datos.tipoDocumento || "NOTA DE ENTREGA").toUpperCase();
+    const rawTipoDoc = (datos.factura?.tipoDocumento || datos.tipoDocumento || "NOTA DE ENTREGA").toUpperCase();
+    const esPresupuesto = rawTipoDoc.includes('PRESUPUESTO') || rawTipoDoc.includes('COTIZACION') || rawTipoDoc.includes('COTIZACIÓN');
+    const tipoDocumento = esPresupuesto ? "PRESUPUESTO / COTIZACIÓN" : rawTipoDoc;
     const subtituloSoftware = datos.subtituloSoftware || "Software Administrativo NEXUS POS";
 
     // Mapeo del encabezado de factura guardado en SQLite (Líneas 1 a 6)
@@ -547,17 +549,21 @@ function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
 
     <!-- SECCIÓN INFERIOR: FORMAS DE PAGO Y TOTALES -->
     <div class="footer-section">
-        <!-- Caja de Forma de Pago -->
+        <!-- Caja de Forma de Pago / Validez -->
         <div class="payment-box">
             <div class="payment-box-title">
-                <span>FORMA DE PAGO</span>
+                <span>${esPresupuesto ? 'CONDICIÓN / VALIDEZ' : 'FORMA DE PAGO'}</span>
             </div>
             <div class="payment-box-content">
-                ${factura.condicion}
+                ${esPresupuesto ? 'COTIZACIÓN INFORMATIVA (VÁLIDA POR 1 DÍA)' : factura.condicion}
             </div>
             ${factura.tasaCambio && factura.tasaCambio > 1 ? `
             <div class="payment-box-details">
                 Tasa Oficial BCV: Bs. ${factura.tasaCambio.toFixed(2)} por 1.00 USD
+            </div>` : ''}
+            ${esPresupuesto ? `
+            <div style="font-size: 8.5px; color: #64748b; margin-top: 4px; font-style: italic; line-height: 1.2;">
+                * No representa una factura fiscal ni compromiso de entrega hasta su facturación definitiva.
             </div>` : ''}
         </div>
 
@@ -568,7 +574,7 @@ function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
                 <span style="font-family: 'Consolas', monospace; font-weight: 700;">${subtotalUSD.toFixed(2)}$</span>
             </div>
             <div class="totals-row-main">
-                <span>${isCredito ? 'TOTAL DEUDA' : 'TOTAL A PAGAR'}</span>
+                <span>${esPresupuesto ? 'TOTAL PRESUPUESTO' : (isCredito ? 'TOTAL DEUDA' : 'TOTAL A PAGAR')}</span>
                 <span class="totals-main-amount">${totalUSD.toFixed(2)}$</span>
             </div>
             <div class="totals-bs-amount">

@@ -342,7 +342,8 @@ const ESQUEMA_LOCAL = {
     proveedores: { rif: "TEXT PRIMARY KEY", company_id: "TEXT", nombre: "TEXT", telefono: "TEXT", contacto: "TEXT", direccion: "TEXT", saldo_deuda: "REAL DEFAULT 0", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
     movimientos_cuentas_pagar: { id: "TEXT PRIMARY KEY", proveedor_rif: "TEXT", motivo: "TEXT", nota: "TEXT", monto: "REAL DEFAULT 0", company_id: "TEXT", comprobante: "TEXT", estado: "TEXT DEFAULT 'PENDIENTE'", monto_abonado: "REAL DEFAULT 0", metodo_pago: "TEXT", referencia: "TEXT", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP", estado_sync: "INTEGER DEFAULT 0" },
     empleados_movimientos: { id: "TEXT PRIMARY KEY", empleado_id: "TEXT", motivo: "TEXT", razon: "TEXT", monto: "REAL DEFAULT 0", company_id: "TEXT", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP", estado_sync: "INTEGER DEFAULT 0" },
-    metodos_pago_locales: { id: "TEXT PRIMARY KEY", nombre: "TEXT NOT NULL", tecla: "TEXT", tipo_moneda: "TEXT DEFAULT 'BS'", activo: "INTEGER DEFAULT 1", flag_impresora: "TEXT DEFAULT '00'" }
+    metodos_pago_locales: { id: "TEXT PRIMARY KEY", nombre: "TEXT NOT NULL", tecla: "TEXT", tipo_moneda: "TEXT DEFAULT 'BS'", activo: "INTEGER DEFAULT 1", flag_impresora: "TEXT DEFAULT '00'" },
+    presupuestos_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_presupuesto: "TEXT UNIQUE", cliente_nombre: "TEXT", cliente_rif: "TEXT", cliente_direccion: "TEXT", cliente_telefono: "TEXT", subtotal: "REAL DEFAULT 0", monto_iva: "REAL DEFAULT 0", monto_total: "REAL DEFAULT 0", tasa_bcv: "REAL DEFAULT 1", moneda: "TEXT DEFAULT 'USD'", validez_dias: "INTEGER DEFAULT 1", estado: "TEXT DEFAULT 'EMITIDO'", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0" }
 };
 
 function asegurarEsquema(dbConnection, esquema) {
@@ -461,7 +462,8 @@ function inicializarTablas() {
             sucursales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", nombre: "TEXT", direccion: "TEXT", telefono: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "TEXT" },
             unidades_empaque: { id: "TEXT PRIMARY KEY", company_id: "TEXT", product_id: "TEXT", nombre_producto: "TEXT DEFAULT ''", nombre_unidad: "TEXT", tipo_medida: "TEXT", factor_cantidad: "REAL DEFAULT 1", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP", ultima_sincronizacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
             historial_tasas: { fecha: "DATE PRIMARY KEY", valor: "DECIMAL(18, 8) DEFAULT 0", fuente: "TEXT DEFAULT 'BCV'" },
-            comprobantes_retencion: { id: "TEXT PRIMARY KEY", datos_json: "TEXT", fecha_registro: "DATETIME DEFAULT CURRENT_TIMESTAMP", estatus: "TEXT DEFAULT 'EMITIDO'" }
+            comprobantes_retencion: { id: "TEXT PRIMARY KEY", datos_json: "TEXT", fecha_registro: "DATETIME DEFAULT CURRENT_TIMESTAMP", estatus: "TEXT DEFAULT 'EMITIDO'" },
+            presupuestos_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_presupuesto: "TEXT UNIQUE", cliente_nombre: "TEXT", cliente_rif: "TEXT", cliente_direccion: "TEXT", cliente_telefono: "TEXT", subtotal: "REAL DEFAULT 0", monto_iva: "REAL DEFAULT 0", monto_total: "REAL DEFAULT 0", tasa_bcv: "REAL DEFAULT 1", moneda: "TEXT DEFAULT 'USD'", validez_dias: "INTEGER DEFAULT 1", estado: "TEXT DEFAULT 'EMITIDO'", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0" }
         };
         asegurarEsquema(masterDbDirect, ESQUEMA_MAESTRO_LOCAL);
         console.log("[DB AUTO-SYNC] Esquema maestro sincronizado en masterDbDirect.");
@@ -523,13 +525,95 @@ ipcMain.handle('guardar-guia-despacho-maestro', async (event, datos) => {
             datos_json: datos.datos_json
         });
 
-        console.log(`âœ… [NEXUS MASTER] GuÃ­a de Despacho guardada localmente: ${datos.numero_guia}`);
+        console.log(`✅ [NEXUS MASTER] Guía de Despacho guardada localmente: ${datos.numero_guia}`);
         
         return { exito: true, id: datos.id, numero_guia: datos.numero_guia };
 
     } catch (error) {
-        console.error("â Œ [ERROR] FallÃ³ al guardar la GuÃ­a de Despacho en SQLite:", error);
+        console.error("❌ [ERROR] Falló al guardar la Guía de Despacho en SQLite:", error);
         return { exito: false, error: error.message };
+    }
+});
+
+// ==========================================
+// 📑 IPC HANDLERS PARA PRESUPUESTOS / COTIZACIONES
+// ==========================================
+ipcMain.handle('guardar-presupuesto-local', async (event, datos) => {
+    try {
+        const stmt = db.prepare(`
+            INSERT INTO presupuestos_locales (
+                id, company_id, branch_id, cashier_id, numero_presupuesto,
+                cliente_nombre, cliente_rif, cliente_direccion, cliente_telefono,
+                subtotal, monto_iva, monto_total, tasa_bcv, moneda, validez_dias,
+                estado, fecha_emision, datos_json, estado_sync
+            ) VALUES (
+                @id, @company_id, @branch_id, @cashier_id, @numero_presupuesto,
+                @cliente_nombre, @cliente_rif, @cliente_direccion, @cliente_telefono,
+                @subtotal, @monto_iva, @monto_total, @tasa_bcv, @moneda, @validez_dias,
+                @estado, @fecha_emision, @datos_json, 0
+            )
+        `);
+
+        stmt.run({
+            id: datos.id || `PRE-${Date.now()}`,
+            company_id: datos.company_id || '',
+            branch_id: datos.branch_id || '',
+            cashier_id: datos.cashier_id || '',
+            numero_presupuesto: datos.numero_presupuesto,
+            cliente_nombre: datos.cliente_nombre || 'CONSUMIDOR FINAL',
+            cliente_rif: datos.cliente_rif || 'V-00000000',
+            cliente_direccion: datos.cliente_direccion || '',
+            cliente_telefono: datos.cliente_telefono || '',
+            subtotal: datos.subtotal || 0,
+            monto_iva: datos.monto_iva || 0,
+            monto_total: datos.monto_total || 0,
+            tasa_bcv: datos.tasa_bcv || 1,
+            moneda: datos.moneda || 'USD',
+            validez_dias: datos.validez_dias || 1,
+            estado: datos.estado || 'EMITIDO',
+            fecha_emision: datos.fecha_emision || new Date().toISOString(),
+            datos_json: typeof datos.datos_json === 'object' ? JSON.stringify(datos.datos_json) : (datos.datos_json || '{}')
+        });
+
+        console.log(`✅ [PRESUPUESTO] Presupuesto guardado exitosamente: ${datos.numero_presupuesto}`);
+        return { success: true, id: datos.id, numero_presupuesto: datos.numero_presupuesto };
+    } catch (error) {
+        console.error("❌ Error guardando presupuesto en SQLite:", error);
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('obtener-presupuestos-local', async (event, filtro = '') => {
+    try {
+        let rows;
+        if (filtro && filtro.trim()) {
+            const f = `%${filtro.trim()}%`;
+            rows = db.prepare(`
+                SELECT * FROM presupuestos_locales 
+                WHERE numero_presupuesto LIKE ? OR cliente_nombre LIKE ? OR cliente_rif LIKE ?
+                ORDER BY fecha_emision DESC LIMIT 100
+            `).all(f, f, f);
+        } else {
+            rows = db.prepare(`SELECT * FROM presupuestos_locales ORDER BY fecha_emision DESC LIMIT 100`).all();
+        }
+        return rows || [];
+    } catch (error) {
+        console.error("❌ Error obteniendo presupuestos:", error);
+        return [];
+    }
+});
+
+ipcMain.handle('marcar-presupuesto-facturado', async (event, idOPresupuesto) => {
+    try {
+        db.prepare(`
+            UPDATE presupuestos_locales 
+            SET estado = 'CONVERTIDO_A_VENTA' 
+            WHERE id = ? OR numero_presupuesto = ?
+        `).run(idOPresupuesto, idOPresupuesto);
+        return { success: true };
+    } catch (error) {
+        console.error("❌ Error actualizando estado del presupuesto:", error);
+        return { success: false, error: error.message };
     }
 });
 
@@ -1900,10 +1984,13 @@ ipcMain.handle('obtener-proximo-correlativo', async (event, tipo) => {
                 
                 // ðŸ”¥ SOLUCIÃ“N: Si la fila no existe (Ej: NOTA_CREDITO), se crea al vuelo
                 if (!row) {
-                    console.log(`âš ï¸  Correlativo [${tipo}] no encontrado. CreÃ¡ndolo automÃ¡ticamente...`);
+                    console.log(`⚠️ Correlativo [${tipo}] no encontrado. Creándolo automáticamente...`);
                     let prefijo = 'DOC-';
                     if (tipo === 'NOTA_CREDITO') prefijo = 'NC-';
-                    else if (tipo === 'NOTA_DEBITO') prefijo = 'ND-'; // <--- LÃ NEA NUEVA AÃ‘ADIDA
+                    else if (tipo === 'NOTA_DEBITO') prefijo = 'ND-';
+                    else if (tipo === 'PRESUPUESTO' || tipo === 'COTIZACION') prefijo = 'PRE-';
+                    else if (tipo === 'RETENCION_IVA') prefijo = 'RET-';
+                    else if (tipo === 'GUIA_DESPACHO') prefijo = 'GD-';
                     else if (tipo === 'TICKET_NO_FISCAL') prefijo = 'TICK-';
                     else if (tipo === 'FORMA_LIBRE') prefijo = 'FL-';
                     else if (tipo === 'ELECTRONICA') prefijo = 'TFHKA-';

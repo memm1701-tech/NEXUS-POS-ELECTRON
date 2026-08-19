@@ -329,6 +329,9 @@ setTimeout(() => {
     <div class="space-y-0">
         <div class="text-center">
             <h1 class="text-3xl font-bold text-gray-800">Sistema de Facturación</h1>
+            <div id="badge-modo-presupuesto" class="hidden inline-flex items-center gap-2 px-4 py-1 mt-1 bg-purple-100 text-purple-800 border border-purple-300 font-black text-xs sm:text-sm tracking-wide shadow-sm">
+                <i class="fas fa-file-signature text-purple-600"></i> MODO PRESUPUESTO ACTIVO
+            </div>
         </div>
         
 <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-3 mb-2">
@@ -341,6 +344,18 @@ setTimeout(() => {
     </div>
 
     <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap flex-shrink-0 self-start sm:self-auto">
+        <button id="btn-toggle-presupuesto" 
+                onclick="window.toggleModoPresupuesto()" 
+                class="bg-purple-700 hover:bg-purple-800 text-white font-bold py-2 px-3 sm:px-4 rounded-none shadow-md transition duration-200 flex items-center justify-center text-xs sm:text-sm whitespace-nowrap">
+            <i class="fas fa-file-signature mr-1.5 sm:mr-2"></i> <span id="label-btn-presupuesto">Modo Presupuesto (F6)</span>
+        </button>
+
+        <button id="btn-buscar-presupuestos" 
+                onclick="window.abrirModalBuscarPresupuestos()" 
+                class="bg-purple-900 hover:bg-purple-950 text-white font-bold py-2 px-3 sm:px-4 rounded-none shadow-md transition duration-200 flex items-center justify-center text-xs sm:text-sm whitespace-nowrap">
+            <i class="fas fa-search mr-1.5 sm:mr-2"></i> Presupuestos
+        </button>
+
         <button id="btn-doc-fiscales" 
                 onclick="window.abrirModalDocFiscales()" 
                 class="bg-gray-800 hover:bg-gray-900 text-white font-bold py-2 px-3 sm:px-4 rounded-none shadow-md transition duration-200 flex items-center justify-center text-xs sm:text-sm whitespace-nowrap">
@@ -1393,6 +1408,138 @@ setTimeout(() => {
     </div>
 </div>
 
+<!-- MODAL DE BÚSQUEDA Y GESTIÓN DE PRESUPUESTOS (COTIZACIONES) -->
+<div id="modal-buscar-presupuestos" class="fixed inset-0 z-[999999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-none shadow-2xl w-full max-w-7xl h-[92vh] min-h-[650px] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-300">
+        
+        <!-- Header del Modal -->
+        <div class="p-5 border-b flex justify-between items-center bg-white shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-purple-100 text-purple-700 flex items-center justify-center font-black text-xl rounded-none">
+                    <i class="fas fa-file-signature"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-black text-gray-800 uppercase tracking-tight">Presupuestos y Cotizaciones</h2>
+                    <p class="text-xs text-gray-500 font-medium">Consulte cotizaciones previas y cárguelas a facturación con precios y tasa actualizados.</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text" id="filtro-buscar-presupuestos" 
+                        oninput="window.filtrarPresupuestosLista(this.value)"
+                        class="pl-10 pr-4 py-2 border border-gray-300 rounded-none focus:ring-2 focus:ring-purple-500 outline-none w-80 text-sm" 
+                        placeholder="Buscar por Nro, Cliente o RIF...">
+                </div>
+                <button onclick="window.cerrarModalBuscarPresupuestos()" class="text-gray-400 hover:text-gray-600 text-3xl font-light">&times;</button>
+            </div>
+        </div>
+
+        <!-- Contenido en 2 Columnas (68% Tabla / 32% Detalle) -->
+        <div class="flex flex-row flex-1 overflow-hidden">
+            <!-- Columna Izquierda: Tabla de Presupuestos -->
+            <div class="flex flex-col flex-[0_0_68%] h-full border-r border-gray-200">
+                <div class="px-4 pt-4 overflow-y-auto flex-1">
+                    <table class="min-w-full divide-y divide-gray-200 border-collapse border border-gray-200">
+                        <thead class="bg-gray-50 sticky top-0 z-10">
+                            <tr class="divide-x divide-gray-200">
+                                <th class="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase border border-gray-200">Nro Presupuesto</th>
+                                <th class="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase border border-gray-200">Cliente</th>
+                                <th class="px-3 py-2.5 text-center text-xs font-bold text-gray-500 uppercase border border-gray-200">Fecha</th>
+                                <th class="px-3 py-2.5 text-right text-xs font-bold text-gray-500 uppercase border border-gray-200">Tasa BCV</th>
+                                <th class="px-3 py-2.5 text-right text-xs font-bold text-gray-500 uppercase border border-gray-200">Total USD</th>
+                                <th class="px-3 py-2.5 text-center text-xs font-bold text-gray-500 uppercase border border-gray-200">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-presupuestos-body" class="bg-white divide-y divide-gray-100 divide-x divide-gray-100 text-sm">
+                            <tr>
+                                <td colspan="6" class="p-8 text-center text-gray-400 italic">Cargando presupuestos...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Columna Derecha: Panel de Previsualización y Acción -->
+            <div class="flex flex-col flex-[0_0_32%] p-5 overflow-y-auto h-full bg-slate-50">
+                <div id="preview-presupuesto-empty" class="flex-1 flex flex-col items-center justify-center text-gray-400 h-full">
+                    <i class="fas fa-file-invoice text-5xl mb-3 text-gray-300"></i>
+                    <p class="text-center font-medium text-sm">Seleccione un presupuesto de la lista<br>para ver el desglose completo.</p>
+                </div>
+
+                <div id="preview-presupuesto-data" class="hidden flex-1 flex flex-col h-full">
+                    <div class="flex items-center justify-between border-b pb-2 mb-3">
+                        <div>
+                            <h3 id="prev-pres-nro" class="text-xl font-black text-purple-900 tracking-tight">PRE-00000001</h3>
+                            <span id="prev-pres-fecha" class="text-xs text-gray-500 font-medium">19/08/2026 15:30</span>
+                        </div>
+                        <span id="prev-pres-estado" class="px-2.5 py-1 text-[11px] font-black rounded-full uppercase bg-purple-100 text-purple-800 border border-purple-200">
+                            EMITIDO
+                        </span>
+                    </div>
+
+                    <!-- Datos del Cliente -->
+                    <div class="bg-white p-3 border border-gray-200 mb-3 space-y-1 text-xs">
+                        <div class="font-bold text-gray-700 uppercase flex items-center gap-1">
+                            <i class="fas fa-user text-purple-600"></i> <span id="prev-pres-cliente-nombre">Cliente Demo</span>
+                        </div>
+                        <div class="text-gray-500">RIF/CI: <span id="prev-pres-cliente-rif" class="font-mono font-bold text-gray-700">V-00000000</span></div>
+                        <div id="prev-pres-cliente-contacto" class="text-gray-500 truncate">Tlf / Dir: No registrado</div>
+                    </div>
+
+                    <!-- Lista de Productos -->
+                    <div class="flex-1 overflow-y-auto max-h-[220px] bg-white border border-gray-200 mb-3 p-2">
+                        <table class="w-full text-xs">
+                            <thead class="border-b text-gray-500">
+                                <tr>
+                                    <th class="text-left pb-1">Cant</th>
+                                    <th class="text-left pb-1">Nivel</th>
+                                    <th class="text-left pb-1">Producto</th>
+                                    <th class="text-right pb-1">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="prev-pres-items-body" class="divide-y divide-gray-100">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Resumen de Totales -->
+                    <div class="bg-white p-3 border border-gray-200 mb-3 space-y-1.5 text-xs">
+                        <div class="flex justify-between text-gray-600">
+                            <span>Subtotal:</span>
+                            <span id="prev-pres-subtotal" class="font-mono font-bold">$0.00</span>
+                        </div>
+                        <div class="flex justify-between text-gray-600">
+                            <span>IVA Estimado:</span>
+                            <span id="prev-pres-iva" class="font-mono font-bold">$0.00</span>
+                        </div>
+                        <div class="flex justify-between text-base font-black text-gray-900 border-t pt-1">
+                            <span>Total $:</span>
+                            <span id="prev-pres-total-usd" class="font-mono text-purple-800">$0.00</span>
+                        </div>
+                        <div class="flex justify-between text-xs font-bold text-slate-500">
+                            <span>Total Bs (Tasa <span id="prev-pres-tasa">1.00</span>):</span>
+                            <span id="prev-pres-total-bs" class="font-mono">Bs. 0.00</span>
+                        </div>
+                    </div>
+
+                    <!-- Botón de Acción Principal -->
+                    <div class="mt-auto pt-2 shrink-0">
+                        <button id="btn-cargar-presupuesto-factura" 
+                                onclick="window.ejecutarCargaPresupuestoComoFactura()" 
+                                class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 px-4 rounded-none shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 text-sm uppercase tracking-wide">
+                            <i class="fas fa-cart-arrow-down text-base"></i>
+                            <span>Cargar como Factura</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script type="module">
 
 function updateWeightUI(isEnabled) {
@@ -1967,10 +2114,14 @@ document.addEventListener('keydown', (event) => {
 
         event.preventDefault();
 
-        // 🔥 LA MAGIA: Doble función de F8
-        // Si el modal de pagos NO está visible, F8 abre el catálogo y cortamos la ejecución.
+        // 🔥 LA MAGIA: Doble función de F8 y F6
+        // Si el modal de pagos NO está visible, F8 abre el catálogo y F6 alterna Modo Presupuesto
         if (key === 'F8' && !isPaymentVisible) {
             if (typeof window.openExtendedSearchModal === 'function') window.openExtendedSearchModal();
+            return;
+        }
+        if (key === 'F6' && !isPaymentVisible) {
+            if (typeof window.toggleModoPresupuesto === 'function') window.toggleModoPresupuesto();
             return;
         }
 
@@ -2120,10 +2271,21 @@ function updateCartAndRender(producto, cantidad) {
     }
 
     let unidadProd = producto.unit || producto.unidad || 'UN';
+    let preciosProducto = producto.precios || null;
+    let datosJsonObj = producto.datos_json || null;
+
     if (producto.datos_json) {
         try {
             const dj = typeof producto.datos_json === 'string' ? JSON.parse(producto.datos_json) : producto.datos_json;
+            datosJsonObj = dj;
             if (dj.unit || dj.unidad) unidadProd = dj.unit || dj.unidad;
+            if (!preciosProducto && dj.precios) preciosProducto = dj.precios;
+            else if (!preciosProducto && dj.precios_json) preciosProducto = dj.precios_json;
+        } catch(e){}
+    }
+    if (!preciosProducto && producto.precios_json) {
+        try {
+            preciosProducto = typeof producto.precios_json === 'string' ? JSON.parse(producto.precios_json) : producto.precios_json;
         } catch(e){}
     }
 
@@ -2138,7 +2300,10 @@ function updateCartAndRender(producto, cantidad) {
         unit: unidadProd,
         unidad: unidadProd,
         precio: precioUnitario,
+        precio_original: precioUnitario,
         tier: 'p1', 
+        precios: preciosProducto,
+        datos_json: datosJsonObj,
         tasaIva: porcentajeIva,
         baseImponible: baseImponible,
         montoIva: montoIva,
@@ -2150,6 +2315,8 @@ function updateCartAndRender(producto, cantidad) {
     
     if (indexExistente > -1) {
         cart[indexExistente].cantidad += cantidad;
+        if (!cart[indexExistente].precios && preciosProducto) cart[indexExistente].precios = preciosProducto;
+        if (!cart[indexExistente].datos_json && datosJsonObj) cart[indexExistente].datos_json = datosJsonObj;
         cart[indexExistente].baseImponible = cart[indexExistente].precio * cart[indexExistente].cantidad;
         cart[indexExistente].montoIva = cart[indexExistente].baseImponible * (cart[indexExistente].tasaIva / 100);
         cart[indexExistente].subtotal = cart[indexExistente].baseImponible + cart[indexExistente].montoIva;
@@ -2161,34 +2328,109 @@ function updateCartAndRender(producto, cantidad) {
     renderCart();
 }
 
-window.updateItemTier = function(index, newTier) {
+window.updateItemTier = async function(index, newTier) {
+    if (!cart || !cart[index]) return;
     const item = cart[index];
-    const originalProduct = (typeof allProducts !== 'undefined' ? allProducts : []).find(p => p.id === item.id);
     
-    if (!originalProduct || !originalProduct.precios) {
-        messageBox("Este producto no tiene niveles de precios definidos en memoria.", 'bg-red-500');
+    // 1. Intentar obtener el mapa de precios desde el item del carrito
+    let precios = item.precios || null;
+    
+    if (!precios && item.datos_json) {
+        try {
+            const dj = typeof item.datos_json === 'string' ? JSON.parse(item.datos_json) : item.datos_json;
+            precios = dj.precios || dj.precios_json || null;
+        } catch(e) {}
+    }
+
+    // 2. Si no está en el item, buscar en allProducts (memoria activa)
+    if (!precios && typeof allProducts !== 'undefined' && Array.isArray(allProducts)) {
+        const originalProduct = allProducts.find(p => 
+            (p.id !== undefined && String(p.id) === String(item.id)) || 
+            (p.producto_ID !== undefined && String(p.producto_ID) === String(item.id)) || 
+            (p.codigo && item.codigo && String(p.codigo).trim().toUpperCase() === String(item.codigo).trim().toUpperCase())
+        );
+
+        if (originalProduct) {
+            if (originalProduct.precios) {
+                precios = originalProduct.precios;
+            } else if (originalProduct.datos_json) {
+                try {
+                    const dj = typeof originalProduct.datos_json === 'string' ? JSON.parse(originalProduct.datos_json) : originalProduct.datos_json;
+                    precios = dj.precios || dj.precios_json || null;
+                } catch(e) {}
+            }
+        }
+    }
+
+    // 3. Si aún no se encuentra, consultar en la base de datos local / servidor
+    if (!precios && item.codigo && window.nexusAPI && window.nexusAPI.buscarProductoPorCodigo) {
+        try {
+            const rawDB = await window.nexusAPI.buscarProductoPorCodigo(item.codigo, window.companyId);
+            if (rawDB) {
+                if (typeof _mapearProductoCaja === 'function') {
+                    const mapped = _mapearProductoCaja(rawDB);
+                    if (mapped && mapped.precios) precios = mapped.precios;
+                }
+                if (!precios && rawDB.datos_json) {
+                    const dj = typeof rawDB.datos_json === 'string' ? JSON.parse(rawDB.datos_json) : rawDB.datos_json;
+                    precios = dj.precios || dj.precios_json || null;
+                }
+            }
+        } catch(e) {
+            console.warn("⚠️ No se pudo consultar precios en DB local:", e);
+        }
+    }
+
+    // Si aún no hay precios
+    if (!precios) {
+        messageBox("Este producto no tiene niveles de precios configurados.", 'bg-yellow-600');
         renderCart(); 
         return;
     }
 
-    const tierData = originalProduct.precios[newTier];
-    if (!tierData || tierData.venta === undefined) {
-        messageBox(`El precio ${newTier.toUpperCase()} no está configurado.`, 'bg-yellow-600');
+    // Cachear precios en el item para futuros cambios inmediatos
+    item.precios = precios;
+
+    // 4. Extraer el precio y costo del nivel solicitado (p1, p2, p3)
+    const tierKey = String(newTier).toLowerCase();
+    const tierData = precios[tierKey] || precios[tierKey.toUpperCase()] || precios[newTier];
+
+    let nuevoPrecio = 0;
+    let nuevoCosto = parseFloat(item.precio_compra || item.costo || 0);
+
+    if (tierData) {
+        if (typeof tierData === 'number') {
+            nuevoPrecio = tierData;
+        } else if (typeof tierData === 'object') {
+            nuevoPrecio = parseFloat(tierData.venta !== undefined && tierData.venta !== null ? tierData.venta : (tierData.precio !== undefined ? tierData.precio : 0)) || 0;
+            if (tierData.compra !== undefined && tierData.compra !== null && tierData.compra !== "") {
+                nuevoCosto = parseFloat(tierData.compra) || nuevoCosto;
+            } else if (tierData.costo !== undefined && tierData.costo !== null && tierData.costo !== "") {
+                nuevoCosto = parseFloat(tierData.costo) || nuevoCosto;
+            }
+        }
+    }
+
+    // Si seleccionó P1 y no tiene venta explícita en tierData, usar el precio base original
+    if (tierKey === 'p1' && nuevoPrecio <= 0) {
+        nuevoPrecio = parseFloat(item.precio_original || item.precio || 0);
+    }
+
+    if (nuevoPrecio <= 0) {
+        messageBox(`El producto no tiene precio configurado para el nivel ${newTier.toUpperCase()}.`, 'bg-yellow-600');
         renderCart();
         return;
     }
 
-    const nuevoPrecio = parseFloat(tierData.venta) || 0;
-    const nuevoCosto = parseFloat(tierData.compra !== undefined ? tierData.compra : (item.precio_compra || originalProduct.precio_compra || 0)) || 0;
-    
-    item.tier = newTier;
+    // 5. Aplicar nuevo precio al item del carrito
+    item.tier = tierKey;
     item.precio = nuevoPrecio;
     item.ganancia_unitaria = Math.max(0, parseFloat((nuevoPrecio - nuevoCosto).toFixed(4)));
     
-    let tasaIva = parseFloat(item.tasaIva || 16);
+    let tasaIva = parseFloat(item.tasaIva !== undefined && item.tasaIva !== null ? item.tasaIva : 16);
     
     // 🛡️ EVASIÓN DE IMPUESTOS EN MODO NO FISCAL
-    if (currentEmissionMode === 'TICKET_NO_FISCAL') {
+    if (typeof currentEmissionMode !== 'undefined' && currentEmissionMode === 'TICKET_NO_FISCAL') {
         tasaIva = 0;
         item.tasaIva = 0;
     }
@@ -2200,6 +2442,126 @@ window.updateItemTier = function(index, newTier) {
     localStorage.setItem('cart', JSON.stringify(cart));
     renderCart();
     messageBox(`Precio cambiado a ${newTier.toUpperCase()}: ${nuevoPrecio.toFixed(2)}`, 'bg-blue-600');
+};
+
+// 🔄 FUNCIÓN INTELIGENTE: Refresca los precios de los productos en el carrito respetando su nivel (P1, P2 o P3)
+window.refrescarPreciosCarrito = async function() {
+    if (!Array.isArray(cart) || cart.length === 0) return;
+    
+    let huboCambios = false;
+
+    for (let i = 0; i < cart.length; i++) {
+        const item = cart[i];
+        
+        // No tocar abonos de deuda ni registros especiales
+        if (!item || item.id === 'PAGO-DEUDA' || item.codigo === 'DEUDA' || !item.codigo) continue;
+
+        try {
+            let prodActualizado = null;
+
+            // 1. Buscar en la base de datos local por código de barras / ID
+            if (window.nexusAPI && window.nexusAPI.buscarProductoPorCodigo) {
+                const rawDB = await window.nexusAPI.buscarProductoPorCodigo(item.codigo, window.companyId);
+                if (rawDB) {
+                    prodActualizado = (typeof _mapearProductoCaja === 'function') 
+                        ? _mapearProductoCaja(rawDB) 
+                        : rawDB;
+                }
+            }
+
+            // 2. Si no se encontró por código, intentar buscar en allProducts en memoria
+            if (!prodActualizado && typeof allProducts !== 'undefined' && Array.isArray(allProducts)) {
+                prodActualizado = allProducts.find(p => 
+                    (p.id !== undefined && String(p.id) === String(item.id)) ||
+                    (p.producto_ID !== undefined && String(p.producto_ID) === String(item.id)) ||
+                    (p.codigo && String(p.codigo).trim().toUpperCase() === String(item.codigo).trim().toUpperCase())
+                );
+            }
+
+            if (!prodActualizado) continue;
+
+            // Extraer estructura de precios actualizada
+            let preciosActualizados = prodActualizado.precios || null;
+            if (!preciosActualizados && prodActualizado.datos_json) {
+                try {
+                    const dj = typeof prodActualizado.datos_json === 'string' ? JSON.parse(prodActualizado.datos_json) : prodActualizado.datos_json;
+                    preciosActualizados = dj.precios || dj.precios_json || null;
+                } catch(e) {}
+            }
+
+            const precioBaseNuevo = parseFloat(prodActualizado.precio_venta || prodActualizado.precio || 0);
+            const costoNuevo = parseFloat(prodActualizado.precio_compra || prodActualizado.costo || 0);
+
+            // Actualizar referencias en el ítem
+            item.precios = preciosActualizados;
+            item.datos_json = prodActualizado.datos_json || item.datos_json;
+            if (precioBaseNuevo > 0) item.precio_original = precioBaseNuevo;
+            item.precio_compra = costoNuevo;
+            item.costo = costoNuevo;
+            if (prodActualizado.nombre) item.nombre = prodActualizado.nombre;
+            if (prodActualizado.unit || prodActualizado.unidad) {
+                item.unit = prodActualizado.unit || prodActualizado.unidad;
+                item.unidad = item.unit;
+            }
+
+            // 🛡️ REGLA FUNDAMENTAL: RESPETAR EL NIVEL (TIER) ACTUAL DEL PRODUCTO EN EL CARRITO
+            // Si el ítem estaba en P2, se actualiza al nuevo precio de P2; si estaba en P3, al nuevo precio de P3.
+            const tierActual = String(item.tier || 'p1').toLowerCase();
+            let nuevoPrecioNivel = 0;
+            let nuevoCostoNivel = costoNuevo;
+
+            if (preciosActualizados) {
+                const tierData = preciosActualizados[tierActual] || preciosActualizados[tierActual.toUpperCase()];
+                if (tierData) {
+                    if (typeof tierData === 'number') {
+                        nuevoPrecioNivel = tierData;
+                    } else if (typeof tierData === 'object') {
+                        nuevoPrecioNivel = parseFloat(tierData.venta !== undefined && tierData.venta !== null ? tierData.venta : (tierData.precio !== undefined ? tierData.precio : 0)) || 0;
+                        if (tierData.compra !== undefined && tierData.compra !== null && tierData.compra !== "") {
+                            nuevoCostoNivel = parseFloat(tierData.compra) || nuevoCostoNivel;
+                        } else if (tierData.costo !== undefined && tierData.costo !== null && tierData.costo !== "") {
+                            nuevoCostoNivel = parseFloat(tierData.costo) || nuevoCostoNivel;
+                        }
+                    }
+                }
+            }
+
+            // Si el nivel es P1 y no tenía objeto de nivel específico, usar el precio base actualizado
+            if (tierActual === 'p1' && nuevoPrecioNivel <= 0) {
+                nuevoPrecioNivel = precioBaseNuevo > 0 ? precioBaseNuevo : item.precio;
+            }
+
+            // Si el nuevo precio del nivel es válido y diferente, lo actualizamos
+            if (nuevoPrecioNivel > 0 && Math.abs(nuevoPrecioNivel - item.precio) > 0.0001) {
+                console.log(`🔄 [CARRITO] Precio actualizado para "${item.nombre}" en nivel ${tierActual.toUpperCase()}: ${item.precio} -> ${nuevoPrecioNivel}`);
+                item.precio = nuevoPrecioNivel;
+                huboCambios = true;
+            }
+
+            // Mantener siempre el tier intacto
+            item.tier = tierActual;
+            item.ganancia_unitaria = Math.max(0, parseFloat((item.precio - nuevoCostoNivel).toFixed(4)));
+
+            let tasaAlicuota = (item.tasaIva !== undefined && item.tasaIva !== null) ? parseFloat(item.tasaIva) : 16;
+            if (typeof currentEmissionMode !== 'undefined' && currentEmissionMode === 'TICKET_NO_FISCAL') {
+                tasaAlicuota = 0;
+                item.tasaIva = 0;
+            }
+
+            item.baseImponible = item.precio * item.cantidad;
+            item.montoIva = item.baseImponible * (tasaAlicuota / 100);
+            item.subtotal = item.baseImponible + item.montoIva;
+        } catch (errItem) {
+            console.warn(`⚠️ Error actualizando ítem del carrito (${item.nombre}):`, errItem);
+        }
+    }
+
+    if (huboCambios) {
+        localStorage.setItem('cart', JSON.stringify(cart));
+        renderCart();
+        calculatePaymentSummary();
+        console.log("✅ [CARRITO] Precios del carrito actualizados en vivo respetando sus niveles (P1/P2/P3).");
+    }
 };
 
 async function cargarConfiguracionFiscalMaestra() {
@@ -5609,6 +5971,12 @@ window.openPaymentModal = function() {
         return;
     }
     
+    // SI ESTAMOS EN MODO PRESUPUESTO, PROCESAR COTIZACIÓN DIRECTAMENTE SIN ABRIR MODAL DE PAGOS
+    if (window.modoOperacion === 'PRESUPUESTO') {
+        window.generarPresupuestoFinal();
+        return;
+    }
+
     if (window.modoOperacion === 'NOTA_CREDITO' && window.calcularProductosDevueltosNC().length === 0) {
         messageBox("No hay productos devueltos. Elimine del carrito los productos que el cliente devuelve.", 'bg-orange-500');
         return;
@@ -8210,11 +8578,15 @@ async function printInvoice(saleData = null) {
     }
 
     // 📄 FLUJO 1: IMPRESORA ESTÁNDAR (CARTA / OFICIO / MEDIA CARTA) -> GENERAR PDF Y MOSTRAR VISOR SUPERPUESTO
+    const esPresupuestoDoc = (saleData?.tipoDocumento === 'PRESUPUESTO' || window.modoOperacion === 'PRESUPUESTO' || saleData?.numero_presupuesto);
+
     if (tipoImpresora === 'ESTANDAR') {
         console.log(`📄 [FACTURACIÓN] Modo Impresora Estándar (${tamañoPapelEstandar}) detectado. Generando PDF...`);
         
         let condicionPago = "PAGADO";
-        if (saleData && (saleData.es_nota_credito || saleData.es_nota_debito)) {
+        if (esPresupuestoDoc) {
+            condicionPago = "COTIZACIÓN (Válido por 1 día)";
+        } else if (saleData && (saleData.es_nota_credito || saleData.es_nota_debito)) {
             condicionPago = saleData.es_nota_credito ? "NOTA DE CRÉDITO" : "NOTA DE DÉBITO";
         } else {
             let hayDeuda = cart.some(i => String(i.nombre || '').toUpperCase().includes('DEUDA') || String(i.nombre || '').toUpperCase().includes('CREDITO') || String(i.nombre || '').toUpperCase().includes('ABONO'));
@@ -8246,7 +8618,7 @@ async function printInvoice(saleData = null) {
         const totalVentaBS = parseFloat(saleData?.monto_total || 0);
 
         const datosFactura = {
-            tipoDocumento: (modoDefinitivo === 'ELECTRONICA') ? "FACTURA ELECTRÓNICA" : (modoDefinitivo === 'TICKET_NO_FISCAL' ? "NOTA DE ENTREGA" : "FACTURA"),
+            tipoDocumento: esPresupuestoDoc ? "PRESUPUESTO / COTIZACIÓN" : ((modoDefinitivo === 'ELECTRONICA') ? "FACTURA ELECTRÓNICA" : (modoDefinitivo === 'TICKET_NO_FISCAL' ? "NOTA DE ENTREGA" : "FACTURA")),
             subtituloSoftware: "Software Administrativo NEXUS POS",
             encabezadoFactura: encabezadoActivo,
             logoBase64: logoFactura,
@@ -8270,7 +8642,7 @@ async function printInvoice(saleData = null) {
             totalBS: (totalVentaBS > 0 ? totalVentaBS : undefined)
         };
 
-        if (typeof messageBox === 'function') messageBox("📄 Generando PDF de la venta...", "bg-blue-500");
+        if (typeof messageBox === 'function') messageBox("📄 Generando PDF...", "bg-blue-500");
 
         try {
             const resPDF = await window.nexusAPI.generarPdfFactura({ datosFactura, formatoPapel: tamañoPapelEstandar });
@@ -8300,7 +8672,7 @@ async function printInvoice(saleData = null) {
         return;
     }
 
-    if (modoDefinitivo === 'FISCAL_HKA') {
+    if (modoDefinitivo === 'FISCAL_HKA' && !esPresupuestoDoc) {
         console.log(`🖨️ [NEXUS FISCAL] Desviando impresión hacia hardware HKA...`);
 
         // Extraemos los pagos de saleData si existen, sino mandamos un objeto vacío 
@@ -8430,23 +8802,32 @@ async function printInvoice(saleData = null) {
     if (encabezadoActivo.line5) t += centerText(`TLF: ${encabezadoActivo.line5}`, LINE_WIDTH) + CRLF;
     t += SEPARATOR;
 
-    if (!isNoFiscal) {
+    if (!isNoFiscal && !esPresupuestoDoc) {
         t += "\x1B\x21\x10\x1B\x45\x01"; 
         t += centerText(isElectronica ? "FACTURA ELECTRONICA" : "FACTURA", LINE_WIDTH) + CRLF;
+        t += "\x1B\x21\x00\x1B\x45\x00"; 
+    } else if (esPresupuestoDoc) {
+        t += "\x1B\x21\x10\x1B\x45\x01"; 
+        t += centerText("PRESUPUESTO / COTIZACION", LINE_WIDTH) + CRLF;
         t += "\x1B\x21\x00\x1B\x45\x00"; 
     } else {
         t += centerText("*** DOCUMENTO NO FISCAL ***", LINE_WIDTH) + CRLF;
     }
 
     const hka = (saleData && saleData.datos_hka) ? saleData.datos_hka : {};
-    const nroDocOficial = hka.hka_nro_doc || nroFactura;
+    const nroDocOficial = saleData?.numero_presupuesto || hka.hka_nro_doc || nroFactura;
     const nroControlOficial = hka.hka_nro_control || nroControl;
     const fechaOficial = hka.hka_fecha_asig || new Date().toLocaleDateString();
     const horaOficial = hka.hka_hora_asig || new Date().toLocaleTimeString();
 
-    t += `NRO FACTURA: ${nroDocOficial}${CRLF}`;
-    t += `NRO CONTROL: ${nroControlOficial}${CRLF}`;
+    t += `${esPresupuestoDoc ? 'NRO PRESUPUESTO' : 'NRO FACTURA'}: ${nroDocOficial}${CRLF}`;
+    if (!esPresupuestoDoc) {
+        t += `NRO CONTROL: ${nroControlOficial}${CRLF}`;
+    }
     t += `FECHA: ${fechaOficial}  HORA: ${horaOficial}${CRLF}`;
+    if (esPresupuestoDoc) {
+        t += `VALIDEZ: 1 DIA (INFORMATIVO)${CRLF}`;
+    }
     t += SEPARATOR;
 
     if (saleData && (saleData.es_nota_credito || saleData.es_nota_debito)) {
@@ -8481,10 +8862,10 @@ async function printInvoice(saleData = null) {
         t += formatLR(`BI GENERAL (${window.tasasFiscales.iva_general}%):`, baseGeneralBS.toFixed(2), LINE_WIDTH) + CRLF;
         t += formatLR(`IVA (${window.tasasFiscales.iva_general}%):`, ivaGeneralBS.toFixed(2), LINE_WIDTH) + CRLF;
     }
-    if (montoIGTFBS > 0) t += formatLR(`IGTF (${window.tasasFiscales.igtf_porcentaje}%):`, montoIGTFBS.toFixed(2), LINE_WIDTH) + CRLF;
+    if (montoIGTFBS > 0 && !esPresupuestoDoc) t += formatLR(`IGTF (${window.tasasFiscales.igtf_porcentaje}%):`, montoIGTFBS.toFixed(2), LINE_WIDTH) + CRLF;
     
     t += "\x1B\x45\x01"; 
-    t += formatLR(isNoFiscal ? "TOTAL A PAGAR BS:" : "TOTAL BS:", totalConIGTF_BS.toFixed(2), LINE_WIDTH) + CRLF;
+    t += formatLR(esPresupuestoDoc ? "TOTAL PRESUPUESTO BS:" : (isNoFiscal ? "TOTAL A PAGAR BS:" : "TOTAL BS:"), totalConIGTF_BS.toFixed(2), LINE_WIDTH) + CRLF;
     t += "\x1B\x45\x00"; 
 
     if (typeof enableMulticurrency !== 'undefined' && enableMulticurrency) {
@@ -8503,6 +8884,9 @@ async function printInvoice(saleData = null) {
         if (hka.hka_autorizacion) {
             wrapText(hka.hka_autorizacion, LINE_WIDTH).forEach(l => t += centerText(l, LINE_WIDTH) + CRLF);
         }
+    } else if (esPresupuestoDoc) {
+        t += centerText("*** DOCUMENTO SIN VALOR FISCAL ***", LINE_WIDTH) + CRLF;
+        t += centerText("*** VALIDO POR 1 DIA ***", LINE_WIDTH) + CRLF;
     } else if (isNoFiscal) {
         t += centerText("DOCUMENTO SIN VALOR FISCAL", LINE_WIDTH) + CRLF;
     } else {
@@ -9207,6 +9591,9 @@ async function arrancarSistema() {
 
         try { if (typeof loadBasculaConfigAndInitSocket === 'function') loadBasculaConfigAndInitSocket(); } catch(e){}
         if (typeof renderCart === 'function') renderCart();
+        if (typeof window.refrescarPreciosCarrito === 'function') {
+            await window.refrescarPreciosCarrito();
+        }
         if (typeof setupSearchListener === 'function') setupSearchListener();
         if (typeof setupBarcodeSearchListener === 'function') setupBarcodeSearchListener();
         if (typeof calculatePaymentSummary === 'function') calculatePaymentSummary();
@@ -9258,6 +9645,9 @@ async function iniciarDetectorCambios() {
                 } else if (event.data === 'CAMBIO_PRODUCTOS') {
                     console.log('⚡ PULSO RECIBIDO: Productos actualizados en el Maestro.');
                     allProducts = []; // Forzamos a buscar en DB/Maestro en la próxima escritura
+                    if (typeof window.refrescarPreciosCarrito === 'function') {
+                        window.refrescarPreciosCarrito();
+                    }
                     if (typeof messageBox === 'function') messageBox("Catálogo actualizado en segundo plano", "bg-emerald-500");
                     window.dispatchEvent(new CustomEvent('productosActualizadosBackground'));
                 } else if (event.data === 'CAMBIO_TASA') {
@@ -10309,23 +10699,540 @@ window.cerrarModalBuscarFactura = function() {
 };
 
 window.addEventListener('productosActualizadosBackground', async () => {
-    console.log("🔄 [FACTURACIÓN] ¡Llegaron productos de la nube! Recargando catálogo en vivo...");
+    console.log("🔄 [FACTURACIÓN] ¡Llegaron productos de la nube / actualización! Recargando catálogo y refrescando carrito...");
     
-    // Volvemos a leer la base de datos local que el Cerebro acaba de actualizar
     if (typeof fetchProducts === 'function') {
         await fetchProducts();
-        
-        // Si la cajera tiene el carrito vacío, repintamos la cuadrícula si es necesario
-        if (typeof renderCart === 'function') {
-            renderCart();
-        }
-        
-        // Mensaje discreto para no asustar a la cajera
-        if (typeof messageBox === 'function') {
-            messageBox("Catálogo actualizado en segundo plano", "bg-indigo-600");
-        }
+    }
+    if (typeof window.refrescarPreciosCarrito === 'function') {
+        await window.refrescarPreciosCarrito();
+    }
+    if (typeof renderCart === 'function') {
+        renderCart();
+    }
+    if (typeof messageBox === 'function') {
+        messageBox("Catálogo y precios actualizados en segundo plano", "bg-indigo-600");
     }
 });
+
+if (window.parent && window.parent !== window) {
+    try {
+        window.parent.addEventListener('productosActualizadosBackground', async () => {
+            if (typeof window.refrescarPreciosCarrito === 'function') {
+                await window.refrescarPreciosCarrito();
+            }
+        });
+    } catch(e){}
+}
+
+// ==========================================
+// 📑 CONTROL DE MODO PRESUPUESTO / COTIZACIONES
+// ==========================================
+
+window.toggleModoPresupuesto = function() {
+    if (window.modoOperacion === 'PRESUPUESTO') {
+        window.setModoFactura();
+    } else {
+        window.setModoPresupuesto();
+    }
+};
+
+window.setModoPresupuesto = function() {
+    window.modoOperacion = 'PRESUPUESTO';
+    
+    // Insignia debajo del título
+    const badge = document.getElementById('badge-modo-presupuesto');
+    if (badge) badge.classList.remove('hidden');
+
+    // Botón superior
+    const labelBtn = document.getElementById('label-btn-presupuesto');
+    if (labelBtn) labelBtn.textContent = 'Volver a Facturación (F6)';
+    
+    const btnToggle = document.getElementById('btn-toggle-presupuesto');
+    if (btnToggle) {
+        btnToggle.classList.remove('bg-purple-700', 'hover:bg-purple-800');
+        btnToggle.classList.add('bg-gray-800', 'hover:bg-gray-900');
+    }
+
+    // Botón de Confirmación Principal
+    const btnVenta = document.getElementById('btn-process-sale');
+    if (btnVenta) {
+        btnVenta.textContent = 'Generar Presupuesto (F3)';
+        btnVenta.classList.remove('bg-green-600', 'hover:bg-green-700');
+        btnVenta.classList.add('bg-purple-600', 'hover:bg-purple-700');
+    }
+
+    messageBox("Modo Presupuesto activado. Las cotizaciones no descuentan inventario ni afectan caja.", "bg-purple-700");
+};
+
+window.setModoFactura = function() {
+    window.modoOperacion = 'FACTURA';
+    
+    // Ocultar insignia
+    const badge = document.getElementById('badge-modo-presupuesto');
+    if (badge) badge.classList.add('hidden');
+
+    // Botón superior
+    const labelBtn = document.getElementById('label-btn-presupuesto');
+    if (labelBtn) labelBtn.textContent = 'Modo Presupuesto (F6)';
+    
+    const btnToggle = document.getElementById('btn-toggle-presupuesto');
+    if (btnToggle) {
+        btnToggle.classList.remove('bg-gray-800', 'hover:bg-gray-900');
+        btnToggle.classList.add('bg-purple-700', 'hover:bg-purple-800');
+    }
+
+    // Botón de Confirmación Principal
+    const btnVenta = document.getElementById('btn-process-sale');
+    if (btnVenta) {
+        btnVenta.textContent = 'Confirmar Venta (F3)';
+        btnVenta.classList.remove('bg-purple-600', 'hover:bg-purple-700');
+        btnVenta.classList.add('bg-green-600', 'hover:bg-green-700');
+    }
+
+    messageBox("Modo Facturación activado.", "bg-blue-600");
+};
+
+// 📄 EMISIÓN DIRECTA DE PRESUPUESTOS (AISLADO DE INVENTARIO Y FISCAL)
+window.generarPresupuestoFinal = async function() {
+    if (!cart || cart.length === 0) {
+        return messageBox("El carrito está vacío.", "bg-red-500");
+    }
+
+    const clienteActivo = (window.GestorClientes && window.GestorClientes.selectedCustomer) 
+                            ? window.GestorClientes.selectedCustomer 
+                            : (typeof selectedCustomer !== 'undefined' ? selectedCustomer : null);
+
+    if (!clienteActivo) {
+        return messageBox("Debe seleccionar un cliente para generar el presupuesto.", "bg-red-500");
+    }
+
+    let nroPresupuesto = 'PRE-00000001';
+    try {
+        if (window.nexusAPI && window.nexusAPI.obtenerProximoCorrelativo) {
+            const corr = await window.nexusAPI.obtenerProximoCorrelativo('PRESUPUESTO');
+            if (corr && corr.formato) nroPresupuesto = corr.formato;
+        }
+    } catch (eCorr) {
+        console.warn("⚠️ Error obteniendo correlativo de presupuesto:", eCorr);
+        nroPresupuesto = 'PRE-' + String(Date.now()).slice(-6);
+    }
+
+    let subtotalUSD = 0;
+    let montoIvaUSD = 0;
+
+    const itemsPresupuesto = cart.map(it => {
+        const cant = parseFloat(it.cantidad || 1);
+        const prec = parseFloat(it.precio || 0);
+        const sub = (it.baseImponible !== undefined && it.baseImponible !== null) ? parseFloat(it.baseImponible) : (cant * prec);
+        const iva = (it.montoIva !== undefined && it.montoIva !== null) ? parseFloat(it.montoIva) : 0;
+        const tot = (it.subtotal !== undefined && it.subtotal !== null) ? parseFloat(it.subtotal) : (sub + iva);
+        
+        subtotalUSD += sub;
+        montoIvaUSD += iva;
+
+        return {
+            id: it.id,
+            codigo: it.codigo || 'S/C',
+            nombre: it.nombre,
+            cantidad: cant,
+            unit: it.unit || it.unidad || 'UN',
+            tier: it.tier || 'p1',
+            precio: prec,
+            precio_compra: it.precio_compra || it.costo || 0,
+            tasaIva: it.tasaIva || 0,
+            baseImponible: sub,
+            montoIva: iva,
+            subtotal: tot,
+            moneda: it.moneda || 'USD'
+        };
+    });
+
+    const totalUSD = subtotalUSD + montoIvaUSD;
+    const tasaBCV = parseFloat(window.dolarExchangeRate || 1);
+    const totalBS = totalUSD * tasaBCV;
+
+    const datosPresupuesto = {
+        id: `PRE-${Date.now()}`,
+        company_id: window.companyId || '',
+        branch_id: window.branchId || '',
+        cashier_id: window.userId || '',
+        numero_presupuesto: nroPresupuesto,
+        cliente_nombre: clienteActivo.nombre || clienteActivo.name || 'CONSUMIDOR FINAL',
+        cliente_rif: clienteActivo.rif || clienteActivo.ci || 'V-00000000',
+        cliente_direccion: clienteActivo.direccion || clienteActivo.address || '',
+        cliente_telefono: clienteActivo.telefono || clienteActivo.phone || '',
+        subtotal: subtotalUSD,
+        monto_iva: montoIvaUSD,
+        monto_total: totalUSD,
+        tasa_bcv: tasaBCV,
+        moneda: 'USD',
+        validez_dias: 1,
+        estado: 'EMITIDO',
+        fecha_emision: new Date().toISOString(),
+        datos_json: {
+            items: itemsPresupuesto,
+            subtotalUSD,
+            montoIvaUSD,
+            totalUSD,
+            totalBS,
+            tasaBCV,
+            validez: "1 día"
+        }
+    };
+
+    if (window.nexusAPI && window.nexusAPI.guardarPresupuestoLocal) {
+        const resSave = await window.nexusAPI.guardarPresupuestoLocal(datosPresupuesto);
+        if (!resSave || !resSave.success) {
+            return messageBox("❌ Error guardando presupuesto: " + (resSave?.error || "Desconocido"), "bg-red-500");
+        }
+    }
+
+    // Impresión inmediata (Visor PDF Estándar o Tique térmico)
+    await printInvoice({
+        tipoDocumento: "PRESUPUESTO",
+        numero_presupuesto: nroPresupuesto,
+        numero_factura: nroPresupuesto,
+        numero_control: "S/N",
+        fecha_emision: new Date().toLocaleDateString('es-VE'),
+        cliente_nombre: datosPresupuesto.cliente_nombre,
+        cliente_rif: datosPresupuesto.cliente_rif,
+        cliente_direccion: datosPresupuesto.cliente_direccion,
+        cliente_telefono: datosPresupuesto.cliente_telefono,
+        items: itemsPresupuesto,
+        tasa_bcv: tasaBCV,
+        monto_total: totalBS,
+        totalUSD: totalUSD,
+        totalBS: totalBS,
+        esNoFiscal: true
+    });
+
+    messageBox(`✅ Presupuesto ${nroPresupuesto} generado con éxito.`, "bg-purple-600");
+    clearCart();
+};
+
+// ==========================================
+// 🔍 GESTOR DEL MODAL DE BÚSQUEDA DE PRESUPUESTOS
+// ==========================================
+
+window.listaPresupuestosCache = [];
+window.presupuestoSeleccionadoActual = null;
+
+window.abrirModalBuscarPresupuestos = async function() {
+    const modal = document.getElementById('modal-buscar-presupuestos');
+    if (!modal) return;
+    
+    modal.classList.remove('hidden');
+    
+    // Limpiar buscador y panel de detalle
+    const filtroInput = document.getElementById('filtro-buscar-presupuestos');
+    if (filtroInput) {
+        filtroInput.value = '';
+        setTimeout(() => filtroInput.focus(), 150);
+    }
+    
+    document.getElementById('preview-presupuesto-empty')?.classList.remove('hidden');
+    document.getElementById('preview-presupuesto-data')?.classList.add('hidden');
+    window.presupuestoSeleccionadoActual = null;
+
+    try {
+        const tbody = document.getElementById('tabla-presupuestos-body');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-400 italic">Cargando presupuestos...</td></tr>';
+
+        let lista = [];
+        if (window.nexusAPI && window.nexusAPI.obtenerPresupuestosLocal) {
+            lista = await window.nexusAPI.obtenerPresupuestosLocal();
+        }
+        window.listaPresupuestosCache = Array.isArray(lista) ? lista : [];
+        window.renderTablaPresupuestos(window.listaPresupuestosCache);
+    } catch (e) {
+        console.error("❌ Error cargando presupuestos:", e);
+        messageBox("Error al consultar presupuestos en SQLite", "bg-red-500");
+    }
+};
+
+window.cerrarModalBuscarPresupuestos = function() {
+    const modal = document.getElementById('modal-buscar-presupuestos');
+    if (modal) modal.classList.add('hidden');
+    window.presupuestoSeleccionadoActual = null;
+};
+
+window.filtrarPresupuestosLista = function(query) {
+    if (!query || !query.trim()) {
+        window.renderTablaPresupuestos(window.listaPresupuestosCache);
+        return;
+    }
+    const q = query.trim().toUpperCase();
+    const filtrados = window.listaPresupuestosCache.filter(p => 
+        (p.numero_presupuesto && p.numero_presupuesto.toUpperCase().includes(q)) ||
+        (p.cliente_nombre && p.cliente_nombre.toUpperCase().includes(q)) ||
+        (p.cliente_rif && p.cliente_rif.toUpperCase().includes(q))
+    );
+    window.renderTablaPresupuestos(filtrados);
+};
+
+window.renderTablaPresupuestos = function(lista) {
+    const tbody = document.getElementById('tabla-presupuestos-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (!lista || lista.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-400 italic">No se encontraron presupuestos registrados.</td></tr>';
+        return;
+    }
+
+    lista.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-purple-50 cursor-pointer transition-colors border-b";
+        tr.onclick = () => window.seleccionarPresupuestoParaVer(p.id);
+
+        const fechaObj = p.fecha_emision ? new Date(p.fecha_emision) : new Date();
+        const fechaStr = fechaObj.toLocaleDateString('es-VE') + ' ' + fechaObj.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+        const totalUSD = parseFloat(p.monto_total || 0).toFixed(2);
+        const tasa = parseFloat(p.tasa_bcv || 1).toFixed(2);
+
+        let badgeEstado = '<span class="px-2 py-0.5 text-[10px] font-black rounded-full uppercase bg-purple-100 text-purple-800 border border-purple-200">EMITIDO</span>';
+        if (p.estado === 'CONVERTIDO_A_VENTA' || p.estado === 'FACTURADO') {
+            badgeEstado = '<span class="px-2 py-0.5 text-[10px] font-black rounded-full uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">FACTURADO</span>';
+        }
+
+        tr.innerHTML = `
+            <td class="px-3 py-2.5 font-mono font-bold text-purple-900">${p.numero_presupuesto}</td>
+            <td class="px-3 py-2.5">
+                <div class="font-bold text-gray-800 uppercase">${p.cliente_nombre || 'CONSUMIDOR FINAL'}</div>
+                <div class="text-xs text-gray-500 font-mono">${p.cliente_rif || 'V-00000000'}</div>
+            </td>
+            <td class="px-3 py-2.5 text-center text-xs text-gray-600">${fechaStr}</td>
+            <td class="px-3 py-2.5 text-right font-mono text-xs text-gray-600">Bs. ${tasa}</td>
+            <td class="px-3 py-2.5 text-right font-mono font-black text-gray-900">$${totalUSD}</td>
+            <td class="px-3 py-2.5 text-center">${badgeEstado}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+};
+
+window.seleccionarPresupuestoParaVer = function(id) {
+    const p = window.listaPresupuestosCache.find(item => String(item.id) === String(id));
+    if (!p) return;
+
+    window.presupuestoSeleccionadoActual = p;
+
+    let dj = {};
+    try {
+        dj = typeof p.datos_json === 'string' ? JSON.parse(p.datos_json) : (p.datos_json || {});
+    } catch(e) {}
+
+    const items = dj.items || [];
+    const fechaObj = p.fecha_emision ? new Date(p.fecha_emision) : new Date();
+
+    document.getElementById('prev-pres-nro').textContent = p.numero_presupuesto;
+    document.getElementById('prev-pres-fecha').textContent = fechaObj.toLocaleDateString('es-VE') + ' ' + fechaObj.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) + ' (Válido: 1 día)';
+    
+    const estadoEl = document.getElementById('prev-pres-estado');
+    if (estadoEl) {
+        if (p.estado === 'CONVERTIDO_A_VENTA' || p.estado === 'FACTURADO') {
+            estadoEl.textContent = 'FACTURADO';
+            estadoEl.className = 'px-2.5 py-1 text-[11px] font-black rounded-full uppercase bg-emerald-100 text-emerald-800 border border-emerald-200';
+        } else {
+            estadoEl.textContent = 'EMITIDO';
+            estadoEl.className = 'px-2.5 py-1 text-[11px] font-black rounded-full uppercase bg-purple-100 text-purple-800 border border-purple-200';
+        }
+    }
+
+    document.getElementById('prev-pres-cliente-nombre').textContent = p.cliente_nombre || 'CONSUMIDOR FINAL';
+    document.getElementById('prev-pres-cliente-rif').textContent = p.cliente_rif || 'V-00000000';
+    document.getElementById('prev-pres-cliente-contacto').textContent = `Tlf: ${p.cliente_telefono || 'S/N'} | Dir: ${p.cliente_direccion || 'No registrada'}`;
+
+    const itemsBody = document.getElementById('prev-pres-items-body');
+    if (itemsBody) {
+        itemsBody.innerHTML = '';
+        items.forEach(it => {
+            const tr = document.createElement('tr');
+            const cant = parseFloat(it.cantidad || 1);
+            const prec = parseFloat(it.precio || 0);
+            const tot = parseFloat(it.subtotal !== undefined ? it.subtotal : (cant * prec));
+            const tierStr = String(it.tier || 'p1').toUpperCase();
+
+            tr.innerHTML = `
+                <td class="py-1 font-bold">${cant}</td>
+                <td class="py-1"><span class="px-1.5 py-0.5 text-[9px] font-black bg-blue-100 text-blue-700 rounded">${tierStr}</span></td>
+                <td class="py-1 truncate max-w-[120px] uppercase">${it.nombre}</td>
+                <td class="py-1 text-right font-mono font-bold">$${tot.toFixed(2)}</td>
+            `;
+            itemsBody.appendChild(tr);
+        });
+    }
+
+    const subtotal = parseFloat(p.subtotal || dj.subtotalUSD || 0).toFixed(2);
+    const iva = parseFloat(p.monto_iva || dj.montoIvaUSD || 0).toFixed(2);
+    const totalUSD = parseFloat(p.monto_total || dj.totalUSD || 0).toFixed(2);
+    const tasa = parseFloat(p.tasa_bcv || dj.tasaBCV || window.dolarExchangeRate || 1);
+    const totalBS = (parseFloat(totalUSD) * tasa).toFixed(2);
+
+    document.getElementById('prev-pres-subtotal').textContent = `$${subtotal}`;
+    document.getElementById('prev-pres-iva').textContent = `$${iva}`;
+    document.getElementById('prev-pres-total-usd').textContent = `$${totalUSD}`;
+    document.getElementById('prev-pres-tasa').textContent = tasa.toFixed(2);
+    document.getElementById('prev-pres-total-bs').textContent = `Bs. ${totalBS}`;
+
+    document.getElementById('preview-presupuesto-empty')?.classList.add('hidden');
+    document.getElementById('preview-presupuesto-data')?.classList.remove('hidden');
+};
+
+// 🚀 CARGAR PRESUPUESTO COMO FACTURA CON PRECIOS Y TASA ACTUALES DE HOY
+window.ejecutarCargaPresupuestoComoFactura = async function() {
+    const pres = window.presupuestoSeleccionadoActual;
+    if (!pres) return messageBox("Seleccione un presupuesto primero.", "bg-yellow-600");
+
+    let dj = {};
+    try {
+        dj = typeof pres.datos_json === 'string' ? JSON.parse(pres.datos_json) : (pres.datos_json || {});
+    } catch(e) {}
+
+    const items = dj.items || [];
+    if (items.length === 0) {
+        return messageBox("Este presupuesto no contiene productos.", "bg-red-500");
+    }
+
+    // 1. Cambiar automáticamente a Modo Facturación
+    window.setModoFactura();
+
+    // 2. Cargar datos del Cliente
+    const clienteData = {
+        nombre: pres.cliente_nombre || "CONSUMIDOR FINAL",
+        rif: pres.cliente_rif || "V-00000000",
+        direccion: pres.cliente_direccion || "",
+        telefono: pres.cliente_telefono || ""
+    };
+
+    if (window.GestorClientes && typeof window.GestorClientes.seleccionarCliente === 'function') {
+        window.GestorClientes.seleccionarCliente(clienteData);
+    } else {
+        selectedCustomer = clienteData;
+        const nameEl = document.getElementById('client-found-name');
+        const idEl = document.getElementById('client-found-id');
+        const msgEl = document.getElementById('client-found-message');
+        if (nameEl) nameEl.textContent = clienteData.nombre;
+        if (idEl) idEl.textContent = clienteData.rif;
+        if (msgEl) msgEl.classList.remove('hidden');
+    }
+
+    // 3. Vaciar el carrito actual para inyectar los productos del presupuesto
+    cart = [];
+
+    // 4. Validar y cargar cada producto con el PRECIO ACTUAL DE HOY y SU NIVEL (P1/P2/P3)
+    for (const it of items) {
+        let rawDB = null;
+        if (it.codigo && window.nexusAPI && window.nexusAPI.buscarProductoPorCodigo) {
+            try {
+                rawDB = await window.nexusAPI.buscarProductoPorCodigo(it.codigo, window.companyId);
+            } catch(e) {}
+        }
+
+        const tierKey = String(it.tier || 'p1').toLowerCase();
+        let unidadProd = it.unit || it.unidad || 'UN';
+
+        if (rawDB) {
+            const mapped = (typeof _mapearProductoCaja === 'function') ? _mapearProductoCaja(rawDB) : rawDB;
+            let precios = mapped.precios || null;
+            let datosJsonObj = rawDB.datos_json || null;
+
+            if (!precios && rawDB.datos_json) {
+                try {
+                    const parsedDJ = typeof rawDB.datos_json === 'string' ? JSON.parse(rawDB.datos_json) : rawDB.datos_json;
+                    datosJsonObj = parsedDJ;
+                    precios = parsedDJ.precios || parsedDJ.precios_json || null;
+                    if (parsedDJ.unit || parsedDJ.unidad) unidadProd = parsedDJ.unit || parsedDJ.unidad;
+                } catch(e) {}
+            }
+
+            const precioBaseHoy = parseFloat(mapped.precio_venta || mapped.precio || it.precio || 0);
+            const costoHoy = parseFloat(mapped.precio_compra || mapped.costo || it.precio_compra || 0);
+
+            let nuevoPrecioNivel = 0;
+            let nuevoCostoNivel = costoHoy;
+
+            if (precios) {
+                const tierData = precios[tierKey] || precios[tierKey.toUpperCase()];
+                if (tierData) {
+                    if (typeof tierData === 'number') {
+                        nuevoPrecioNivel = tierData;
+                    } else if (typeof tierData === 'object') {
+                        nuevoPrecioNivel = parseFloat(tierData.venta !== undefined && tierData.venta !== null ? tierData.venta : (tierData.precio !== undefined ? tierData.precio : 0)) || 0;
+                        if (tierData.compra !== undefined && tierData.compra !== null && tierData.compra !== "") {
+                            nuevoCostoNivel = parseFloat(tierData.compra) || nuevoCostoNivel;
+                        } else if (tierData.costo !== undefined && tierData.costo !== null && tierData.costo !== "") {
+                            nuevoCostoNivel = parseFloat(tierData.costo) || nuevoCostoNivel;
+                        }
+                    }
+                }
+            }
+
+            if (tierKey === 'p1' && nuevoPrecioNivel <= 0) {
+                nuevoPrecioNivel = precioBaseHoy > 0 ? precioBaseHoy : it.precio;
+            }
+            if (nuevoPrecioNivel <= 0) nuevoPrecioNivel = parseFloat(it.precio || 0);
+
+            const cant = parseFloat(it.cantidad || 1);
+            let tasaIva = parseFloat(mapped.tasaIva !== undefined ? mapped.tasaIva : (it.tasaIva || 16));
+            if (typeof currentEmissionMode !== 'undefined' && currentEmissionMode === 'TICKET_NO_FISCAL') {
+                tasaIva = 0;
+            }
+
+            const base = nuevoPrecioNivel * cant;
+            const iva = base * (tasaIva / 100);
+            const total = base + iva;
+
+            cart.push({
+                ganancia_unitaria: Math.max(0, parseFloat((nuevoPrecioNivel - nuevoCostoNivel).toFixed(4))),
+                precio_compra: nuevoCostoNivel,
+                costo: nuevoCostoNivel,
+                id: mapped.id || it.id,
+                nombre: mapped.nombre || it.nombre,
+                codigo: mapped.codigo || it.codigo || 'S/C',
+                cantidad: cant,
+                unit: unidadProd,
+                unidad: unidadProd,
+                precio: nuevoPrecioNivel,
+                precio_original: precioBaseHoy,
+                tier: tierKey,
+                precios: precios,
+                datos_json: datosJsonObj,
+                tasaIva: tasaIva,
+                baseImponible: base,
+                montoIva: iva,
+                subtotal: total,
+                moneda: mapped.currency || mapped.moneda || it.moneda || 'USD'
+            });
+        } else {
+            // Si el producto no se encuentra en DB local, inyectar con datos del presupuesto
+            const cant = parseFloat(it.cantidad || 1);
+            const prec = parseFloat(it.precio || 0);
+            const base = it.baseImponible !== undefined ? parseFloat(it.baseImponible) : (cant * prec);
+            const iva = it.montoIva !== undefined ? parseFloat(it.montoIva) : 0;
+
+            cart.push({
+                ...it,
+                tier: tierKey,
+                baseImponible: base,
+                montoIva: iva,
+                subtotal: base + iva
+            });
+        }
+    }
+
+    localStorage.setItem('cart', JSON.stringify(cart));
+    renderCart();
+    calculatePaymentSummary();
+
+    // 5. Marcar el presupuesto como FACTURADO / CONVERTIDO_A_VENTA
+    if (window.nexusAPI && window.nexusAPI.marcarPresupuestoFacturado) {
+        await window.nexusAPI.marcarPresupuestoFacturado(pres.id);
+    }
+
+    window.cerrarModalBuscarPresupuestos();
+    messageBox("✅ Presupuesto cargado a Facturación con precios y tasa actualizados de hoy.", "bg-emerald-600");
+};
 
 arrancarSistema();
 </script>
