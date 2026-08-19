@@ -449,6 +449,46 @@
         }
     }
 
+    function findMetodoCierreFlexible(name, currency) {
+        if (!name || !window.metodosCierre || window.metodosCierre.length === 0) return null;
+        const n = String(name).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
+        // 1. Por ID
+        let found = window.metodosCierre.find(m => String(m.id) === String(name));
+        if (found) return found;
+
+        // 2. Por nombre exacto o normalizado
+        found = window.metodosCierre.find(m => {
+            const mn = m.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+            if (currency && m.tipo_moneda && m.tipo_moneda.toUpperCase() !== currency.toUpperCase()) return false;
+            return mn === n || mn.replace(/\s/g, '') === n.replace(/\s/g, '');
+        });
+        if (found) return found;
+
+        // 3. Por alias comunes
+        found = window.metodosCierre.find(m => {
+            const mn = m.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+            if (currency && m.tipo_moneda && m.tipo_moneda.toUpperCase() !== currency.toUpperCase()) return false;
+            if ((n.includes('debito') || n.includes('punto') || n.includes('tarjeta')) && (mn.includes('debito') || mn.includes('punto') || mn.includes('tarjeta'))) return true;
+            if ((n.includes('dolar') || n.includes('divisa') || n.includes('usd')) && (mn.includes('dolar') || mn.includes('divisa') || mn.includes('usd'))) return true;
+            if ((n.includes('pago movil') || n.includes('pagomovil')) && (mn.includes('pago movil') || mn.includes('pagomovil'))) return true;
+            if (n.includes('biopago') && mn.includes('biopago')) return true;
+            if (n.includes('efectivo') && mn.includes('efectivo')) return true;
+            if ((n.includes('transferencia') || n.includes('banco')) && (mn.includes('transferencia') || mn.includes('banco') || mn.includes('biopago'))) return true;
+            return false;
+        });
+
+        // 4. Fallback sin filtro de moneda
+        if (!found) {
+            found = window.metodosCierre.find(m => {
+                const mn = m.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+                return mn === n || n.includes(mn) || mn.includes(n);
+            });
+        }
+
+        return found || null;
+    }
+
     function processMovimientoPagos(mov, paymentTotalsObj) {
         const montoBs = parseFloat(mov.monto) || 0;
         const montoUsd = parseFloat(mov.monto_usd) || 0;
@@ -472,14 +512,14 @@
         }
 
         if (bsMethodName) {
-            let mObj = window.metodosCierre.find(m => m.nombre.toLowerCase() === bsMethodName.toLowerCase() && (m.tipo_moneda === 'BS' || m.tipo_moneda === 'Bs'));
-            if (!mObj) mObj = window.metodosCierre.find(m => m.nombre.toLowerCase() === bsMethodName.toLowerCase());
+            let mObj = findMetodoCierreFlexible(bsMethodName, 'BS');
+            if (!mObj) mObj = findMetodoCierreFlexible(bsMethodName);
             if (mObj) paymentTotalsObj[mObj.id] = (paymentTotalsObj[mObj.id] || 0) + montoBs;
         }
         
         if (usdMethodName) {
-            let mObj = window.metodosCierre.find(m => m.nombre.toLowerCase() === usdMethodName.toLowerCase() && m.tipo_moneda === 'USD');
-            if (!mObj) mObj = window.metodosCierre.find(m => m.nombre.toLowerCase() === usdMethodName.toLowerCase());
+            let mObj = findMetodoCierreFlexible(usdMethodName, 'USD');
+            if (!mObj) mObj = findMetodoCierreFlexible(usdMethodName);
             if (mObj) paymentTotalsObj[mObj.id] = (paymentTotalsObj[mObj.id] || 0) + montoUsd;
         }
     }

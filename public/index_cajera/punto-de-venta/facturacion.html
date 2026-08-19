@@ -957,8 +957,8 @@ setTimeout(() => {
 </div>
 
 <div id="modal-pago-anulacion" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden flex items-center justify-center z-50">
-    <div class="bg-white rounded-none shadow-2xl w-[900px] max-w-full overflow-hidden flex flex-col h-[600px]">
-        <div class="bg-rose-700 p-4 text-white flex justify-between items-center">
+    <div class="bg-white rounded-none shadow-2xl w-[950px] max-w-full overflow-hidden flex flex-col h-[620px]">
+        <div class="bg-rose-700 p-4 text-white flex justify-between items-center flex-shrink-0">
             <h2 class="text-xl font-bold flex items-center italic">
                 <i class="fas fa-ban mr-3"></i> REINTEGRO Y ANULACIÓN DE TICKET NO FISCAL
             </h2>
@@ -968,80 +968,51 @@ setTimeout(() => {
         </div>
 
         <div class="flex flex-1 overflow-hidden">
-            <!-- Columna Izquierda: Información Original -->
-            <div class="w-1/2 bg-gray-50 p-6 border-r border-gray-200 overflow-y-auto">
-                <h3 class="text-sm font-bold text-gray-500 uppercase mb-3 tracking-widest text-center border-b pb-2">El Cliente Pagó Originalmente:</h3>
-                <div id="detalle-pago-original-anulacion" class="space-y-2">
-                </div>
-                
-                <div class="mt-4 p-3 bg-rose-50 border-l-4 border-rose-500 text-rose-800 text-xs">
-                    <i class="fas fa-info-circle mr-1 font-bold"></i> 
-                    Al confirmar, todos los productos volverán al inventario y el dinero se registrará como egreso de caja según el método seleccionado.
+            <!-- Columna Izquierda: Información Original y Productos a Reintegrar -->
+            <div class="w-1/2 bg-gray-50 p-5 border-r border-gray-200 flex flex-col h-full overflow-hidden">
+                <div class="flex-shrink-0">
+                    <h3 class="text-xs font-bold text-gray-500 uppercase mb-2 tracking-widest text-center border-b pb-1.5">El Cliente Pagó Originalmente:</h3>
+                    <div id="detalle-pago-original-anulacion" class="space-y-1.5 max-h-[110px] overflow-y-auto mb-3 custom-scroll">
+                    </div>
+                    
+                    <div class="p-2.5 bg-rose-50 border-l-4 border-rose-500 text-rose-800 text-xs mb-3">
+                        <i class="fas fa-info-circle mr-1 font-bold"></i> 
+                        Al confirmar, los productos volverán al inventario y el dinero se registrará como egreso en el método seleccionado.
+                    </div>
                 </div>
 
-                <div class="mt-4">
-                    <p class="text-[10px] font-bold text-gray-400 uppercase mb-2 tracking-widest">
-                        <i class="fas fa-boxes mr-1"></i> Productos a Reintegrar al Inventario:
+                <!-- Sección de Productos a Reintegrar: Ocupa todo el espacio vertical disponible -->
+                <div class="flex-1 flex flex-col min-h-0">
+                    <p class="text-[11px] font-bold text-gray-600 uppercase mb-1.5 tracking-wider flex-shrink-0 flex items-center justify-between">
+                        <span><i class="fas fa-boxes mr-1 text-rose-600"></i> Productos a Reintegrar:</span>
                     </p>
-                    <div id="anulacion-mini-cart-reintegro" class="bg-white border border-gray-200 rounded-none overflow-y-auto max-h-[160px] shadow-inner p-2 space-y-1 custom-scroll">
+                    <div id="anulacion-mini-cart-reintegro" class="flex-1 w-full bg-white border border-gray-200 rounded-none overflow-y-auto shadow-inner p-2 space-y-1.5 custom-scroll">
                     </div>
                 </div>
             </div>
 
-            <!-- Columna Derecha: Métodos de Devolución -->
-            <div class="w-1/2 p-6 flex flex-col justify-between bg-white overflow-y-auto">
-                <div>
-                    <div class="text-center mb-4">
+            <!-- Columna Derecha: Métodos de Devolución Dinámicos -->
+            <div class="w-1/2 p-5 flex flex-col justify-between bg-white h-full overflow-hidden">
+                <div class="flex-1 flex flex-col min-h-0">
+                    <div class="text-center mb-3 flex-shrink-0">
                         <p class="text-gray-500 font-bold uppercase text-xs tracking-widest">Monto Total a Devolver</p>
                         <h2 id="monto-reintegro-anulacion" class="text-3xl font-black text-rose-600">Bs. 0.00</h2>
                     </div>
 
-                    <h3 class="text-xs font-bold text-gray-700 mb-3 uppercase text-center border-b pb-2 italic">
-                        <i class="fas fa-hand-holding-usd mr-2"></i>Seleccione cómo se devuelve el dinero:
+                    <h3 class="text-xs font-bold text-gray-700 mb-2 uppercase text-center border-b pb-1.5 italic flex-shrink-0">
+                        <i class="fas fa-hand-holding-usd mr-2 text-rose-600"></i>Seleccione cómo se devuelve el dinero:
                     </h3>
                     
-                    <div class="space-y-2">
-                        <div>
-                            <label class="block text-[10px] font-black text-gray-500 mb-1 uppercase">Efectivo (Bs)</label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 font-bold text-xs">Bs</span>
-                                <input type="number" id="anul-reintegro-efectivo" class="w-full text-base font-bold p-2 pl-8 border-2 border-gray-200 rounded-none focus:border-rose-500 outline-none transition text-right" placeholder="0.00" step="0.01">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-black text-gray-500 mb-1 uppercase">Dólares / Divisas ($)</label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-green-600 font-bold text-xs">$</span>
-                                <input type="number" id="anul-reintegro-dolar" class="w-full text-base font-bold p-2 pl-8 border-2 border-gray-200 rounded-none focus:border-green-500 outline-none transition text-right" placeholder="0.00" step="0.01">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-black text-gray-500 mb-1 uppercase">Punto de Venta / Débito (Bs)</label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-blue-500 font-bold text-xs">Bs</span>
-                                <input type="number" id="anul-reintegro-debito" class="w-full text-base font-bold p-2 pl-8 border-2 border-gray-200 rounded-none focus:border-blue-500 outline-none transition text-right" placeholder="0.00" step="0.01">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-black text-gray-500 mb-1 uppercase">Pago Móvil (Bs)</label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-purple-500 font-bold text-xs">Bs</span>
-                                <input type="number" id="anul-reintegro-pagomovil" class="w-full text-base font-bold p-2 pl-8 border-2 border-gray-200 rounded-none focus:border-purple-500 outline-none transition text-right" placeholder="0.00" step="0.01">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-black text-gray-500 mb-1 uppercase">Transferencia / Biopago / Otro (Bs)</label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-indigo-500 font-bold text-xs">Bs</span>
-                                <input type="number" id="anul-reintegro-otro" class="w-full text-base font-bold p-2 pl-8 border-2 border-gray-200 rounded-none focus:border-indigo-500 outline-none transition text-right" placeholder="0.00" step="0.01">
-                            </div>
-                        </div>
+                    <!-- Contenedor Dinámico con scroll para los métodos de pago -->
+                    <div id="contenedor-metodos-reintegro-dinamico" class="flex-1 overflow-y-auto pr-1 space-y-2.5 custom-scroll min-h-0">
                     </div>
                 </div>
 
-                <button id="btn-confirmar-anulacion-final" onclick="window.confirmarAnulacionFinal()" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-black py-3 rounded-none shadow-lg transform active:scale-95 transition-all flex items-center justify-center text-base uppercase tracking-tight mt-4">
-                    <i class="fas fa-ban mr-2 text-lg"></i> Confirmar Anulación
-                </button>
+                <div class="pt-3 border-t border-gray-200 flex-shrink-0">
+                    <button id="btn-confirmar-anulacion-final" onclick="window.confirmarAnulacionFinal()" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-black py-3 rounded-none shadow-lg transform active:scale-95 transition-all flex items-center justify-center text-base uppercase tracking-tight">
+                        <i class="fas fa-ban mr-2 text-lg"></i> Confirmar Anulación
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -2830,39 +2801,58 @@ function renderCart() {
         }
         // 👆 --- FIN DE CÁLCULO ESTRICTO HACIA ADELANTE --- 👆
 
+        const isModoAnulacion = (typeof window.modoOperacion !== 'undefined' && window.modoOperacion === 'ANULACION_NO_FISCAL');
+
         const row = document.createElement('tr');
         let precioDisplayHTML = isDivisa 
             ? `<div class="flex flex-col"><span class="font-bold text-green-700">$${precioItem.toFixed(2)}</span><span class="text-xs text-gray-500">Tasa: ${tasaItem.toFixed(2)}</span></div>`
             : `<span class="font-bold text-blue-700">Bs${precioItem.toFixed(2)}</span>`;
 
-        const editButtonHTML = isDivisa 
-            ? `<button onclick="editItemTasa(${index})" class="text-yellow-500 hover:text-yellow-700 p-2"><i class="fas fa-pencil-alt"></i></button>`
+        const editButtonHTML = (isDivisa && !isModoAnulacion) 
+            ? `<button onclick="editItemTasa(${index})" class="text-yellow-500 hover:text-yellow-700 p-2" title="Editar Tasa"><i class="fas fa-pencil-alt"></i></button>`
             : `<button class="p-2 invisible pointer-events-none"><i class="fas fa-pencil-alt"></i></button>`;
+
+        let tierCellHTML = `<select onchange="window.updateItemTier(${index}, this.value)" class="tier-select">
+            <option value="p1" ${tierActual === 'p1' ? 'selected' : ''}>P1</option>
+            <option value="p2" ${tierActual === 'p2' ? 'selected' : ''}>P2</option>
+            <option value="p3" ${tierActual === 'p3' ? 'selected' : ''}>P3</option>
+        </select>`;
+        if (isModoAnulacion) {
+            tierCellHTML = `<span class="px-2 py-0.5 text-xs font-black bg-gray-100 text-gray-700 border border-gray-300 rounded-none uppercase">${tierActual}</span>`;
+        }
+
+        let cantidadCellHTML = `<input type="number" value="${cantidadItem}" onchange="updateCartItemQuantity(${index}, this.value)" 
+                   class="quantity-input border rounded-none p-1 text-sm w-20 text-center" min="0.001" step="any">`;
+        if (isModoAnulacion) {
+            cantidadCellHTML = `<span class="font-bold text-gray-800 text-sm font-mono px-2">${cantidadItem}</span>`;
+        }
+
+        let accionesCellHTML = `<div class="flex items-center">
+            ${editButtonHTML}
+            <button onclick="removeItemFromCart(${index})" class="text-red-600 hover:text-red-900 p-2" title="Eliminar">
+                <i class="fas fa-trash-alt"></i>
+            </button>
+        </div>`;
+        if (isModoAnulacion) {
+            accionesCellHTML = `<div class="flex items-center text-xs font-bold text-gray-400 italic">
+                <i class="fas fa-lock text-rose-500 mr-1"></i> Fijo
+            </div>`;
+        }
 
         row.innerHTML = `
             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                 <div class="flex items-center space-x-3">
-                    <select onchange="window.updateItemTier(${index}, this.value)" class="tier-select">
-                        <option value="p1" ${tierActual === 'p1' ? 'selected' : ''}>P1</option>
-                        <option value="p2" ${tierActual === 'p2' ? 'selected' : ''}>P2</option>
-                        <option value="p3" ${tierActual === 'p3' ? 'selected' : ''}>P3</option>
-                    </select>
+                    ${tierCellHTML}
                     <span class="truncate max-w-xs">${nombreItem}</span>
                 </div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                <input type="number" value="${cantidadItem}" onchange="updateCartItemQuantity(${index}, this.value)" 
-                       class="quantity-input border rounded-none p-1 text-sm w-20 text-center" min="0.001" step="any">
+                ${cantidadCellHTML}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${precioDisplayHTML}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">Bs${baseBs.toFixed(2)}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                <div class="flex items-center">
-                    ${editButtonHTML}
-                    <button onclick="removeItemFromCart(${index})" class="text-red-600 hover:text-red-900" title="Eliminar">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
-                </div>
+                ${accionesCellHTML}
             </td>
         `;
         cartItems.appendChild(row);
@@ -4344,18 +4334,19 @@ window.restablecerModoFacturaNormal = function() {
     }
 
     // 4. DESBLOQUEAR, LIMPIAR Y ENFOCAR EL BUSCADOR DE PRODUCTOS
-    // Buscamos los IDs más comunes (ajusta si tu input de productos tiene otro ID diferente)
-    const productInput = document.getElementById('search-product') || document.getElementById('product-search') || document.getElementById('search');
-    if (productInput) {
-        productInput.disabled = false;
-        productInput.classList.remove('bg-gray-100', 'cursor-not-allowed');
-        productInput.value = '';
-        
-        // Devolvemos el enfoque (cursor) al buscador de productos automáticamente para mayor agilidad
-        setTimeout(() => {
-            productInput.focus();
-        }, 100);
-    }
+    ['product-search', 'barcode-search', 'search-product', 'search'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.disabled = false;
+            el.classList.remove('bg-gray-100', 'cursor-not-allowed');
+            el.value = '';
+        }
+    });
+
+    setTimeout(() => {
+        const pSearch = document.getElementById('product-search') || document.getElementById('barcode-search');
+        if (pSearch) pSearch.focus();
+    }, 100);
 };
 
 function handleF2Shortcut() {
@@ -10901,6 +10892,15 @@ window.iniciarModoAnulacionNoFiscal = function() {
     if (typeof renderCart === 'function') renderCart();
     document.getElementById('modal-buscar-factura').classList.add('hidden');
     
+    ['product-search', 'barcode-search', 'search-product', 'search'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.disabled = true;
+            el.classList.add('bg-gray-100', 'cursor-not-allowed');
+            el.value = '';
+        }
+    });
+
     const btnConfirmar = document.getElementById('btn-process-sale'); 
     if(btnConfirmar) {
         btnConfirmar.innerHTML = "<i class='fas fa-ban mr-2'></i> PROCEDER ANULACIÓN (F2)";
@@ -10911,37 +10911,38 @@ window.iniciarModoAnulacionNoFiscal = function() {
     messageBox(`🚫 Modo Anulación Activo para Ticket: ${window.facturaOriginalAfectada.numero_factura}`, "bg-rose-600");
 };
 
-window.abrirModalPagoAnulacion = function() {
+window.abrirModalPagoAnulacion = async function() {
     if (!window.facturaOriginalAfectada) return;
 
     const modalAnul = document.getElementById('modal-pago-anulacion');
     const detalleOriginal = document.getElementById('detalle-pago-original-anulacion');
     const displayTotal = document.getElementById('monto-reintegro-anulacion');
     const miniCart = document.getElementById('anulacion-mini-cart-reintegro');
+    const contenedorMetodos = document.getElementById('contenedor-metodos-reintegro-dinamico');
 
     // Total de la factura original
     const montoTotalBs = parseFloat(window.facturaOriginalAfectada.monto_total || window.facturaOriginalAfectada.total || 0);
     window.exactTotalAnulacionBs = montoTotalBs;
     if (displayTotal) displayTotal.textContent = `Bs. ${montoTotalBs.toFixed(2)}`;
 
-    // Mini cart con productos a reintegrar al stock
+    // Mini cart con productos a reintegrar al stock (ocupa todo el espacio disponible)
     let htmlItems = "";
     cart.forEach(p => {
         const factor = (p.moneda === 'USD' || p.isUSD === true) ? (window.dolarExchangeRate || 1) : 1;
         const precioBs = parseFloat(p.precio || 0) * factor;
         htmlItems += `
-            <div class="flex justify-between items-center text-[11px] p-2 bg-rose-50 rounded-none border-b border-rose-100">
-                <div class="flex-1">
-                    <span class="font-bold text-rose-700 block leading-tight">${p.nombre}</span>
-                    <span class="text-rose-500 text-[10px]">Reintegra al stock: ${p.cantidad} x Bs. ${precioBs.toFixed(2)}</span>
+            <div class="flex justify-between items-center text-xs p-2.5 bg-rose-50/70 rounded-none border border-rose-100">
+                <div class="flex-1 pr-2">
+                    <span class="font-bold text-gray-800 block uppercase leading-tight">${p.nombre}</span>
+                    <span class="text-rose-600 text-[11px] font-semibold">Reintegra: <b>${p.cantidad} ${p.unit || p.unidad || 'UN'}</b> x Bs. ${precioBs.toFixed(2)}</span>
                 </div>
-                <div class="text-right font-black text-rose-600">
+                <div class="text-right font-black text-rose-700 font-mono text-sm whitespace-nowrap">
                     Bs. ${(precioBs * p.cantidad).toFixed(2)}
                 </div>
             </div>
         `;
     });
-    if (miniCart) miniCart.innerHTML = htmlItems || "<p class='text-center text-gray-400 italic py-2 text-xs'>Sin items.</p>";
+    if (miniCart) miniCart.innerHTML = htmlItems || "<p class='text-center text-gray-400 italic py-4 text-xs'>Sin items.</p>";
 
     // Parsear métodos de pago originales
     let pagos = {};
@@ -10950,50 +10951,82 @@ window.abrirModalPagoAnulacion = function() {
         pagos = typeof metodoPagoBruto === 'string' ? JSON.parse(metodoPagoBruto) : (metodoPagoBruto || {});
     } catch(e) { console.error("Error leyendo metodo_pago:", e); }
 
-    // Limpiar campos de devolución
-    const inputEf = document.getElementById('anul-reintegro-efectivo');
-    const inputDol = document.getElementById('anul-reintegro-dolar');
-    const inputDeb = document.getElementById('anul-reintegro-debito');
-    const inputPM = document.getElementById('anul-reintegro-pagomovil');
-    const inputOtro = document.getElementById('anul-reintegro-otro');
+    // Obtener lista de métodos de pago configurados en el sistema
+    let listaMetodos = window.metodosPagoDinámicos || [];
+    if (!listaMetodos || listaMetodos.length === 0) {
+        try {
+            const ip = (window.nexusAPI && typeof window.nexusAPI.obtenerIpMaestro === 'function')
+                ? (await window.nexusAPI.obtenerIpMaestro() || '127.0.0.1')
+                : '127.0.0.1';
+            const resp = await fetch(`http://${ip}:3000/api/maestro/metodos-pago`);
+            if (resp.ok) {
+                const data = await resp.json();
+                listaMetodos = data.data || [];
+                window.metodosPagoDinámicos = listaMetodos;
+            }
+        } catch(e) {}
+    }
 
-    if (inputEf) inputEf.value = '';
-    if (inputDol) inputDol.value = '';
-    if (inputDeb) inputDeb.value = '';
-    if (inputPM) inputPM.value = '';
-    if (inputOtro) inputOtro.value = '';
+    if (!listaMetodos || listaMetodos.length === 0) {
+        listaMetodos = [
+            { id: '1000001', nombre: 'Efectivo', tipo_moneda: 'BS' },
+            { id: '1000002', nombre: 'Débito', tipo_moneda: 'BS' },
+            { id: '1000003', nombre: 'Pago Móvil', tipo_moneda: 'BS' },
+            { id: '1000004', nombre: 'Biopago', tipo_moneda: 'BS' },
+            { id: '1000005', nombre: 'Dólares Físicos', tipo_moneda: 'USD' }
+        ];
+    }
 
-    // Precargar con los montos originales si están presentes
+    // Renderizar inputs dinámicos en el contenedor de devolución (1 por cada método)
+    if (contenedorMetodos) {
+        contenedorMetodos.innerHTML = '';
+        listaMetodos.forEach(m => {
+            const isUSD = (m.tipo_moneda || '').toUpperCase() === 'USD' || m.nombre.toLowerCase().includes('dolar') || m.nombre.toLowerCase().includes('divisa');
+            const colorSymbol = isUSD ? 'text-green-600' : 'text-gray-500';
+            const monedaLabel = isUSD ? '$' : 'Bs';
+
+            const div = document.createElement('div');
+            div.className = "flex flex-col";
+            div.innerHTML = `
+                <label class="block text-[11px] font-bold text-gray-700 mb-1 uppercase flex justify-between">
+                    <span>${m.nombre}</span>
+                    <span class="${colorSymbol} font-mono font-bold">${monedaLabel}</span>
+                </label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center ${colorSymbol} font-bold text-xs">
+                        ${monedaLabel}
+                    </span>
+                    <input type="number" 
+                           id="anul-reintegro-${m.id}" 
+                           data-id="${m.id}" 
+                           data-nombre="${m.nombre}" 
+                           data-moneda="${isUSD ? 'USD' : 'BS'}"
+                           class="anul-reintegro-input w-full text-base font-bold p-2 pl-8 border-2 border-gray-200 rounded-none focus:border-rose-500 outline-none transition text-right" 
+                           placeholder="0.00" 
+                           step="0.01">
+                </div>
+            `;
+            contenedorMetodos.appendChild(div);
+        });
+    }
+
+    // Desglose de lo pagado originalmente
     let htmlPagos = "";
-    const nombresAmigables = {
-        efectivo: "Efectivo (Bs)", debito: "Punto de Venta / Débito", pagomovil: "Pago Móvil",
-        dolar: "Dólares / Divisas ($)", biopago: "Biopago", transferencia: "Transferencia"
-    };
-
     if (pagos && typeof pagos === 'object') {
-        Object.keys(pagos).forEach(metodo => {
-            const monto = parseFloat(pagos[metodo]);
-            if (monto > 0 && !metodo.startsWith('vuelto')) {
-                const label = nombresAmigables[metodo] || metodo.toUpperCase();
-                let montoMostrar = monto;
-                if (metodo === 'dolar') {
-                    const tasaOriginal = window.facturaOriginalAfectada.tasa_bcv || window.dolarExchangeRate || 1;
-                    montoMostrar = monto * tasaOriginal;
-                    if (inputDol) inputDol.value = monto.toFixed(2);
-                } else if (metodo === 'efectivo') {
-                    if (inputEf) inputEf.value = monto.toFixed(2);
-                } else if (metodo === 'debito') {
-                    if (inputDeb) inputDeb.value = monto.toFixed(2);
-                } else if (metodo === 'pagomovil') {
-                    if (inputPM) inputPM.value = monto.toFixed(2);
-                } else {
-                    if (inputOtro) inputOtro.value = monto.toFixed(2);
-                }
+        Object.keys(pagos).forEach(metodoKey => {
+            const monto = parseFloat(pagos[metodoKey]);
+            if (monto > 0 && !metodoKey.startsWith('vuelto')) {
+                // Encontrar el nombre del método
+                const metodoMatch = listaMetodos.find(m => String(m.id) === String(metodoKey) || m.nombre.toLowerCase().replace(/\s/g,'') === String(metodoKey).toLowerCase().replace(/\s/g,''));
+                const nombreLabel = metodoMatch ? metodoMatch.nombre : metodoKey.toUpperCase();
+                const isUSD = (metodoMatch && (metodoMatch.tipo_moneda === 'USD')) || metodoKey.toLowerCase().includes('dolar');
+                const tasaOriginal = window.facturaOriginalAfectada.tasa_bcv || window.dolarExchangeRate || 1;
+                const montoBs = isUSD ? (monto * tasaOriginal) : monto;
 
                 htmlPagos += `
                     <div class="flex justify-between items-center bg-white p-2.5 rounded-none shadow-sm border border-gray-200">
-                        <span class="text-xs font-bold text-gray-700 uppercase"><i class="fas fa-wallet text-rose-500 mr-2"></i>${label}</span>
-                        <span class="text-sm font-black text-gray-800">Bs. ${montoMostrar.toFixed(2)} ${metodo === 'dolar' ? `($${monto.toFixed(2)})` : ''}</span>
+                        <span class="text-xs font-bold text-gray-700 uppercase"><i class="fas fa-wallet text-rose-500 mr-2"></i>${nombreLabel}</span>
+                        <span class="text-sm font-black text-gray-800 font-mono">Bs. ${montoBs.toFixed(2)} ${isUSD ? `($${monto.toFixed(2)})` : ''}</span>
                     </div>
                 `;
             }
@@ -11013,18 +11046,37 @@ window.cerrarModalPagoAnulacion = function() {
 window.confirmarAnulacionFinal = async function() {
     if (!window.facturaOriginalAfectada) return;
 
-    const rEfectivo = parseFloat(document.getElementById('anul-reintegro-efectivo')?.value) || 0;
-    const rDolar = parseFloat(document.getElementById('anul-reintegro-dolar')?.value) || 0;
-    const rDebito = parseFloat(document.getElementById('anul-reintegro-debito')?.value) || 0;
-    const rPM = parseFloat(document.getElementById('anul-reintegro-pagomovil')?.value) || 0;
-    const rOtro = parseFloat(document.getElementById('anul-reintegro-otro')?.value) || 0;
-
+    const metodosReintegro = [];
+    let totalReintegradoBs = 0;
     const tasa = window.dolarExchangeRate || window.facturaOriginalAfectada.tasa_bcv || 1;
-    const totalReintegradoBs = rEfectivo + (rDolar * tasa) + rDebito + rPM + rOtro;
+
+    document.querySelectorAll('.anul-reintegro-input').forEach(input => {
+        const val = parseFloat(input.value) || 0;
+        const nombre = input.getAttribute('data-nombre') || 'Efectivo';
+        const moneda = (input.getAttribute('data-moneda') || 'BS').toUpperCase();
+        const id = input.getAttribute('data-id');
+
+        if (val > 0) {
+            const isUSD = moneda === 'USD' || nombre.toLowerCase().includes('dolar') || nombre.toLowerCase().includes('divisa');
+            const montoBs = isUSD ? (val * tasa) : val;
+            const montoUsd = isUSD ? val : 0;
+            totalReintegradoBs += montoBs;
+
+            metodosReintegro.push({
+                id: id,
+                metodo: nombre,
+                nombre: nombre,
+                montoBs: montoBs,
+                montoUsd: montoUsd,
+                monto: montoBs
+            });
+        }
+    });
+
     const totalEsperadoBs = window.exactTotalAnulacionBs || parseFloat(window.facturaOriginalAfectada.monto_total || 0);
 
-    if (Math.abs(totalReintegradoBs - totalEsperadoBs) > 1 && totalReintegradoBs <= 0) {
-        return messageBox("⚠️ El total a devolver no coincide con el total de la factura.", "bg-rose-600");
+    if (metodosReintegro.length === 0 || (Math.abs(totalReintegradoBs - totalEsperadoBs) > 1 && totalReintegradoBs <= 0)) {
+        return messageBox("⚠️ Ingrese el monto en el método por donde se devuelve el dinero.", "bg-rose-600");
     }
 
     const btnConfirmar = document.getElementById('btn-confirmar-anulacion-final');
@@ -11034,13 +11086,6 @@ window.confirmarAnulacionFinal = async function() {
     }
 
     try {
-        const metodosReintegro = [];
-        if (rEfectivo > 0) metodosReintegro.push({ metodo: 'Efectivo', montoBs: rEfectivo, montoUsd: 0 });
-        if (rDolar > 0) metodosReintegro.push({ metodo: 'Dólares / Divisas', montoBs: rDolar * tasa, montoUsd: rDolar });
-        if (rDebito > 0) metodosReintegro.push({ metodo: 'Punto de Venta / Débito', montoBs: rDebito, montoUsd: 0 });
-        if (rPM > 0) metodosReintegro.push({ metodo: 'Pago Móvil', montoBs: rPM, montoUsd: 0 });
-        if (rOtro > 0) metodosReintegro.push({ metodo: 'Transferencia / Biopago', montoBs: rOtro, montoUsd: 0 });
-
         const sesion = await window.nexusAPI.obtenerSesionLocal();
         const payload = {
             facturaId: window.facturaOriginalAfectada.id,
