@@ -11336,17 +11336,17 @@ window.abrirModalBuscarPresupuestos = async function() {
 
     try {
         const tbody = document.getElementById('tabla-presupuestos-body');
-        if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-400 italic">Cargando presupuestos...</td></tr>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-400 italic"><i class="fas fa-spinner fa-spin mr-2 text-purple-600"></i> Cargando presupuestos desde el Cerebro...</td></tr>';
 
         let lista = [];
         if (window.nexusAPI && window.nexusAPI.obtenerPresupuestosLocal) {
-            lista = await window.nexusAPI.obtenerPresupuestosLocal();
+            lista = await window.nexusAPI.obtenerPresupuestosLocal('', window.companyId || '', window.branchId || '');
         }
         window.listaPresupuestosCache = Array.isArray(lista) ? lista : [];
         window.renderTablaPresupuestos(window.listaPresupuestosCache);
     } catch (e) {
         console.error("❌ Error cargando presupuestos:", e);
-        messageBox("Error al consultar presupuestos en SQLite", "bg-red-500");
+        messageBox("Error al consultar presupuestos", "bg-red-500");
     }
 };
 
@@ -11356,7 +11356,7 @@ window.cerrarModalBuscarPresupuestos = function() {
     window.presupuestoSeleccionadoActual = null;
 };
 
-window.filtrarPresupuestosLista = function(query) {
+window.filtrarPresupuestosLista = async function(query) {
     if (!query || !query.trim()) {
         window.renderTablaPresupuestos(window.listaPresupuestosCache);
         return;
@@ -11367,7 +11367,21 @@ window.filtrarPresupuestosLista = function(query) {
         (p.cliente_nombre && p.cliente_nombre.toUpperCase().includes(q)) ||
         (p.cliente_rif && p.cliente_rif.toUpperCase().includes(q))
     );
-    window.renderTablaPresupuestos(filtrados);
+
+    if (filtrados.length > 0) {
+        window.renderTablaPresupuestos(filtrados);
+    } else {
+        try {
+            if (window.nexusAPI && window.nexusAPI.obtenerPresupuestosLocal) {
+                const res = await window.nexusAPI.obtenerPresupuestosLocal(query.trim(), window.companyId || '', window.branchId || '');
+                if (Array.isArray(res) && res.length > 0) {
+                    window.renderTablaPresupuestos(res);
+                    return;
+                }
+            }
+        } catch(e) {}
+        window.renderTablaPresupuestos([]);
+    }
 };
 
 window.renderTablaPresupuestos = function(lista) {
