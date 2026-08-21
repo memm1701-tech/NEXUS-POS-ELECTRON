@@ -298,13 +298,13 @@
             if(overlay) overlay.style.display = 'none'; 
         };
 
-        // LÓGICA DE GITHUB REAL
+        // LÓGICA DE ACTUALIZACIÓN (MICROSERVICIO NEXUS UPDATES)
         window.buscarActualizacionesReales = async function() {
             const versionChip = document.getElementById('version-chip');
             if(!versionChip) return;
             const versionLocal = versionChip.innerText.trim(); 
             
-            window.openModal("Seguridad Nexus", "Consultando servidor seguro...", true);
+            window.openModal("Nexus Updates", "Consultando servidor de actualizaciones...", true);
 
             try {
                 const result = await window.nexusAPI.verificarActualizacion(versionLocal, true);
@@ -323,7 +323,8 @@
                     const updateDesc = document.getElementById('update-desc');
                     const updateBanner = document.getElementById('update-banner');
 
-                    if(updateTitle) updateTitle.innerText = `NEXUS POS ${result.nuevaVersion}`;
+                    const sizeTxt = result.tamanioMb ? ` (${result.tamanioMb} MB)` : '';
+                    if(updateTitle) updateTitle.innerText = `NEXUS POS Global ${result.nuevaVersion}${sizeTxt}`;
                     if(updateDesc) updateDesc.innerText = result.notas; 
                     window.urlDescargaReal = result.urlDescarga; 
                     
@@ -335,13 +336,13 @@
                     const updateBanner = document.getElementById('update-banner');
 
                     if(mIcon) mIcon.innerHTML = '<span class="text-5xl">✅</span>';
-                    if(mTitle) mTitle.innerText = "Sistema Protegido";
+                    if(mTitle) mTitle.innerText = "Sistema Actualizado";
                     if(mText) mText.innerText = "Estás usando la última versión oficial de Nexus POS Global.";
                     if(mBtn) mBtn.classList.remove('hidden');
                     if(updateBanner) updateBanner.classList.add('hidden'); 
                 }
             } catch (err) {
-                window.openModal("Error Fatal", "Error de comunicación con el núcleo: " + err.message);
+                window.openModal("Error Fatal", "Error de comunicación con el servicio de actualizaciones: " + err.message);
                 const mBtn = document.getElementById('modal-btn');
                 if(mBtn) mBtn.classList.remove('hidden');
             }
@@ -356,7 +357,7 @@
                 return;
             }
 
-            window.openModal("Descargando...", "Obteniendo actualización de GitHub...", true);
+            window.openModal("Descargando...", "Obteniendo actualización de Nexus...", true);
             
             const pContainer = document.getElementById('progress-container');
             const pBar = document.getElementById('progress-bar');
@@ -407,7 +408,8 @@
                     const updateDesc = document.getElementById('update-desc');
                     const updateBanner = document.getElementById('update-banner');
 
-                    if(updateTitle) updateTitle.innerText = `NEXUS POS ${result.nuevaVersion}`;
+                    const sizeTxt = result.tamanioMb ? ` (${result.tamanioMb} MB)` : '';
+                    if(updateTitle) updateTitle.innerText = `NEXUS POS Global ${result.nuevaVersion}${sizeTxt}`;
                     if(updateDesc) updateDesc.innerText = result.notas; 
                     window.urlDescargaReal = result.urlDescarga; 
                     
@@ -416,7 +418,7 @@
             } catch (err) {
                 console.error("Error en comprobación automática de actualización:", err);
             }
-        }, 5000); // Dar 5 segundos para que cargue la interfaz sin bloquear
+        }, 4000); // 4 segundos para no bloquear la interfaz inicial
     </script>
 </body>
 </html>

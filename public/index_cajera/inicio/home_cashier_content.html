@@ -182,11 +182,11 @@
 
     function closeModal() { overlay.style.display = 'none'; }
 
-    // LÓGICA DE GITHUB REAL
+    // LÓGICA DE ACTUALIZACIÓN (MICROSERVICIO NEXUS UPDATES)
     async function buscarActualizacionesReales() {
         // Leemos la versión que tiene el badge
         const versionLocal = document.getElementById('version-chip').innerText.trim(); 
-        openModal("Seguridad Nexus", "Consultando servidor seguro...", true);
+        openModal("Nexus Updates", "Consultando servidor de actualizaciones...", true);
 
         try {
             // Llama a main.js pasándole la versión local para que haga los cálculos
@@ -202,7 +202,8 @@
             if (result.hayActualizacion) {
                 closeModal(); // Quitamos el modal y mostramos la caja lateral
                 
-                updateTitle.innerText = `NEXUS POS ${result.nuevaVersion}`;
+                const sizeTxt = result.tamanioMb ? ` (${result.tamanioMb} MB)` : '';
+                updateTitle.innerText = `NEXUS POS Global ${result.nuevaVersion}${sizeTxt}`;
                 updateDesc.innerText = result.notas; 
                 urlDescargaReal = result.urlDescarga; 
                 
@@ -210,13 +211,13 @@
             } else {
                 // Si la bandera es false, significa que tienes la versión más reciente (o superior)
                 mIcon.innerHTML = '<span class="text-5xl">✅</span>';
-                mTitle.innerText = "Sistema Protegido";
+                mTitle.innerText = "Sistema Actualizado";
                 mText.innerText = "Estás usando la última versión oficial de Nexus POS Global.";
                 mBtn.classList.remove('hidden');
                 updateBanner.classList.add('hidden'); // Aseguramos que se mantenga oculto
             }
         } catch (err) {
-            openModal("Error Fatal", "Error de comunicación con el núcleo: " + err.message);
+            openModal("Error Fatal", "Error de comunicación con el servicio de actualizaciones: " + err.message);
             mBtn.classList.remove('hidden');
         }
     }
@@ -229,7 +230,7 @@
             return;
         }
 
-        openModal("Descargando...", "Obteniendo actualización de GitHub...", true);
+        openModal("Descargando...", "Obteniendo actualización de Nexus...", true);
         pContainer.classList.remove('hidden');
         pBar.style.width = "0%"; // Iniciamos la barra en 0
         
@@ -248,7 +249,6 @@
         }
 
         try {
-            // 🔥 AQUÍ USAMOS TU FUNCIÓN YA EXISTENTE EN PRELOAD
             const result = await window.nexusAPI.descargarEInstalar(urlDescargaReal);
             
             if (!result.success && result.error) {
@@ -256,7 +256,6 @@
                 mBtn.classList.remove('hidden');
             }
         } catch (error) {
-            // Nota: Es normal que salte un error aquí justo cuando la app se auto-cierra (app.quit)
             console.log("Aplicación cerrándose para actualizar...");
         }
     }
@@ -270,18 +269,15 @@
         try {
             const result = await window.nexusAPI.verificarActualizacion(versionLocal, false);
             if (result.success && result.hayActualizacion) {
-                const updateTitle = document.getElementById('update-title');
-                const updateDesc = document.getElementById('update-desc');
-                const updateBanner = document.getElementById('update-banner');
-
-                if(updateTitle) updateTitle.innerText = `NEXUS POS ${result.nuevaVersion}`;
-                if(updateDesc) updateDesc.innerText = result.notas; 
+                const sizeTxt = result.tamanioMb ? ` (${result.tamanioMb} MB)` : '';
+                updateTitle.innerText = `NEXUS POS Global ${result.nuevaVersion}${sizeTxt}`;
+                updateDesc.innerText = result.notas; 
                 urlDescargaReal = result.urlDescarga; 
                 
-                if(updateBanner) updateBanner.classList.remove('hidden'); 
+                updateBanner.classList.remove('hidden'); 
             }
         } catch (err) {
             console.error("Error en comprobación automática de actualización:", err);
         }
-    }, 5000); // Dar 5 segundos para que cargue la interfaz sin bloquear
+    }, 4000); // Dar 4 segundos para que cargue la interfaz sin bloquear
 </script>

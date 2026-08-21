@@ -2955,24 +2955,67 @@ function esVersionMayor(versionNube, versionLocal) {
 }
 
 let cacheActualizacionGithub = null;
-const CACHE_TTL_GITHUB = 6 * 60 * 60 * 1000; // 6 horas
+const CACHE_TTL_GITHUB = 5 * 60 * 1000; // 5 minutos de caché para respuesta en tiempo real
 
-// --- VERIFICADOR DE ACTUALIZACIONES GITHUB ---
-// Ahora recibe la versiÃ³n que tiene instalada el cliente actualmente
+// --- VERIFICADOR DE ACTUALIZACIONES (MICROSERVICIO + FALLBACK GITHUB) ---
 ipcMain.handle('verificar-actualizacion-github', async (event, versionActual, forzarBusqueda = false) => {
     try {
+        const vLimpia = String(versionActual || '').replace(/^v/i, '').trim();
+
         if (!forzarBusqueda && cacheActualizacionGithub) {
             const ahora = Date.now();
-            if (ahora - cacheActualizacionGithub.timestamp < CACHE_TTL_GITHUB && cacheActualizacionGithub.versionActual === versionActual) {
-                console.log("Retornando actualización de GitHub desde caché local.");
+            if (ahora - cacheActualizacionGithub.timestamp < CACHE_TTL_GITHUB && cacheActualizacionGithub.versionActual === vLimpia) {
+                console.log("📡 [NEXUS UPDATES] Retornando actualización desde caché local.");
                 return cacheActualizacionGithub.resultado;
             }
         }
+
+        // 1. Consulta prioritaria al Microservicio de Actualizaciones (api.nexusposgobal.com)
+        const updateApiUrl = `https://api.nexusposgobal.com/api/check-update/nexus-pos?current_version=${encodeURIComponent(vLimpia || '1.0.0')}`;
         
+        try {
+            const responseApi = await axios.get(updateApiUrl, {
+                timeout: 7000,
+                headers: { 
+                    'Accept': 'application/json',
+                    'User-Agent': 'Nexus-POS-Global-Desktop' 
+                }
+            });
+
+            if (responseApi.data && responseApi.data.success) {
+                const info = responseApi.data;
+                const hayActualizacion = info.has_update === true;
+
+                const resultado = {
+                    success: true,
+                    hayActualizacion: hayActualizacion,
+                    nuevaVersion: info.latest_version ? (String(info.latest_version).startsWith('v') ? info.latest_version : `v${info.latest_version}`) : '',
+                    notas: info.release_notes || "Actualización oficial de Nexus POS Global con mejoras de rendimiento y estabilidad.",
+                    urlDescarga: info.download_url || "",
+                    nombreArchivo: info.file_name || "",
+                    tamanioMb: info.file_size_mb || null,
+                    publicadoEl: info.published_at || null
+                };
+
+                cacheActualizacionGithub = {
+                    timestamp: Date.now(),
+                    versionActual: vLimpia,
+                    resultado: resultado
+                };
+
+                console.log(`✅ [NEXUS UPDATES] Microservicio respondió: Hay update = ${hayActualizacion}, Última versión = ${resultado.nuevaVersion} (${resultado.tamanioMb || 0} MB)`);
+                return resultado;
+            }
+        } catch (apiErr) {
+            console.warn("⚠️ [NEXUS UPDATES] Microservicio api.nexusposgobal.com no disponible, intentando GitHub directo:", apiErr.message);
+        }
+
+        // 2. Fallback de contingencia: Consulta directa a GitHub API si el microservicio no estuviese disponible
         const repo = "memm1701-tech/NEXUS-POS-ELECTRON";
         const url = `https://api.github.com/repos/${repo}/releases`;
         
         const config = {
+            timeout: 10000,
             headers: {
                 'Accept': 'application/vnd.github+json',
                 'X-GitHub-Api-Version': '2022-11-28',
@@ -2991,17 +3034,15 @@ ipcMain.handle('verificar-actualizacion-github', async (event, versionActual, fo
             return { success: false, error: "No se encontraron versiones publicadas en el repositorio." };
         }
 
-        // Iteramos sobre todos los releases de Github buscando uno que sea MAYOR al nuestro
         let actualizacionEncontrada = null;
         for (const release of response.data) {
-            if (esVersionMayor(release.tag_name, versionActual)) {
+            if (esVersionMayor(release.tag_name, vLimpia)) {
                 actualizacionEncontrada = release;
-                break; // Encontramos una actualizaciÃ³n vÃ¡lida, detenemos la bÃºsqueda
+                break;
             }
         }
 
         let resultado = null;
-        // Si encontramos una versiÃ³n superior
         if (actualizacionEncontrada) {
             const urlDescargaFichero = (actualizacionEncontrada.assets && actualizacionEncontrada.assets.length > 0) 
                                         ? actualizacionEncontrada.assets[0].browser_download_url 
@@ -3009,24 +3050,22 @@ ipcMain.handle('verificar-actualizacion-github', async (event, versionActual, fo
 
             resultado = {
                 success: true,
-                hayActualizacion: true, // Bandera para el frontend
+                hayActualizacion: true,
                 nuevaVersion: actualizacionEncontrada.tag_name,
-                notas: actualizacionEncontrada.body || "Sin notas de actualizaciÃ³n.",
+                notas: actualizacionEncontrada.body || "Sin notas de actualización.",
                 urlDescarga: urlDescargaFichero
             };
         } else {
-            // Si no encontrÃ³ nada mayor (O estamos iguales, o Github tiene una versiÃ³n mÃ¡s vieja)
             resultado = {
                 success: true,
-                hayActualizacion: false // Bandera de seguridad
+                hayActualizacion: false
             };
         }
 
-        // Guardamos en caché si fue exitoso
         if (resultado.success) {
             cacheActualizacionGithub = {
                 timestamp: Date.now(),
-                versionActual: versionActual,
+                versionActual: vLimpia,
                 resultado: resultado
             };
         }
@@ -3034,10 +3073,10 @@ ipcMain.handle('verificar-actualizacion-github', async (event, versionActual, fo
         return resultado;
 
     } catch (error) {
-        console.error("â Œ Error en ConexiÃ³n GitHub:", error.response?.status || error.message);
+        console.error("❌ Error en Verificación de Actualizaciones:", error.response?.status || error.message);
         return { 
             success: false, 
-            error: error.response?.status === 404 ? "Repositorio no encontrado o privado sin acceso" : (error.response?.status === 403 ? "LÃ­mite de API excedido o Token invÃ¡lido" : error.message) 
+            error: error.response?.status === 404 ? "Repositorio o servicio no encontrado" : (error.response?.status === 403 ? "Límite de API excedido o Token inválido" : error.message) 
         };
     }
 });
