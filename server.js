@@ -1963,17 +1963,16 @@ server.get('/api/maestro/estadisticas', (req, res) => {
         `).get(companyId, fechaIni, fechaFin);
         const total_cogs = Math.max(0, cogsResult?.total_cogs || 0);
 
-        // 2. Top Clientes
+        // 2. Top Clientes (Ranking Completo)
         const topClientes = serverDb.prepare(`
-            SELECT cliente_nombre, cliente_rif, SUM(monto_total) as total_comprado
+            SELECT cliente_nombre, cliente_rif, COUNT(*) as total_compras_count, SUM(monto_total) as total_comprado
             FROM ventas_locales
             WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?
             GROUP BY cliente_rif
             ORDER BY total_comprado DESC
-            LIMIT 5
         `).all(companyId, fechaIni, fechaFin);
 
-        // 3. Top Productos (con Unidad de Medida Inteligente)
+        // 3. Top Productos (con Unidad de Medida Inteligente y Ranking Completo)
         const topProductos = [];
         try {
             const prodsDb = serverDb.prepare(`SELECT id, datos_json FROM productos_locales WHERE company_id = ?`).all(companyId);
@@ -2023,11 +2022,11 @@ server.get('/api/maestro/estadisticas', (req, res) => {
                     });
                 } catch(e){}
             });
-            const array = Object.values(mapa).sort((a,b) => b.cantidad_vendida - a.cantidad_vendida).slice(0,5);
+            const array = Object.values(mapa).sort((a,b) => b.cantidad_vendida - a.cantidad_vendida);
             topProductos.push(...array);
         } catch(e) {}
 
-        // 3.1 Top Sucursales (con Resolución de Nombre)
+        // 3.1 Top Sucursales (con Resolución de Nombre y Ranking Completo)
         const topSucursales = serverDb.prepare(`
             SELECT COALESCE(NULLIF(v.branch_id, ''), 'principal') as branch_id,
                    COALESCE(s.nombre, NULLIF(v.branch_id, ''), 'Sucursal Principal') as sucursal_nombre,
@@ -2039,7 +2038,6 @@ server.get('/api/maestro/estadisticas', (req, res) => {
             WHERE v.company_id = ? AND v.fecha_emision BETWEEN ? AND ?
             GROUP BY v.branch_id
             ORDER BY total_usd DESC
-            LIMIT 5
         `).all(companyId, fechaIni, fechaFin);
 
         // 4. Serie de tiempo (horaria si es 1 día, diaria si son múltiples días)

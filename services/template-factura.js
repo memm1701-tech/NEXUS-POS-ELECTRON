@@ -585,8 +585,8 @@ function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
                 <span class="client-value">${cliente.direccion || 'No registrado'}</span>
             </div>
             <div class="client-row">
-                <span class="client-label">Teléfono:</span>
-                <span class="client-value">${cliente.telefono || 'No registrado'}</span>
+                <span class="client-label">Contacto:</span>
+                <span class="client-value">${[cliente.telefono, cliente.correo].filter(Boolean).join(' / ') || 'No registrado'}</span>
             </div>
         </div>
     </div>

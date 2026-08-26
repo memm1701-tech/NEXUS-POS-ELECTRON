@@ -54,7 +54,12 @@
                     <input type="text" id="client-phone" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm placeholder-gray-400" placeholder="Ej. 0414-1234567">
                 </div>
 
-                <div class="md:col-span-4">
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Correo Electrónico</label>
+                    <input type="email" id="client-email" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm placeholder-gray-400" placeholder="Ej. cliente@empresa.com">
+                </div>
+
+                <div class="md:col-span-2">
                     <label class="block text-sm font-bold text-gray-700 mb-2">Dirección Fiscal</label>
                     <input type="text" id="client-address" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm placeholder-gray-400" placeholder="Dirección detallada del cliente...">
                 </div>
@@ -150,7 +155,7 @@
                 nombre: document.getElementById('client-name').value.trim(),
                 direccion: document.getElementById('client-address').value.trim(),
                 telefono: document.getElementById('client-phone').value.trim(),
-                correo: 'S/C', // Campo por defecto si lo pide SQLite
+                correo: (document.getElementById('client-email')?.value || '').trim(),
                 company_id: companyId
             };
 
@@ -193,7 +198,10 @@
             document.getElementById('client-rif').value = client.rif;
             document.getElementById('client-name').value = client.nombre || '';
             document.getElementById('client-address').value = client.direccion || '';
-            document.getElementById('client-phone').value = client.telefono || '';
+            document.getElementById('client-phone').value = client.telefono && client.telefono !== '00000000000' ? client.telefono : '';
+            if (document.getElementById('client-email')) {
+                document.getElementById('client-email').value = client.correo && client.correo !== 'sin@correo.com' && client.correo !== 'S/C' ? client.correo : '';
+            }
             
             // Bloqueamos el input del RIF para que no pueda cambiar la clave primaria
             rifInput.disabled = true;

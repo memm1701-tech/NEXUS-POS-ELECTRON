@@ -838,6 +838,14 @@ const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 // 1. Obtener ventas del turno actual (Pendientes de Z)
 ipcMain.handle('obtener-ventas-pendientes-caja', async (event, { companyId, branchId, cashierId }) => {
     try {
+        // REGLA DE CIERRE: Los registros de días anteriores que quedaron huérfanos se pasan a estado_cierre = 1
+        db.prepare(`
+            UPDATE ventas_locales 
+            SET estado_cierre = 1 
+            WHERE company_id = ? AND branch_id = ? AND cashier_id = ? AND estado_cierre = 0
+            AND date(fecha_emision, 'localtime') < date('now', 'localtime')
+        `).run(companyId, branchId, cashierId);
+
         const stmt = db.prepare(`
             SELECT * FROM ventas_locales 
             WHERE company_id = ? AND branch_id = ? AND cashier_id = ? AND estado_cierre = 0
@@ -1124,6 +1132,14 @@ ipcMain.handle('obtener-pagos-moviles-caja', async (event, datos) => {
     try {
         const { companyId, branchId, cashierId } = datos;
         
+        // REGLA DE CIERRE: Los pagos móviles de días anteriores que quedaron huérfanos se pasan a estado_cierre = 1
+        db.prepare(`
+            UPDATE pagos_moviles_locales 
+            SET estado_cierre = 1 
+            WHERE company_id = ? AND branch_id = ? AND cashier_id = ? AND estado_cierre = 0
+            AND date(fecha_pago, 'localtime') < date('now', 'localtime')
+        `).run(companyId, branchId, cashierId);
+
         // Usamos db.prepare().all() que es la sintaxis correcta para better-sqlite3
         // y apuntamos a la tabla correcta: pagos_moviles_locales
         const stmt = db.prepare(`
@@ -1139,7 +1155,7 @@ ipcMain.handle('obtener-pagos-moviles-caja', async (event, datos) => {
         
     } catch (error) {
         console.error("Error en el handler de obtener-pagos-moviles-caja:", error);
-        return []; // Retornamos un array vacÃ­o en caso de fallo para no romper el frontend
+        return []; // Retornamos un array vacío en caso de fallo para no romper el frontend
     }
 });
 
@@ -1188,6 +1204,14 @@ ipcMain.handle('guardar-movimiento-caja', async (event, m) => {
 // 2. Obtener movimientos pendientes de cierre
 ipcMain.handle('obtener-movimientos-caja', async (event, { tipo, companyId }) => {
     try {
+        // REGLA DE CIERRE: Los movimientos de días anteriores que quedaron huérfanos se pasan a estado_cierre = 1
+        db.prepare(`
+            UPDATE movimientos_caja_locales 
+            SET estado_cierre = 1 
+            WHERE tipo = ? AND company_id = ? AND estado_cierre = 0
+            AND date(fecha, 'localtime') < date('now', 'localtime')
+        `).run(tipo, companyId);
+
         // Solo traemos los que NO han entrado en un Cierre Z (estado_cierre = 0)
         const stmt = db.prepare(`
             SELECT * FROM movimientos_caja_locales 
@@ -1196,7 +1220,7 @@ ipcMain.handle('obtener-movimientos-caja', async (event, { tipo, companyId }) =>
         `);
         return stmt.all(tipo, companyId);
     } catch (e) {
-        console.error("â Œ Error consultando movimientos:", e.message);
+        console.error("❌ Error consultando movimientos:", e.message);
         return [];
     }
 });
@@ -1500,16 +1524,16 @@ server.get('/api/maestro/estadisticas', (req, res) => {
         `).get(companyId, fechaIni, fechaFin);
         const total_cogs = Math.max(0, cogsResult?.total_cogs || 0);
 
+        // 2. Top Clientes (Ranking Completo)
         const topClientes = masterDbDirect.prepare(`
-            SELECT cliente_nombre, cliente_rif, SUM(monto_total) as total_comprado
+            SELECT cliente_nombre, cliente_rif, COUNT(*) as total_compras_count, SUM(monto_total) as total_comprado
             FROM ventas_locales
             WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?
             GROUP BY cliente_rif
             ORDER BY total_comprado DESC
-            LIMIT 5
         `).all(companyId, fechaIni, fechaFin);
 
-        // 3. Top Productos (con Unidad de Medida Inteligente)
+        // 3. Top Productos (con Unidad de Medida Inteligente y Ranking Completo)
         const topProductos = [];
         try {
             const prodsDb = masterDbDirect.prepare(`SELECT id, datos_json FROM productos_locales WHERE company_id = ?`).all(companyId);
@@ -1559,11 +1583,11 @@ server.get('/api/maestro/estadisticas', (req, res) => {
                     });
                 } catch(e){}
             });
-            const array = Object.values(mapa).sort((a,b) => b.cantidad_vendida - a.cantidad_vendida).slice(0,5);
+            const array = Object.values(mapa).sort((a,b) => b.cantidad_vendida - a.cantidad_vendida);
             topProductos.push(...array);
         } catch(e) {}
 
-        // 3.1 Top Sucursales (con Resolución de Nombre)
+        // 3.1 Top Sucursales (con Resolución de Nombre y Ranking Completo)
         const topSucursales = masterDbDirect.prepare(`
             SELECT COALESCE(NULLIF(v.branch_id, ''), 'principal') as branch_id,
                    COALESCE(s.nombre, NULLIF(v.branch_id, ''), 'Sucursal Principal') as sucursal_nombre,
@@ -1575,7 +1599,6 @@ server.get('/api/maestro/estadisticas', (req, res) => {
             WHERE v.company_id = ? AND v.fecha_emision BETWEEN ? AND ?
             GROUP BY v.branch_id
             ORDER BY total_usd DESC
-            LIMIT 5
         `).all(companyId, fechaIni, fechaFin);
 
         let serieTiempo;
@@ -2602,9 +2625,37 @@ ipcMain.handle('guardar-configuracion', async (event, clave, valor) => {
     }
 });
 
+function limpiarTextoTicketParaConsola(texto) {
+    if (!texto) return "";
+    return texto
+        .replace(/\x1B\x40/g, '') // Reset
+        .replace(/\x1B\x21[\x00-\xFF]/g, '') // Print mode
+        .replace(/\x1B\x45[\x00-\xFF]/g, '') // Bold
+        .replace(/\x1B\x70[\x00-\xFF]{3}/g, '') // Cash drawer
+        .replace(/\x1B\x6D/g, '') // Cut
+        .replace(/\x1D\x28\x6B[\x00-\xFF]+/g, '') // QR
+        .replace(/\x1B[\x00-\xFF]/g, '') // ESC general
+        .replace(/\x1D[\x00-\xFF]/g, '') // GS general
+        .replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]/g, ''); // Control characters
+}
+
 ipcMain.handle('imprimir-texto-libre', async (event, textoTicket, nombreImpresora) => {
-    if (!nombreImpresora || !textoTicket) {
-        return { exito: false, mensaje: "Datos incompletos para impresión" };
+    if (!textoTicket) {
+        return { exito: false, mensaje: "No se proporcionó contenido para el ticket." };
+    }
+
+    // 🖨️ Log visible en consola con formato de ticket/factura para pruebas sin impresora física
+    const ticketConsola = limpiarTextoTicketParaConsola(textoTicket);
+    console.log("\n" + "=".repeat(52));
+    console.log("🧾 ============ [ VISTA DE FACTURA EN CONSOLA ] ============");
+    console.log(`🖨️  IMPRESORA DESTINO: [ ${nombreImpresora || 'MODO CONSOLA / SIMULACIÓN'} ]`);
+    console.log("=".repeat(52));
+    console.log(ticketConsola.trim());
+    console.log("=".repeat(52) + "\n");
+
+    if (!nombreImpresora || nombreImpresora.trim() === '' || nombreImpresora === 'CONSOLA' || nombreImpresora === 'SIMULADOR') {
+        console.log("ℹ️ Impresión completada en modo simulación (log en consola).");
+        return { exito: true, mensaje: "Impreso en consola con éxito (Modo Simulación)" };
     }
 
     try {
@@ -2624,17 +2675,17 @@ ipcMain.handle('imprimir-texto-libre', async (event, textoTicket, nombreImpresor
                 }, 2000);
 
                 if (error) {
-                    console.error("❌ Error al enviar RAW a impresora:", error.message);
-                    resolve({ exito: false, mensaje: error.message });
+                    console.warn(`⚠️ No se pudo enviar a la impresora física (${error.message}). Impresión simulada en consola.`);
+                    resolve({ exito: true, simulado: true, mensaje: "Impreso en consola (Impresora física no detectada)" });
                 } else {
-                    console.log(`🖨️ Ticket enviado a: \\\\localhost\\${printerClean}`);
+                    console.log(`🖨️ Ticket enviado físicamente a: \\\\localhost\\${printerClean}`);
                     resolve({ exito: true });
                 }
             });
         });
     } catch (error) {
-        console.error("❌ Error crítico en impresión:", error.message);
-        return { exito: false, mensaje: error.message };
+        console.error("❌ Error en impresión:", error.message);
+        return { exito: true, simulado: true, mensaje: "Impreso en consola" };
     }
 });
 

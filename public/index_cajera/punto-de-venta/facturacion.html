@@ -493,8 +493,8 @@ setTimeout(() => {
     </div>
     
     <div class="flex items-center space-x-3 w-full">
-    <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-none shadow-md transition duration-300 ease-in-out flex-1" onclick="addItem()">Añadir al Carrito</button>
-    <button class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-none shadow-md transition duration-300 ease-in-out whitespace-nowrap" onclick="window.solicitarVaciarCarrito()" title="Vaciar todo el carrito"><i class="fas fa-trash-alt mr-2"></i> Vaciar Carrito</button>
+    <button type="button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-none shadow-md transition duration-300 ease-in-out flex-1" onclick="addItem()">Añadir al Carrito</button>
+    <button type="button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-none shadow-md transition duration-300 ease-in-out whitespace-nowrap" onclick="window.solicitarVaciarCarrito()" title="Vaciar todo el carrito"><i class="fas fa-trash-alt mr-2"></i> Vaciar Carrito</button>
     
     <div id="help-nc-logic" class="hidden group relative cursor-help">
         <i class="fas fa-question-circle text-orange-500 text-3xl animate-bounce hover:text-orange-400 transition-colors"></i>
@@ -531,7 +531,7 @@ setTimeout(() => {
 
                     <!-- NUEVO BLOQUE DE TOTALES -->
                 <div class="flex flex-col items-end w-full space-y-3 mt-6">
-                    <button id="btn-process-sale" onclick="openPaymentModal()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-none shadow-md transition duration-300 w-full md:w-auto">
+                    <button type="button" id="btn-process-sale" onclick="openPaymentModal()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-none shadow-md transition duration-300 w-full md:w-auto">
                         Procesar Venta (F2)
                     </button>
                     
@@ -566,7 +566,7 @@ setTimeout(() => {
                 <div id="seccion-facturas-guardadas" class="flex-1 flex flex-col space-y-4 mt-8 md:mt-0 md:col-span-10">
                     <h2 class="text-xl font-bold text-gray-800">Facturas Guardadas (Borradores)</h2>
                     <div class="flex space-x-2">
-                        <button id="btn-save-invoice" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-none shadow-md transition duration-300 ease-in-out" onclick="saveInvoice()">Guardar Factura Actual (F4)</button>
+                        <button type="button" id="btn-save-invoice" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-none shadow-md transition duration-300 ease-in-out" onclick="saveInvoice()">Guardar Factura Actual (F4)</button>
                         <!-- <button class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-none shadow-md transition duration-300 ease-in-out" onclick="newInvoice()">Nueva Factura(N)</button> --> 
                         <button class="" onclick=""></button>
                     </div>
@@ -754,8 +754,8 @@ setTimeout(() => {
         </div> 
         
         <div class="mt-6 flex justify-between">
-            <button onclick="closePaymentModal()" class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-none">Cerrar(Esc)</button>
-            <button id="btn-confirm-payment"  class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-none">Confirmar Venta (F3)</button>
+            <button type="button" onclick="closePaymentModal()" class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-none">Cerrar(Esc)</button>
+            <button type="button" id="btn-confirm-payment"  class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-none">Confirmar Venta (F3)</button>
         </div>
         <button onclick="closePaymentModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-xl font-bold">×</button>
         
@@ -2147,8 +2147,8 @@ document.addEventListener('keydown', (event) => {
 
     // Atajos que requieren que NO haya un input activo
     if (!isInputActive) {
-        // Barra Espaciadora: Desmarcar Checkboxes
-        if (event.code === 'Space') {
+        // Barra Espaciadora: Desmarcar Checkboxes (si no estamos en un botón, porque el botón usa Space para click)
+        if (event.code === 'Space' && activeElement.tagName !== 'BUTTON') {
             event.preventDefault();
             document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
                 cb.checked = false;
@@ -2969,10 +2969,10 @@ function renderInvoices(invoices) {
 }
 
 // Función auxiliar para cargar el borrador buscando por ID (Evita errores de comillas)
-window.seleccionarBorrador = function(id) {
+window.seleccionarBorrador = async function(id) {
     const factura = currentBorradoresCache.find(f => f.id === id);
     if (factura && typeof loadInvoice === 'function') {
-        loadInvoice(factura);
+        await loadInvoice(factura);
     }
 };
     
@@ -4122,6 +4122,9 @@ async function processSale() {
             numero_control: nroControlOficialHKA, 
             cliente_nombre: clienteActivo.nombre || clienteActivo.name || 'CONSUMIDOR FINAL',
             cliente_rif: clienteActivo.rif || clienteActivo.ci || 'V000000000',
+            cliente_direccion: clienteActivo.direccion || clienteActivo.address || '',
+            cliente_correo: clienteActivo.correo || clienteActivo.email || '',
+            cliente_telefono: clienteActivo.telefono || clienteActivo.phone || '',
             monto_exento: montoExento,
             base_imponible: baseImponible,
             monto_iva: montoIva,
@@ -4935,10 +4938,15 @@ function calculatePaymentSummary() {
             });
             // Mantener compatibilidad con dólares si existe una regla especial
             const invoiceData = {
-
                 id: invoiceId,
                 customerName: clienteActivo.nombre || clienteActivo.name || 'CONSUMIDOR FINAL', 
                 customerIdNumber: clienteActivo.rif || clienteActivo.ci || 'V000000000',
+                customerAddress: clienteActivo.direccion || clienteActivo.address || '',
+                customerPhone: clienteActivo.telefono || clienteActivo.phone || '',
+                customerEmail: clienteActivo.correo || clienteActivo.email || '',
+                cliente_direccion: clienteActivo.direccion || clienteActivo.address || '',
+                cliente_telefono: clienteActivo.telefono || clienteActivo.phone || '',
+                cliente_correo: clienteActivo.correo || clienteActivo.email || '',
                 items: JSON.stringify(cart),
                 subtotal: totalVenta,
                 iva: 0,
@@ -5082,7 +5090,7 @@ function newInvoice() {
 }
 
 // Loads a saved invoice into the cart
-    function loadInvoice(invoice) {
+    async function loadInvoice(invoice) {
         try {
             // 1. Convertir la cadena de texto de la base de datos a un array JSON real
             let itemsArray = invoice.items;
@@ -5098,8 +5106,26 @@ function newInvoice() {
             
             // Si la factura guardada tiene información de cliente, cargarla
             if (clientName && clientId) {
-                selectedCustomer = { name: clientName, ci: clientId };
-                document.getElementById('client-search').value = clientId;
+                let extraCliente = {};
+                try {
+                    if (invoice.datos_json) {
+                        const parsed = typeof invoice.datos_json === 'string' ? JSON.parse(invoice.datos_json) : invoice.datos_json;
+                        if (parsed && parsed.cliente) extraCliente = parsed.cliente;
+                    }
+                } catch(e) {}
+
+                selectedCustomer = { 
+                    name: clientName, 
+                    ci: clientId, 
+                    rif: clientId, 
+                    nombre: clientName,
+                    direccion: invoice.cliente_direccion || invoice.customerAddress || extraCliente.direccion || '',
+                    telefono: invoice.cliente_telefono || invoice.customerPhone || extraCliente.telefono || '',
+                    correo: invoice.cliente_correo || invoice.customerEmail || extraCliente.correo || ''
+                };
+                if (window.GestorClientes) window.GestorClientes.selectedCustomer = selectedCustomer;
+                const clientSearchInput = document.getElementById('client-search');
+                if (clientSearchInput) clientSearchInput.value = clientId;
                 
                 // 3. Capturar formalmente los elementos del DOM en caso de que las variables globales fallen
                 const lblName = document.getElementById('client-found-name') || (typeof clientFoundName !== 'undefined' ? clientFoundName : null);
@@ -5113,6 +5139,65 @@ function newInvoice() {
                 if (msgDiv) msgDiv.classList.remove('hidden');
                 if (promptDiv) promptDiv.classList.add('hidden');
                 if (formDiv) formDiv.classList.add('hidden');
+
+                // 🔍 3.1 REHIDRATACIÓN COMPLETA DESDE LA BASE DE DATOS LOCAL O SERVIDOR
+                // Si falta dirección, teléfono o correo, rescatamos la ficha completa del cliente
+                if (!selectedCustomer.direccion || !selectedCustomer.telefono || !selectedCustomer.correo) {
+                    try {
+                        let resultados = null;
+                        if (window.nexusAPI && window.nexusAPI.buscarClienteLocal) {
+                            resultados = await window.nexusAPI.buscarClienteLocal(clientId);
+                        }
+                        if ((!Array.isArray(resultados) || resultados.length === 0) && window.SERVER_URL && window.esCajaHija) {
+                            try {
+                                const resp = await fetch(`${window.SERVER_URL}/api/maestro/buscar-cliente?query=${encodeURIComponent(clientId)}`, {
+                                    signal: AbortSignal.timeout(3000)
+                                });
+                                if (resp.ok) {
+                                    const data = await resp.json();
+                                    if (Array.isArray(data)) resultados = data;
+                                }
+                            } catch(eFetch) {}
+                        }
+
+                        if (Array.isArray(resultados) && resultados.length > 0) {
+                            const searchNormalizado = typeof normalizarIdentificacion === 'function' ? normalizarIdentificacion(clientId) : clientId.replace(/[-\s]/g, '').toUpperCase();
+                            const searchLimpio = clientId.replace(/[-\s]/g, '').toUpperCase();
+
+                            const clienteDB = resultados.find(c => {
+                                const rifDB = (c.rif || c.ci || '').toUpperCase();
+                                const rifDBLimpio = rifDB.replace(/[-\s]/g, '');
+                                return rifDB === searchNormalizado || 
+                                       rifDBLimpio === searchLimpio || 
+                                       rifDBLimpio === ('V' + searchLimpio) ||
+                                       rifDBLimpio === ('J' + searchLimpio) ||
+                                       rifDBLimpio === ('E' + searchLimpio) ||
+                                       rifDBLimpio === ('G' + searchLimpio);
+                            }) || resultados[0];
+
+                            if (clienteDB) {
+                                selectedCustomer = {
+                                    ...clienteDB,
+                                    name: clienteDB.nombre || clienteDB.name || clientName,
+                                    ci: clienteDB.rif || clienteDB.ci || clientId,
+                                    rif: clienteDB.rif || clienteDB.ci || clientId,
+                                    nombre: clienteDB.nombre || clienteDB.name || clientName,
+                                    direccion: clienteDB.direccion || clienteDB.address || selectedCustomer.direccion || '',
+                                    telefono: clienteDB.telefono || clienteDB.phone || selectedCustomer.telefono || '',
+                                    correo: clienteDB.correo || clienteDB.email || selectedCustomer.correo || ''
+                                };
+                                if (window.GestorClientes) window.GestorClientes.selectedCustomer = selectedCustomer;
+                                console.log("✅ [Borrador] Cliente rehidratado con éxito desde la BD:", selectedCustomer);
+                            }
+                        }
+                    } catch (eDB) {
+                        console.warn("⚠️ No se pudo rehidratar cliente desde BD para el borrador:", eDB);
+                    }
+                }
+
+                if (typeof window.chequearDeudaGlobal === 'function') {
+                    window.chequearDeudaGlobal(clientId);
+                }
             }
 
             renderCart();
@@ -5724,21 +5809,32 @@ const GestorClientes = {
     },
 
     async buscarCliente() {
-        // 1. Bloqueo de seguridad: Si ya hay una búsqueda en curso, ignoramos la nueva
         if (isSearchingClient) return; 
 
-        const searchValueRaw = this.ui.searchInput.value.trim();
-        this.ultimoIdBuscado = searchValueRaw; // 🔥 GUARDAMOS EL VALOR BUSCADO PARA COMPARAR EN EL ENTER
+        const searchInput = document.getElementById('client-search') || this.ui.searchInput;
+        if (!searchInput) return;
+
+        const searchValueRaw = searchInput.value.trim();
+        this.ultimoIdBuscado = searchValueRaw;
         
         // Resetear la vista antes de buscar
-        this.ui.foundMessage.classList.add('hidden');
-        this.ui.newPrompt.classList.add('hidden');
-        this.ui.addForm.classList.add('hidden');
+        const foundMessage = document.getElementById('client-found-message') || this.ui.foundMessage;
+        const newPrompt = document.getElementById('add-new-client-prompt') || this.ui.newPrompt;
+        const addForm = document.getElementById('add-client-form') || this.ui.addForm;
+        const newId = document.getElementById('new-client-id') || this.ui.newId;
+        const newName = document.getElementById('new-client-name') || this.ui.newName;
+        const foundName = document.getElementById('client-found-name') || this.ui.foundName;
+        const foundId = document.getElementById('client-found-id') || this.ui.foundId;
+
+        if (foundMessage) foundMessage.classList.add('hidden');
+        if (newPrompt) newPrompt.classList.add('hidden');
+        if (addForm) addForm.classList.add('hidden');
         this.selectedCustomer = null;
+        selectedCustomer = null;
 
         // Ocultar botón de alerta de deuda principal por defecto al iniciar nueva búsqueda
         const btnDeudaPrin = document.getElementById('btn-alerta-deuda-principal');
-        if(btnDeudaPrin) btnDeudaPrin.classList.add('hidden');
+        if (btnDeudaPrin) btnDeudaPrin.classList.add('hidden');
 
         if (!searchValueRaw) return;
 
@@ -5747,12 +5843,12 @@ const GestorClientes = {
         const searchNormalizado = normalizarIdentificacion(searchValueRaw);
         const searchLimpio = searchValueRaw.replace(/[-\s]/g, '').toUpperCase();
 
-        console.log(`🔍 Buscando cliente en vivo en Base de Datos: ${searchNormalizado}`);
+        console.log(`🔍 Buscando cliente en vivo en Base de Datos: "${searchValueRaw}"`);
 
         let clienteEncontrado = null;
 
         try {
-            // 🔥 CONSULTA DIRECTA Y EN TIEMPO REAL A LA BASE DE DATOS
+            // 1. Consulta directa a la Base de Datos Local
             let resultados = null;
             if (window.nexusAPI && window.nexusAPI.buscarClienteLocal) {
                 resultados = await window.nexusAPI.buscarClienteLocal(searchValueRaw);
@@ -5771,29 +5867,28 @@ const GestorClientes = {
                 } catch(e) {}
             }
 
-            // Fallback secundario si aún no hay resultados
-            if (!Array.isArray(resultados) || resultados.length === 0) {
-                if (window.nexusAPI && window.nexusAPI.obtenerClientesLocal) {
-                    const todos = await window.nexusAPI.obtenerClientesLocal();
-                    if (Array.isArray(todos)) resultados = todos;
-                }
-            }
-
             if (Array.isArray(resultados) && resultados.length > 0) {
                 clienteEncontrado = resultados.find(c => {
                     const rifDB = (c.rif || c.ci || '').toUpperCase();
                     const rifDBLimpio = rifDB.replace(/[-\s]/g, '');
                     const nombreDB = (c.nombre || c.name || '').toUpperCase();
+                    const tlfDB = (c.telefono || c.phone || '').replace(/[-\s]/g, '');
                     
                     return rifDB === searchNormalizado || 
                            rifDBLimpio === searchLimpio || 
                            rifDBLimpio === ('V' + searchLimpio) ||
                            rifDBLimpio === ('J' + searchLimpio) ||
-                           nombreDB.includes(searchValueRaw.toUpperCase());
-                }) || resultados[0];
+                           rifDBLimpio === ('E' + searchLimpio) ||
+                           rifDBLimpio === ('G' + searchLimpio) ||
+                           nombreDB === searchValueRaw.toUpperCase() ||
+                           nombreDB.includes(searchValueRaw.toUpperCase()) ||
+                           (tlfDB && tlfDB.includes(searchLimpio));
+                }) || null;
             }
         } catch (errDB) {
             console.error("❌ Error buscando cliente en base de datos:", errDB);
+        } finally {
+            isSearchingClient = false; // Liberamos el bloqueo
         }
 
         // --- Procesamiento del Resultado ---
@@ -5802,51 +5897,86 @@ const GestorClientes = {
             
             // Sincronización con variables globales para compatibilidad del sistema
             selectedCustomer = clienteEncontrado;
-            selectedCustomer.name = clienteEncontrado.nombre;
-            selectedCustomer.ci = clienteEncontrado.rif;
-            selectedCustomer.rif = clienteEncontrado.rif;
+            selectedCustomer.name = clienteEncontrado.nombre || clienteEncontrado.name;
+            selectedCustomer.ci = clienteEncontrado.rif || clienteEncontrado.ci;
+            selectedCustomer.rif = clienteEncontrado.rif || clienteEncontrado.ci;
             
-            this.ui.foundName.textContent = clienteEncontrado.nombre;
-            this.ui.foundId.textContent = clienteEncontrado.rif;
-            this.ui.foundMessage.classList.remove('hidden');
+            if (foundName) foundName.textContent = clienteEncontrado.nombre || clienteEncontrado.name;
+            if (foundId) foundId.textContent = clienteEncontrado.rif || clienteEncontrado.ci;
+            if (foundMessage) foundMessage.classList.remove('hidden');
 
-            // 🔴 NUEVO: Verificamos de forma global si este cliente tiene deudas pendientes
+            // 🔴 Verificamos de forma global si este cliente tiene deudas pendientes
             if (typeof window.chequearDeudaGlobal === 'function') {
-                window.chequearDeudaGlobal(clienteEncontrado.rif);
+                window.chequearDeudaGlobal(clienteEncontrado.rif || clienteEncontrado.ci);
             }
             
         } else {
-            console.log("❌ Cliente no está en la base de datos. Abriendo registro.");
-            this.ui.newPrompt.classList.remove('hidden');
-            this.ui.newId.value = searchNormalizado; 
+            console.log("❌ Cliente no existe en la base de datos. Mostrando prompt para agregarlo.");
+            if (newPrompt) newPrompt.classList.remove('hidden');
+            
+            const esRifNumerico = /^[VJEGPC]?\d+$/i.test(searchValueRaw.replace(/[-\s]/g, ''));
+            if (esRifNumerico) {
+                if (newId) newId.value = searchNormalizado;
+                if (newName) newName.value = '';
+            } else {
+                if (newName) newName.value = searchValueRaw;
+                if (newId) newId.value = '';
+            }
         }
-
-        isSearchingClient = false; // Liberamos el bloqueo
     },
 
     limpiarSeleccion() {
         this.selectedCustomer = null;
         this.ultimoIdBuscado = null;
-        if (this.ui.searchInput) this.ui.searchInput.value = '';
-        if (this.ui.foundMessage) this.ui.foundMessage.classList.add('hidden');
+        selectedCustomer = null;
+        const searchInput = document.getElementById('client-search') || this.ui.searchInput;
+        const foundMessage = document.getElementById('client-found-message') || this.ui.foundMessage;
+        const newPrompt = document.getElementById('add-new-client-prompt') || this.ui.newPrompt;
+        const addForm = document.getElementById('add-client-form') || this.ui.addForm;
+
+        if (searchInput) searchInput.value = '';
+        if (foundMessage) foundMessage.classList.add('hidden');
+        if (newPrompt) newPrompt.classList.add('hidden');
+        if (addForm) addForm.classList.add('hidden');
 
         const btnDeudaPrin = document.getElementById('btn-alerta-deuda-principal');
-        if(btnDeudaPrin) btnDeudaPrin.classList.add('hidden');
+        if (btnDeudaPrin) btnDeudaPrin.classList.add('hidden');
     },
 
     mostrarFormulario() {
-        this.ui.newPrompt.classList.add('hidden');
-        this.ui.addForm.classList.remove('hidden');
+        const newPrompt = document.getElementById('add-new-client-prompt') || this.ui.newPrompt;
+        const addForm = document.getElementById('add-client-form') || this.ui.addForm;
+        const newName = document.getElementById('new-client-name') || this.ui.newName;
+        const newId = document.getElementById('new-client-id') || this.ui.newId;
+        const newAddress = document.getElementById('new-client-address') || this.ui.newAddress;
+
+        if (newPrompt) newPrompt.classList.add('hidden');
+        if (addForm) addForm.classList.remove('hidden');
         
-        setTimeout(() => this.ui.newName.focus(), 100);
+        setTimeout(() => {
+            if (newName && !newName.value) {
+                newName.focus();
+            } else if (newId && !newId.value) {
+                newId.focus();
+            } else if (newAddress) {
+                newAddress.focus();
+            }
+        }, 100);
     },
     
     async agregarCliente() {
         if (this.isAddingClient) return;
 
-        const nombre = this.ui.newName.value.trim();
-        let idInput = this.ui.newId.value.trim().toUpperCase();
-        const direccion = this.ui.newAddress.value.trim() || 'No especificada';
+        const newName = document.getElementById('new-client-name') || this.ui.newName;
+        const newId = document.getElementById('new-client-id') || this.ui.newId;
+        const newAddress = document.getElementById('new-client-address') || this.ui.newAddress;
+        const phoneInput = document.getElementById('new-client-phone');
+        const emailInput = document.getElementById('new-client-email');
+        const specialInput = document.getElementById('new-client-special');
+
+        const nombre = newName ? newName.value.trim() : '';
+        let idInput = newId ? newId.value.trim().toUpperCase() : '';
+        const direccion = newAddress ? newAddress.value.trim() || 'No especificada' : 'No especificada';
 
         if (!nombre || !idInput) {
             if (typeof messageBox === 'function') messageBox('Nombre y Cédula/RIF son obligatorios.', 'bg-red-500');
@@ -5864,18 +5994,18 @@ const GestorClientes = {
 
         try {
             const sesion = await window.nexusAPI.obtenerSesionLocal();
-            const companyIdActual = sesion ? sesion.companyId : 'DEFAULT';
+            const companyIdActual = sesion ? sesion.companyId : (window.companyId || 'DEFAULT');
 
-            const telefonoInput = document.getElementById('new-client-phone') ? document.getElementById('new-client-phone').value.trim() : '';
-            const correoInput = document.getElementById('new-client-email') ? document.getElementById('new-client-email').value.trim() : '';
-            const esEspecial = document.getElementById('new-client-special') ? document.getElementById('new-client-special').checked : false;
+            const telefonoInput = phoneInput ? phoneInput.value.trim() : '';
+            const correoInput = emailInput ? emailInput.value.trim() : '';
+            const esEspecial = specialInput ? specialInput.checked : false;
 
             const objetoCliente = {
                 rif: rifFinal,
                 nombre: nombre,
                 direccion: direccion,
-                telefono: telefonoInput || "00000000000", 
-                correo: correoInput || "sin@correo.com", 
+                telefono: telefonoInput || "", 
+                correo: correoInput || "", 
                 es_contribuyente_especial: esEspecial ? 1 : 0,
                 company_id: companyIdActual, 
                 empresa_ID: companyIdActual,
@@ -5889,30 +6019,46 @@ const GestorClientes = {
 
             if (resultado && !resultado.error) {
                 this.selectedCustomer = objetoCliente;
-                selectedCustomer = objetoCliente; 
-                selectedCustomer.name = objetoCliente.nombre;
-                selectedCustomer.rif = objetoCliente.rif;
-                selectedCustomer.ci = objetoCliente.rif;
+                selectedCustomer = { 
+                    ...objetoCliente, 
+                    name: objetoCliente.nombre, 
+                    ci: objetoCliente.rif, 
+                    rif: objetoCliente.rif,
+                    direccion: objetoCliente.direccion,
+                    telefono: objetoCliente.telefono,
+                    correo: objetoCliente.correo
+                };
                 
-                this.ui.foundName.textContent = objetoCliente.nombre;
-                this.ui.foundId.textContent = objetoCliente.rif;
-                this.ui.foundMessage.classList.remove('hidden');
+                const foundName = document.getElementById('client-found-name') || this.ui.foundName;
+                const foundId = document.getElementById('client-found-id') || this.ui.foundId;
+                const foundMessage = document.getElementById('client-found-message') || this.ui.foundMessage;
+                const addForm = document.getElementById('add-client-form') || this.ui.addForm;
+                const newPrompt = document.getElementById('add-new-client-prompt') || this.ui.newPrompt;
+                const searchInput = document.getElementById('client-search') || this.ui.searchInput;
 
-                this.ui.addForm.classList.add('hidden');
-                this.ui.newPrompt.classList.add('hidden'); 
-                this.ui.newName.value = '';
-                this.ui.newId.value = '';
-                this.ui.newAddress.value = '';
-                this.ui.searchInput.value = '';
+                if (foundName) foundName.textContent = objetoCliente.nombre;
+                if (foundId) foundId.textContent = objetoCliente.rif;
+                if (foundMessage) foundMessage.classList.remove('hidden');
 
-                if (document.getElementById('new-client-phone')) document.getElementById('new-client-phone').value = '';
-                if (document.getElementById('new-client-email')) document.getElementById('new-client-email').value = '';
-                if (document.getElementById('new-client-special')) document.getElementById('new-client-special').checked = false;
+                if (addForm) addForm.classList.add('hidden');
+                if (newPrompt) newPrompt.classList.add('hidden'); 
+                if (newName) newName.value = '';
+                if (newId) newId.value = '';
+                if (newAddress) newAddress.value = '';
+                if (searchInput) searchInput.value = '';
+
+                if (phoneInput) phoneInput.value = '';
+                if (emailInput) emailInput.value = '';
+                if (specialInput) specialInput.checked = false;
 
                 if (typeof messageBox === 'function') messageBox(`Cliente registrado y seleccionado.`, 'bg-green-500');
+            } else {
+                const errorMsg = resultado ? (resultado.error || resultado.mensaje) : 'Error desconocido';
+                if (typeof messageBox === 'function') messageBox(`Error al registrar cliente: ${errorMsg}`, 'bg-red-500');
             }
         } catch (err) {
             console.error("Error al agregar cliente:", err);
+            if (typeof messageBox === 'function') messageBox(`Error al registrar cliente: ${err.message}`, 'bg-red-500');
         } finally {
             this.isAddingClient = false;
         }
@@ -5924,6 +6070,14 @@ const GestorClientes = {
         this.ui.searchInput = document.getElementById('client-search');
         this.ui.showFormBtn = document.getElementById('show-add-client-form-btn');
         this.ui.addBtn = document.getElementById('add-client-btn');
+        this.ui.foundMessage = document.getElementById('client-found-message');
+        this.ui.foundName = document.getElementById('client-found-name');
+        this.ui.foundId = document.getElementById('client-found-id');
+        this.ui.newPrompt = document.getElementById('add-new-client-prompt');
+        this.ui.addForm = document.getElementById('add-client-form');
+        this.ui.newName = document.getElementById('new-client-name');
+        this.ui.newId = document.getElementById('new-client-id');
+        this.ui.newAddress = document.getElementById('new-client-address');
 
         // 1. Evento del botón buscar
         if (this.ui.searchBtn) {
@@ -5939,7 +6093,8 @@ const GestorClientes = {
                 if (e.key === 'Enter') {
                     e.preventDefault(); 
                     const valorActual = this.ui.searchInput.value.trim();
-                    const promptVisible = !this.ui.newPrompt.classList.contains('hidden');
+                    const promptElement = document.getElementById('add-new-client-prompt');
+                    const promptVisible = promptElement && !promptElement.classList.contains('hidden');
                     if (promptVisible && valorActual === this.ultimoIdBuscado) {
                         this.mostrarFormulario();
                     } else {
@@ -5949,18 +6104,17 @@ const GestorClientes = {
             };
         }
 
-        // 3. Lógica de Enter dentro del Formulario (AQUÍ ESTABA EL ERROR)
+        // 3. Lógica de Enter dentro del Formulario
         const inputsFormulario = [
-            this.ui.newName, 
-            this.ui.newId, 
-            this.ui.newAddress,
+            document.getElementById('new-client-name'), 
+            document.getElementById('new-client-id'), 
+            document.getElementById('new-client-address'),
             document.getElementById('new-client-phone'),
             document.getElementById('new-client-email')
         ];
         
         inputsFormulario.forEach(input => {
             if (input) {
-                // Quitamos el async de aquí y lo manejamos dentro de la función
                 input.onkeydown = (e) => { 
                     if (e.key === 'Enter') {
                         e.preventDefault(); 
@@ -8040,8 +8194,11 @@ if (gdInput) {
                                rifDBLimpio === searchLimpio || 
                                rifDBLimpio === ('V' + searchLimpio) ||
                                rifDBLimpio === ('J' + searchLimpio) ||
+                               rifDBLimpio === ('E' + searchLimpio) ||
+                               rifDBLimpio === ('G' + searchLimpio) ||
+                               nombreDB === searchValueRaw.toUpperCase() ||
                                nombreDB.includes(searchValueRaw.toUpperCase());
-                    }) || searchRes[0];
+                    }) || null;
                 }
             } catch(e) {}
 
@@ -8629,12 +8786,16 @@ async function printInvoice(saleData = null) {
         return;
     }
 
-    const clienteActivo = saleData ? { 
-        nombre: saleData.cliente_nombre || saleData.cliente?.nombre, 
-        rif: saleData.cliente_rif || saleData.cliente?.rif,
-        direccion: saleData.cliente_direccion || saleData.cliente?.direccion || 'No registrado',
-        telefono: saleData.cliente_telefono || saleData.cliente?.telefono || ''
-    } : (selectedCustomer || { nombre: 'CONSUMIDOR FINAL', rif: 'V-00000000', direccion: 'No registrado', telefono: '' });
+    const cObj = saleData ? (saleData.cliente || saleData) : (window.GestorClientes?.selectedCustomer || selectedCustomer || {});
+    const clienteActivo = { 
+        nombre: cObj.nombre || cObj.name || saleData?.cliente_nombre || 'CONSUMIDOR FINAL', 
+        rif: cObj.rif || cObj.ci || saleData?.cliente_rif || 'V-00000000',
+        direccion: cObj.direccion || cObj.address || saleData?.cliente_direccion || '',
+        telefono: cObj.telefono || cObj.phone || cObj.tel || saleData?.cliente_telefono || '',
+        correo: cObj.correo || cObj.email || cObj.mail || saleData?.cliente_correo || ''
+    };
+    
+    console.log("DEBUG: clienteActivo resolved as:", JSON.stringify(clienteActivo));
 
     if (!clienteActivo) {
         if (typeof messageBox === 'function') messageBox("Por favor, seleccione un cliente.", 'bg-red-500');
@@ -8736,8 +8897,9 @@ async function printInvoice(saleData = null) {
             cliente: {
                 nombre: clienteActivo.nombre || "CONSUMIDOR FINAL",
                 rif: clienteActivo.rif || "V-00000000",
-                direccion: clienteActivo.direccion || "No registrado",
-                telefono: clienteActivo.telefono || ""
+                direccion: clienteActivo.direccion || "",
+                telefono: clienteActivo.telefono || "",
+                correo: clienteActivo.correo || ""
             },
             factura: {
                 numero: nroFactura,
@@ -8958,8 +9120,31 @@ async function printInvoice(saleData = null) {
         t += SEPARATOR;
     }
 
+    const esDatoValido = (val) => {
+        if (val === undefined || val === null) return false;
+        const s = String(val).trim();
+        if (!s) return false;
+        const lower = s.toLowerCase();
+        if (['undefined', 'null', 'n/a', 's/c', 'sin registrar', 'no registrado', 'none', 's/d', 's/n'].includes(lower)) {
+            return false;
+        }
+        if (lower === '00000000000' || lower === '0' || lower === '00000000' || lower === 'sin@correo.com') {
+            return false;
+        }
+        return true;
+    };
+
     t += `CLIENTE: ${clienteActivo.nombre}${CRLF}`;
     t += `RIF/CI: ${clienteActivo.rif}${CRLF}`;
+    if (esDatoValido(clienteActivo.telefono)) {
+        t += `TELEFONO: ${clienteActivo.telefono.trim()}${CRLF}`;
+    }
+    if (esDatoValido(clienteActivo.direccion)) {
+        t += `DIRECCION: ${clienteActivo.direccion.trim().toUpperCase()}${CRLF}`;
+    }
+    if (esDatoValido(clienteActivo.correo)) {
+        t += `CORREO: ${clienteActivo.correo.trim().toLowerCase()}${CRLF}`;
+    }
     t += SEPARATOR;
 
     t += centerText("DESCRIPCION", LINE_WIDTH) + CRLF;
@@ -11334,6 +11519,7 @@ window.generarPresupuestoFinal = async function() {
         cliente_nombre: clienteActivo.nombre || clienteActivo.name || 'CONSUMIDOR FINAL',
         cliente_rif: clienteActivo.rif || clienteActivo.ci || 'V-00000000',
         cliente_direccion: clienteActivo.direccion || clienteActivo.address || '',
+        cliente_correo: clienteActivo.correo || clienteActivo.email || '',
         cliente_telefono: clienteActivo.telefono || clienteActivo.phone || '',
         subtotal: subtotalUSD,
         monto_iva: montoIvaUSD,
@@ -11371,6 +11557,7 @@ window.generarPresupuestoFinal = async function() {
         cliente_nombre: datosPresupuesto.cliente_nombre,
         cliente_rif: datosPresupuesto.cliente_rif,
         cliente_direccion: datosPresupuesto.cliente_direccion,
+        cliente_correo: datosPresupuesto.cliente_correo,
         cliente_telefono: datosPresupuesto.cliente_telefono,
         items: itemsPresupuesto,
         tasa_bcv: tasaBCV,

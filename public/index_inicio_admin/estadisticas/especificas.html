@@ -468,6 +468,349 @@
             padding-bottom: 16px;
         }
     }
+
+    /* ------------------ BOTÓN VER A DETALLE EN TARJETAS ------------------ */
+    .kpi-card-footer {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        margin-top: 14px;
+        padding-top: 10px;
+        border-top: 1px dashed #e2e8f0;
+    }
+
+    .btn-ver-detalle {
+        background-color: #f0f9ff;
+        color: #0284c7;
+        border: 1px solid #bae6fd;
+        border-radius: 8px;
+        padding: 5px 12px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        cursor: pointer;
+        font-family: inherit;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        transition: all 0.2s ease;
+    }
+
+    .btn-ver-detalle:hover {
+        background-color: #0284c7;
+        color: #ffffff;
+        border-color: #0284c7;
+        box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
+        transform: translateY(-1px);
+    }
+
+    /* ------------------ VENTANA MODAL DE DETALLE COMPLETO ------------------ */
+    .modal-stats-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        background-color: rgba(15, 23, 42, 0.65);
+        backdrop-filter: blur(4px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        animation: modalFadeIn 0.2s ease forwards;
+        box-sizing: border-box;
+    }
+
+    .modal-stats-overlay.activo {
+        display: flex;
+    }
+
+    @keyframes modalFadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .modal-stats-content {
+        background-color: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        width: 100%;
+        max-width: 950px;
+        height: 85vh;
+        max-height: 750px;
+        min-height: 480px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        animation: modalScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes modalScaleIn {
+        from { opacity: 0; transform: scale(0.96) translateY(8px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .modal-stats-header {
+        padding: 18px 24px;
+        background: #ffffff;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        flex-shrink: 0;
+    }
+
+    .modal-stats-header-info {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .modal-stats-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        background: #f1f5f9;
+        flex-shrink: 0;
+    }
+
+    .modal-stats-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #0f172a;
+        letter-spacing: -0.01em;
+    }
+
+    .modal-stats-header p {
+        margin: 3px 0 0 0;
+        font-size: 0.85rem;
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    .modal-stats-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .modal-search-box {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .modal-search-box .search-icon {
+        position: absolute;
+        left: 10px;
+        font-size: 0.85rem;
+        color: #94a3b8;
+        pointer-events: none;
+    }
+
+    .modal-search-box input {
+        padding: 7px 12px 7px 32px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        color: #0f172a;
+        background: #f8fafc;
+        outline: none;
+        font-family: inherit;
+        width: 220px;
+        transition: all 0.2s ease;
+    }
+
+    .modal-search-box input:focus {
+        background: #ffffff;
+        border-color: #0284c7;
+        box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
+        width: 260px;
+    }
+
+    .modal-btn-close {
+        background: transparent;
+        border: none;
+        color: #94a3b8;
+        font-size: 1.6rem;
+        line-height: 1;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 8px;
+        transition: all 0.15s ease;
+    }
+
+    .modal-btn-close:hover {
+        color: #0f172a;
+        background: #f1f5f9;
+    }
+
+    /* Badges de Resumen en el Modal */
+    .modal-stats-summary {
+        display: flex;
+        gap: 12px;
+        padding: 10px 24px;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        flex-wrap: wrap;
+        flex-shrink: 0;
+    }
+
+    .summary-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.78rem;
+        color: #475569;
+    }
+
+    .summary-badge strong {
+        color: #0f172a;
+        font-weight: 700;
+    }
+
+    /* Contenedor y Tabla */
+    .modal-table-container {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0;
+        background: #ffffff;
+    }
+
+    .modal-stats-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+        font-size: 0.86rem;
+    }
+
+    .modal-stats-table thead {
+        position: sticky;
+        top: 0;
+        background: #f8fafc;
+        z-index: 10;
+        box-shadow: 0 1px 0 #e2e8f0;
+    }
+
+    .modal-stats-table th {
+        padding: 11px 16px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #475569;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .modal-stats-table td {
+        padding: 11px 16px;
+        border-bottom: 1px solid #f1f5f9;
+        color: #1e293b;
+        vertical-align: middle;
+    }
+
+    .modal-stats-table tbody tr {
+        transition: background-color 0.15s ease;
+    }
+
+    .modal-stats-table tbody tr:hover {
+        background-color: #f1f5f9;
+    }
+
+    /* Ranking Badges */
+    .rank-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 24px;
+        height: 24px;
+        padding: 0 6px;
+        border-radius: 6px;
+        font-weight: 800;
+        font-size: 0.76rem;
+    }
+
+    .rank-1 { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+    .rank-2 { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+    .rank-3 { background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
+    .rank-other { background: #f8fafc; color: #64748b; border: 1px solid #f1f5f9; }
+
+    /* Barra de progreso de participación */
+    .progress-bar-cell {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .progress-bar-track {
+        flex: 1;
+        height: 6px;
+        background: #e2e8f0;
+        border-radius: 3px;
+        overflow: hidden;
+        min-width: 50px;
+        max-width: 100px;
+    }
+
+    .progress-bar-fill {
+        height: 100%;
+        background: #0284c7;
+        border-radius: 3px;
+    }
+
+    /* Modal Footer */
+    .modal-stats-footer {
+        padding: 12px 24px;
+        background: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
+    .modal-stats-footer span {
+        font-size: 0.82rem;
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    .btn-cerrar-secundario {
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        color: #334155;
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .btn-cerrar-secundario:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+    }
+
+    .empty-modal-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 48px 24px;
+        color: #94a3b8;
+        font-size: 0.95rem;
+        gap: 8px;
+    }
 </style>
 
 <div class="estadisticas-container">
@@ -555,6 +898,11 @@
                     <p class="kpi-detalle" id="kpi-prod-detalle">0 unidades vendidas</p>
                 </div>
             </div>
+            <div class="kpi-card-footer">
+                <button type="button" class="btn-ver-detalle" data-tipo="producto">
+                    <span>📊</span> Ver a detalle ↗
+                </button>
+            </div>
         </div>
 
         <!-- KPI 2: CLIENTE VIP -->
@@ -589,6 +937,11 @@
                     <p class="kpi-detalle" id="kpi-cli-detalle">$0.00 en compras</p>
                 </div>
             </div>
+            <div class="kpi-card-footer">
+                <button type="button" class="btn-ver-detalle" data-tipo="cliente">
+                    <span>📊</span> Ver a detalle ↗
+                </button>
+            </div>
         </div>
 
         <!-- KPI 3: SUCURSAL CON MÁS VENTAS -->
@@ -622,6 +975,11 @@
                     <p class="kpi-valor" id="kpi-suc-nombre">Cargando...</p>
                     <p class="kpi-detalle" id="kpi-suc-detalle">0 ventas registradas</p>
                 </div>
+            </div>
+            <div class="kpi-card-footer">
+                <button type="button" class="btn-ver-detalle" data-tipo="sucursal">
+                    <span>📊</span> Ver a detalle ↗
+                </button>
             </div>
         </div>
 
@@ -671,6 +1029,46 @@
             </div>
         </div>
     </section>
+
+    <!-- VENTANA EMERGENTE (MODAL) DE RANKING COMPLETO -->
+    <div id="modal-detalle-estadisticas" class="modal-stats-overlay">
+        <div class="modal-stats-content">
+            <!-- Header -->
+            <div class="modal-stats-header">
+                <div class="modal-stats-header-info">
+                    <div class="modal-stats-icon" id="modal-stats-icon">🏆</div>
+                    <div>
+                        <h3 id="modal-stats-titulo">Ranking Completo</h3>
+                        <p id="modal-stats-subtitulo">Periodo: Semana actual</p>
+                    </div>
+                </div>
+                <div class="modal-stats-actions">
+                    <div class="modal-search-box">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="modal-search-input" placeholder="Buscar en la tabla..." autocomplete="off" />
+                    </div>
+                    <button type="button" class="modal-btn-close" id="btn-cerrar-modal-stats" title="Cerrar">&times;</button>
+                </div>
+            </div>
+
+            <!-- Resumen / Badges -->
+            <div class="modal-stats-summary" id="modal-stats-summary"></div>
+
+            <!-- Tabla con scroll -->
+            <div class="modal-table-container">
+                <table class="modal-stats-table">
+                    <thead id="modal-table-head"></thead>
+                    <tbody id="modal-table-body"></tbody>
+                </table>
+            </div>
+
+            <!-- Footer -->
+            <div class="modal-stats-footer">
+                <span id="modal-stats-count">Mostrando 0 registros</span>
+                <button type="button" class="btn-cerrar-secundario" id="btn-cerrar-modal-stats-footer">Cerrar</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -1168,6 +1566,7 @@
                     if (elDetalle) elDetalle.textContent = "0 ventas en este periodo";
                 }
                 if (hoveredCard === 'producto') renderTooltipProducto();
+                if (modalTipoActivo === 'producto') renderizarContenidoModal();
             } catch (err) {
                 console.error("Error en top producto:", err);
             }
@@ -1202,6 +1601,7 @@
                     if (elDetalle) elDetalle.textContent = "$0.00 en compras";
                 }
                 if (hoveredCard === 'cliente') renderTooltipCliente();
+                if (modalTipoActivo === 'cliente') renderizarContenidoModal();
             } catch (err) {
                 console.error("Error en top cliente:", err);
             }
@@ -1254,6 +1654,7 @@
                     if (elDetalle) elDetalle.textContent = "0 ventas en este periodo";
                 }
                 if (hoveredCard === 'sucursal') renderTooltipSucursal();
+                if (modalTipoActivo === 'sucursal') renderizarContenidoModal();
             } catch (err) {
                 console.error("Error en top sucursal:", err);
             }
@@ -1482,6 +1883,347 @@
             cardSucursal.addEventListener('mousemove', moveTooltip);
             cardSucursal.addEventListener('mouseleave', () => { hoveredCard = null; hideTooltip(); });
         }
+
+        // ==========================================
+        // VENTANA EMERGENTE (MODAL DE RANKING COMPLETO)
+        // ==========================================
+        let modalTipoActivo = null; // 'producto', 'cliente', 'sucursal'
+        const modalOverlay = document.getElementById('modal-detalle-estadisticas');
+        const modalIcon = document.getElementById('modal-stats-icon');
+        const modalTitulo = document.getElementById('modal-stats-titulo');
+        const modalSubtitulo = document.getElementById('modal-stats-subtitulo');
+        const modalSummary = document.getElementById('modal-stats-summary');
+        const modalThead = document.getElementById('modal-table-head');
+        const modalTbody = document.getElementById('modal-table-body');
+        const modalSearchInput = document.getElementById('modal-search-input');
+        const modalCount = document.getElementById('modal-stats-count');
+        const btnCerrarModal = document.getElementById('btn-cerrar-modal-stats');
+        const btnCerrarModalFooter = document.getElementById('btn-cerrar-modal-stats-footer');
+
+        function obtenerTextoPeriodo(selectorBtnContainer, inputDesdeId, inputHastaId) {
+            const btnActivo = document.querySelector(`${selectorBtnContainer} button.active`);
+            const periodo = btnActivo ? btnActivo.getAttribute('data-periodo') : 'semana';
+            if (periodo === 'dia') return "Periodo: Hoy (Día actual)";
+            if (periodo === 'semana') return "Periodo: Semana en curso";
+            if (periodo === 'mes') return "Periodo: Mes en curso";
+            if (periodo === 'anual') return "Periodo: Año en curso";
+            if (periodo === 'personalizado') {
+                const elD = document.getElementById(inputDesdeId);
+                const elH = document.getElementById(inputHastaId);
+                return `Periodo Personalizado: ${elD && elD.value ? elD.value : hoyStr} al ${elH && elH.value ? elH.value : hoyStr}`;
+            }
+            return "Periodo seleccionado";
+        }
+
+        function abrirModalDetalle(tipo) {
+            modalTipoActivo = tipo;
+            hideTooltip();
+            if (modalSearchInput) modalSearchInput.value = '';
+            if (modalOverlay) modalOverlay.classList.add('activo');
+            renderizarContenidoModal();
+            setTimeout(() => { if (modalSearchInput) modalSearchInput.focus(); }, 120);
+        }
+
+        function cerrarModalDetalle() {
+            if (modalOverlay) modalOverlay.classList.remove('activo');
+            modalTipoActivo = null;
+        }
+
+        function renderizarContenidoModal() {
+            if (!modalTipoActivo) return;
+
+            if (modalTipoActivo === 'producto') {
+                if (modalIcon) {
+                    modalIcon.textContent = '🥇';
+                    modalIcon.style.background = '#fef3c7';
+                    modalIcon.style.color = '#d97706';
+                }
+                if (modalTitulo) modalTitulo.textContent = 'Ranking Completo de Productos Más Vendidos';
+                if (modalSubtitulo) modalSubtitulo.textContent = obtenerTextoPeriodo('#selector-producto', 'fecha-desde-producto', 'fecha-hasta-producto');
+                if (modalThead) {
+                    modalThead.innerHTML = `
+                        <tr>
+                            <th style="width: 70px; text-align: center;">#</th>
+                            <th>Producto</th>
+                            <th style="text-align: right;">Cantidad Vendida</th>
+                            <th style="text-align: center; width: 140px;">% Participación</th>
+                        </tr>
+                    `;
+                }
+                if (modalSearchInput) modalSearchInput.placeholder = 'Buscar producto por nombre...';
+            } else if (modalTipoActivo === 'cliente') {
+                if (modalIcon) {
+                    modalIcon.textContent = '👤';
+                    modalIcon.style.background = '#e0f2fe';
+                    modalIcon.style.color = '#0284c7';
+                }
+                if (modalTitulo) modalTitulo.textContent = 'Ranking Completo de Clientes VIP';
+                if (modalSubtitulo) modalSubtitulo.textContent = obtenerTextoPeriodo('#selector-cliente', 'fecha-desde-cliente', 'fecha-hasta-cliente');
+                if (modalThead) {
+                    modalThead.innerHTML = `
+                        <tr>
+                            <th style="width: 70px; text-align: center;">#</th>
+                            <th>Nombre del Cliente</th>
+                            <th>Cédula / RIF</th>
+                            <th style="text-align: center;">N° Compras</th>
+                            <th style="text-align: right;">Total Comprado (USD)</th>
+                            <th style="text-align: right;">Total Comprado (Bs)</th>
+                        </tr>
+                    `;
+                }
+                if (modalSearchInput) modalSearchInput.placeholder = 'Buscar por nombre o RIF...';
+            } else if (modalTipoActivo === 'sucursal') {
+                if (modalIcon) {
+                    modalIcon.textContent = '📍';
+                    modalIcon.style.background = '#d1fae5';
+                    modalIcon.style.color = '#059669';
+                }
+                if (modalTitulo) modalTitulo.textContent = 'Rendimiento y Ranking de Sucursales';
+                if (modalSubtitulo) modalSubtitulo.textContent = obtenerTextoPeriodo('#selector-sucursal', 'fecha-desde-sucursal', 'fecha-hasta-sucursal');
+                if (modalThead) {
+                    modalThead.innerHTML = `
+                        <tr>
+                            <th style="width: 70px; text-align: center;">#</th>
+                            <th>Sucursal</th>
+                            <th style="text-align: center;">Transacciones / Ventas</th>
+                            <th style="text-align: right;">Total Facturado (USD)</th>
+                            <th style="text-align: right;">Ganancia Estimada (USD)</th>
+                            <th style="text-align: center; width: 140px;">% Participación</th>
+                        </tr>
+                    `;
+                }
+                if (modalSearchInput) modalSearchInput.placeholder = 'Buscar por nombre de sucursal...';
+            }
+
+            renderizarTablaModal();
+        }
+
+        function renderizarTablaModal() {
+            if (!modalTipoActivo || !modalTbody) return;
+            const query = (modalSearchInput ? modalSearchInput.value : '').trim().toLowerCase();
+            modalTbody.innerHTML = '';
+
+            if (modalTipoActivo === 'producto') {
+                const totalUnidades = topProductosCached.reduce((acc, p) => acc + (parseFloat(p.cantidad_vendida) || 0), 0);
+                
+                if (modalSummary) {
+                    const totalUnidadesStr = totalUnidades % 1 === 0 ? totalUnidades : totalUnidades.toFixed(2);
+                    modalSummary.innerHTML = `
+                        <div class="summary-badge">📦 Total Productos con Ventas: <strong>${topProductosCached.length}</strong></div>
+                        <div class="summary-badge">📊 Volumen Total Vendido: <strong>${totalUnidadesStr} unidades aprox.</strong></div>
+                    `;
+                }
+
+                const filtrados = topProductosCached.filter(p => {
+                    const nom = String(p.producto_nombre || '').toLowerCase();
+                    return nom.includes(query);
+                });
+
+                if (filtrados.length === 0) {
+                    modalTbody.innerHTML = `<tr><td colspan="4" class="empty-modal-state"><span>🔍</span> No se encontraron productos coincidentes.</td></tr>`;
+                    if (modalCount) modalCount.textContent = `Mostrando 0 de ${topProductosCached.length} productos`;
+                    return;
+                }
+
+                filtrados.forEach(p => {
+                    const originalIdx = topProductosCached.indexOf(p);
+                    const rank = originalIdx + 1;
+                    let rankClass = 'rank-other';
+                    let rankLabel = `${rank}`;
+                    if (rank === 1) { rankClass = 'rank-1'; rankLabel = '🥇 1'; }
+                    else if (rank === 2) { rankClass = 'rank-2'; rankLabel = '🥈 2'; }
+                    else if (rank === 3) { rankClass = 'rank-3'; rankLabel = '🥉 3'; }
+
+                    const qty = parseFloat(p.cantidad_vendida) || 0;
+                    const pct = totalUnidades > 0 ? ((qty / totalUnidades) * 100) : 0;
+                    const pctStr = pct.toFixed(1);
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="text-align: center;"><span class="rank-badge ${rankClass}">${rankLabel}</span></td>
+                        <td>
+                            <div style="font-weight: 700; color: #0f172a;">${p.producto_nombre || "Sin nombre"}</div>
+                            <div style="font-size: 0.75rem; color: #64748b;">ID: ${p.id || 'N/A'}</div>
+                        </td>
+                        <td style="text-align: right; font-weight: 700; color: #0284c7;">
+                            ${formatearCantidadConUnidad(p.cantidad_vendida, p.unidad, false)}
+                        </td>
+                        <td>
+                            <div class="progress-bar-cell">
+                                <div class="progress-bar-track">
+                                    <div class="progress-bar-fill" style="width: ${Math.min(100, Math.max(2, pct))}%;"></div>
+                                </div>
+                                <span style="font-size: 0.78rem; font-weight: 700; color: #475569; min-width: 42px; text-align: right;">${pctStr}%</span>
+                            </div>
+                        </td>
+                    `;
+                    modalTbody.appendChild(tr);
+                });
+
+                if (modalCount) modalCount.textContent = `Mostrando ${filtrados.length} de ${topProductosCached.length} productos`;
+
+            } else if (modalTipoActivo === 'cliente') {
+                const totalMontoUSD = topClientesCached.reduce((acc, c) => acc + ((parseFloat(c.total_comprado) || 0) / (currentTasaBcv || 1)), 0);
+                const totalMontoBs = topClientesCached.reduce((acc, c) => acc + (parseFloat(c.total_comprado) || 0), 0);
+
+                if (modalSummary) {
+                    modalSummary.innerHTML = `
+                        <div class="summary-badge">👥 Total Clientes VIP: <strong>${topClientesCached.length}</strong></div>
+                        <div class="summary-badge">💵 Facturación Total Clientes: <strong>${formatMoney(totalMontoUSD)}</strong></div>
+                        <div class="summary-badge">🇻🇪 Facturación en Bs: <strong>Bs ${totalMontoBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>
+                    `;
+                }
+
+                const filtrados = topClientesCached.filter(c => {
+                    const nom = String(c.cliente_nombre || '').toLowerCase();
+                    const rif = String(c.cliente_rif || '').toLowerCase();
+                    return nom.includes(query) || rif.includes(query);
+                });
+
+                if (filtrados.length === 0) {
+                    modalTbody.innerHTML = `<tr><td colspan="6" class="empty-modal-state"><span>🔍</span> No se encontraron clientes coincidentes.</td></tr>`;
+                    if (modalCount) modalCount.textContent = `Mostrando 0 de ${topClientesCached.length} clientes`;
+                    return;
+                }
+
+                filtrados.forEach(c => {
+                    const originalIdx = topClientesCached.indexOf(c);
+                    const rank = originalIdx + 1;
+                    let rankClass = 'rank-other';
+                    let rankLabel = `${rank}`;
+                    if (rank === 1) { rankClass = 'rank-1'; rankLabel = '🥇 1'; }
+                    else if (rank === 2) { rankClass = 'rank-2'; rankLabel = '🥈 2'; }
+                    else if (rank === 3) { rankClass = 'rank-3'; rankLabel = '🥉 3'; }
+
+                    const montoBs = parseFloat(c.total_comprado) || 0;
+                    const montoUSD = montoBs / (currentTasaBcv || 1);
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="text-align: center;"><span class="rank-badge ${rankClass}">${rankLabel}</span></td>
+                        <td>
+                            <div style="font-weight: 700; color: #0f172a;">${c.cliente_nombre || "Cliente General"}</div>
+                        </td>
+                        <td>
+                            <span style="font-size: 0.8rem; font-weight: 600; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 4px;">
+                                ${c.cliente_rif || 'V-00000000'}
+                            </span>
+                        </td>
+                        <td style="text-align: center; font-weight: 700; color: #334155;">
+                            ${c.total_compras_count || 1}
+                        </td>
+                        <td style="text-align: right; font-weight: 700; color: #059669;">
+                            ${formatMoney(montoUSD)}
+                        </td>
+                        <td style="text-align: right; font-weight: 600; color: #64748b;">
+                            Bs ${montoBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                    `;
+                    modalTbody.appendChild(tr);
+                });
+
+                if (modalCount) modalCount.textContent = `Mostrando ${filtrados.length} de ${topClientesCached.length} clientes`;
+
+            } else if (modalTipoActivo === 'sucursal') {
+                const totalVentasGral = topSucursalesCached.reduce((acc, s) => acc + (parseInt(s.total_ventas_count) || 0), 0);
+                const totalUSDGral = topSucursalesCached.reduce((acc, s) => acc + (parseFloat(s.total_usd) || 0), 0);
+                const totalGananciaGral = topSucursalesCached.reduce((acc, s) => acc + (parseFloat(s.total_ganancia) || 0), 0);
+
+                if (modalSummary) {
+                    modalSummary.innerHTML = `
+                        <div class="summary-badge">🏢 Sucursales Activas: <strong>${topSucursalesCached.length}</strong></div>
+                        <div class="summary-badge">🧾 Total Ventas Realizadas: <strong>${totalVentasGral}</strong></div>
+                        <div class="summary-badge">💰 Total Facturado: <strong>${formatMoney(totalUSDGral)}</strong></div>
+                        <div class="summary-badge">📈 Ganancia Total: <strong>${formatMoney(totalGananciaGral)}</strong></div>
+                    `;
+                }
+
+                const filtrados = topSucursalesCached.filter(s => {
+                    const nom = String(resolverNombreSucursal(s)).toLowerCase();
+                    const bId = String(s.branch_id || '').toLowerCase();
+                    return nom.includes(query) || bId.includes(query);
+                });
+
+                if (filtrados.length === 0) {
+                    modalTbody.innerHTML = `<tr><td colspan="6" class="empty-modal-state"><span>🔍</span> No se encontraron sucursales coincidentes.</td></tr>`;
+                    if (modalCount) modalCount.textContent = `Mostrando 0 de ${topSucursalesCached.length} sucursales`;
+                    return;
+                }
+
+                filtrados.forEach(s => {
+                    const originalIdx = topSucursalesCached.indexOf(s);
+                    const rank = originalIdx + 1;
+                    let rankClass = 'rank-other';
+                    let rankLabel = `${rank}`;
+                    if (rank === 1) { rankClass = 'rank-1'; rankLabel = '🥇 1'; }
+                    else if (rank === 2) { rankClass = 'rank-2'; rankLabel = '🥈 2'; }
+                    else if (rank === 3) { rankClass = 'rank-3'; rankLabel = '🥉 3'; }
+
+                    const sucursalUSD = parseFloat(s.total_usd) || 0;
+                    const pct = totalUSDGral > 0 ? ((sucursalUSD / totalUSDGral) * 100) : 0;
+                    const pctStr = pct.toFixed(1);
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="text-align: center;"><span class="rank-badge ${rankClass}">${rankLabel}</span></td>
+                        <td>
+                            <div style="font-weight: 700; color: #0f172a;">${resolverNombreSucursal(s)}</div>
+                            <div style="font-size: 0.75rem; color: #64748b;">ID: ${s.branch_id || 'principal'}</div>
+                        </td>
+                        <td style="text-align: center; font-weight: 700; color: #334155;">
+                            ${s.total_ventas_count}
+                        </td>
+                        <td style="text-align: right; font-weight: 700; color: #0284c7;">
+                            ${formatMoney(s.total_usd)}
+                        </td>
+                        <td style="text-align: right; font-weight: 700; color: #059669;">
+                            ${formatMoney(s.total_ganancia)}
+                        </td>
+                        <td>
+                            <div class="progress-bar-cell">
+                                <div class="progress-bar-track">
+                                    <div class="progress-bar-fill" style="background: #059669; width: ${Math.min(100, Math.max(2, pct))}%;"></div>
+                                </div>
+                                <span style="font-size: 0.78rem; font-weight: 700; color: #475569; min-width: 42px; text-align: right;">${pctStr}%</span>
+                            </div>
+                        </td>
+                    `;
+                    modalTbody.appendChild(tr);
+                });
+
+                if (modalCount) modalCount.textContent = `Mostrando ${filtrados.length} de ${topSucursalesCached.length} sucursales`;
+            }
+        }
+
+        if (btnCerrarModal) btnCerrarModal.addEventListener('click', cerrarModalDetalle);
+        if (btnCerrarModalFooter) btnCerrarModalFooter.addEventListener('click', cerrarModalDetalle);
+        if (modalOverlay) {
+            modalOverlay.addEventListener('click', (e) => {
+                if (e.target === modalOverlay) cerrarModalDetalle();
+            });
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modalOverlay && modalOverlay.classList.contains('activo')) {
+                cerrarModalDetalle();
+            }
+        });
+
+        if (modalSearchInput) {
+            modalSearchInput.addEventListener('input', () => {
+                renderizarTablaModal();
+            });
+        }
+
+        // Vincular los botones "Ver a detalle"
+        const botonesVerDetalle = document.querySelectorAll('.btn-ver-detalle');
+        botonesVerDetalle.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const tipo = e.currentTarget.getAttribute('data-tipo');
+                abrirModalDetalle(tipo);
+            });
+        });
 
         // ==========================================
         // INICIALIZACIÓN GENERAL
