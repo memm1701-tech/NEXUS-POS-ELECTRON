@@ -74,7 +74,7 @@ if (config.isServer) {
         facturas_borradores: { id: "TEXT PRIMARY KEY", cliente_nombre: "TEXT", cliente_id: "TEXT", items: "TEXT", subtotal: "REAL DEFAULT 0", iva: "REAL DEFAULT 0", total: "REAL DEFAULT 0", metodos_pago: "TEXT", fecha: "INTEGER", usuario_id: "TEXT", sucursal_id: "TEXT", company_id: "TEXT" },
         cierres_caja_maestros: { id: "TEXT PRIMARY KEY", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", total_ventas_bs: "REAL DEFAULT 0", total_ventas_usd: "REAL DEFAULT 0", total_gastos_bs: "REAL DEFAULT 0", total_gastos_usd: "REAL DEFAULT 0", total_ingresos_bs: "REAL DEFAULT 0", total_diferencia_bs: "REAL DEFAULT 0", total_diferencia_usd: "REAL DEFAULT 0", detalle_pagos_json: "TEXT" },
         movimientos_caja_locales: { id: "TEXT PRIMARY KEY", tipo: "TEXT", concepto: "TEXT", monto: "REAL DEFAULT 0", monto_usd: "REAL DEFAULT 0", metodo_pago: "TEXT", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP", cashier_id: "TEXT", company_id: "TEXT", branch_id: "TEXT", estado_cierre: "INTEGER DEFAULT 0" },
-        ventas_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_factura: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", monto_exento: "REAL DEFAULT 0", base_imponible: "REAL DEFAULT 0", monto_iva: "REAL DEFAULT 0", total_iva: "REAL DEFAULT 0", monto_igtf: "REAL DEFAULT 0", monto_total: "REAL DEFAULT 0", tasa_bcv: "REAL DEFAULT 1", metodo_pago: "TEXT", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", estado_cierre: "INTEGER DEFAULT 0", es_nota_credito: "INTEGER DEFAULT 0", es_nota_debito: "INTEGER DEFAULT 0", factura_afectada: "TEXT", monto_factura_afectada: "REAL DEFAULT 0", fecha_factura_afectada: "TEXT", comprobante_retencion_id: "TEXT DEFAULT NULL", ganancia_venta: "REAL DEFAULT 0", estado: "TEXT DEFAULT 'EMITIDA'", es_anulada: "INTEGER DEFAULT 0" },
+        ventas_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_factura: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", monto_exento: "REAL DEFAULT 0", base_imponible: "REAL DEFAULT 0", monto_iva: "REAL DEFAULT 0", total_iva: "REAL DEFAULT 0", monto_igtf: "REAL DEFAULT 0", monto_total: "REAL DEFAULT 0", tasa_bcv: "REAL DEFAULT 1", metodo_pago: "TEXT", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0", sync_server: "INTEGER DEFAULT 0", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", estado_cierre: "INTEGER DEFAULT 0", es_nota_credito: "INTEGER DEFAULT 0", es_nota_debito: "INTEGER DEFAULT 0", factura_afectada: "TEXT", monto_factura_afectada: "REAL DEFAULT 0", fecha_factura_afectada: "TEXT", comprobante_retencion_id: "TEXT DEFAULT NULL", ganancia_venta: "REAL DEFAULT 0", estado: "TEXT DEFAULT 'EMITIDA'", es_anulada: "INTEGER DEFAULT 0" },
         presupuestos_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_presupuesto: "TEXT UNIQUE", cliente_nombre: "TEXT", cliente_rif: "TEXT", cliente_direccion: "TEXT", cliente_telefono: "TEXT", subtotal: "REAL DEFAULT 0", monto_iva: "REAL DEFAULT 0", monto_total: "REAL DEFAULT 0", tasa_bcv: "REAL DEFAULT 1", moneda: "TEXT DEFAULT 'USD'", validez_dias: "INTEGER DEFAULT 1", estado: "TEXT DEFAULT 'EMITIDO'", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0" },
         configuraciones_maestras: { clave: "TEXT PRIMARY KEY", valor: "TEXT" },
         auditoria_fiscal: { id: "TEXT PRIMARY KEY", usuario: "TEXT", accion: "TEXT", valores: "TEXT", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
@@ -158,6 +158,7 @@ if (config.isServer) {
             CREATE INDEX IF NOT EXISTS idx_ventas_fecha ON ventas_locales(fecha_emision);
             CREATE INDEX IF NOT EXISTS idx_ventas_factura ON ventas_locales(numero_factura);
             CREATE INDEX IF NOT EXISTS idx_ventas_estado ON ventas_locales(estado);
+            CREATE INDEX IF NOT EXISTS idx_ventas_sync_server ON ventas_locales(sync_server);
             CREATE INDEX IF NOT EXISTS idx_movimientos_cierre ON movimientos_caja_locales(company_id, tipo, estado_cierre);
             CREATE INDEX IF NOT EXISTS idx_movimientos_fecha ON movimientos_caja_locales(fecha);
             CREATE INDEX IF NOT EXISTS idx_presupuestos_nro ON presupuestos_locales(numero_presupuesto);
@@ -263,11 +264,28 @@ server.post('/api/maestro/registrar-guia-despacho', (req, res) => {
 server.post('/api/maestro/guardar-clave-admin', (req, res) => {
         const c = req.body;
         try {
+            // Asegurar que la tabla tenga las columnas permisos e is_master
+            try {
+                serverDb.prepare("ALTER TABLE claves_admin_maestras ADD COLUMN permisos TEXT").run();
+            } catch(e) {}
+            try {
+                serverDb.prepare("ALTER TABLE claves_admin_maestras ADD COLUMN is_master INTEGER DEFAULT 0").run();
+            } catch(e) {}
+
+            const permisosStr = typeof c.permisos === 'object' ? JSON.stringify(c.permisos) : (c.permisos || null);
+            const isMasterVal = (c.is_master === 1 || c.is_master === true || c.is_master === '1' || c.is_master === 'true' || c.isMaster === true || c.isMaster === 1) ? 1 : 0;
+
             const stmt = serverDb.prepare(`
-                INSERT INTO claves_admin_maestras (id, ownerName, encryptedCode, company_id, created_by, updatedAt)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO claves_admin_maestras (id, ownerName, encryptedCode, company_id, created_by, updatedAt, permisos, is_master)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    ownerName = excluded.ownerName,
+                    encryptedCode = COALESCE(excluded.encryptedCode, claves_admin_maestras.encryptedCode),
+                    permisos = excluded.permisos,
+                    is_master = excluded.is_master,
+                    updatedAt = excluded.updatedAt
             `);
-            stmt.run(c.id, c.ownerName, c.encryptedCode, c.company_id, c.created_by, c.updatedAt);
+            stmt.run(c.id, c.ownerName, c.encryptedCode, c.company_id, c.created_by, c.updatedAt, permisosStr, isMasterVal);
             res.json({ exito: true });
         } catch (e) {
             console.error("❌ Error guardando clave en Maestro:", e.message);
@@ -277,6 +295,14 @@ server.post('/api/maestro/guardar-clave-admin', (req, res) => {
 
     server.get('/api/maestro/obtener-claves-admin/:companyId', (req, res) => {
         try {
+            // Asegurar columnas existentes
+            try {
+                serverDb.prepare("ALTER TABLE claves_admin_maestras ADD COLUMN permisos TEXT").run();
+            } catch(e) {}
+            try {
+                serverDb.prepare("ALTER TABLE claves_admin_maestras ADD COLUMN is_master INTEGER DEFAULT 0").run();
+            } catch(e) {}
+
             const claves = serverDb.prepare('SELECT * FROM claves_admin_maestras WHERE company_id = ? ORDER BY updatedAt DESC').all(req.params.companyId);
             res.json(claves);
         } catch (e) {
@@ -765,14 +791,35 @@ server.put('/api/maestro/metodos-pago/:id', (req, res) => {
         const { items, sucursalId, sucursal_id, companyId, company_id, factura_ref, tipo_movimiento } = req.body;
         const sIdGlobal = sucursalId || sucursal_id;
         const cIdGlobal = companyId || company_id;
-        const refFactura = factura_ref || '';
+        const refFactura = factura_ref || req.body.ventaId || req.body.id || '';
         const tipoMovimiento = tipo_movimiento || 'VENTA';
         
         if (!items || !Array.isArray(items) || items.length === 0) {
             return res.status(400).json({ exito: false, error: "Payload incompleto" });
         }
 
-        console.log(`\n🛒 [API MAESTRO] --- NUEVA PETICIÓN DE VENTA (DESCUENTO) ---`);
+        // 🛡️ CANDADO DE IDEMPOTENCIA EN API MAESTRO: Si la transacción ya descontó stock, no volver a descontar
+        if (refFactura) {
+            try {
+                serverDb.prepare("ALTER TABLE movimientos_stock_maestro ADD COLUMN referencia_id TEXT").run();
+            } catch(eAlter) {}
+
+            try {
+                const yaDescontado = serverDb.prepare(`
+                    SELECT id FROM movimientos_stock_maestro 
+                    WHERE referencia_id = ? AND tipo_movimiento = 'VENTA' LIMIT 1
+                `).get(String(refFactura));
+
+                if (yaDescontado) {
+                    console.log(`🛡️ [IDEMPOTENCIA API MAESTRO] Transacción ${refFactura} ya descontó stock previamente. Omitiendo duplicado.`);
+                    return res.json({ exito: true, idempotente: true, mensaje: "Stock ya descontado previamente para esta transacción." });
+                }
+            } catch(eCheck) {
+                console.warn("Aviso verificando idempotencia en API Maestro:", eCheck.message);
+            }
+        }
+
+        console.log(`\n🛒 [API MAESTRO] --- NUEVA PETICIÓN DE VENTA (DESCUENTO) --- Ref: ${refFactura || 'Sin Ref'}`);
         
         try {
             const transaccion = serverDb.transaction((productos) => {
@@ -1326,22 +1373,45 @@ server.get('/api/maestro/buscar-producto-por-codigo', (req, res) => {
         const empresaId = req.query.empresaId;
         const codigoLimpio = String(codigo).trim();
         if (!codigoLimpio) return res.json(null);
+
+        // 🛡️ PROTECCIÓN ANTI-COLISIÓN: Si el código es genérico, NO buscar por columna codigo
+        const codigosGenericos = ['sin código', 'sin codigo', 's/c', 'sc', 'none', 'null', 'undefined'];
+        const esGenerico = codigosGenericos.includes(codigoLimpio.toLowerCase());
+
         const activeDb = getPosDb() || serverDb;
         let stmt;
         if (empresaId && empresaId !== 'undefined' && empresaId.trim() !== '') {
-            stmt = activeDb.prepare(`
-                SELECT * FROM productos_locales
-                WHERE company_id = ? AND (codigo = ? OR id = ?) AND status != -1 AND status != 0
-                LIMIT 1
-            `);
-            res.json(stmt.get(empresaId, codigoLimpio, codigoLimpio) || null);
+            if (esGenerico) {
+                stmt = activeDb.prepare(`
+                    SELECT * FROM productos_locales
+                    WHERE company_id = ? AND id = ? AND status != -1 AND status != 0
+                    LIMIT 1
+                `);
+                res.json(stmt.get(empresaId, codigoLimpio) || null);
+            } else {
+                stmt = activeDb.prepare(`
+                    SELECT * FROM productos_locales
+                    WHERE company_id = ? AND (codigo = ? OR id = ?) AND status != -1 AND status != 0
+                    LIMIT 1
+                `);
+                res.json(stmt.get(empresaId, codigoLimpio, codigoLimpio) || null);
+            }
         } else {
-            stmt = activeDb.prepare(`
-                SELECT * FROM productos_locales
-                WHERE (codigo = ? OR id = ?) AND status != -1 AND status != 0
-                LIMIT 1
-            `);
-            res.json(stmt.get(codigoLimpio, codigoLimpio) || null);
+            if (esGenerico) {
+                stmt = activeDb.prepare(`
+                    SELECT * FROM productos_locales
+                    WHERE id = ? AND status != -1 AND status != 0
+                    LIMIT 1
+                `);
+                res.json(stmt.get(codigoLimpio) || null);
+            } else {
+                stmt = activeDb.prepare(`
+                    SELECT * FROM productos_locales
+                    WHERE (codigo = ? OR id = ?) AND status != -1 AND status != 0
+                    LIMIT 1
+                `);
+                res.json(stmt.get(codigoLimpio, codigoLimpio) || null);
+            }
         }
     } catch (error) {
         console.error("❌ Error en Maestro buscando producto por código:", error.message);
@@ -1599,7 +1669,7 @@ server.post('/api/maestro/registrar-cierre', (req, res) => {
 
     try {
         const stmt = serverDb.prepare(`
-            INSERT INTO cierres_caja_maestros (
+            INSERT OR REPLACE INTO cierres_caja_maestros (
                 id, fecha, company_id, branch_id, cashier_id,
                 total_ventas_bs, total_ventas_usd, total_gastos_bs,
                 total_gastos_usd, total_ingresos_bs, total_diferencia_bs,
@@ -1609,18 +1679,18 @@ server.post('/api/maestro/registrar-cierre', (req, res) => {
 
         stmt.run(
             c.id,
-            c.fecha,
+            c.fecha || new Date().toISOString(),
             c.companyId,
             c.branchId,
             c.cashierId,
-            c.totalSalesBs,
-            c.totalSalesDollars,
-            c.totalExpensesBs,
-            c.totalExpensesDollars,
-            c.totalIncomes,
-            c.totalDifferenceBs,
-            c.totalDifferenceDollars,
-            c.paymentsConciliation
+            c.totalSalesBs || 0,
+            c.totalSalesDollars || 0,
+            c.totalExpensesBs || 0,
+            c.totalExpensesDollars || 0,
+            c.totalIncomes || 0,
+            c.totalDifferenceBs || 0,
+            c.totalDifferenceDollars || 0,
+            c.paymentsConciliation || '{}'
         );
 
         console.log(`✅ Cierre ${c.id} guardado en Servidor Maestro.`);
@@ -1631,25 +1701,66 @@ server.post('/api/maestro/registrar-cierre', (req, res) => {
     }
 });
 
+// 🛡️ FUNCIÓN LIMPIADORA ANTI-BASE64 PARA REDUCIR PESO DE VENTAS
+function sanitizarDatosJsonVenta(datosJsonRaw) {
+    if (!datosJsonRaw) return '{}';
+    try {
+        let obj = typeof datosJsonRaw === 'string' ? JSON.parse(datosJsonRaw) : datosJsonRaw;
+        if (!obj || typeof obj !== 'object') return '{}';
+        delete obj.imagen;
+        delete obj.image;
+        const prods = obj.productos || obj.items;
+        if (Array.isArray(prods)) {
+            const limpios = prods.map(p => {
+                if (!p || typeof p !== 'object') return p;
+                const { imagen, image, datos_json, ...resto } = p;
+                for (const k of Object.keys(resto)) {
+                    if (typeof resto[k] === 'string' && (resto[k].startsWith('data:image') || resto[k].length > 500)) {
+                        delete resto[k];
+                    }
+                }
+                return resto;
+            });
+            if (obj.productos) obj.productos = limpios;
+            if (obj.items) obj.items = limpios;
+        }
+        return JSON.stringify(obj);
+    } catch (e) {
+        return typeof datosJsonRaw === 'string' ? datosJsonRaw : JSON.stringify(datosJsonRaw);
+    }
+}
+
 server.post('/api/maestro/registrar-venta', (req, res) => {
     const v = req.body;
     console.log(`\n🛒 [API MAESTRO] Recibiendo Venta/NC: ${v.numero_factura} de Sucursal: ${v.branch_id}`);
 
     try {
+        // Sanitizar payload JSON para evitar almacenar imágenes Base64 pesadas
+        v.datos_json = sanitizarDatosJsonVenta(v.datos_json);
+
         const stmt = serverDb.prepare(`
-            INSERT INTO ventas_locales (
+            INSERT OR REPLACE INTO ventas_locales (
                 id, company_id, branch_id, cashier_id, numero_factura, 
                 numero_control, cliente_nombre, cliente_rif, monto_exento, 
                 base_imponible, monto_iva, monto_igtf, monto_total, 
-                tasa_bcv, metodo_pago, datos_json, ganancia_venta, estado_sync, estado_cierre, fecha_emision
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, datetime('now', 'localtime'))
+                tasa_bcv, metodo_pago, datos_json, ganancia_venta, estado_sync, sync_server, estado_cierre,
+                es_nota_credito, es_nota_debito, factura_afectada, monto_factura_afectada, fecha_factura_afectada, fecha_emision, estado
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         stmt.run(
             v.id, v.company_id, v.branch_id, v.cashier_id, v.numero_factura,
-            v.numero_control, v.cliente_nombre, v.cliente_rif, v.monto_exento,
-            v.base_imponible, v.monto_iva, v.monto_igtf, v.monto_total,
-            v.tasa_bcv, v.metodo_pago, v.datos_json, v.ganancia_venta || 0
+            v.numero_control, v.cliente_nombre, v.cliente_rif, v.monto_exento || 0,
+            v.base_imponible || 0, v.monto_iva || 0, v.monto_igtf || 0, v.monto_total || 0,
+            v.tasa_bcv || 1, v.metodo_pago, v.datos_json, v.ganancia_venta || 0,
+            v.estado_cierre || 0,
+            v.es_nota_credito || 0,
+            v.es_nota_debito || 0,
+            v.factura_afectada || null,
+            v.monto_factura_afectada || null,
+            v.fecha_factura_afectada || null,
+            v.fecha_emision || new Date().toISOString(),
+            v.estado || 'EMITIDA'
         );
 
         // ☁️ Encolar descuento de stock para el VPS (para ventas originadas en caja hija)
@@ -1710,7 +1821,7 @@ server.post('/api/maestro/anular-venta', (req, res) => {
             // 1. Marcar venta como ANULADA y ganancia a 0
             const stmtVenta = serverDb.prepare(`
                 UPDATE ventas_locales 
-                SET estado = 'ANULADA', ganancia_venta = 0, estado_sync = 0
+                SET estado = 'ANULADA', es_anulada = 1, ganancia_venta = 0, estado_sync = 0, sync_server = 0
                 WHERE id = ? OR numero_factura = ?
             `);
             stmtVenta.run(facturaId || '', numeroFactura || '');
@@ -1952,6 +2063,8 @@ server.get('/api/maestro/estadisticas', (req, res) => {
             SELECT SUM(ganancia_venta) as total_ganancia 
             FROM ventas_locales 
             WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?
+              AND (estado != 'ANULADA' OR estado IS NULL)
+              AND (es_nota_credito = 0 OR es_nota_credito IS NULL)
         `).get(companyId, fechaIni, fechaFin);
         const total_ganancia = gananciaResult?.total_ganancia || 0;
 
@@ -1960,16 +2073,22 @@ server.get('/api/maestro/estadisticas', (req, res) => {
             SELECT SUM((monto_total / COALESCE(NULLIF(tasa_bcv, 0), 1)) - ganancia_venta) as total_cogs
             FROM ventas_locales
             WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?
+              AND (estado != 'ANULADA' OR estado IS NULL)
+              AND (es_nota_credito = 0 OR es_nota_credito IS NULL)
         `).get(companyId, fechaIni, fechaFin);
         const total_cogs = Math.max(0, cogsResult?.total_cogs || 0);
 
-        // 2. Top Clientes (Ranking Completo)
+        // 2. Top Clientes (Ranking Completo con normalización a USD por tasa de cada venta)
         const topClientes = serverDb.prepare(`
-            SELECT cliente_nombre, cliente_rif, COUNT(*) as total_compras_count, SUM(monto_total) as total_comprado
+            SELECT cliente_nombre, cliente_rif, COUNT(*) as total_compras_count, 
+                   SUM(monto_total / COALESCE(NULLIF(tasa_bcv, 0), 1)) as total_comprado_usd,
+                   SUM(monto_total) as total_comprado
             FROM ventas_locales
             WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?
+              AND (estado != 'ANULADA' OR estado IS NULL)
+              AND (es_nota_credito = 0 OR es_nota_credito IS NULL)
             GROUP BY cliente_rif
-            ORDER BY total_comprado DESC
+            ORDER BY total_comprado_usd DESC
         `).all(companyId, fechaIni, fechaFin);
 
         // 3. Top Productos (con Unidad de Medida Inteligente y Ranking Completo)
@@ -1996,13 +2115,22 @@ server.get('/api/maestro/estadisticas', (req, res) => {
                 });
             } catch(eEmp) {}
 
-            const ventas = serverDb.prepare(`SELECT datos_json FROM ventas_locales WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?`).all(companyId, fechaIni, fechaFin);
+            const ventas = serverDb.prepare(`
+                SELECT datos_json FROM ventas_locales 
+                WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?
+                  AND (estado != 'ANULADA' OR estado IS NULL)
+                  AND (es_nota_credito = 0 OR es_nota_credito IS NULL)
+            `).all(companyId, fechaIni, fechaFin);
             const mapa = {};
             ventas.forEach(v => {
                 try {
                     const parsed = JSON.parse(v.datos_json);
                     const prodArray = Array.isArray(parsed) ? parsed : (parsed.productos || parsed.items || []);
                     prodArray.forEach(item => {
+                        const nombreItem = String(item.nombre || item.id || '').toUpperCase();
+                        if (item.id === 'PAGO-DEUDA' || nombreItem.includes('ABONO') || nombreItem.includes('DEUDA') || nombreItem.includes('SERVICIO')) {
+                            return;
+                        }
                         const qty = parseFloat(item.cantidad || item.quantity) || 0;
                         const unitProd = mapaUnidadesCatalogo[item.id] || item.unit || item.unidad || 'UN';
                         if (!mapa[item.id]) {
@@ -2036,6 +2164,8 @@ server.get('/api/maestro/estadisticas', (req, res) => {
             FROM ventas_locales v
             LEFT JOIN sucursales s ON s.id = v.branch_id
             WHERE v.company_id = ? AND v.fecha_emision BETWEEN ? AND ?
+              AND (v.estado != 'ANULADA' OR v.estado IS NULL)
+              AND (v.es_nota_credito = 0 OR v.es_nota_credito IS NULL)
             GROUP BY v.branch_id
             ORDER BY total_usd DESC
         `).all(companyId, fechaIni, fechaFin);
@@ -2047,6 +2177,8 @@ server.get('/api/maestro/estadisticas', (req, res) => {
                 SELECT strftime('%Y-%m-%d %H:00:00', fecha_emision) as fecha, SUM(ganancia_venta) as total_ganancia
                 FROM ventas_locales
                 WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?
+                  AND (estado != 'ANULADA' OR estado IS NULL)
+                  AND (es_nota_credito = 0 OR es_nota_credito IS NULL)
                 GROUP BY strftime('%Y-%m-%d %H', fecha_emision)
                 ORDER BY fecha ASC
             `).all(companyId, fechaIni, fechaFin);
@@ -2055,6 +2187,8 @@ server.get('/api/maestro/estadisticas', (req, res) => {
                 SELECT date(fecha_emision) as fecha, SUM(ganancia_venta) as total_ganancia
                 FROM ventas_locales
                 WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?
+                  AND (estado != 'ANULADA' OR estado IS NULL)
+                  AND (es_nota_credito = 0 OR es_nota_credito IS NULL)
                 GROUP BY date(fecha_emision)
                 ORDER BY fecha ASC
             `).all(companyId, fechaIni, fechaFin);
@@ -2106,12 +2240,20 @@ server.get('/api/maestro/estadisticas', (req, res) => {
 });
 
 server.get('/api/maestro/estadisticas/pagos-mes', (req, res) => {
-    const { companyId } = req.query;
+    const { companyId, fecha_inicio, fecha_fin } = req.query;
     if (!companyId) return res.status(400).json({ error: "companyId requerido" });
 
     try {
-        // Usamos un filtro de texto directo que es más compatible con formatos ISO
-        // Y forzamos los nombres de las columnas con AS para asegurar el mapeo
+        let whereClause = "WHERE company_id = ?";
+        const params = [companyId];
+
+        if (fecha_inicio && fecha_fin) {
+            whereClause += " AND date(fecha) >= date(?) AND date(fecha) <= date(?)";
+            params.push(fecha_inicio, fecha_fin);
+        } else {
+            whereClause += " AND fecha >= date('now', 'start of month') AND fecha <= date('now', '+1 day')";
+        }
+
         const query = `
             SELECT 
                 id AS id,
@@ -2122,12 +2264,10 @@ server.get('/api/maestro/estadisticas/pagos-mes', (req, res) => {
                 total_diferencia_bs AS total_diferencia_bs,
                 fecha AS fecha
             FROM cierres_caja_maestros 
-            WHERE company_id = ? 
-            AND fecha >= date('now', 'start of month')
-            AND fecha <= date('now', '+1 day')
+            ${whereClause}
         `;
 
-        const rows = serverDb.prepare(query).all(companyId);
+        const rows = serverDb.prepare(query).all(...params);
         console.log(`📊 [SERVER] Cierres encontrados en DB: ${rows.length}`);
         
         // Log adicional para que veas en la terminal del servidor si los $8 y $63 están saliendo

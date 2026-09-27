@@ -23,12 +23,15 @@
         }
 
         .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            border-left-color: #3b82f6;
-            border-radius: 0;
-            width: 24px;
-            height: 24px;
-            animation: spin 1s linear infinite;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-left-color: #ffffff;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
         }
 
         @keyframes spin {
@@ -154,7 +157,7 @@
                     </div>
                 </div>
                 <button id="add-income-btn"
-                        class="mt-6 w-full bg-blue-600 text-white py-3 px-6 rounded-none hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out text-lg font-semibold shadow-md flex items-center justify-center">
+                        class="mt-6 w-full bg-blue-600 text-white py-3 px-6 rounded-none hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out text-lg font-semibold shadow-md flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed">
                     <span class="material-icons mr-2">add_circle_outline</span>
                     Agregar Ingreso
                 </button>
@@ -294,8 +297,12 @@
     }
 
     // --- 3. LÓGICA DE REGISTRO (GUARDAR EN SQLITE) ---
-    // REEMPLAZA SOLO ESTA FUNCIÓN EN gestion_de_ingresos.html
-async function addIncome() {
+    let isProcessingIncome = false;
+
+    async function addIncome() {
+        // 🛡️ PROTECCIÓN CONTRA DOBLE CLIC / RÁFAGAS DEL MOUSE
+        if (isProcessingIncome) return;
+
         // 1. ELIMINAMOS EL RETORNO SILENCIOSO: Obligamos al sistema a hablar
         if (!isAuthReady) {
             showModal("Sistema Ocupado", "El módulo aún está cargando la base de datos local. Espera un segundo.", true);
@@ -331,8 +338,11 @@ async function addIncome() {
             return;
         }
 
+        // 🛡️ BLOQUEO INMEDIATO DEL BOTÓN Y EFECTO DE CARGA
+        isProcessingIncome = true;
         addIncomeBtn.disabled = true;
-        addIncomeBtn.innerHTML = `<span class="spinner"></span> Registrando...`;
+        addIncomeBtn.classList.add('opacity-75', 'cursor-not-allowed');
+        addIncomeBtn.innerHTML = `<span class="spinner"></span> Registrando Ingreso...`;
 
         try {
             let methodFinal = [];
@@ -341,7 +351,7 @@ async function addIncome() {
             const metodoUnido = methodFinal.join(' / ');
 
             const nuevoMovimiento = {
-                id: `INC-${Date.now()}`,
+                id: `INC-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
                 tipo: 'INGRESO',
                 concepto: description,
                 monto: amountBs,
@@ -381,12 +391,14 @@ async function addIncome() {
                 limpiarCampos();
                 loadIncomes(); 
             } else {
-                throw new Error(resultado.error || "SQLite rechazó la inserción.");
+                throw new Error(resultado?.error || "SQLite rechazó la inserción.");
             }
         } catch (error) {
             showModal("Error SQL", `Fallo interno: ${error.message}`, true);
         } finally {
+            isProcessingIncome = false;
             addIncomeBtn.disabled = false;
+            addIncomeBtn.classList.remove('opacity-75', 'cursor-not-allowed');
             addIncomeBtn.innerHTML = `<span class="material-icons mr-2">add_circle_outline</span> Agregar Ingreso`;
         }
     }

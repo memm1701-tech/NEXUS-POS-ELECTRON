@@ -346,11 +346,43 @@
             const ip = (window.nexusAPI && typeof window.nexusAPI.obtenerIpMaestro === 'function')
                 ? (await window.nexusAPI.obtenerIpMaestro() || '127.0.0.1')
                 : '127.0.0.1';
-            const resp = await fetch(`http://${ip}:3000/api/maestro/metodos-pago`);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
+            const resp = await fetch(`http://${ip}:3000/api/maestro/metodos-pago`, { signal: controller.signal });
+            clearTimeout(timeoutId);
             const resData = await resp.json();
-            window.metodosCierre = resData.data || [];
+            if (Array.isArray(resData.data) && resData.data.length > 0) {
+                window.metodosCierre = resData.data;
+                return;
+            }
         } catch(e) {
-            console.error("Error al cargar métodos globales:", e);
+            console.warn("No se pudo cargar métodos desde el Maestro vía HTTP, usando fallback local:", e.message);
+        }
+
+        // 🛡️ Respaldo Local SQLite
+        try {
+            if (window.nexusAPI && typeof window.nexusAPI.obtenerMetodosPagoLocal === 'function') {
+                const metodosLocales = await window.nexusAPI.obtenerMetodosPagoLocal();
+                if (Array.isArray(metodosLocales) && metodosLocales.length > 0) {
+                    window.metodosCierre = metodosLocales;
+                    return;
+                }
+            }
+        } catch(eLoc) {
+            console.warn("Fallo al leer metodos_pago_locales:", eLoc.message);
+        }
+
+        // 🛡️ Fallback final a métodos estándar para asegurar que la UI nunca quede vacía
+        if (!window.metodosCierre || window.metodosCierre.length === 0) {
+            window.metodosCierre = [
+                { id: "1", nombre: "Efectivo (Bs)", tipo_moneda: "BS" },
+                { id: "2", nombre: "Dólar ($)", tipo_moneda: "USD" },
+                { id: "3", nombre: "Punto de Venta / Débito", tipo_moneda: "BS" },
+                { id: "4", nombre: "Pago Móvil", tipo_moneda: "BS" },
+                { id: "5", nombre: "Biopago", tipo_moneda: "BS" },
+                { id: "6", nombre: "Transferencia", tipo_moneda: "BS" },
+                { id: "7", nombre: "Zelle / Divisa Digital", tipo_moneda: "USD" }
+            ];
         }
     }
     
@@ -434,6 +466,11 @@
                 
                 updateUserInfoDisplay();
 
+                // 🔄 Reconciliar cualquier venta pendiente con el Maestro en segundo plano
+                if (window.nexusAPI && typeof window.nexusAPI.reconciliarVentasMaestro === 'function') {
+                    window.nexusAPI.reconciliarVentasMaestro().catch(() => {});
+                }
+
                 await fetchPrinterConfig();
                 await fetchMetodosCierre();
                 renderCierreInputs();
@@ -451,7 +488,17 @@
 
     function findMetodoCierreFlexible(name, currency) {
         if (!name || !window.metodosCierre || window.metodosCierre.length === 0) return null;
-        const n = String(name).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        let n = String(name).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
+        // 0. Mapeo de slugs ingleses/legados a terminos en espanol
+        if (n === 'cash-bs' || n === 'cash') n = 'efectivo bs';
+        else if (n === 'dollars' || n === 'dollar' || n === 'usd') n = 'dolar';
+        else if (n === 'debit-card-bs' || n === 'credit-card-bs') n = 'punto debito';
+        else if (n === 'mobile-payment-bs' || n === 'pago-movil') n = 'pago movil';
+        else if (n === 'transfer-bs') n = 'transferencia';
+        else if (n === 'biopago-bs') n = 'biopago';
+        else if (n === 'zinli-dollars' || n === 'zelle') n = 'zelle';
+        else if (n === 'credit-bs') n = 'credito';
 
         // 1. Por ID
         let found = window.metodosCierre.find(m => String(m.id) === String(name));
@@ -530,7 +577,7 @@
 
         try {
             // 1. CARGAR INGRESOS PENDIENTES
-            const ingresos = await window.nexusAPI.obtenerMovimientosCaja({ tipo: 'INGRESO', companyId });
+            const ingresos = await window.nexusAPI.obtenerMovimientosCaja({ tipo: 'INGRESO', companyId, cashierId: userId, branchId });
             (ingresos || []).forEach(mov => {
                 currentReportData.totalIncomes += (parseFloat(mov.monto) || 0);
                 currentReportData.totalIncomesDollars += (parseFloat(mov.monto_usd) || 0); 
@@ -538,7 +585,7 @@
             });
 
             // 2. CARGAR GASTOS PENDIENTES
-            const gastos = await window.nexusAPI.obtenerMovimientosCaja({ tipo: 'GASTO', companyId });
+            const gastos = await window.nexusAPI.obtenerMovimientosCaja({ tipo: 'GASTO', companyId, cashierId: userId, branchId });
             (gastos || []).forEach(mov => {
                 currentReportData.totalExpensesBs += (parseFloat(mov.monto) || 0);
                 currentReportData.totalExpensesDollars += (parseFloat(mov.monto_usd) || 0);
@@ -549,6 +596,21 @@
             const ventas = await window.nexusAPI.obtenerVentasPendientesCaja({ companyId, branchId, cashierId: userId });
             
             (ventas || []).forEach(sale => {
+                // 🛡️ Descartar ventas anuladas para no corromper los totales de caja
+                if (sale.estado === 'ANULADA' || sale.es_anulada === 1) return;
+
+                const esNC = (sale.es_nota_credito === 1);
+                const multiplier = esNC ? -1 : 1;
+
+                // 1. TOTALES DE FACTURACIÓN NETA REAL (Inmunes a distorsiones por vueltos en otra moneda)
+                const montoVentaBs = (parseFloat(sale.monto_total) || 0) * multiplier;
+                const tasaVenta = parseFloat(sale.tasa_bcv) || 1;
+                const montoVentaUsd = montoVentaBs / tasaVenta;
+
+                currentReportData.totalSalesBs += montoVentaBs;
+                currentReportData.totalSalesDollars += montoVentaUsd;
+
+                // 2. DESGLOSE POR MÉTODO DE PAGO Y VUELTOS (Flujo Físico y Digital en Caja)
                 let payments = {};
                 try {
                     payments = JSON.parse(sale.metodo_pago || '{}');
@@ -561,32 +623,40 @@
                         let isVuelto = method.startsWith('vuelto_');
                         let baseMethod = isVuelto ? method.replace('vuelto_', '') : method;
                         
-                        // Intentar buscar por ID primero (nueva logica)
-                        let metodo = window.metodosCierre.find(m => String(m.id) === String(baseMethod));
-                        
-                        // Si no encuentra por ID, buscar por nombre para compatibilidad hacia atras
-                        if (!metodo) {
-                            metodo = window.metodosCierre.find(m => m.nombre.toLowerCase().replace(/\s/g, '') === String(baseMethod).toLowerCase().replace(/\s/g, ''));
-                        }
-                        if (!metodo) {
-                            metodo = window.metodosCierre.find(m => m.nombre.toLowerCase() === String(baseMethod).toLowerCase());
-                        }
+                        // Búsqueda robusta por ID, nombre exacto o slugs comunes
+                        let metodo = findMetodoCierreFlexible(baseMethod);
 
                         if (metodo) {
                             let code = metodo.id;
-                            if (isVuelto) {
-                                salesPaymentTotals[code] = (salesPaymentTotals[code] || 0) - amount;
-                                if (metodo.tipo_moneda === 'USD') currentReportData.totalSalesDollars -= amount;
-                                else currentReportData.totalSalesBs -= amount;
-                            } else {
-                                salesPaymentTotals[code] = (salesPaymentTotals[code] || 0) + amount;
-                                if (metodo.tipo_moneda === 'USD') currentReportData.totalSalesDollars += amount;
-                                else currentReportData.totalSalesBs += amount;
+                            let delta = isVuelto ? -amount : amount;
+
+                            // Si es Nota de Crédito, invierte el signo porque representa una salida/devolución
+                            if (esNC) {
+                                delta = -delta;
+                            }
+
+                            salesPaymentTotals[code] = (salesPaymentTotals[code] || 0) + delta;
+                        } else {
+                            // Fallback de seguridad: si no se reconoce el ID exacto, sumar al método efectivo por moneda
+                            console.warn("Método de pago no reconocido en cierre:", baseMethod);
+                            const isUsdKey = String(baseMethod).toLowerCase().includes('dolar') || String(baseMethod).toLowerCase().includes('usd');
+                            const fallbackM = window.metodosCierre.find(m => m.tipo_moneda === (isUsdKey ? 'USD' : 'BS')) || window.metodosCierre[0];
+                            if (fallbackM) {
+                                let delta = isVuelto ? -amount : amount;
+                                if (esNC) delta = -delta;
+                                salesPaymentTotals[fallbackM.id] = (salesPaymentTotals[fallbackM.id] || 0) + delta;
                             }
                         }
                     }
                 }
             });
+
+            // 🛡️ Redondeo monetario estricto a 2 decimales para eliminar errores IEEE 754 de coma flotante
+            currentReportData.totalSalesBs = Math.round(currentReportData.totalSalesBs * 100) / 100;
+            currentReportData.totalSalesDollars = Math.round(currentReportData.totalSalesDollars * 100) / 100;
+            for (let code in salesPaymentTotals) {
+                salesPaymentTotals[code] = Math.round(salesPaymentTotals[code] * 100) / 100;
+            }
 
             // ACTUALIZAR PANTALLA
             if (totalIncomesBsDisplay) totalIncomesBsDisplay.textContent = formatCurrency(currentReportData.totalIncomes, 'Bs.');
@@ -851,8 +921,8 @@
             if (!m) return;
 
             const countedAmount = parseFloat(input.value) || 0; 
-            const registeredAmount = totalesMatematicosCierre[m.id] || 0;
-            const difference = countedAmount - registeredAmount;
+            const registeredAmount = Math.round((totalesMatematicosCierre[m.id] || 0) * 100) / 100;
+            const difference = Math.round((countedAmount - registeredAmount) * 100) / 100;
 
             const diffElement = document.getElementById(`diff-${m.id}`);
             if (diffElement) {
@@ -860,8 +930,8 @@
                 diffElement.textContent = formatCurrency(difference, currency);
                 diffElement.className = `text-right font-bold text-lg ${getDifferenceColor(difference, 'detail')}`;
                 
-                if (m.tipo_moneda === 'USD') totalDifferenceDollars += difference;
-                else totalDifferenceBs += difference;
+                if (m.tipo_moneda === 'USD') totalDifferenceDollars = Math.round((totalDifferenceDollars + difference) * 100) / 100;
+                else totalDifferenceBs = Math.round((totalDifferenceBs + difference) * 100) / 100;
 
                 paymentDetails[m.id] = { registered: registeredAmount, counted: countedAmount, difference: difference, method_name: m.nombre, currency: m.tipo_moneda };
             }

@@ -215,6 +215,9 @@ contextBridge.exposeInMainWorld('nexusAPI', {
     programarMaquinaFiscal: (comandos, puerto) => ipcRenderer.invoke('programar-maquina-fiscal', comandos, puerto),
     onSolicitarVerificacionCierre: (callback) => ipcRenderer.on('solicitar-verificacion-cierre', (event) => callback()),
     confirmarCierreSeguro: () => ipcRenderer.send('confirmar-cierre-seguro'),
+    obtenerMetodosPagoLocal: () => ipcRenderer.invoke('obtener-metodos-pago-local'),
+    reconciliarVentasMaestro: () => ipcRenderer.invoke('reconciliar-ventas-maestro'),
+    sincronizarVentasServidor: (limite, serverUrl) => ipcRenderer.invoke('sincronizar-ventas-servidor', { limite, serverUrl }),
     
     // CONTROL DE APARIENCIA (ZOOM)
     setZoomLevel: (level) => webFrame.setZoomLevel(level),

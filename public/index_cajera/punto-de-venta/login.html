@@ -146,10 +146,39 @@
                 console.log('[FRONTEND] Clave ingresada en el input:', inputCode);
                 
                 // 2. Buscamos si la clave ingresada coincide con alguna clave válida
-                const esClaveValida = clavesGuardadas.some(clave => clave.plainCode === inputCode);
-                console.log('[FRONTEND] ¿Coincide la clave ingresada?:', esClaveValida);
+                const claveValida = clavesGuardadas.find(clave => clave.plainCode === inputCode);
+                console.log('[FRONTEND] ¿Coincide la clave ingresada?:', !!claveValida);
         
-                if (esClaveValida) { 
+                if (claveValida) { 
+                    // 3. Verificamos explícitamente el permiso de Cierre de Caja
+                    let tienePermiso = false;
+                    
+                    if (claveValida.is_master === 1 || claveValida.is_master === true || claveValida.is_master === 'true') {
+                        tienePermiso = true;
+                    } else if (claveValida.permisos) {
+                        try {
+                            const p = typeof claveValida.permisos === 'string' ? JSON.parse(claveValida.permisos) : claveValida.permisos;
+                            if (p.cierre_de_caja === true || p.cierre_de_caja === 1 || p.cierre_de_caja === 'true') {
+                                tienePermiso = true;
+                            }
+                        } catch (err) {
+                            console.error("Error al parsear permisos de la clave:", err);
+                        }
+                    }
+
+                    if (!tienePermiso) {
+                        showCustomAlert('Esta clave no tiene permisos para acceder al Cierre de Caja.', 'error');
+                        adminCodeInput.value = '';
+                        if(keyIcon) keyIcon.style.color = '#EF4444'; // Rojo (Fallo)
+                        
+                        setTimeout(() => {
+                            if(keyIcon) keyIcon.style.color = '#DC2626'; 
+                            btnSubmit.disabled = false;
+                            btnSubmit.textContent = 'Desbloquear Funcionalidad';
+                        }, 500);
+                        return;
+                    }
+
                     // ÉXITO: Generar y almacenar el token de acceso
                     const accessKey = generateSecureToken(32); 
                     sessionStorage.setItem('adminAccessKey', accessKey); 

@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+﻿const { app, BrowserWindow } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -22,7 +22,7 @@ function renderPDF(htmlPath, outputPath) {
                 await new Promise(r => setTimeout(r, 1000));
                 const pdfData = await win.webContents.printToPDF({
                     landscape: false,
-                    pageSize: 'Letter',
+                    pageSize: 'A4',
                     printBackground: true,
                     margins: {
                         marginType: 'none'
@@ -52,12 +52,13 @@ app.whenReady().then(async () => {
         const htmlPath = path.join(__dirname, 'Nexus_POS_Brochure_Imprimir.html');
         const pdfPath = path.join(__dirname, 'Nexus_POS_Dossier_Ejecutivo.pdf');
 
-        console.log("📄 Generando PDF desde:", htmlPath);
+        console.log("ðŸ“„ Generando PDF desde:", htmlPath);
         await renderPDF(htmlPath, pdfPath);
-        console.log("✅ PDF generado con éxito en:", pdfPath);
+        console.log("âœ… PDF generado con Ã©xito en:", pdfPath);
     } catch (err) {
-        console.error("❌ Error al generar PDF:", err);
+        console.error("âŒ Error al generar PDF:", err);
     } finally {
         app.quit();
     }
 });
+

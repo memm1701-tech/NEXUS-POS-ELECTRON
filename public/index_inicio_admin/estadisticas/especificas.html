@@ -1593,7 +1593,7 @@
 
                 if (topClientesCached.length > 0) {
                     const topC = topClientesCached[0];
-                    const comprasDolar = (parseFloat(topC.total_comprado) || 0) / (currentTasaBcv || 1);
+                    const comprasDolar = topC.total_comprado_usd !== undefined ? parseFloat(topC.total_comprado_usd) : ((parseFloat(topC.total_comprado) || 0) / (currentTasaBcv || 1));
                     if (elNombre) elNombre.textContent = topC.cliente_nombre || "Cliente General";
                     if (elDetalle) elDetalle.textContent = `RIF: ${topC.cliente_rif || 'V-00000000'} | ${formatMoney(comprasDolar)}`;
                 } else {
@@ -1833,7 +1833,7 @@
             }
             let html = '<h4>👥 Top 5 Clientes VIP</h4><ul>';
             topClientesCached.slice(0, 5).forEach((c, idx) => {
-                const comprasDolar = (parseFloat(c.total_comprado) || 0) / (currentTasaBcv || 1);
+                const comprasDolar = c.total_comprado_usd !== undefined ? parseFloat(c.total_comprado_usd) : ((parseFloat(c.total_comprado) || 0) / (currentTasaBcv || 1));
                 html += `<li>
                     <div style="display:flex; flex-direction:column; max-width: 150px;">
                         <span style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${idx + 1}. ${c.cliente_nombre || "Cliente"}</span>
@@ -2063,7 +2063,7 @@
                 if (modalCount) modalCount.textContent = `Mostrando ${filtrados.length} de ${topProductosCached.length} productos`;
 
             } else if (modalTipoActivo === 'cliente') {
-                const totalMontoUSD = topClientesCached.reduce((acc, c) => acc + ((parseFloat(c.total_comprado) || 0) / (currentTasaBcv || 1)), 0);
+                const totalMontoUSD = topClientesCached.reduce((acc, c) => acc + (c.total_comprado_usd !== undefined ? parseFloat(c.total_comprado_usd) : ((parseFloat(c.total_comprado) || 0) / (currentTasaBcv || 1))), 0);
                 const totalMontoBs = topClientesCached.reduce((acc, c) => acc + (parseFloat(c.total_comprado) || 0), 0);
 
                 if (modalSummary) {
@@ -2096,7 +2096,7 @@
                     else if (rank === 3) { rankClass = 'rank-3'; rankLabel = '🥉 3'; }
 
                     const montoBs = parseFloat(c.total_comprado) || 0;
-                    const montoUSD = montoBs / (currentTasaBcv || 1);
+                    const montoUSD = c.total_comprado_usd !== undefined ? parseFloat(c.total_comprado_usd) : (montoBs / (currentTasaBcv || 1));
 
                     const tr = document.createElement('tr');
                     tr.innerHTML = `

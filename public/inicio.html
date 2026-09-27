@@ -1015,6 +1015,11 @@
                 // 3. Ejecutar scripts internos de la vista cargada
                 const scripts = mainContent.querySelectorAll("script");
                 scripts.forEach(oldScript => {
+                    const src = oldScript.getAttribute("src") || "";
+                    if (src.toLowerCase().includes("tailwind")) {
+                        oldScript.remove();
+                        return;
+                    }
                     const newScript = document.createElement("script");
                     Array.from(oldScript.attributes).forEach(attr => {
                         newScript.setAttribute(attr.name, attr.value);
@@ -1116,6 +1121,14 @@ async function iniciarSincronizacionSilenciosa() {
                         const rutaParcial = RUTAS_VPS[registro.tabla];
                         if (!rutaParcial) continue;
 
+                        // 🛡️ PROTECCIÓN ANTI-BUCLE LOCAL: Si SERVER_URL apunta al servidor local o si es la máquina maestra sin VPS remoto
+                        const isLocalServerUrl = !SERVER_URL || SERVER_URL.includes('localhost') || SERVER_URL.includes('127.0.0.1') || SERVER_URL.includes(':3000');
+                        if (registro.tabla === 'ventas_descuento_vps' && isLocalServerUrl) {
+                            console.log(`🛡️ [ADMIN SYNC] Registro ${registro.id} omitido: SERVER_URL es local y el stock ya fue descontado directamente.`);
+                            await api.eliminarDeCola(registro.id);
+                            continue;
+                        }
+
                         const endpointCompleto = `${SERVER_URL}${rutaParcial}`;
 
                         try {
@@ -1147,6 +1160,11 @@ async function iniciarSincronizacionSilenciosa() {
                     }
                 }
             }
+        }
+
+        // ☁️ Sincronización continua de ventas al VPS
+        if (api && typeof api.sincronizarVentasServidor === 'function') {
+            await api.sincronizarVentasServidor(50, SERVER_URL);
         }
         
         // Mantenemos el estado en verde si la rutina terminó bien
@@ -1192,6 +1210,11 @@ function cargarVistaDinamica(url) {
                 // Si tienes scripts dentro de las vistas, necesitas esta línea para que corran
                 const scripts = mainContent.querySelectorAll("script");
                 scripts.forEach(oldScript => {
+                    const src = oldScript.getAttribute("src") || "";
+                    if (src.toLowerCase().includes("tailwind")) {
+                        oldScript.remove();
+                        return;
+                    }
                     const newScript = document.createElement("script");
                     Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
                     newScript.appendChild(document.createTextNode(oldScript.innerHTML));

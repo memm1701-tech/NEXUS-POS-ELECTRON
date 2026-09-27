@@ -1890,6 +1890,7 @@ const style = document.createElement('style');
 
     // App state
     let cart = [];
+    window.vipSesionActiva = null; // 🛡️ Reseteo limpio al cargar/recargar la vista
     let productsList = [];
     let isScaleEnabled = false;
     let selectedProduct = null;
@@ -2086,67 +2087,36 @@ document.addEventListener('keydown', (event) => {
     }
 
     // --- 3. ATAJO DE CATÁLOGO (Únicamente la letra 'P') ---
-    // Se activa con la 'p' solo si no estás escribiendo nada y el modal de pagos está cerrado
-    if (keyLower === 'p' && !isInputActive && !isPaymentVisible) {
+    // Se activa con la 'p' solo si no estás escribiendo nada, el modal de pagos está cerrado,
+    // Y no estamos en medio de un escaneo de código de barras (scannedBarcode vacío).
+    if (keyLower === 'p' && !isInputActive && !isPaymentVisible && scannedBarcode.length === 0) {
         event.preventDefault();
         event.stopImmediatePropagation();
         if (typeof window.openExtendedSearchModal === 'function') window.openExtendedSearchModal();
         return;
     }
-    // --- 4. NAVEGACIÓN EN BUSCADORES (Flechas y Enter en Autocompletado) ---
+
+    // Si estamos escribiendo en los buscadores de productos, dejamos que sus propios listeners controlen flechas y enter
     if (activeElement.id === "product-search" || activeElement.id === "barcode-search") {
-        const isProduct = activeElement.id === "product-search";
-        const resultsId = isProduct ? 'autocomplete-results' : 'barcode-autocomplete-results';
-        const resultsContainer = document.getElementById(resultsId);
-        
-        if (resultsContainer && resultsContainer.style.display !== 'none') {
-            const items = resultsContainer.querySelectorAll('.autocomplete-item');
-
-            if (items.length > 0) {
-                let tempFocus = isProduct ? productFocus : barcodeFocus;
-
-                if (key === "ArrowDown" || key === "ArrowUp") {
-                    event.preventDefault();
-                    event.stopImmediatePropagation();
-                    
-                    if (key === "ArrowDown") {
-                        tempFocus++;
-                        if (tempFocus >= items.length) tempFocus = 0;
-                    } else {
-                        tempFocus--;
-                        if (tempFocus < 0) tempFocus = items.length - 1;
-                    }
-
-                    if (isProduct) productFocus = tempFocus; else barcodeFocus = tempFocus;
-                    applyHighlight(items, tempFocus);
-                    return;
-                } 
-                
-                if (key === "Enter") {
-                    event.preventDefault();
-                    event.stopImmediatePropagation();
-                    const finalIndex = tempFocus > -1 ? tempFocus : 0;
-                    if (items[finalIndex]) {
-                        items[finalIndex].click();
-                        if (isProduct) productFocus = -1; else barcodeFocus = -1;
-                    }
-                    return;
-                }
-            }
+        if (key === "ArrowDown" || key === "ArrowUp" || key === "Enter") {
+            return;
         }
     }
 
     // --- 5. ATAJOS DE TECLADO GENERALES ---
 
-    // Confirmar venta con Enter si el modal de pago está abierto
+    // Confirmar venta con Enter si el modal de pago está abierto (protegido contra doble click)
     if (key === 'Enter' && isPaymentVisible) {
         event.preventDefault();
-        document.getElementById('btn-confirm-payment')?.click();
+        event.stopPropagation();
+        if (!window.isProcessingSale && typeof processSale === 'function') {
+            processSale();
+        }
         return;
     }
 
-    // Atajos que requieren que NO haya un input activo
-    if (!isInputActive) {
+    // Atajos que requieren que NO haya un input activo Y que el escáner NO esté acumulando
+    if (!isInputActive && scannedBarcode.length === 0) {
         // Barra Espaciadora: Desmarcar Checkboxes (si no estamos en un botón, porque el botón usa Space para click)
         if (event.code === 'Space' && activeElement.tagName !== 'BUTTON') {
             event.preventDefault();
@@ -2251,7 +2221,7 @@ document.addEventListener('keydown', (event) => {
     }
 
 
-    if (key.length === 1 && /[a-zA-Z0-9-]/.test(key)) {
+    if (key.length === 1 && /[a-zA-Z0-9\-']/.test(key)) {
         scannedBarcode += key;
         clearTimeout(scanTimer);
         
@@ -2359,25 +2329,52 @@ function updateCartAndRender(producto, cantidad) {
         } catch(e){}
     }
 
+    // 🎯 LÓGICA VIP INTEGRADA: Si la sesión VIP está activa, evaluar si este producto tiene precio P2 válido
+    let tierDeseado = (window.vipSesionActiva && window.vipSesionActiva.tier) ? String(window.vipSesionActiva.tier).toLowerCase() : 'p1';
+    let tierAplicado = 'p1';
+    let precioEfectivo = precioUnitario;
+    let costoEfectivo = precioCompraCalc;
+
+    if (tierDeseado !== 'p1' && preciosProducto) {
+        const tierData = preciosProducto[tierDeseado] || preciosProducto[tierDeseado.toUpperCase()];
+        let precioTier = 0;
+        if (typeof tierData === 'number') {
+            precioTier = tierData;
+        } else if (typeof tierData === 'object' && tierData) {
+            precioTier = parseFloat(tierData.venta !== undefined && tierData.venta !== null ? tierData.venta : (tierData.precio !== undefined ? tierData.precio : 0)) || 0;
+            if (tierData.compra) costoEfectivo = parseFloat(tierData.compra) || costoEfectivo;
+            else if (tierData.costo) costoEfectivo = parseFloat(tierData.costo) || costoEfectivo;
+        }
+        if (precioTier > 0) {
+            tierAplicado = tierDeseado;
+            precioEfectivo = precioTier;
+        }
+    }
+
+    let baseImponibleItem = precioEfectivo * cantidad;
+    let montoIvaItem = baseImponibleItem * (porcentajeIva / 100);
+    let totalItemCalculado = baseImponibleItem + montoIvaItem;
+    let gananciaCalculada = Math.max(0, precioEfectivo - costoEfectivo);
+
     const itemCarrito = {
-        ganancia_unitaria: parseFloat(gananciaUnit.toFixed(4)),
-        precio_compra: precioCompraCalc,
-        costo: precioCompraCalc,
+        ganancia_unitaria: parseFloat(gananciaCalculada.toFixed(4)),
+        precio_compra: costoEfectivo,
+        costo: costoEfectivo,
         id: producto.producto_ID || producto.id,
         nombre: producto.nombre,
         codigo: producto.codigo || 'S/C',
         cantidad: cantidad,
         unit: unidadProd,
         unidad: unidadProd,
-        precio: precioUnitario,
+        precio: precioEfectivo,
         precio_original: precioUnitario,
-        tier: 'p1', 
+        tier: tierAplicado, 
         precios: preciosProducto,
         datos_json: datosJsonObj,
         tasaIva: porcentajeIva,
-        baseImponible: baseImponible,
-        montoIva: montoIva,
-        subtotal: totalItem,
+        baseImponible: baseImponibleItem,
+        montoIva: montoIvaItem,
+        subtotal: totalItemCalculado,
         moneda: producto.currency || producto.moneda || 'BS'
     };
 
@@ -2391,7 +2388,7 @@ function updateCartAndRender(producto, cantidad) {
         cart[indexExistente].montoIva = cart[indexExistente].baseImponible * (cart[indexExistente].tasaIva / 100);
         cart[indexExistente].subtotal = cart[indexExistente].baseImponible + cart[indexExistente].montoIva;
     } else {
-        cart.push(itemCarrito);
+        cart.push(JSON.parse(JSON.stringify(itemCarrito)));
     }
 
     localStorage.setItem('cart', JSON.stringify(cart));
@@ -2412,12 +2409,15 @@ window.updateItemTier = async function(index, newTier) {
         } catch(e) {}
     }
 
-    // 2. Si no está en el item, buscar en allProducts (memoria activa)
+    // 2. Si no está en el item, buscar en allProducts (memoria activa) por ID único primero
+    const idItem = item.id || item.producto_id || item.producto_ID;
+    const codigosGenericos = ['sin código', 'sin codigo', 's/c', 'sc', 'none', 'null', 'undefined', ''];
+    const tieneCodReal = item.codigo && !codigosGenericos.includes(String(item.codigo).trim().toLowerCase());
+
     if (!precios && typeof allProducts !== 'undefined' && Array.isArray(allProducts)) {
         const originalProduct = allProducts.find(p => 
-            (p.id !== undefined && String(p.id) === String(item.id)) || 
-            (p.producto_ID !== undefined && String(p.producto_ID) === String(item.id)) || 
-            (p.codigo && item.codigo && String(p.codigo).trim().toUpperCase() === String(item.codigo).trim().toUpperCase())
+            (idItem && (String(p.id) === String(idItem) || String(p.producto_ID) === String(idItem))) || 
+            (tieneCodReal && p.codigo && String(p.codigo).trim().toUpperCase() === String(item.codigo).trim().toUpperCase())
         );
 
         if (originalProduct) {
@@ -2432,18 +2432,21 @@ window.updateItemTier = async function(index, newTier) {
         }
     }
 
-    // 3. Si aún no se encuentra, consultar en la base de datos local / servidor
-    if (!precios && item.codigo && window.nexusAPI && window.nexusAPI.buscarProductoPorCodigo) {
+    // 3. Si aún no se encuentra, consultar en la base de datos local / servidor por ID único primero
+    if (!precios && window.nexusAPI && window.nexusAPI.buscarProductoPorCodigo) {
         try {
-            const rawDB = await window.nexusAPI.buscarProductoPorCodigo(item.codigo, window.companyId);
-            if (rawDB) {
-                if (typeof _mapearProductoCaja === 'function') {
-                    const mapped = _mapearProductoCaja(rawDB);
-                    if (mapped && mapped.precios) precios = mapped.precios;
-                }
-                if (!precios && rawDB.datos_json) {
-                    const dj = typeof rawDB.datos_json === 'string' ? JSON.parse(rawDB.datos_json) : rawDB.datos_json;
-                    precios = dj.precios || dj.precios_json || null;
+            const identLookup = idItem || (tieneCodReal ? item.codigo : null);
+            if (identLookup) {
+                const rawDB = await window.nexusAPI.buscarProductoPorCodigo(identLookup, window.companyId);
+                if (rawDB) {
+                    if (typeof _mapearProductoCaja === 'function') {
+                        const mapped = _mapearProductoCaja(rawDB);
+                        if (mapped && mapped.precios) precios = mapped.precios;
+                    }
+                    if (!precios && rawDB.datos_json) {
+                        const dj = typeof rawDB.datos_json === 'string' ? JSON.parse(rawDB.datos_json) : rawDB.datos_json;
+                        precios = dj.precios || dj.precios_json || null;
+                    }
                 }
             }
         } catch(e) {
@@ -2528,11 +2531,24 @@ window.refrescarPreciosCarrito = async function() {
 
         try {
             let prodActualizado = null;
-            const identificador = item.codigo || item.id || item.producto_id;
+            const idUnico = item.id || item.producto_id || item.producto_ID;
+            const codigosGenericos = ['sin código', 'sin codigo', 's/c', 'sc', 'none', 'null', 'undefined', ''];
+            const tieneCodigoReal = item.codigo && !codigosGenericos.includes(String(item.codigo).trim().toLowerCase());
+            const codigoReal = tieneCodigoReal ? String(item.codigo).trim() : null;
 
-            // 1. Buscar en la base de datos local / Maestro por código de barras o ID
-            if (window.nexusAPI && window.nexusAPI.buscarProductoPorCodigo && identificador) {
-                const rawDB = await window.nexusAPI.buscarProductoPorCodigo(identificador, window.companyId);
+            // 1. Prioridad Absoluta: Buscar por su ID ÚNICO
+            if (idUnico && window.nexusAPI && window.nexusAPI.buscarProductoPorCodigo) {
+                const rawDB = await window.nexusAPI.buscarProductoPorCodigo(idUnico, window.companyId);
+                if (rawDB && !rawDB.error && (String(rawDB.id) === String(idUnico) || String(rawDB.producto_ID) === String(idUnico))) {
+                    prodActualizado = (typeof _mapearProductoCaja === 'function') 
+                        ? _mapearProductoCaja(rawDB) 
+                        : rawDB;
+                }
+            }
+
+            // 2. Si no se encontró por ID y tiene código de barras REAL (NO genérico), buscar por código
+            if (!prodActualizado && codigoReal && window.nexusAPI && window.nexusAPI.buscarProductoPorCodigo) {
+                const rawDB = await window.nexusAPI.buscarProductoPorCodigo(codigoReal, window.companyId);
                 if (rawDB && !rawDB.error) {
                     prodActualizado = (typeof _mapearProductoCaja === 'function') 
                         ? _mapearProductoCaja(rawDB) 
@@ -2540,28 +2556,33 @@ window.refrescarPreciosCarrito = async function() {
                 }
             }
 
-            // 2. Si no se encontró por API local, consultar directamente al Servidor Maestro vía HTTP
-            if (!prodActualizado && window.SERVER_URL && identificador) {
+            // 3. Consultar al Servidor Maestro vía HTTP (primero por ID único, luego por código real)
+            if (!prodActualizado && window.SERVER_URL) {
                 try {
-                    const resp = await fetch(`${window.SERVER_URL}/api/maestro/buscar-producto-por-codigo?codigo=${encodeURIComponent(identificador)}&empresaId=${window.companyId || ''}`, {
-                        signal: AbortSignal.timeout(4000)
-                    });
-                    if (resp.ok) {
-                        const data = await resp.json();
-                        if (data && typeof data === 'object' && !data.error) {
-                            prodActualizado = (typeof _mapearProductoCaja === 'function') ? _mapearProductoCaja(data) : data;
+                    const identQuery = idUnico || codigoReal;
+                    if (identQuery) {
+                        const resp = await fetch(`${window.SERVER_URL}/api/maestro/buscar-producto-por-codigo?codigo=${encodeURIComponent(identQuery)}&empresaId=${window.companyId || ''}`, {
+                            signal: AbortSignal.timeout(4000)
+                        });
+                        if (resp.ok) {
+                            const data = await resp.json();
+                            if (data && typeof data === 'object' && !data.error) {
+                                if (!idUnico || String(data.id || data.producto_ID) === String(idUnico)) {
+                                    prodActualizado = (typeof _mapearProductoCaja === 'function') ? _mapearProductoCaja(data) : data;
+                                }
+                            }
                         }
                     }
                 } catch(e) {}
             }
 
-            // 3. Fallback a allProducts en memoria
+            // 4. Fallback a allProducts en memoria (SOLO por ID único o código de barras REAL, NUNCA por código genérico)
             if (!prodActualizado && typeof allProducts !== 'undefined' && Array.isArray(allProducts)) {
-                prodActualizado = allProducts.find(p => 
-                    (p.id !== undefined && String(p.id) === String(item.id)) ||
-                    (p.producto_ID !== undefined && String(p.producto_ID) === String(item.id)) ||
-                    (p.codigo && item.codigo && String(p.codigo).trim().toUpperCase() === String(item.codigo).trim().toUpperCase())
-                );
+                prodActualizado = allProducts.find(p => {
+                    const matchId = (idUnico && (String(p.id) === String(idUnico) || String(p.producto_ID) === String(idUnico)));
+                    const matchCodigo = (codigoReal && p.codigo && String(p.codigo).trim().toUpperCase() === codigoReal.toUpperCase());
+                    return matchId || matchCodigo;
+                });
             }
 
             if (!prodActualizado) continue;
@@ -2584,7 +2605,10 @@ window.refrescarPreciosCarrito = async function() {
             if (precioBaseNuevo > 0) item.precio_original = precioBaseNuevo;
             item.precio_compra = costoNuevo;
             item.costo = costoNuevo;
-            if (prodActualizado.nombre) item.nombre = prodActualizado.nombre;
+            // Solo actualizar nombre si coincide con el mismo ID exacto
+            if (prodActualizado.nombre && (!idUnico || String(prodActualizado.id || prodActualizado.producto_ID) === String(idUnico))) {
+                item.nombre = prodActualizado.nombre;
+            }
             if (prodActualizado.unit || prodActualizado.unidad) {
                 item.unit = prodActualizado.unit || prodActualizado.unidad;
                 item.unidad = item.unit;
@@ -3001,13 +3025,24 @@ function updateCartItemQuantity(index, newQuantity) {
 
 async function processBarcodeScan(barcode) {
     if (!isAuthReady) return; 
-    
     barcode = String(barcode || '').trim();
     if (!barcode) return;
+    const genericCodes = ['sin código', 'sin codigo', 's/c', 'sc', 'none', 'null', 'undefined'];
+    if (genericCodes.includes(barcode.toLowerCase())) return;
+
+    // --- INTERCEPTOR TARJETAS VIP ---
+    // Si el código escaneado empieza con VIP- (o VIP' por teclado en inglés),
+    // no se busca como producto: se verifica contra la API de tarjetas VIP.
+    if (barcode.toUpperCase().startsWith('VIP-') || barcode.toUpperCase().startsWith("VIP'")) {
+        const barcodeNormalizado = barcode.toUpperCase().replace("VIP'", 'VIP-');
+        verificarTarjetaVIP(barcodeNormalizado);
+        return;
+    }
+    // ---------------------------------
 
     try {
         // 🚀 OPTIMIZACIÓN: Busca el producto directamente en SQLite por código exacto.
-        let product = allProducts.find(p => String(p.codigo) === barcode);
+        let product = allProducts.find(p => String(p.codigo).trim().toLowerCase() === barcode.toLowerCase());
         if (!product && window.nexusAPI && window.nexusAPI.buscarProductoPorCodigo) {
             const rawDB = await window.nexusAPI.buscarProductoPorCodigo(barcode, window.companyId);
             if (rawDB) product = _mapearProductoCaja(rawDB);
@@ -3053,6 +3088,340 @@ async function processBarcodeScan(barcode) {
         }
     }
 }
+
+
+// ============================================================
+// 🏆 SISTEMA DE TARJETAS VIP
+// ============================================================
+
+/**
+ * Cambio 3 — verificarTarjetaVIP(barcode)
+ * Consulta la API de tarjetas y decide qué acción tomar según el status.
+ * Es el punto único de entrada para AMBOS métodos: scanner físico y escritura manual.
+ */
+async function verificarTarjetaVIP(barcode) {
+    const VIP_API = 'https://api.nexusposgobal.com/api/cards';
+    messageBox('🔍 Verificando tarjeta VIP...', 'bg-blue-600');
+
+    try {
+        const resp = await fetch(`${VIP_API}/${encodeURIComponent(barcode)}`);
+        const data = await resp.json();
+
+        if (!data.success || !data.card) {
+            messageBox(`❌ Tarjeta VIP no registrada: ${barcode}`, 'bg-red-600');
+            return;
+        }
+
+        const card = data.card;
+        const status = card.effective_status || card.status;
+
+        // Estados que NO dan acceso: mostrar modal informativo sin cambiar precios
+        if (status === 'standby') {
+            window.mostrarModalVIP(card, 'standby');
+            return;
+        }
+        if (status === 'expired') {
+            window.mostrarModalVIP(card, 'expired');
+            return;
+        }
+        if (status === 'suspended') {
+            window.mostrarModalVIP(card, 'suspended');
+            return;
+        }
+        if (status === 'cancelled') {
+            window.mostrarModalVIP(card, 'cancelled');
+            return;
+        }
+
+        // Estado ACTIVE: aplicar descuento P2 y mostrar modal de bienvenida
+        if (status === 'active') {
+            // Guardar sesión VIP global
+            window.vipSesionActiva = {
+                barcode: card.barcode_token,
+                cliente: card.customer_name,
+                tier: (card.discount_tier || 'P2').toLowerCase(),
+                card: card
+            };
+
+            // 👤 Auto-seleccionar cliente en la cabecera de la factura si tiene datos
+            if (card.customer_name) {
+                const clientName = card.customer_name;
+                const clientId = card.customer_doc || '';
+                selectedCustomer = { 
+                    name: clientName, 
+                    ci: clientId, 
+                    rif: clientId, 
+                    nombre: clientName,
+                    direccion: '',
+                    telefono: card.customer_phone || '',
+                    correo: ''
+                };
+                if (window.GestorClientes) window.GestorClientes.selectedCustomer = selectedCustomer;
+                const clientSearchInput = document.getElementById('client-search');
+                if (clientSearchInput) clientSearchInput.value = clientId ? `${clientName} (${clientId})` : clientName;
+                
+                const lblName = document.getElementById('client-found-name');
+                const lblId = document.getElementById('client-found-id');
+                const msgDiv = document.getElementById('client-found-message');
+                if (lblName) lblName.textContent = clientName;
+                if (lblId) lblId.textContent = clientId;
+                if (msgDiv) msgDiv.classList.remove('hidden');
+            }
+
+            // 🏷️ Cambiar todos los productos actuales del carrito al tier VIP de forma limpia y por lotes
+            if (Array.isArray(cart) && cart.length > 0) {
+                await window.aplicarTierATodoElCarrito(window.vipSesionActiva.tier);
+            }
+
+            window.mostrarModalVIP(card, 'active');
+        }
+
+    } catch (err) {
+        console.error('[VIP] Error consultando tarjeta:', err);
+        messageBox('❌ No se pudo conectar con el servidor VIP. Verifica tu conexión.', 'bg-red-600');
+    }
+}
+window.verificarTarjetaVIP = verificarTarjetaVIP;
+
+/**
+ * Aplica un nivel de precios (ej: P2) a todos los items del carrito de manera limpia y sincronizada.
+ * Si un producto no tiene precio P2 configurado (p2 = 0), permanece protegido en su precio P1.
+ */
+window.aplicarTierATodoElCarrito = async function(newTier) {
+    if (!Array.isArray(cart) || cart.length === 0) return;
+    const tierKey = String(newTier).toLowerCase();
+    let cambiados = 0;
+    let sinPrecioP2 = 0;
+
+    for (let i = 0; i < cart.length; i++) {
+        const item = cart[i];
+        if (item.id === 'PAGO-DEUDA') continue;
+
+        let precios = item.precios || null;
+        if (!precios && item.datos_json) {
+            try {
+                const dj = typeof item.datos_json === 'string' ? JSON.parse(item.datos_json) : item.datos_json;
+                precios = dj.precios || dj.precios_json || null;
+            } catch(e) {}
+        }
+
+        if (!precios && typeof allProducts !== 'undefined' && Array.isArray(allProducts)) {
+            const idItem = item.id || item.producto_id || item.producto_ID;
+            const codigosGenericos = ['sin código', 'sin codigo', 's/c', 'sc', 'none', 'null', 'undefined', ''];
+            const tieneCodReal = item.codigo && !codigosGenericos.includes(String(item.codigo).trim().toLowerCase());
+            const orig = allProducts.find(p => 
+                (idItem && (String(p.id) === String(idItem) || String(p.producto_ID) === String(idItem))) ||
+                (tieneCodReal && p.codigo && String(p.codigo).trim().toUpperCase() === String(item.codigo).trim().toUpperCase())
+            );
+            if (orig) {
+                if (orig.precios) precios = orig.precios;
+                else if (orig.datos_json) {
+                    try {
+                        const dj = typeof orig.datos_json === 'string' ? JSON.parse(orig.datos_json) : orig.datos_json;
+                        precios = dj.precios || dj.precios_json || null;
+                    } catch(e) {}
+                }
+            }
+        }
+
+        if (precios) {
+            item.precios = precios;
+            const tierData = precios[tierKey] || precios[tierKey.toUpperCase()] || precios[newTier];
+            let nuevoPrecio = 0;
+            let nuevoCosto = parseFloat(item.precio_compra || item.costo || 0);
+
+            if (tierData) {
+                if (typeof tierData === 'number') {
+                    nuevoPrecio = tierData;
+                } else if (typeof tierData === 'object' && tierData) {
+                    nuevoPrecio = parseFloat(tierData.venta !== undefined && tierData.venta !== null ? tierData.venta : (tierData.precio !== undefined ? tierData.precio : 0)) || 0;
+                    if (tierData.compra) nuevoCosto = parseFloat(tierData.compra) || nuevoCosto;
+                    else if (tierData.costo) nuevoCosto = parseFloat(tierData.costo) || nuevoCosto;
+                }
+            }
+
+            if (nuevoPrecio > 0) {
+                item.tier = tierKey;
+                item.precio = nuevoPrecio;
+                item.ganancia_unitaria = Math.max(0, parseFloat((nuevoPrecio - nuevoCosto).toFixed(4)));
+                let tasaIva = parseFloat(item.tasaIva !== undefined && item.tasaIva !== null ? item.tasaIva : 16);
+                if (typeof currentEmissionMode !== 'undefined' && currentEmissionMode === 'TICKET_NO_FISCAL') tasaIva = 0;
+                item.baseImponible = item.precio * item.cantidad;
+                item.montoIva = item.baseImponible * (tasaIva / 100);
+                item.subtotal = item.baseImponible + item.montoIva;
+                cambiados++;
+            } else {
+                sinPrecioP2++;
+            }
+        } else {
+            sinPrecioP2++;
+        }
+    }
+
+    localStorage.setItem('cart', JSON.stringify(cart));
+    renderCart();
+
+    if (cambiados > 0 && sinPrecioP2 > 0) {
+        messageBox(`✅ ${cambiados} producto(s) en P2. (${sinPrecioP2} sin precio P2 registrado se mantienen en P1)`, 'bg-blue-600');
+    } else if (cambiados > 0) {
+        messageBox(`✅ Todos los productos del carrito actualizados a P2.`, 'bg-green-600');
+    } else if (sinPrecioP2 > 0) {
+        messageBox(`ℹ️ Los productos en el carrito no tienen precio P2 asignado (permanecen en P1).`, 'bg-yellow-600');
+    }
+};
+
+/**
+ * Cambio 4 — mostrarModalVIP(card, status)
+ * Construye y muestra el modal VIP con los datos reales de la tarjeta.
+ * Sigue el patrón visual de los modales existentes en facturacion.html:
+ *   backdrop: fixed inset-0 bg-black/60 backdrop-blur-sm
+ *   tarjeta:  bg-white rounded-none shadow-2xl
+ */
+function mostrarModalVIP(card, status) {
+    // Cerrar modal previo si existía
+    const prevModal = document.getElementById('modal-tarjeta-vip');
+    if (prevModal) prevModal.remove();
+
+    // ---- Configuración visual por estado ----
+    const config = {
+        active:    { borderColor: 'border-green-500',  badgeBg: 'bg-green-100',  badgeText: 'text-green-800',  badgeDot: 'bg-green-500',  label: 'ACTIVA',     icon: '⭐', iconBg: 'bg-yellow-50',  headerBg: 'bg-gradient-to-r from-yellow-400 to-amber-500' },
+        standby:   { borderColor: 'border-orange-400', badgeBg: 'bg-orange-100', badgeText: 'text-orange-800', badgeDot: 'bg-orange-400', label: 'SIN ACTIVAR', icon: '⏳', iconBg: 'bg-orange-50',  headerBg: 'bg-gradient-to-r from-orange-400 to-amber-400' },
+        expired:   { borderColor: 'border-red-500',    badgeBg: 'bg-red-100',    badgeText: 'text-red-800',    badgeDot: 'bg-red-500',    label: 'VENCIDA',    icon: '❌', iconBg: 'bg-red-50',     headerBg: 'bg-gradient-to-r from-red-500 to-rose-600' },
+        suspended: { borderColor: 'border-red-500',    badgeBg: 'bg-red-100',    badgeText: 'text-red-800',    badgeDot: 'bg-red-500',    label: 'SUSPENDIDA', icon: '🚫', iconBg: 'bg-red-50',     headerBg: 'bg-gradient-to-r from-red-500 to-rose-600' },
+        cancelled: { borderColor: 'border-gray-400',   badgeBg: 'bg-gray-100',   badgeText: 'text-gray-700',   badgeDot: 'bg-gray-500',   label: 'CANCELADA',  icon: '🚫', iconBg: 'bg-gray-50',    headerBg: 'bg-gradient-to-r from-gray-500 to-gray-600' },
+    };
+    const cfg = config[status] || config['standby'];
+
+    // ---- Cálculo de días ----
+    const diasRestantes = parseInt(card.days_remaining) || 0;
+    const fechaVence = card.expiration_date
+        ? new Date(card.expiration_date + 'T00:00:00').toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+        : '—';
+    const fechaActivacion = card.created_date
+        ? new Date(card.created_date + 'T00:00:00').toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+        : '—';
+
+    // ---- Sección inferior según estado ----
+    let seccionEstado = '';
+    if (status === 'active') {
+        seccionEstado = `
+            <div class="bg-green-50 border border-green-200 rounded-none p-3 flex items-center gap-3">
+                <span class="material-icons text-green-600 text-2xl">sell</span>
+                <div>
+                    <p class="text-xs text-green-600 font-bold uppercase tracking-wide">Precio aplicado en esta sesión</p>
+                    <p class="text-lg font-black text-green-700">${(card.discount_tier || 'P2').toUpperCase()} — Precio Preferencial</p>
+                </div>
+            </div>`;
+    } else if (status === 'standby') {
+        seccionEstado = `
+            <div class="bg-orange-50 border border-orange-200 rounded-none p-3 text-center">
+                <p class="text-sm font-bold text-orange-700">Esta tarjeta aún no ha sido activada.</p>
+                <p class="text-xs text-orange-500 mt-1">Contacta al administrador para activarla.</p>
+            </div>`;
+    } else {
+        seccionEstado = `
+            <div class="bg-red-50 border border-red-200 rounded-none p-3 text-center">
+                <p class="text-sm font-bold text-red-700">Esta tarjeta no puede ser utilizada.</p>
+                <p class="text-xs text-red-500 mt-1">Estado: <strong>${cfg.label}</strong></p>
+            </div>`;
+    }
+
+    // ---- Construcción del HTML ----
+    const modalHTML = `
+    <div id="modal-tarjeta-vip" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[1000010]" onclick="if(event.target===this) window.cerrarModalVIP()">
+        <div class="bg-white rounded-none shadow-2xl w-full max-w-sm border-t-4 ${cfg.borderColor} transform transition-all scale-100">
+
+            <!-- HEADER con gradiente de color según estado -->
+            <div class="${cfg.headerBg} px-5 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="${cfg.iconBg} rounded-full w-10 h-10 flex items-center justify-center text-xl shadow-inner">
+                        ${cfg.icon}
+                    </div>
+                    <div>
+                        <p class="text-white text-xs font-semibold uppercase tracking-widest opacity-80">Tarjeta VIP</p>
+                        <p class="text-white font-black text-base leading-tight">${card.barcode_token || card.token || '—'}</p>
+                    </div>
+                </div>
+                <button onclick="window.cerrarModalVIP()" class="text-white/70 hover:text-white transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <!-- BODY -->
+            <div class="p-5 space-y-4">
+
+                <!-- Nombre y datos del cliente -->
+                <div class="flex items-start gap-3">
+                    <span class="material-icons text-gray-400 mt-0.5">person</span>
+                    <div>
+                        <p class="text-xs text-gray-400 uppercase tracking-wide font-semibold">Titular</p>
+                        <p class="text-gray-900 font-black text-base">${card.customer_name || 'Sin nombre'}</p>
+                        ${card.customer_doc ? `<p class="text-xs text-gray-500">${card.customer_doc}${card.customer_phone ? ' · ' + card.customer_phone : ''}</p>` : ''}
+                    </div>
+                </div>
+
+                <!-- Tipo de membresía -->
+                <div class="flex items-start gap-3">
+                    <span class="material-icons text-gray-400 mt-0.5">card_membership</span>
+                    <div>
+                        <p class="text-xs text-gray-400 uppercase tracking-wide font-semibold">Membresía</p>
+                        <p class="text-gray-800 font-bold text-sm">${card.plan_label || card.plan_type || '—'}</p>
+                    </div>
+                </div>
+
+                <!-- Estado + días restantes -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="flex items-center gap-2 ${cfg.badgeBg} rounded-none px-3 py-2">
+                        <span class="w-2 h-2 rounded-full ${cfg.badgeDot} flex-shrink-0"></span>
+                        <div>
+                            <p class="text-xs ${cfg.badgeText} font-black">${cfg.label}</p>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 border border-gray-200 rounded-none px-3 py-2 text-center">
+                        <p class="text-2xl font-black text-gray-800">${diasRestantes}</p>
+                        <p class="text-xs text-gray-400 font-semibold -mt-1">días restantes</p>
+                    </div>
+                </div>
+
+                <!-- Fechas -->
+                <div class="grid grid-cols-2 gap-3 text-center">
+                    <div class="bg-gray-50 rounded-none p-2 border border-gray-100">
+                        <p class="text-xs text-gray-400 font-semibold">Activación</p>
+                        <p class="text-sm font-bold text-gray-700">${fechaActivacion}</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-none p-2 border border-gray-100">
+                        <p class="text-xs text-gray-400 font-semibold">Vencimiento</p>
+                        <p class="text-sm font-bold text-gray-700">${fechaVence}</p>
+                    </div>
+                </div>
+
+                <!-- Sección de estado (precio aplicado o mensaje) -->
+                ${seccionEstado}
+
+            </div>
+
+            <!-- FOOTER -->
+            <div class="px-5 pb-5">
+                <button onclick="window.cerrarModalVIP()" class="w-full py-2.5 bg-gray-800 hover:bg-gray-900 text-white font-bold rounded-none shadow transition-colors text-sm">
+                    Continuar facturando
+                </button>
+            </div>
+
+        </div>
+    </div>`;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+window.mostrarModalVIP = mostrarModalVIP;
+
+/** Cierra el modal VIP */
+function cerrarModalVIP() {
+    const modal = document.getElementById('modal-tarjeta-vip');
+    if (modal) modal.remove();
+}
+window.cerrarModalVIP = cerrarModalVIP;
+
+// ============================================================
 
 
 function removeCartItem(index, fuerzaEjecucion = false) {
@@ -3177,8 +3546,15 @@ function clearCart() {
     // 1. Vaciar el array global y actualizar la vista
     cart = [];
     
-    // 🔥 PROTECCIÓN: Si vacían el carrito, también se cancela la deuda
+    // 🔥 PROTECCIÓN: Si vacían el carrito, también se cancela la deuda y se resetea la transacción
     window.esPagoDeDeuda = null; 
+    window.currentProcessingSaleId = null;
+
+    // 🛡️ LIMPIEZA VIP: Resetear sesión VIP al vaciar el carrito o completar venta
+    if (window.vipSesionActiva) {
+        window.vipSesionActiva = null;
+        if (typeof window.cerrarModalVIP === 'function') window.cerrarModalVIP();
+    }
     
     renderCart();
     
@@ -3697,6 +4073,12 @@ async function processSale() {
         confirmBtn.textContent = 'Verificando...';
     }
 
+    // 🛡️ IDEMPOTENCIA ATÓMICA: Si es un reintento del mismo cobro, mantenemos el mismo ventaId
+    if (!window.currentProcessingSaleId) {
+        window.currentProcessingSaleId = `VTA-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    }
+    const localId = window.currentProcessingSaleId;
+
     const totalElement = document.getElementById('total');
     let total = parseFloat(totalElement ? totalElement.textContent.replace(/[^\d.]/g, '') : '0'); 
     let originalCartBackup = null;
@@ -3867,6 +4249,11 @@ async function processSale() {
             }
         });
 
+        // 🛡️ Si es Nota de Crédito, inyectar los pagos de reintegro configurados en modal-pago-nc
+        if (window.modoOperacion === 'NOTA_CREDITO' && window.ncPagosReintegro && Object.keys(window.ncPagosReintegro).length > 0) {
+            Object.assign(pagosRecopilados, window.ncPagosReintegro);
+        }
+
         // --- INICIO EMISIÓN (ENRUTADOR DE FACTURACIÓN) ---
         if (currentEmissionMode === 'ELECTRONICA' || ((window.modoOperacion === 'NOTA_CREDITO' || window.modoOperacion === 'NOTA_DEBITO') && currentEmissionMode === 'ELECTRONICA')) {
             
@@ -3965,7 +4352,9 @@ async function processSale() {
             // 1. VENTA NORMAL (Y NOTA DE DÉBITO): Descontar stock
             const payloadStock = {
                 items: cart,
-                sucursalId: window.branchId
+                sucursalId: window.branchId,
+                ventaId: localId,
+                factura_ref: localId
             };
             const respuestaStock = await window.nexusAPI.verificarYDescontarStockMaestro(payloadStock);
             
@@ -4096,7 +4485,7 @@ async function processSale() {
             inputDolares.addEventListener('input', calculatePaymentSummary);
         }
 
-        const localId = `VTA-${Date.now()}`;
+        // localId ya fue asignado al inicio de processSale para garantizar idempotencia transaccional
         const tasaActual = window.dolarExchangeRate || 1;
         
         // --- CALCULO DE GANANCIA ---
@@ -4125,11 +4514,11 @@ async function processSale() {
             cliente_direccion: clienteActivo.direccion || clienteActivo.address || '',
             cliente_correo: clienteActivo.correo || clienteActivo.email || '',
             cliente_telefono: clienteActivo.telefono || clienteActivo.phone || '',
-            monto_exento: montoExento,
-            base_imponible: baseImponible,
-            monto_iva: montoIva,
-            monto_igtf: montoIgtf,
-            monto_total: total + montoIgtf, // Respeta la asignación del total limpio de la UI que guardaste
+            monto_exento: parseFloat((montoExento || 0).toFixed(2)),
+            base_imponible: parseFloat((baseImponible || 0).toFixed(2)),
+            monto_iva: parseFloat((montoIva || 0).toFixed(2)),
+            monto_igtf: parseFloat((montoIgtf || 0).toFixed(2)),
+            monto_total: parseFloat(((montoExento || 0) + (baseImponible || 0) + (montoIva || 0) + (montoIgtf || 0)).toFixed(2)),
             tasa_bcv: tasaActual,
             items: cart, 
             metodo_pago: JSON.stringify(pagosRecopilados), 
@@ -4154,6 +4543,14 @@ async function processSale() {
         const respuestaDB = await window.nexusAPI.guardarVentaLocal(newSale);
         if (respuestaDB && respuestaDB.error) {
             throw new Error(respuestaDB.error);
+        }
+
+        // 🔄 Disparo no bloqueante de reconciliación en segundo plano
+        if (window.nexusAPI && typeof window.nexusAPI.reconciliarVentasMaestro === 'function') {
+            window.nexusAPI.reconciliarVentasMaestro().catch(() => {});
+        }
+        if (window.nexusAPI && typeof window.nexusAPI.sincronizarVentasServidor === 'function') {
+            window.nexusAPI.sincronizarVentasServidor().catch(() => {});
         }
 
         let montoPagoMovil = 0;
@@ -4261,6 +4658,7 @@ async function processSale() {
         
         // 🔥 LIBERACIÓN DE MEMORIA DEL BORRADOR PARA LA PRÓXIMA VENTA
         currentInvoiceId = null;
+        window.currentProcessingSaleId = null;
 
         window.globalStockCache = null;
 
@@ -5012,6 +5410,14 @@ function newInvoice() {
     window.facturaOriginalAfectada = null;
     window.modoOperacion = 'FACTURA'; // Fundamental para salir del modo Nota de Crédito
 
+    // --- LIMPIAR SESIÓN VIP ---
+    // Al iniciar nueva factura, los precios vuelven a P1 para el próximo cliente.
+    if (window.vipSesionActiva) {
+        window.vipSesionActiva = null;
+        if (typeof window.cerrarModalVIP === 'function') window.cerrarModalVIP();
+    }
+    // --------------------------
+
     // 2. Limpiar todos los Inputs (Montos, Detalles, Vueltos y Buscadores)
     const idsParaLimpiar = [
         // Pagos
@@ -5652,6 +6058,12 @@ function setupBarcodeSearchListener() {
         }
 
         clearTimeout(_barcodeDebounce);
+        // --- GUARD VIP: Si el usuario escribe VIP- no buscamos en inventario ---
+        if (query.toUpperCase().startsWith('VIP-') || query.toUpperCase().startsWith("VIP'")) {
+            if (resultsContainer) { resultsContainer.style.display = 'none'; resultsContainer.innerHTML = ''; }
+            return; // Esperamos el Enter para disparar verificarTarjetaVIP()
+        }
+        // -------------------------------------------------------------------
         _barcodeDebounce = setTimeout(async () => {
             try {
                 const inputActual = document.getElementById('barcode-search');
@@ -5695,10 +6107,30 @@ function setupBarcodeSearchListener() {
     });
         
     barcodeInput.addEventListener('keydown', async (e) => {
+        let items = resultsContainer ? resultsContainer.querySelectorAll('.autocomplete-item') : [];
+
         if (e.key === "Enter") {
             e.preventDefault();
+            if (typeof barcodeFocus !== 'undefined' && barcodeFocus > -1 && items[barcodeFocus]) {
+                items[barcodeFocus].click();
+                barcodeFocus = -1;
+                return;
+            }
+
             const code = barcodeInput.value.trim();
             if (!code) return;
+            const genericCodesGlobal = ['sin código', 'sin codigo', 's/c', 'sc', 'none', 'null', 'undefined'];
+            if (genericCodesGlobal.includes(String(code).trim().toLowerCase())) return;
+
+            // --- INTERCEPTOR TARJETAS VIP (entrada manual) ---
+            if (code.toUpperCase().startsWith('VIP-') || code.toUpperCase().startsWith("VIP'")) {
+                const barcodeNormalizado = code.toUpperCase().replace("VIP'", 'VIP-');
+                barcodeInput.value = '';
+                if (resultsContainer) { resultsContainer.style.display = 'none'; resultsContainer.innerHTML = ''; }
+                verificarTarjetaVIP(barcodeNormalizado);
+                return;
+            }
+            // --------------------------------------------------
 
             const now = Date.now();
             if (code === lastScannedCodeGlobal && (now - lastScannedTimestamp) < 600) return;
@@ -5738,6 +6170,23 @@ function setupBarcodeSearchListener() {
                 processBarcodeScan(code);
             } else {
                 if (typeof messageBox === 'function') messageBox("Producto no encontrado.", 'bg-red-500');
+            }
+            return;
+        }
+
+        if (items.length > 0) {
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                barcodeFocus++;
+                if (barcodeFocus >= items.length) barcodeFocus = 0;
+                applyHighlight(items, barcodeFocus);
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                barcodeFocus--;
+                if (barcodeFocus < 0) barcodeFocus = items.length - 1;
+                applyHighlight(items, barcodeFocus);
+            } else if (e.key === "Escape") {
+                if (resultsContainer) resultsContainer.style.display = 'none';
             }
         }
     });
@@ -10144,14 +10593,71 @@ window.verificarClaveMaestra = async function() {
             console.warn("⚠️ El Maestro no devolvió ninguna clave para esta empresa.");
         }
 
+function validarPermisoDeClave(claveObj, accion) {
+    if (!claveObj) return false;
+    
+    // Si es Super Administrador expresamente marcado
+    const esMaster = (claveObj.is_master === 1 || claveObj.is_master === true || claveObj.is_master === '1' || claveObj.is_master === 'true' || claveObj.isMaster === true || claveObj.isMaster === 1);
+    if (esMaster) {
+        console.log(`👑 Clave "${claveObj.ownerName}" es Super Admin: Acceso permitido para "${accion}".`);
+        return true;
+    }
+
+    if (!claveObj.permisos || typeof claveObj.permisos !== 'object') {
+        console.warn(`⛔ Clave "${claveObj.ownerName}" no tiene objeto de permisos.`);
+        return false;
+    }
+
+    const p = claveObj.permisos;
+    let permitido = false;
+
+    if (accion === 'eliminar_producto') {
+        permitido = (p.eliminar_producto === true || p.eliminar_producto === 1 || p.eliminar_producto === 'true');
+    } else if (accion === 'vaciar_carrito') {
+        permitido = (p.vaciar_carrito === true || p.vaciar_carrito === 1 || p.vaciar_carrito === 'true');
+    } else if (accion === 'eliminar_factura') {
+        permitido = (p.eliminar_factura === true || p.eliminar_factura === 1 || p.eliminar_factura === 'true');
+    } else if (accion === 'guia_despacho') {
+        permitido = (p.guia_despacho === true || p.guia_despacho === 1 || p.opciones_fiscales === true || p.opciones_fiscales === 1);
+    } else if (accion === 'cierre_de_caja' || accion === 'arqueo_caja') {
+        permitido = (p.cierre_de_caja === true || p.cierre_de_caja === 1 || p.cierre_de_caja === 'true');
+    } else if (accion === 'autorizar_credito') {
+        permitido = (p.autorizar_credito === true || p.autorizar_credito === 1 || p.autorizar_credito === 'true');
+    } else {
+        const docFiscales = ['nota_credito', 'nota_debito', 'retencion_iva', 'retencion_islr', 'comprobante_arcv', 'anulacion_no_fiscal'];
+        if (docFiscales.includes(accion)) {
+            permitido = (p.opciones_fiscales === true || p.opciones_fiscales === 1 || p.opciones_fiscales === 'true');
+        } else {
+            permitido = (p[accion] === true || p[accion] === 1 || p[accion] === 'true');
+        }
+    }
+
+    console.log(`🛡️ Permiso para "${accion}": Usuario "${claveObj.ownerName}" => ${permitido ? 'AUTORIZADO ✅' : 'DENEGADO ⛔'}`);
+    return permitido;
+}
+
         // 🛡️ Buscamos coincidencia exacta y OBTENEMOS LA CLAVE para saber quién fue
         const claveValida = clavesMaestras.find(c => c.plainCode === claveIngresada);
 
         if (claveValida) {
-            console.log("🔓 Acceso Autorizado");
-            
-            // 🔥 EL ARREGLO: Rescatamos la acción en una variable temporal antes de cerrar el modal
-            const accionAutorizada = opcionPendiente; 
+            const accionAutorizada = opcionPendiente;
+            const tienePermiso = validarPermisoDeClave(claveValida, accionAutorizada);
+
+            if (!tienePermiso) {
+                console.warn(`⛔ Acceso denegado: ${claveValida.ownerName} no tiene permiso para ${accionAutorizada}`);
+                inputClave.value = "";
+                inputClave.focus();
+                const msg = document.getElementById('error-pin-msg');
+                msg.textContent = `Acceso Denegado: ${claveValida.ownerName} no tiene permiso para esta acción`;
+                msg.classList.remove('hidden');
+                setTimeout(() => {
+                    msg.classList.add('hidden');
+                    msg.textContent = 'PIN Incorrecto';
+                }, 3000);
+                return;
+            }
+
+            console.log("🔓 Acceso Autorizado con permisos para:", accionAutorizada);
             
             // 🛡️ NUEVO: REGISTRO DE AUDITORÍA DETALLADO
             const infoAuditoria = generarDetallesAuditoria(accionAutorizada);
@@ -10169,14 +10675,13 @@ window.verificarClaveMaestra = async function() {
             }
             
             window.cerrarModalSeguridad();
-            
-            // Pasamos la variable temporal que SI tiene el valor 'nota_credito'
             window.ejecutarAccionAutorizada(accionAutorizada);
         } else {
             // Feedback de error
             inputClave.value = "";
             inputClave.focus();
             const msg = document.getElementById('error-pin-msg');
+            msg.textContent = 'PIN Incorrecto';
             msg.classList.remove('hidden');
             setTimeout(() => msg.classList.add('hidden'), 2000);
         }
@@ -10213,8 +10718,6 @@ function actualizarDotsPin() {
     }
 }
 
-
-
 async function verificarPinContraMaestro() {
     try {
         const companyId = localStorage.getItem('company_id') || window.companyId;
@@ -10225,12 +10728,26 @@ async function verificarPinContraMaestro() {
         const claveValida = clavesMaestras.find(c => c.plainCode === pinIngresado);
 
         if (claveValida) {
-            console.log("🔓 Acceso Autorizado para:", opcionPendiente);
-            
-            // 🔥 EL ARREGLO AQUÍ TAMBIÉN
             const accionAutorizada = opcionPendiente;
+            const tienePermiso = validarPermisoDeClave(claveValida, accionAutorizada);
+
+            if (!tienePermiso) {
+                console.warn(`⛔ Acceso denegado PIN: ${claveValida.ownerName} no tiene permiso para ${accionAutorizada}`);
+                pinIngresado = "";
+                actualizarDotsPin();
+                const msg = document.getElementById('error-pin-msg');
+                msg.textContent = `Acceso Denegado: ${claveValida.ownerName} no tiene permiso para esta acción`;
+                msg.classList.remove('hidden');
+                setTimeout(() => {
+                    msg.classList.add('hidden');
+                    msg.textContent = 'PIN Incorrecto';
+                }, 3000);
+                return;
+            }
+
+            console.log("🔓 Acceso Autorizado PIN con permisos para:", accionAutorizada);
             
-            // 🛡️ NUEVO: REGISTRO DE AUDITORÍA DETALLADO
+            // 🛡️ REGISTRO DE AUDITORÍA DETALLADO
             const infoAuditoria = generarDetallesAuditoria(accionAutorizada);
             if (window.nexusAPI && window.nexusAPI.guardarAuditoriaAdmin) {
                 await window.nexusAPI.guardarAuditoriaAdmin({
@@ -10252,6 +10769,7 @@ async function verificarPinContraMaestro() {
             pinIngresado = "";
             actualizarDotsPin();
             const msg = document.getElementById('error-pin-msg');
+            msg.textContent = 'PIN Incorrecto';
             msg.classList.remove('hidden');
             setTimeout(() => msg.classList.add('hidden'), 2000);
         }
@@ -11003,19 +11521,27 @@ window.confirmarDevolucionFinal = async function() {
         return messageBox("⚠️ El monto de reintegro no coincide con el total de los productos devueltos.", "bg-red-500");
     }
 
-    // Inyectamos a los campos de salida (Vueltos) para el Cierre de Caja
-    const outEfectivo = document.getElementById('vuelto-efectivo-amount');
-    const outDolar = document.getElementById('vuelto-dolar-amount');
-    const outPM = document.getElementById('vuelto-pago-movil-amount');
-    
-    if (outEfectivo) outEfectivo.value = rEfectivo > 0 ? rEfectivo.toFixed(2) : '';
-    if (outDolar) outDolar.value = rDolar > 0 ? rDolar.toFixed(2) : '';
-    if (outPM) outPM.value = rPM > 0 ? rPM.toFixed(2) : '';
-    
+    // 🛡️ Registrar los métodos de pago de reintegro para que queden en metodo_pago de la Nota de Crédito
+    window.ncPagosReintegro = {};
+    const metodos = window.metodosPagoDinámicos || [];
+    if (rEfectivo > 0) {
+        const m = metodos.find(x => x.tipo_moneda === 'BS' && (x.nombre.toLowerCase().includes('efectivo') || x.nombre.toLowerCase().includes('cash'))) || { id: "1" };
+        window.ncPagosReintegro[m.id] = rEfectivo;
+    }
+    if (rDolar > 0) {
+        const m = metodos.find(x => x.tipo_moneda === 'USD' && (x.nombre.toLowerCase().includes('dolar') || x.nombre.toLowerCase().includes('dólar') || x.nombre.toLowerCase().includes('divisa') || x.nombre.toLowerCase().includes('usd'))) || { id: "2" };
+        window.ncPagosReintegro[m.id] = rDolar;
+    }
+    if (rPM > 0) {
+        const m = metodos.find(x => x.nombre.toLowerCase().includes('movil') || x.nombre.toLowerCase().includes('móvil')) || { id: "4" };
+        window.ncPagosReintegro[m.id] = rPM;
+    }
+
     window.cerrarModalPagoNC();
     
     // Al procesar, el sistema registrará la Nota de Crédito con estos egresos de caja
     await window.processSale();
+    window.ncPagosReintegro = null;
 };
 
 window.cerrarModalPagoNC = function() {
@@ -11797,9 +12323,13 @@ window.ejecutarCargaPresupuestoComoFactura = async function() {
     // 4. Validar y cargar cada producto con el PRECIO ACTUAL DE HOY y SU NIVEL (P1/P2/P3)
     for (const it of items) {
         let rawDB = null;
-        if (it.codigo && window.nexusAPI && window.nexusAPI.buscarProductoPorCodigo) {
+        const genericCodesPres = ['sin código', 'sin codigo', 's/c', 'sc', 'none', 'null', 'undefined'];
+        const cleanCodPres = (it.codigo || '').toString().trim().toLowerCase();
+        const searchValPres = it.id || it.producto_id || (!genericCodesPres.includes(cleanCodPres) ? it.codigo : null);
+
+        if (searchValPres && window.nexusAPI && window.nexusAPI.buscarProductoPorCodigo) {
             try {
-                rawDB = await window.nexusAPI.buscarProductoPorCodigo(it.codigo, window.companyId);
+                rawDB = await window.nexusAPI.buscarProductoPorCodigo(searchValPres, window.companyId);
             } catch(e) {}
         }
 

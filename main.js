@@ -137,11 +137,16 @@ const originalConsoleError = console.error;
 const originalConsoleWarn = console.warn;
 
 function sendLogToDevTools(type, args) {
-    if (typeof win !== 'undefined' && win && win.webContents && !win.webContents.isDestroyed()) {
-        try {
-            const text = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
-            win.webContents.executeJavaScript(`console.${type}(${JSON.stringify('[MAIN] ' + text)})`).catch(() => {});
-        } catch (e) {}
+    try {
+        if (typeof win !== 'undefined' && win && !win.isDestroyed()) {
+            const wc = win.webContents;
+            if (wc && !wc.isDestroyed()) {
+                const text = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+                wc.executeJavaScript(`console.${type}(${JSON.stringify('[MAIN] ' + text)})`).catch(() => {});
+            }
+        }
+    } catch (e) {
+        // Silenciar cualquier error si la ventana se destruyó en el proceso
     }
 }
 
@@ -322,7 +327,7 @@ const ESQUEMA_LOCAL = {
     clientes_locales: { rif: "TEXT PRIMARY KEY", company_id: "TEXT", nombre: "TEXT", direccion: "TEXT", telefono: "TEXT", correo: "TEXT", datos_json: "TEXT", es_contribuyente_especial: "INTEGER DEFAULT 0", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP", saldo_deuda: "REAL DEFAULT 0" },
     configuracion: { clave: "TEXT PRIMARY KEY", valor: "TEXT", fecha_actualizacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
     historial_tasas: { fecha: "DATE PRIMARY KEY", valor: "DECIMAL(18, 8) DEFAULT 0", fuente: "TEXT DEFAULT 'BCV'" },
-    ventas_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_factura: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", monto_exento: "REAL DEFAULT 0", base_imponible: "REAL DEFAULT 0", monto_iva: "REAL DEFAULT 0", total_iva: "REAL DEFAULT 0", monto_igtf: "REAL DEFAULT 0", monto_total: "REAL DEFAULT 0", tasa_bcv: "REAL DEFAULT 1", metodo_pago: "TEXT", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", estado_cierre: "INTEGER DEFAULT 0", es_nota_credito: "INTEGER DEFAULT 0", es_nota_debito: "INTEGER DEFAULT 0", factura_afectada: "TEXT", monto_factura_afectada: "REAL DEFAULT 0", fecha_factura_afectada: "TEXT", comprobante_retencion_id: "TEXT DEFAULT NULL", ganancia_venta: "REAL DEFAULT 0", estado: "TEXT DEFAULT 'EMITIDA'", es_anulada: "INTEGER DEFAULT 0" },
+    ventas_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_factura: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", monto_exento: "REAL DEFAULT 0", base_imponible: "REAL DEFAULT 0", monto_iva: "REAL DEFAULT 0", total_iva: "REAL DEFAULT 0", monto_igtf: "REAL DEFAULT 0", monto_total: "REAL DEFAULT 0", tasa_bcv: "REAL DEFAULT 1", metodo_pago: "TEXT", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0", estado_sync_maestro: "INTEGER DEFAULT 0", sync_server: "INTEGER DEFAULT 0", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", estado_cierre: "INTEGER DEFAULT 0", es_nota_credito: "INTEGER DEFAULT 0", es_nota_debito: "INTEGER DEFAULT 0", factura_afectada: "TEXT", monto_factura_afectada: "REAL DEFAULT 0", fecha_factura_afectada: "TEXT", comprobante_retencion_id: "TEXT DEFAULT NULL", ganancia_venta: "REAL DEFAULT 0", estado: "TEXT DEFAULT 'EMITIDA'", es_anulada: "INTEGER DEFAULT 0" },
     cuentas_por_cobrar: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cliente_rif: "TEXT", cliente_nombre: "TEXT", cliente_id: "TEXT", monto_deuda: "REAL DEFAULT 0", monto_pagado: "REAL DEFAULT 0", monto_bs: "REAL DEFAULT 0", monto_usd: "REAL DEFAULT 0", factura_nro: "TEXT", fecha: "TEXT", estado: "TEXT DEFAULT 'PENDIENTE'", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", venta_id: "TEXT" },
     sync_queue: { id: "INTEGER PRIMARY KEY AUTOINCREMENT", operacion: "TEXT", tabla: "TEXT", id_registro: "TEXT", datos: "TEXT", fecha_creacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
     inventario_sucursales: { producto_id: "TEXT", sucursal_id: "TEXT", company_id: "TEXT", stock: "REAL DEFAULT 0", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP", "PRIMARY KEY": "(producto_id, sucursal_id)" },
@@ -421,6 +426,7 @@ function inicializarTablas() {
             CREATE INDEX IF NOT EXISTS idx_ventas_fecha ON ventas_locales(fecha_emision);
             CREATE INDEX IF NOT EXISTS idx_ventas_factura ON ventas_locales(numero_factura);
             CREATE INDEX IF NOT EXISTS idx_ventas_estado ON ventas_locales(estado);
+            CREATE INDEX IF NOT EXISTS idx_ventas_sync_server ON ventas_locales(sync_server);
 
             -- 💸 Índices para Movimientos de Caja (Ingresos/Gastos)
             CREATE INDEX IF NOT EXISTS idx_movimientos_cierre 
@@ -453,7 +459,7 @@ function inicializarTablas() {
             facturas_borradores: { id: "TEXT PRIMARY KEY", cliente_nombre: "TEXT", cliente_id: "TEXT", items: "TEXT", subtotal: "REAL DEFAULT 0", iva: "REAL DEFAULT 0", total: "REAL DEFAULT 0", metodos_pago: "TEXT", fecha: "INTEGER", usuario_id: "TEXT", sucursal_id: "TEXT", company_id: "TEXT" },
             cierres_caja_maestros: { id: "TEXT PRIMARY KEY", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", total_ventas_bs: "REAL DEFAULT 0", total_ventas_usd: "REAL DEFAULT 0", total_gastos_bs: "REAL DEFAULT 0", total_gastos_usd: "REAL DEFAULT 0", total_ingresos_bs: "REAL DEFAULT 0", total_diferencia_bs: "REAL DEFAULT 0", total_diferencia_usd: "REAL DEFAULT 0", detalle_pagos_json: "TEXT" },
             movimientos_caja_locales: { id: "TEXT PRIMARY KEY", tipo: "TEXT", concepto: "TEXT", monto: "REAL DEFAULT 0", monto_usd: "REAL DEFAULT 0", metodo_pago: "TEXT", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP", cashier_id: "TEXT", company_id: "TEXT", branch_id: "TEXT", estado_cierre: "INTEGER DEFAULT 0" },
-            ventas_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_factura: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", monto_exento: "REAL DEFAULT 0", base_imponible: "REAL DEFAULT 0", monto_iva: "REAL DEFAULT 0", total_iva: "REAL DEFAULT 0", monto_igtf: "REAL DEFAULT 0", monto_total: "REAL DEFAULT 0", tasa_bcv: "REAL DEFAULT 1", metodo_pago: "TEXT", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", estado_cierre: "INTEGER DEFAULT 0", es_nota_credito: "INTEGER DEFAULT 0", es_nota_debito: "INTEGER DEFAULT 0", factura_afectada: "TEXT", monto_factura_afectada: "REAL DEFAULT 0", fecha_factura_afectada: "TEXT", comprobante_retencion_id: "TEXT DEFAULT NULL", ganancia_venta: "REAL DEFAULT 0", estado: "TEXT DEFAULT 'EMITIDA'", es_anulada: "INTEGER DEFAULT 0" },
+            ventas_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_factura: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", monto_exento: "REAL DEFAULT 0", base_imponible: "REAL DEFAULT 0", monto_iva: "REAL DEFAULT 0", total_iva: "REAL DEFAULT 0", monto_igtf: "REAL DEFAULT 0", monto_total: "REAL DEFAULT 0", tasa_bcv: "REAL DEFAULT 1", metodo_pago: "TEXT", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0", estado_sync_maestro: "INTEGER DEFAULT 1", sync_server: "INTEGER DEFAULT 0", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", estado_cierre: "INTEGER DEFAULT 0", es_nota_credito: "INTEGER DEFAULT 0", es_nota_debito: "INTEGER DEFAULT 0", factura_afectada: "TEXT", monto_factura_afectada: "REAL DEFAULT 0", fecha_factura_afectada: "TEXT", comprobante_retencion_id: "TEXT DEFAULT NULL", ganancia_venta: "REAL DEFAULT 0", estado: "TEXT DEFAULT 'EMITIDA'", es_anulada: "INTEGER DEFAULT 0" },
             configuraciones_maestras: { clave: "TEXT PRIMARY KEY", valor: "TEXT" },
             auditoria_fiscal: { id: "TEXT PRIMARY KEY", usuario: "TEXT", accion: "TEXT", valores: "TEXT", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
             metodos_pago_maestro: { id: "TEXT PRIMARY KEY", nombre: "TEXT NOT NULL", tecla: "TEXT", tipo_moneda: "TEXT DEFAULT 'BS'", activo: "INTEGER DEFAULT 1", flag_impresora: "TEXT DEFAULT '00'" },
@@ -838,20 +844,29 @@ const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 // 1. Obtener ventas del turno actual (Pendientes de Z)
 ipcMain.handle('obtener-ventas-pendientes-caja', async (event, { companyId, branchId, cashierId }) => {
     try {
-        // REGLA DE CIERRE: Los registros de días anteriores que quedaron huérfanos se pasan a estado_cierre = 1
-        db.prepare(`
-            UPDATE ventas_locales 
-            SET estado_cierre = 1 
-            WHERE company_id = ? AND branch_id = ? AND cashier_id = ? AND estado_cierre = 0
-            AND date(fecha_emision, 'localtime') < date('now', 'localtime')
-        `).run(companyId, branchId, cashierId);
-
-        const stmt = db.prepare(`
+        let query = `
             SELECT * FROM ventas_locales 
-            WHERE company_id = ? AND branch_id = ? AND cashier_id = ? AND estado_cierre = 0
-        `);
-        return stmt.all(companyId, branchId, cashierId);
+            WHERE company_id = ? 
+              AND estado_cierre = 0
+              AND (estado != 'ANULADA' OR estado IS NULL)
+        `;
+        const params = [companyId];
+
+        if (branchId) {
+            query += ` AND (branch_id = ? OR branch_id IS NULL OR branch_id = '')`;
+            params.push(branchId);
+        }
+        if (cashierId) {
+            query += ` AND (cashier_id = ? OR cashier_id IS NULL OR cashier_id = '')`;
+            params.push(cashierId);
+        }
+
+        query += ` ORDER BY fecha_emision ASC`;
+
+        const stmt = db.prepare(query);
+        return stmt.all(...params);
     } catch (e) {
+        console.error("❌ Error en obtener-ventas-pendientes-caja:", e.message);
         return [];
     }
 });
@@ -1050,17 +1065,26 @@ ipcMain.handle('procesar-cierre-caja-local', async (event, reporte) => {
 
             // B. MARCAR VENTAS COMO CERRADAS
             db.prepare(`UPDATE ventas_locales SET estado_cierre = 1 
-                        WHERE company_id = ? AND branch_id = ? AND cashier_id = ? AND estado_cierre = 0`)
+                        WHERE company_id = ? 
+                          AND (branch_id = ? OR branch_id IS NULL OR branch_id = '') 
+                          AND (cashier_id = ? OR cashier_id IS NULL OR cashier_id = '') 
+                          AND estado_cierre = 0`)
               .run(reporte.companyId, reporte.branchId, reporte.cashierId);
             
             // C. MARCAR INGRESOS Y GASTOS COMO CERRADOS
             db.prepare(`UPDATE movimientos_caja_locales SET estado_cierre = 1 
-                        WHERE company_id = ? AND cashier_id = ? AND estado_cierre = 0`)
-              .run(reporte.companyId, reporte.cashierId);
+                        WHERE company_id = ? 
+                          AND (cashier_id = ? OR cashier_id IS NULL OR cashier_id = '') 
+                          AND (branch_id = ? OR branch_id IS NULL OR branch_id = '') 
+                          AND estado_cierre = 0`)
+              .run(reporte.companyId, reporte.cashierId, reporte.branchId);
             
-            // D. MARCAR PAGOS MÃ“VILES COMO CERRADOS
+            // D. MARCAR PAGOS MÓVILES COMO CERRADOS
             db.prepare(`UPDATE pagos_moviles_locales SET estado_cierre = 1 
-                        WHERE company_id = ? AND branch_id = ? AND cashier_id = ? AND estado_cierre = 0`)
+                        WHERE company_id = ? 
+                          AND (branch_id = ? OR branch_id IS NULL OR branch_id = '') 
+                          AND (cashier_id = ? OR cashier_id IS NULL OR cashier_id = '') 
+                          AND estado_cierre = 0`)
               .run(reporte.companyId, reporte.branchId, reporte.cashierId);
         });
         
@@ -1184,6 +1208,18 @@ ipcMain.handle('consultar-ia-nexus', async (event, { mensaje, contexto }) => {
 
 ipcMain.handle('guardar-movimiento-caja', async (event, m) => {
     try {
+        m = m || {};
+        const id = m.id || `MOV-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+        const tipo = m.tipo || 'INGRESO';
+        const concepto = m.concepto || 'Movimiento de caja';
+        const monto = parseFloat(m.monto) || 0;
+        const monto_usd = parseFloat(m.monto_usd) || 0;
+        const metodo_pago = m.metodo_pago || 'Efectivo';
+        const fecha = m.fecha || new Date().toISOString();
+        const cashier_id = m.cashier_id || 'CAJERO-01';
+        const company_id = m.company_id || 'DEFAULT_COMPANY';
+        const branch_id = m.branch_id || 'SUC-01';
+
         const stmt = db.prepare(`
             INSERT INTO movimientos_caja_locales (
                 id, tipo, concepto, monto, monto_usd, metodo_pago, 
@@ -1191,36 +1227,68 @@ ipcMain.handle('guardar-movimiento-caja', async (event, m) => {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
         `);
         
-        return stmt.run(
-            m.id, m.tipo, m.concepto, m.monto, m.monto_usd, m.metodo_pago,
-            m.fecha, m.cashier_id, m.company_id, m.branch_id
+        const res = stmt.run(
+            id, tipo, concepto, monto, monto_usd, metodo_pago,
+            fecha, cashier_id, company_id, branch_id
         );
+
+        if (config.isServer && masterDbDirect) {
+            try {
+                masterDbDirect.prepare(`
+                    INSERT OR REPLACE INTO movimientos_caja_locales (
+                        id, tipo, concepto, monto, monto_usd, metodo_pago, 
+                        fecha, cashier_id, company_id, branch_id, estado_cierre
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                `).run(
+                    id, tipo, concepto, monto, monto_usd, metodo_pago,
+                    fecha, cashier_id, company_id, branch_id
+                );
+            } catch (eMaster) {
+                console.warn("⚠️ Advertencia al duplicar movimiento en masterDbDirect:", eMaster.message);
+            }
+        }
+
+        return res;
     } catch (e) {
-        console.error("â Œ Error guardando movimiento local:", e.message);
+        console.error("❌ Error guardando movimiento local:", e.message);
         return { error: e.message };
     }
 });
 
 // 2. Obtener movimientos pendientes de cierre
-ipcMain.handle('obtener-movimientos-caja', async (event, { tipo, companyId }) => {
+ipcMain.handle('obtener-movimientos-caja', async (event, { tipo, companyId, cashierId, branchId }) => {
     try {
-        // REGLA DE CIERRE: Los movimientos de días anteriores que quedaron huérfanos se pasan a estado_cierre = 1
-        db.prepare(`
-            UPDATE movimientos_caja_locales 
-            SET estado_cierre = 1 
-            WHERE tipo = ? AND company_id = ? AND estado_cierre = 0
-            AND date(fecha, 'localtime') < date('now', 'localtime')
-        `).run(tipo, companyId);
-
-        // Solo traemos los que NO han entrado en un Cierre Z (estado_cierre = 0)
-        const stmt = db.prepare(`
+        let query = `
             SELECT * FROM movimientos_caja_locales 
             WHERE tipo = ? AND company_id = ? AND estado_cierre = 0
-            ORDER BY fecha DESC
-        `);
-        return stmt.all(tipo, companyId);
+        `;
+        const params = [tipo, companyId];
+
+        if (cashierId) {
+            query += ` AND (cashier_id = ? OR cashier_id IS NULL OR cashier_id = '')`;
+            params.push(cashierId);
+        }
+        if (branchId) {
+            query += ` AND (branch_id = ? OR branch_id IS NULL OR branch_id = '')`;
+            params.push(branchId);
+        }
+
+        query += ` ORDER BY fecha DESC`;
+        const stmt = db.prepare(query);
+        return stmt.all(...params);
     } catch (e) {
         console.error("❌ Error consultando movimientos:", e.message);
+        return [];
+    }
+});
+
+// Obtener métodos de pago locales (respaldo offline)
+ipcMain.handle('obtener-metodos-pago-local', async () => {
+    try {
+        const stmt = db.prepare('SELECT * FROM metodos_pago_locales WHERE activo = 1 ORDER BY id ASC');
+        return stmt.all();
+    } catch (e) {
+        console.error("❌ Error obteniendo métodos de pago locales:", e.message);
         return [];
     }
 });
@@ -1343,9 +1411,21 @@ ipcMain.on('minimize-login-window', (event) => {
 });
 
 ipcMain.on('close-login-window', (event) => {
-    const webContents = event.sender;
-    const currentWindow = BrowserWindow.fromWebContents(webContents);
-    if (currentWindow) currentWindow.close();
+    try {
+        cierreAutorizado = true;
+        const webContents = event.sender;
+        if (webContents && !webContents.isDestroyed()) {
+            const currentWindow = BrowserWindow.fromWebContents(webContents);
+            if (currentWindow && !currentWindow.isDestroyed()) {
+                currentWindow.removeAllListeners('close');
+                currentWindow.close();
+            }
+        }
+        app.quit();
+    } catch (err) {
+        console.error("Error al cerrar ventana de login:", err);
+        app.quit();
+    }
 });
 
 ipcMain.on('abrir-ventana-principal', (event, ruta) => {
@@ -1375,13 +1455,27 @@ ipcMain.on('abrir-ventana-principal', (event, ruta) => {
     win.on('close', (e) => {
         if (!cierreAutorizado) {
             e.preventDefault(); 
-            win.webContents.send('solicitar-verificacion-cierre');
+            try {
+                if (win && !win.isDestroyed()) {
+                    const wc = win.webContents;
+                    if (wc && !wc.isDestroyed()) {
+                        wc.send('solicitar-verificacion-cierre');
+                    }
+                }
+            } catch (err) {
+                console.error("Error al solicitar verificacion de cierre:", err);
+            }
         }
     });
 
     const webContents = event.sender;
-    const loginWindow = BrowserWindow.fromWebContents(webContents);
-    if (loginWindow) loginWindow.close();
+    if (webContents && !webContents.isDestroyed()) {
+        const loginWindow = BrowserWindow.fromWebContents(webContents);
+        if (loginWindow && !loginWindow.isDestroyed()) {
+            loginWindow.removeAllListeners('close');
+            loginWindow.close();
+        }
+    }
 });
 ipcMain.handle('guardar-usuario-local', async (event, datos) => {
     try {
@@ -1670,8 +1764,8 @@ ipcMain.on('cerrar-y-volver-login', (event) => {
     // Autorizamos el cierre solo de esta ventana (sin hacer app.quit)
     cierreAutorizado = true;
 
-    // Crear la ventana de login idÃ©ntica a la original
-    let loginWin = new BrowserWindow({
+    // Asignar a la variable global 'win' para mantener viva la referencia
+    win = new BrowserWindow({
         width: 1100,
         height: 700,
         frame: false,
@@ -1684,12 +1778,15 @@ ipcMain.on('cerrar-y-volver-login', (event) => {
         }
     });
 
-    loginWin.loadFile('public/index.html');
-    loginWin.center();
+    win.loadFile('public/index.html');
+    win.center();
     
-    if (currentWin) currentWin.close();
+    if (currentWin && !currentWin.isDestroyed()) {
+        currentWin.removeAllListeners('close');
+        currentWin.close();
+    }
     
-    // Restauramos la seguridad de cierre para la prÃ³xima vez
+    // Restauramos la seguridad de cierre para la próxima vez
     cierreAutorizado = false;
 });
 
@@ -1921,23 +2018,44 @@ ipcMain.handle('buscar-producto-por-codigo', async (event, { codigo, empresaId }
 
         const codigoLimpio = String(codigo || '').trim();
         if (!codigoLimpio) return null;
+
+        // 🛡️ PROTECCIÓN ANTI-COLISIÓN: Si el código es genérico (ej. 'Sin código', 'S/C'), NO buscar por columna codigo
+        const codigosGenericos = ['sin código', 'sin codigo', 's/c', 'sc', 'none', 'null', 'undefined'];
+        const esGenerico = codigosGenericos.includes(codigoLimpio.toLowerCase());
+
         let stmt;
         if (empresaId && empresaId !== 'undefined' && empresaId.trim() !== '') {
-            stmt = db.prepare(`
-                SELECT *
-                FROM productos_locales
-                WHERE company_id = ? AND (codigo = ? OR id = ?) AND status != -1 AND status != 0
-                LIMIT 1
-            `);
-            return stmt.get(empresaId, codigoLimpio, codigoLimpio) || null;
+            if (esGenerico) {
+                stmt = db.prepare(`
+                    SELECT * FROM productos_locales
+                    WHERE company_id = ? AND id = ? AND status != -1 AND status != 0
+                    LIMIT 1
+                `);
+                return stmt.get(empresaId, codigoLimpio) || null;
+            } else {
+                stmt = db.prepare(`
+                    SELECT * FROM productos_locales
+                    WHERE company_id = ? AND (codigo = ? OR id = ?) AND status != -1 AND status != 0
+                    LIMIT 1
+                `);
+                return stmt.get(empresaId, codigoLimpio, codigoLimpio) || null;
+            }
         } else {
-            stmt = db.prepare(`
-                SELECT *
-                FROM productos_locales
-                WHERE (codigo = ? OR id = ?) AND status != -1 AND status != 0
-                LIMIT 1
-            `);
-            return stmt.get(codigoLimpio, codigoLimpio) || null;
+            if (esGenerico) {
+                stmt = db.prepare(`
+                    SELECT * FROM productos_locales
+                    WHERE id = ? AND status != -1 AND status != 0
+                    LIMIT 1
+                `);
+                return stmt.get(codigoLimpio) || null;
+            } else {
+                stmt = db.prepare(`
+                    SELECT * FROM productos_locales
+                    WHERE (codigo = ? OR id = ?) AND status != -1 AND status != 0
+                    LIMIT 1
+                `);
+                return stmt.get(codigoLimpio, codigoLimpio) || null;
+            }
         }
     } catch (e) {
         console.error("❌ Error en buscar-producto-por-codigo:", e);
@@ -1946,6 +2064,35 @@ ipcMain.handle('buscar-producto-por-codigo', async (event, { codigo, empresaId }
 });
 
 
+
+// 🛡️ FUNCIÓN LIMPIADORA ANTI-BASE64 PARA REDUCIR PESO DE VENTAS
+function sanitizarDatosJsonVenta(datosJsonRaw) {
+    if (!datosJsonRaw) return '{}';
+    try {
+        let obj = typeof datosJsonRaw === 'string' ? JSON.parse(datosJsonRaw) : datosJsonRaw;
+        if (!obj || typeof obj !== 'object') return '{}';
+        delete obj.imagen;
+        delete obj.image;
+        const prods = obj.productos || obj.items;
+        if (Array.isArray(prods)) {
+            const limpios = prods.map(p => {
+                if (!p || typeof p !== 'object') return p;
+                const { imagen, image, datos_json, ...resto } = p;
+                for (const k of Object.keys(resto)) {
+                    if (typeof resto[k] === 'string' && (resto[k].startsWith('data:image') || resto[k].length > 500)) {
+                        delete resto[k];
+                    }
+                }
+                return resto;
+            });
+            if (obj.productos) obj.productos = limpios;
+            if (obj.items) obj.items = limpios;
+        }
+        return JSON.stringify(obj);
+    } catch (e) {
+        return typeof datosJsonRaw === 'string' ? datosJsonRaw : JSON.stringify(datosJsonRaw);
+    }
+}
 
 ipcMain.handle('guardar-venta-local', async (event, v) => {
     try {
@@ -2034,16 +2181,42 @@ ipcMain.handle('guardar-venta-local', async (event, v) => {
             } catch(e) { /* datos_json no era JSON vÃ¡lido, se deja como estÃ¡ */ }
         }
         
-        console.log(`ðŸ“‹ [GUARDAR] Factura: ${v.numero_factura} | Control: ${v.numero_control} | HKA: ${v.datos_hka ? JSON.stringify(v.datos_hka) : 'N/A'}`);
+        v.monto_exento = parseFloat(v.monto_exento) || 0;
+        v.base_imponible = parseFloat(v.base_imponible) || 0;
+        v.monto_iva = parseFloat(v.monto_iva) || 0;
+        v.monto_igtf = parseFloat(v.monto_igtf) || 0;
+        v.monto_total = parseFloat(v.monto_total) || (v.monto_exento + v.base_imponible + v.monto_iva + v.monto_igtf);
+
+        // 🛡️ Saneamiento estricto contra valores 'undefined' que puedan romper better-sqlite3
+        v.id = v.id || `VTA-${Date.now()}`;
+        v.company_id = v.company_id || 'DEFAULT_COMPANY';
+        v.branch_id = v.branch_id || 'SUC-01';
+        v.cashier_id = v.cashier_id || 'CAJERO-01';
+        v.numero_factura = v.numero_factura || `VTA-${Date.now()}`;
+        v.numero_control = v.numero_control || 'MAESTRO-001';
+        v.cliente_nombre = v.cliente_nombre || 'CONSUMIDOR FINAL';
+        v.cliente_rif = v.cliente_rif || 'V000000000';
+        v.tasa_bcv = parseFloat(v.tasa_bcv) || 1;
+        v.metodo_pago = typeof v.metodo_pago === 'string' ? v.metodo_pago : JSON.stringify(v.metodo_pago || {});
+        v.datos_json = sanitizarDatosJsonVenta(typeof v.datos_json === 'string' ? v.datos_json : JSON.stringify(v.datos_json || {}));
+        v.ganancia_venta = parseFloat(v.ganancia_venta) || 0;
+        v.es_nota_credito = v.es_nota_credito ? 1 : 0;
+        v.es_nota_debito = v.es_nota_debito ? 1 : 0;
+        v.factura_afectada = v.factura_afectada || null;
+        v.monto_factura_afectada = v.monto_factura_afectada || null;
+        v.fecha_factura_afectada = v.fecha_factura_afectada || null;
+        v.estado = v.estado || 'EMITIDA';
+
+        console.log(`📋 [GUARDAR] Factura: ${v.numero_factura} | Control: ${v.numero_control} | Total: ${v.monto_total} | HKA: ${v.datos_hka ? JSON.stringify(v.datos_hka) : 'N/A'}`);
 
         const stmt = db.prepare(`
-            INSERT INTO ventas_locales (
+            INSERT OR REPLACE INTO ventas_locales (
                 id, company_id, branch_id, cashier_id, numero_factura, 
                 numero_control, cliente_nombre, cliente_rif, monto_exento, 
                 base_imponible, monto_iva, monto_igtf, monto_total, 
-                tasa_bcv, metodo_pago, datos_json, ganancia_venta, estado_sync, estado_cierre,
-                es_nota_credito, es_nota_debito, factura_afectada, monto_factura_afectada, fecha_factura_afectada, fecha_emision
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
+                tasa_bcv, metodo_pago, datos_json, ganancia_venta, estado_sync, estado_sync_maestro, sync_server, estado_cierre,
+                es_nota_credito, es_nota_debito, factura_afectada, monto_factura_afectada, fecha_factura_afectada, fecha_emision, estado
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, ?, ?, ?, ?, datetime('now', 'localtime'), ?)
         `);
         
         const resultadoLocal = stmt.run(
@@ -2056,7 +2229,8 @@ ipcMain.handle('guardar-venta-local', async (event, v) => {
             v.es_nota_debito || 0,
             v.factura_afectada || null,
             v.monto_factura_afectada || null,
-            v.fecha_factura_afectada || null
+            v.fecha_factura_afectada || null,
+            v.estado || 'EMITIDA'
         );
 
         // 2. ENCOLAMIENTO PARA SINCRONIZACIÓN VPS (No bloquea a la cajera)
@@ -2092,25 +2266,262 @@ ipcMain.handle('guardar-venta-local', async (event, v) => {
             console.warn(`⚠️ No se pudo encolar venta para VPS:`, eQueue.message);
         }
 
-        // 3. SINCRONIZACIÓN CON EL SERVIDOR MAESTRO (Red Local)
+        // 3. RESPALDO DIRECTO EN SERVIDOR MAESTRO (Si estamos en nodo Servidor)
+        if (config.isServer && masterDbDirect) {
+            try {
+                masterDbDirect.prepare(`
+                    INSERT OR REPLACE INTO ventas_locales (
+                        id, company_id, branch_id, cashier_id, numero_factura, 
+                        numero_control, cliente_nombre, cliente_rif, monto_exento, 
+                        base_imponible, monto_iva, monto_igtf, monto_total, 
+                        tasa_bcv, metodo_pago, datos_json, ganancia_venta, estado_sync, estado_sync_maestro, sync_server, estado_cierre,
+                        es_nota_credito, es_nota_debito, factura_afectada, monto_factura_afectada, fecha_factura_afectada, fecha_emision, estado
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 0, 0, ?, ?, ?, ?, ?, datetime('now', 'localtime'), ?)
+                `).run(
+                    v.id, v.company_id, v.branch_id, v.cashier_id, v.numero_factura,
+                    v.numero_control, v.cliente_nombre, v.cliente_rif, v.monto_exento,
+                    v.base_imponible, v.monto_iva, v.monto_igtf, v.monto_total,
+                    v.tasa_bcv, v.metodo_pago, v.datos_json, v.ganancia_venta || 0,
+                    v.es_nota_credito || 0, v.es_nota_debito || 0,
+                    v.factura_afectada || null, v.monto_factura_afectada || null,
+                    v.fecha_factura_afectada || null, v.estado || 'EMITIDA'
+                );
+                db.prepare("UPDATE ventas_locales SET estado_sync_maestro = 1 WHERE id = ?").run(v.id);
+                console.log(`👑 Venta ${v.numero_factura} guardada directamente en masterDbDirect.`);
+            } catch(eMaster) {
+                console.warn("⚠️ Fallo escribiendo directamente a masterDbDirect:", eMaster.message);
+            }
+        }
+
+        // 4. SINCRONIZACIÓN CON EL SERVIDOR MAESTRO (Red Local)
         try {
+            let resSync = null;
             if (config.isServer) {
                 // Modo servidor: localhost directo
-                await axios.post(`http://127.0.0.1:3000/api/maestro/registrar-venta`, v, { timeout: 3000 });
+                resSync = await axios.post(`http://127.0.0.1:3000/api/maestro/registrar-venta`, v, { timeout: 3000 });
             } else {
-                await llamarMaestro('POST', '/api/maestro/registrar-venta', v, { timeout: 6000, reintentos: 2 });
+                resSync = await llamarMaestro('POST', '/api/maestro/registrar-venta', v, { timeout: 6000, reintentos: 2 });
             }
-            console.log(`📡 Venta ${v.numero_factura} sincronizada con Maestro.`);
+            if (resSync && (resSync.data?.exito || resSync.status === 200)) {
+                db.prepare("UPDATE ventas_locales SET estado_sync_maestro = 1 WHERE id = ?").run(v.id);
+                console.log(`📡 Venta ${v.numero_factura} sincronizada con Maestro (estado_sync_maestro = 1).`);
+            }
         } catch (errSync) {
-            console.warn(`âš ï¸  Maestro no disponible. Venta ${v.numero_factura} guardada solo local.`);
+            console.warn(`⚠️ Maestro no disponible en este momento. Venta ${v.numero_factura} guardada localmente (estado_sync_maestro = 0) para reconciliación en segundo plano.`);
         }
 
         return resultadoLocal;
     } catch (e) {
-        console.error("â Œ Error en guardado de venta:", e.message);
+        console.error("❌ Error en guardado de venta:", e.message);
         return { error: e.message };
     }
 });
+
+// ============================================================================
+// 🔄 DAEMON DE RECONCILIACIÓN DE VENTAS PENDIENTES CON EL MAESTRO
+// ============================================================================
+let isReconciliandoVentas = false;
+async function reconciliarVentasPendientesMaestro() {
+    if (isReconciliandoVentas) return { exito: true, mensaje: 'Ya en ejecución' };
+    isReconciliandoVentas = true;
+    try {
+        const pendientes = db.prepare(`
+            SELECT * FROM ventas_locales 
+            WHERE estado_sync_maestro = 0 
+            ORDER BY fecha_emision ASC 
+            LIMIT 50
+        `).all();
+
+        if (!pendientes || pendientes.length === 0) {
+            isReconciliandoVentas = false;
+            return { exito: true, sincronizadas: 0 };
+        }
+
+        console.log(`🔄 [RECONCILIACIÓN MAESTRO] Detectadas ${pendientes.length} ventas pendientes de sincronizar...`);
+        let count = 0;
+
+        for (const venta of pendientes) {
+            try {
+                if (config.isServer && masterDbDirect) {
+                    masterDbDirect.prepare(`
+                        INSERT OR REPLACE INTO ventas_locales (
+                            id, company_id, branch_id, cashier_id, numero_factura, 
+                            numero_control, cliente_nombre, cliente_rif, monto_exento, 
+                            base_imponible, monto_iva, monto_igtf, monto_total, 
+                            tasa_bcv, metodo_pago, datos_json, ganancia_venta, estado_sync, estado_sync_maestro, estado_cierre,
+                            es_nota_credito, es_nota_debito, factura_afectada, monto_factura_afectada, fecha_factura_afectada, fecha_emision, estado
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `).run(
+                        venta.id, venta.company_id, venta.branch_id, venta.cashier_id, venta.numero_factura,
+                        venta.numero_control, venta.cliente_nombre, venta.cliente_rif, venta.monto_exento,
+                        venta.base_imponible, venta.monto_iva, venta.monto_igtf, venta.monto_total,
+                        venta.tasa_bcv, venta.metodo_pago, venta.datos_json,
+                        venta.ganancia_venta || 0,
+                        venta.estado_cierre || 0,
+                        venta.es_nota_credito || 0,
+                        venta.es_nota_debito || 0,
+                        venta.factura_afectada || null,
+                        venta.monto_factura_afectada || null,
+                        venta.fecha_factura_afectada || null,
+                        venta.fecha_emision,
+                        venta.estado || 'EMITIDA'
+                    );
+                    db.prepare("UPDATE ventas_locales SET estado_sync_maestro = 1 WHERE id = ?").run(venta.id);
+                    count++;
+                } else {
+                    const res = await llamarMaestro('POST', '/api/maestro/registrar-venta', venta, { timeout: 6000, reintentos: 1 });
+                    if (res && (res.data?.exito || res.status === 200)) {
+                        db.prepare("UPDATE ventas_locales SET estado_sync_maestro = 1 WHERE id = ?").run(venta.id);
+                        count++;
+                    }
+                }
+            } catch (errItem) {
+                console.warn(`⚠️ Pausa en reconciliación (Maestro no disponible al procesar ${venta.numero_factura}):`, errItem.message);
+                break; // Se detiene el lote y se reintenta en el próximo ciclo
+            }
+        }
+
+        if (count > 0) {
+            console.log(`✅ [RECONCILIACIÓN MAESTRO] ${count} ventas sincronizadas exitosamente con el Servidor Maestro.`);
+        }
+        isReconciliandoVentas = false;
+        return { exito: true, sincronizadas: count };
+    } catch(e) {
+        console.error("❌ Error en reconciliación con Maestro:", e.message);
+        isReconciliandoVentas = false;
+        return { exito: false, error: e.message };
+    }
+}
+
+ipcMain.handle('reconciliar-ventas-maestro', async () => {
+    return await reconciliarVentasPendientesMaestro();
+});
+
+// Daemon recurrente cada 30 segundos
+setInterval(() => {
+    reconciliarVentasPendientesMaestro().catch(() => {});
+}, 30000);
+
+// ============================================================================
+// ☁️ DAEMON DE SINCRONIZACIÓN DE VENTAS CON EL SERVIDOR NUBE (VPS)
+// ============================================================================
+let isSincronizandoVentasServidor = false;
+
+function obtenerUrlVps(urlManual = null) {
+    if (urlManual && typeof urlManual === 'string' && !urlManual.includes('localhost') && !urlManual.includes('127.0.0.1') && !urlManual.endsWith(':3000')) {
+        return urlManual.replace(/\/$/, '');
+    }
+    const ip = process.env.SERVER_IP || '68.168.218.147';
+    const port = process.env.SERVER_PORT || 4010;
+    return `http://${ip}:${port}`;
+}
+
+async function sincronizarVentasPendientesServidor(limite = 50, serverUrlManual = null) {
+    if (isSincronizandoVentasServidor) {
+        return { exito: true, mensaje: 'Sincronización ya en curso', enCurso: true };
+    }
+    isSincronizandoVentasServidor = true;
+
+    try {
+        const baseUrl = obtenerUrlVps(serverUrlManual);
+        const targetDb = (config.isServer && masterDbDirect) ? masterDbDirect : db;
+
+        // 1. Obtener lote de ventas pendientes
+        const pendientes = targetDb.prepare(`
+            SELECT * FROM ventas_locales 
+            WHERE sync_server = 0 
+            ORDER BY fecha_emision ASC 
+            LIMIT ?
+        `).all(limite);
+
+        if (!pendientes || pendientes.length === 0) {
+            isSincronizandoVentasServidor = false;
+            return { exito: true, sincronizadas: 0, restantes: 0 };
+        }
+
+        console.log(`☁️ [SYNC VPS VENTAS] Enviando lote de ${pendientes.length} ventas pendientes hacia ${baseUrl}...`);
+
+        // 2. Empaquetar y sanitizar anti-Base64
+        const ventasParaEnviar = pendientes.map(v => {
+            const jsonLimpio = sanitizarDatosJsonVenta(v.datos_json);
+            return {
+                id: v.id,
+                company_id: v.company_id,
+                branch_id: v.branch_id,
+                cashier_id: v.cashier_id,
+                numero_factura: v.numero_factura,
+                numero_control: v.numero_control,
+                cliente_nombre: v.cliente_nombre,
+                cliente_rif: v.cliente_rif,
+                monto_exento: parseFloat(v.monto_exento) || 0,
+                base_imponible: parseFloat(v.base_imponible) || 0,
+                monto_iva: parseFloat(v.monto_iva) || 0,
+                total_iva: parseFloat(v.total_iva) || 0,
+                monto_igtf: parseFloat(v.monto_igtf) || 0,
+                monto_total: parseFloat(v.monto_total) || 0,
+                tasa_bcv: parseFloat(v.tasa_bcv) || 1,
+                metodo_pago: v.metodo_pago,
+                datos_json: jsonLimpio,
+                ganancia_venta: parseFloat(v.ganancia_venta) || 0,
+                estado_sync: 1,
+                estado_cierre: v.estado_cierre || 0,
+                es_nota_credito: v.es_nota_credito || 0,
+                es_nota_debito: v.es_nota_debito || 0,
+                factura_afectada: v.factura_afectada || null,
+                monto_factura_afectada: v.monto_factura_afectada || null,
+                fecha_factura_afectada: v.fecha_factura_afectada || null,
+                comprobante_retencion_id: v.comprobante_retencion_id || null,
+                fecha_emision: v.fecha_emision,
+                estado: v.estado || 'EMITIDA',
+                es_anulada: v.es_anulada || 0
+            };
+        });
+
+        // 3. Enviar petición HTTP POST por lote al VPS
+        const endpoint = `${baseUrl}/api/maestro/ventas/sincronizar`;
+        const respuesta = await axios.post(endpoint, { ventas: ventasParaEnviar }, { timeout: 15000 });
+
+        if (respuesta.status === 200 || respuesta.status === 201) {
+            // Extraer IDs confirmados
+            const idsProcesados = (respuesta.data && Array.isArray(respuesta.data.procesados))
+                ? respuesta.data.procesados
+                : ventasParaEnviar.map(v => v.id);
+
+            if (idsProcesados.length > 0) {
+                const placeholders = idsProcesados.map(() => '?').join(',');
+                targetDb.prepare(`UPDATE ventas_locales SET sync_server = 1 WHERE id IN (${placeholders})`).run(...idsProcesados);
+                
+                if (db !== targetDb) {
+                    try {
+                        db.prepare(`UPDATE ventas_locales SET sync_server = 1 WHERE id IN (${placeholders})`).run(...idsProcesados);
+                    } catch (e) {}
+                }
+            }
+
+            const restantes = targetDb.prepare('SELECT COUNT(*) as total FROM ventas_locales WHERE sync_server = 0').get().total;
+            console.log(`✅ [SYNC VPS VENTAS] ${idsProcesados.length} ventas subidas con éxito al VPS. Pendientes: ${restantes}`);
+
+            isSincronizandoVentasServidor = false;
+            return { exito: true, sincronizadas: idsProcesados.length, restantes };
+        } else {
+            throw new Error(`Código inesperado del VPS: ${respuesta.status}`);
+        }
+    } catch (err) {
+        console.warn(`⚠️ [SYNC VPS VENTAS] Enlace con servidor en pausa: ${err.message}`);
+        isSincronizandoVentasServidor = false;
+        return { exito: false, error: err.message };
+    }
+}
+
+ipcMain.handle('sincronizar-ventas-servidor', async (event, args = {}) => {
+    const { limite = 50, serverUrl = null } = args || {};
+    return await sincronizarVentasPendientesServidor(limite, serverUrl);
+});
+
+// Sincronización periódica automática en segundo plano (cada 45 segundos)
+setInterval(() => {
+    sincronizarVentasPendientesServidor(50).catch(() => {});
+}, 45000);
 
 
 ipcMain.handle('obtener-deuda-cliente-maestro', async (event, rif) => {
@@ -2217,9 +2628,19 @@ ipcMain.handle('anular-venta-no-fiscal-local', async (event, datos) => {
             // A. Marcar venta local como ANULADA y poner ganancia_venta = 0
             db.prepare(`
                 UPDATE ventas_locales 
-                SET estado = 'ANULADA', ganancia_venta = 0, estado_sync = 0
+                SET estado = 'ANULADA', es_anulada = 1, ganancia_venta = 0, estado_sync = 0, sync_server = 0
                 WHERE id = ? OR numero_factura = ?
             `).run(facturaId || '', numeroFactura || '');
+
+            if (config.isServer && masterDbDirect) {
+                try {
+                    masterDbDirect.prepare(`
+                        UPDATE ventas_locales 
+                        SET estado = 'ANULADA', es_anulada = 1, ganancia_venta = 0, estado_sync = 0, sync_server = 0
+                        WHERE id = ? OR numero_factura = ?
+                    `).run(facturaId || '', numeroFactura || '');
+                } catch (eM) {}
+            }
 
             // B. Reintegrar stock en stock_maestro y kardex si estamos en servidor o db local
             if (Array.isArray(productos) && productos.length > 0) {
@@ -2273,10 +2694,11 @@ ipcMain.handle('anular-venta-no-fiscal-local', async (event, datos) => {
 
         transaccion();
 
-        // 2. Sincronización con el Servidor Maestro si es nodo cliente
         try {
             if (config.isServer) {
-                if (win && win.webContents) win.webContents.send('stock-actualizado-global');
+                BrowserWindow.getAllWindows().forEach(v => {
+                    if (!v.isDestroyed()) v.webContents.send('stock-actualizado-global');
+                });
             } else {
                 await llamarMaestro('POST', '/api/maestro/anular-venta', datos, { timeout: 6000, reintentos: 2 });
             }
@@ -2580,7 +3002,9 @@ ipcMain.handle('leer-impresoras', async (event) => {
 
 
 try { db.exec("ALTER TABLE ventas_locales ADD COLUMN ganancia_venta REAL DEFAULT 0"); } catch(e) {}
-try { masterDbDirect.exec("ALTER TABLE movimientos_stock_maestro ADD COLUMN estado_sync INTEGER DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE ventas_locales ADD COLUMN sync_server INTEGER DEFAULT 0"); } catch(e) {}
+try { if (masterDbDirect) masterDbDirect.exec("ALTER TABLE ventas_locales ADD COLUMN sync_server INTEGER DEFAULT 0"); } catch(e) {}
+try { if (masterDbDirect) masterDbDirect.exec("ALTER TABLE movimientos_stock_maestro ADD COLUMN estado_sync INTEGER DEFAULT 0"); } catch(e) {}
 
 
 
@@ -3208,6 +3632,22 @@ ipcMain.handle('descargar-update', async (event, urlDescarga) => {
                         });
                         installer.unref(); 
                         
+                        // --- LIMPIEZA AUTOMATICA DE CACHE POST-CIERRE ---
+                        const appDataPath = app.getPath('userData');
+                        const batPath = path.join(tempDir, 'clean_nexus_cache.bat');
+                        const batContent = `@echo off
+timeout /t 3 /nobreak > NUL
+for /d %%x in ("${appDataPath}\\*") do ( rd /s /q "%%x" )
+for %%f in ("${appDataPath}\\*") do (
+    if /i not "%%~xf"==".db" if /i not "%%~xf"==".rar" ( del /f /q "%%f" )
+)`;
+                        fs.writeFileSync(batPath, batContent, 'utf8');
+
+                        // Se lanza de forma "detached" para que sobreviva al cierre de Electron
+                        const cleaner = spawn('cmd.exe', ['/c', batPath], { detached: true, stdio: 'ignore' });
+                        cleaner.unref();
+                        // ------------------------------------------------
+                        
                         // Cerramos NEXUS POS para liberar los archivos y permitir la sobrescritura
                         setTimeout(() => {
                             app.quit();
@@ -3760,8 +4200,9 @@ ipcMain.handle('verificar-y-descontar-stock-maestro', async (event, datos) => {
     try {
         const items = Array.isArray(datos) ? datos : datos.items;
         const sucursalId = Array.isArray(datos) ? null : datos.sucursalId;
+        const ventaId = Array.isArray(datos) ? null : (datos.ventaId || datos.factura_ref || datos.facturaRef || datos.id);
 
-        // ðŸ”¥ FILTRO INTELIGENTE: Separamos productos fÃ­sicos de los servicios
+        // 🔥 FILTRO INTELIGENTE: Separamos productos físicos de los servicios
         const productosFisicos = items.filter(item => {
             const nombre = String(item.nombre || '').toUpperCase();
             const id = String(item.id || '').toUpperCase();
@@ -3770,15 +4211,15 @@ ipcMain.handle('verificar-y-descontar-stock-maestro', async (event, datos) => {
             return !nombre.includes('ABONO') && !nombre.includes('DEUDA') && !nombre.includes('SERVICIO');
         });
 
-        // Si el carrito SOLO tenÃ­a abonos (ej. el cliente solo vino a pagar), damos luz verde inmediata
+        // Si el carrito SOLO tenía abonos (ej. el cliente solo vino a pagar), damos luz verde inmediata
         if (productosFisicos.length === 0) {
-            console.log("âš¡ Venta de puro servicio/abono. Stock verificado automÃ¡ticamente.");
+            console.log("⚡ Venta de puro servicio/abono. Stock verificado automáticamente.");
             return { exito: true };
         }
 
-        // --- LÃ“GICA DE DESCUENTO (Solo procesarÃ¡ los productosFisicos) ---
+        // --- LÓGICA DE DESCUENTO (Solo procesará los productosFisicos) ---
         if (config.isServer && masterDbDirect) {
-            // ðŸš€ MODO SERVIDOR: Descuento directo en el archivo
+            // 🚀 MODO SERVIDOR: Descuento directo en el archivo
             masterDbDirect.prepare(`CREATE TABLE IF NOT EXISTS movimientos_stock_maestro (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 company_id TEXT NOT NULL,
@@ -3791,6 +4232,19 @@ ipcMain.handle('verificar-y-descontar-stock-maestro', async (event, datos) => {
                 estado_sync INTEGER DEFAULT 0
             )`).run();
             try { masterDbDirect.prepare("ALTER TABLE movimientos_stock_maestro ADD COLUMN estado_sync INTEGER DEFAULT 0").run(); } catch(e) {}
+            try { masterDbDirect.prepare("ALTER TABLE movimientos_stock_maestro ADD COLUMN referencia_id TEXT").run(); } catch(e) {}
+
+            // 🛡️ CANDADO DE IDEMPOTENCIA: Si esta venta ya descontó stock, no descontar de nuevo
+            if (ventaId) {
+                const yaDescontado = masterDbDirect.prepare(`
+                    SELECT id FROM movimientos_stock_maestro 
+                    WHERE referencia_id = ? AND tipo_movimiento = 'VENTA' LIMIT 1
+                `).get(String(ventaId));
+                if (yaDescontado) {
+                    console.log(`🛡️ [IDEMPOTENCIA MASTER] Venta ${ventaId} ya tiene stock descontado previamente. Omitiendo segundo descuento.`);
+                    return { exito: true, idempotente: true };
+                }
+            }
 
             const transaccion = masterDbDirect.transaction((productos) => {
                 for (const item of productos) {
@@ -3808,7 +4262,7 @@ ipcMain.handle('verificar-y-descontar-stock-maestro', async (event, datos) => {
                 
                 const stmtConSucursal = masterDbDirect.prepare('UPDATE stock_maestro SET cantidad_real = cantidad_real - ?, ultima_sincronizacion = CURRENT_TIMESTAMP WHERE producto_id = ? AND sucursal_id = ?');
                 const stmtSinSucursal = masterDbDirect.prepare('UPDATE stock_maestro SET cantidad_real = cantidad_real - ?, ultima_sincronizacion = CURRENT_TIMESTAMP WHERE producto_id = ?');
-                const stmtKardex = masterDbDirect.prepare(`INSERT INTO movimientos_stock_maestro (company_id, sucursal_id, producto_id, cantidad, tipo_movimiento, estado_sync) VALUES (?, ?, ?, ?, ?, ?)`);
+                const stmtKardex = masterDbDirect.prepare(`INSERT INTO movimientos_stock_maestro (company_id, sucursal_id, producto_id, cantidad, tipo_movimiento, referencia_id, estado_sync) VALUES (?, ?, ?, ?, ?, ?, ?)`);
                 
                 for (const item of productos) { 
                     // Obtener company_id
@@ -3818,16 +4272,16 @@ ipcMain.handle('verificar-y-descontar-stock-maestro', async (event, datos) => {
 
                     if (sucursalId) {
                         stmtConSucursal.run(item.cantidad, item.id, sucursalId);
-                        try { stmtKardex.run(compId, sucursalId, item.id, -Math.abs(item.cantidad), 'VENTA', 1); } catch(e) {}
+                        try { stmtKardex.run(compId, sucursalId, item.id, -Math.abs(item.cantidad), 'VENTA', ventaId ? String(ventaId) : '', 1); } catch(e) {}
                     } else {
                         stmtSinSucursal.run(item.cantidad, item.id);
-                        try { stmtKardex.run(compId, 'GLOBAL', item.id, -Math.abs(item.cantidad), 'VENTA', 1); } catch(e) {}
+                        try { stmtKardex.run(compId, 'GLOBAL', item.id, -Math.abs(item.cantidad), 'VENTA', ventaId ? String(ventaId) : '', 1); } catch(e) {}
                     }
                 }
             });
 
-            transaccion(productosFisicos); // âœ… Pasamos solo los fÃ­sicos
-            console.log("âš¡ Stock descontado directamente en la DB Maestra");
+            transaccion(productosFisicos); // ✅ Pasamos solo los físicos
+            console.log("⚡ Stock descontado directamente en la DB Maestra");
             try {
                 BrowserWindow.getAllWindows().forEach(v => {
                     if (!v.isDestroyed()) v.webContents.send('stock-actualizado-global');
@@ -3835,16 +4289,17 @@ ipcMain.handle('verificar-y-descontar-stock-maestro', async (event, datos) => {
             } catch(eWin) {}
             return { exito: true };
         } else {
-            // ðŸŒ MODO CLIENTE: PeticiÃ³n por red al servidor
+            // 🌐 MODO CLIENTE: Petición por red al servidor
             const ipDestino = config.isServer ? '127.0.0.1' : config.serverIP;
             const respuesta = await axios.post(`http://${ipDestino}:${PORT}/api/maestro/descontar-stock`, {
                 sucursalId: sucursalId,
+                factura_ref: ventaId ? String(ventaId) : '',
                 items: productosFisicos.map(i => ({ id: i.id, cantidad: i.cantidad, nombre: i.nombre }))
             });
             return respuesta.data;
         }
     } catch (e) {
-        return { exito: false, mensaje: e.message || "Error de comunicaciÃ³n con el maestro." };
+        return { exito: false, mensaje: e.message || "Error de comunicación con el maestro." };
     }
 });
 
@@ -5236,9 +5691,19 @@ ipcMain.handle('obtener-claves-admin-maestro', async (event, companyId) => {
         
         const result = (respuesta.data || []).map(c => {
             c.plainCode = decryptClave(c.encryptedCode);
+            if (typeof c.permisos === 'string') {
+                try {
+                    c.permisos = JSON.parse(c.permisos);
+                } catch(e) {
+                    c.permisos = {};
+                }
+            } else if (!c.permisos) {
+                c.permisos = null;
+            }
+            c.is_master = (c.is_master === 1 || c.is_master === true || c.is_master === '1' || c.is_master === 'true' || c.isMaster === true || c.isMaster === 1);
             return c;
         });
-        console.log(`[CLAVES-ADMIN] Claves desencriptadas:`, result.map(c => ({ owner: c.ownerName, code: c.plainCode })));
+        console.log(`[CLAVES-ADMIN] Claves desencriptadas:`, result.map(c => ({ owner: c.ownerName, isMaster: c.is_master, permisos: c.permisos })));
         return result;
     } catch (e) {
         console.error('[CLAVES-ADMIN] Error en obtener-claves-admin-maestro:', e.message);

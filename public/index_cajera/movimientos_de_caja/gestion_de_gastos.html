@@ -21,12 +21,15 @@
 }
 
         .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            border-left-color: #3b82f6;
-            border-radius: 0;
-            width: 24px;
-            height: 24px;
-            animation: spin 1s linear infinite;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-left-color: #ffffff;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
         }
 
         @keyframes spin {
@@ -151,7 +154,7 @@
                     </div>
                 </div>
                 <button id="add-expense-btn"
-                        class="mt-6 w-full bg-red-600 text-white py-3 px-6 rounded-none hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition duration-150 ease-in-out text-lg font-semibold shadow-md flex items-center justify-center">
+                        class="mt-6 w-full bg-red-600 text-white py-3 px-6 rounded-none hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition duration-150 ease-in-out text-lg font-semibold shadow-md flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed">
                     <span class="material-icons mr-2">remove_circle_outline</span>
                     Agregar Gasto
                 </button>
@@ -291,98 +294,108 @@
     }
 
     // --- 3. LÓGICA DE REGISTRO (GUARDAR EN SQLITE) ---
-async function addExpense() {
-    if (!isAuthReady) {
-        showModal("Sistema Ocupado", "El módulo aún está cargando la base de datos local. Espera un segundo.", true);
-        return;
-    }
-    if (!userId) {
-        showModal("Error de Sesión", "No se detectó la identidad del cajero. Vuelve al Login.", true);
-        return;
-    }
-    if (!window.nexusAPI || typeof window.nexusAPI.guardarMovimientoCaja !== 'function') {
-        showModal("Fallo de Puente", "El HTML no puede ver a preload.js", true);
-        return;
-    }
+    let isProcessingExpense = false;
 
-    const description = expenseDescriptionInput.value.trim();
-    const amountBs = parseFloat(expenseAmountBsInput.value) || 0;
-    const amountUsd = parseFloat(expenseAmountUsdInput.value) || 0;
-    const methodBs = expenseMethodBs.value.trim();
-    const methodUsd = document.getElementById('expense-method-usd').value.trim();
+    async function addExpense() {
+        // 🛡️ PROTECCIÓN CONTRA DOBLE CLIC / RÁFAGAS DEL MOUSE
+        if (isProcessingExpense) return;
 
-    if (description === '' || (amountBs <= 0 && amountUsd <= 0)) {
-        showModal("Datos Incompletos", "Debes ingresar una descripción y un monto válido.", true);
-        return;
-    }
-
-    if (amountBs > 0 && methodBs === '') {
-        showModal("Falta Método", "Selecciona de dónde salió el dinero en Bolívares.", true);
-        return;
-    }
-    if (amountUsd > 0 && methodUsd === '') {
-        showModal("Falta Método", "Selecciona de dónde salió el dinero en Divisa.", true);
-        return;
-    }
-
-    addExpenseBtn.disabled = true;
-    addExpenseBtn.innerHTML = `<span class="spinner"></span> Registrando...`;
-
-    try {
-        let methodFinal = [];
-        if (amountBs > 0) methodFinal.push(methodBs);
-        if (amountUsd > 0) methodFinal.push(methodUsd);
-        const metodoUnido = methodFinal.join(' / ');
-
-        const nuevoMovimiento = {
-            id: `EXP-${Date.now()}`,
-            tipo: 'GASTO',
-            concepto: description,
-            monto: amountBs,
-            monto_usd: amountUsd,
-            metodo_pago: metodoUnido,
-            fecha: new Date().toISOString(),
-            cashier_id: userId,
-            company_id: companyId,
-            branch_id: branchId || 'SUC-01'
-        };
-
-        const resultado = await window.nexusAPI.guardarMovimientoCaja(nuevoMovimiento);
-
-        if (resultado && !resultado.error) {
-            showModal("Éxito", "Gasto guardado localmente para el Cierre Z.");
-            
-            // 🔥 AQUÍ LLAMAMOS A LA IMPRESORA CON LOS DATOS DEL GASTO 🔥
-            if (currentEmissionMode === 'FISCAL_HKA' && puertoFiscalHKA) {
-                await imprimirDocumentoMaquinaFiscal({
-                    concepto: description,
-                    montoBs: amountBs,
-                    metodoBs: methodBs,
-                    montoUsd: amountUsd,
-                    metodoUsd: methodUsd
-                });
-            } else if (typeof imprimirReciboGasto === 'function') {
-                await imprimirReciboGasto({
-                    concepto: description,
-                    montoBs: amountBs,
-                    metodoBs: methodBs,
-                    montoUsd: amountUsd,
-                    metodoUsd: methodUsd
-                });
-            }
-
-            limpiarCampos();
-            loadExpenses();
-        } else {
-            throw new Error(resultado.error || "SQLite rechazó la inserción.");
+        if (!isAuthReady) {
+            showModal("Sistema Ocupado", "El módulo aún está cargando la base de datos local. Espera un segundo.", true);
+            return;
         }
-    } catch (error) {
-        showModal("Error SQL", `Fallo interno: ${error.message}`, true);
-    } finally {
-        addExpenseBtn.disabled = false;
-        addExpenseBtn.innerHTML = `<span class="material-icons mr-2">remove_circle_outline</span> Registrar Gasto`;
+        if (!userId) {
+            showModal("Error de Sesión", "No se detectó la identidad del cajero. Vuelve al Login.", true);
+            return;
+        }
+        if (!window.nexusAPI || typeof window.nexusAPI.guardarMovimientoCaja !== 'function') {
+            showModal("Fallo de Puente", "El HTML no puede ver a preload.js", true);
+            return;
+        }
+
+        const description = expenseDescriptionInput.value.trim();
+        const amountBs = parseFloat(expenseAmountBsInput.value) || 0;
+        const amountUsd = parseFloat(expenseAmountUsdInput.value) || 0;
+        const methodBs = expenseMethodBs.value.trim();
+        const methodUsd = document.getElementById('expense-method-usd').value.trim();
+
+        if (description === '' || (amountBs <= 0 && amountUsd <= 0)) {
+            showModal("Datos Incompletos", "Debes ingresar una descripción y un monto válido.", true);
+            return;
+        }
+
+        if (amountBs > 0 && methodBs === '') {
+            showModal("Falta Método", "Selecciona de dónde salió el dinero en Bolívares.", true);
+            return;
+        }
+        if (amountUsd > 0 && methodUsd === '') {
+            showModal("Falta Método", "Selecciona de dónde salió el dinero en Divisa.", true);
+            return;
+        }
+
+        // 🛡️ BLOQUEO INMEDIATO DEL BOTÓN Y EFECTO DE CARGA
+        isProcessingExpense = true;
+        addExpenseBtn.disabled = true;
+        addExpenseBtn.classList.add('opacity-75', 'cursor-not-allowed');
+        addExpenseBtn.innerHTML = `<span class="spinner"></span> Registrando Gasto...`;
+
+        try {
+            let methodFinal = [];
+            if (amountBs > 0) methodFinal.push(methodBs);
+            if (amountUsd > 0) methodFinal.push(methodUsd);
+            const metodoUnido = methodFinal.join(' / ');
+
+            const nuevoMovimiento = {
+                id: `EXP-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+                tipo: 'GASTO',
+                concepto: description,
+                monto: amountBs,
+                monto_usd: amountUsd,
+                metodo_pago: metodoUnido,
+                fecha: new Date().toISOString(),
+                cashier_id: userId,
+                company_id: companyId,
+                branch_id: branchId || 'SUC-01'
+            };
+
+            const resultado = await window.nexusAPI.guardarMovimientoCaja(nuevoMovimiento);
+
+            if (resultado && !resultado.error) {
+                showModal("Éxito", "Gasto guardado localmente para el Cierre Z.");
+                
+                // 🔥 AQUÍ LLAMAMOS A LA IMPRESORA CON LOS DATOS DEL GASTO 🔥
+                if (currentEmissionMode === 'FISCAL_HKA' && puertoFiscalHKA) {
+                    await imprimirDocumentoMaquinaFiscal({
+                        concepto: description,
+                        montoBs: amountBs,
+                        metodoBs: methodBs,
+                        montoUsd: amountUsd,
+                        metodoUsd: methodUsd
+                    });
+                } else if (typeof imprimirReciboGasto === 'function') {
+                    await imprimirReciboGasto({
+                        concepto: description,
+                        montoBs: amountBs,
+                        metodoBs: methodBs,
+                        montoUsd: amountUsd,
+                        metodoUsd: methodUsd
+                    });
+                }
+
+                limpiarCampos();
+                loadExpenses();
+            } else {
+                throw new Error(resultado?.error || "SQLite rechazó la inserción.");
+            }
+        } catch (error) {
+            showModal("Error SQL", `Fallo interno: ${error.message}`, true);
+        } finally {
+            isProcessingExpense = false;
+            addExpenseBtn.disabled = false;
+            addExpenseBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+            addExpenseBtn.innerHTML = `<span class="material-icons mr-2">remove_circle_outline</span> Registrar Gasto`;
+        }
     }
-}
 
     // --- 4. CARGA DE DATOS (LECTURA DESDE SQLITE) ---
     async function loadExpenses() {

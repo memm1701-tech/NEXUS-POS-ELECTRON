@@ -17,17 +17,21 @@
             box-shadow: inset 0 -1px 0 #e5e7eb;
         }
         /* Scrollbar moderno estilo Nexus */
+        .custom-scrollbar::-webkit-scrollbar,
         .overflow-y-auto::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track,
         .overflow-y-auto::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb,
         .overflow-y-auto::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover,
         .overflow-y-auto::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
-<body class="bg-gray-50 font-sans overflow-hidden">
+<body class="bg-gray-50 font-sans overflow-auto custom-scrollbar">
     
-    <main class="flex flex-col w-full h-screen p-4 gap-4">
+    <main class="flex flex-col w-full min-h-screen p-4 gap-4">
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 shrink-0">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
             <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200">
                 <h2 class="text-xl font-bold mb-6 text-gray-800 border-b pb-3 flex items-center">
@@ -47,8 +51,33 @@
                         <label class="block text-sm font-bold text-gray-700 mb-1">Confirmar Contraseña</label>
                         <input type="password" id="confirm-admin-code" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="••••••••">
                     </div>
+
+                    <!-- Switch Super Admin -->
+                    <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-bold text-amber-900 block">👑 ¿Es Super Administrador?</span>
+                            <span class="text-[11px] text-amber-700">Acceso total a todos los frontends sin restricciones.</span>
+                        </div>
+                        <input type="checkbox" id="is-master-check" onchange="window.toggleFormPermissions(this.checked)" class="w-5 h-5 accent-amber-600 cursor-pointer">
+                    </div>
+
+                    <!-- Permisos Seleccionables al Crear -->
+                    <div id="form-permissions-box" class="p-3 bg-gray-50 border border-gray-200 rounded-lg space-y-2 max-h-48 overflow-y-auto">
+                        <span class="text-xs font-bold text-gray-700 block">Permisos Específicos:</span>
+                        <div class="grid grid-cols-1 gap-1.5 text-xs text-gray-700">
+                            <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="form_perm" value="eliminar_producto" checked class="accent-blue-600"> 🛒 Eliminar producto del carrito</label>
+                            <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="form_perm" value="vaciar_carrito" class="accent-blue-600"> 🛒 Vaciar carrito completo (F8)</label>
+                            <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="form_perm" value="eliminar_factura" class="accent-blue-600"> 🛒 Eliminar borrador / factura guardada</label>
+                            <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="form_perm" value="opciones_fiscales" class="accent-blue-600"> 📑 Notas de Crédito / Débito / Anulaciones</label>
+                            <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="form_perm" value="guia_despacho" class="accent-blue-600"> 📑 Emitir Guía de Despacho</label>
+                            <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="form_perm" value="cierre_de_caja" class="accent-emerald-600"> 💵 Acceso a Cierre de Caja</label>
+                            <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="form_perm" value="ejecutar_cierre_z" class="accent-emerald-600"> 💵 Ejecutar Cierre Z Fiscal</label>
+                            <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="form_perm" value="reporte_x" class="accent-emerald-600"> 💵 Ejecutar Reporte X</label>
+                            <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="form_perm" value="autorizar_credito" class="accent-purple-600"> 👤 Autorizar ventas a crédito con deuda</label>
+                        </div>
+                    </div>
                     
-                    <button id="btn-generate" class="w-full mt-4 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition duration-200 shadow-md">
+                    <button id="btn-generate" class="w-full mt-2 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition duration-200 shadow-md">
                         <i class="fas fa-save mr-2"></i> Generar y Guardar
                     </button>
                 </div>
@@ -82,18 +111,22 @@
                 </div>
             </div>
 
-        </div> <div class="flex-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
-            <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-3 flex items-center shrink-0">
-                <i class="fas fa-list text-gray-600 mr-3"></i> Claves Registradas
+        </div>
+
+        <!-- TABLA DE CLAVES REGISTRADAS -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+            <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-3 flex items-center">
+                <i class="fas fa-list text-gray-600 mr-3"></i> Claves Registradas y Permisos por Frontend
             </h2>
             
-            <div class="flex-1 overflow-y-auto pr-2">
+            <div class="overflow-y-auto max-h-[500px] pr-2 custom-scrollbar">
                 <table class="min-w-full divide-y divide-gray-200 relative">
                     <thead class="bg-gray-50 sticky top-0 z-10">
                         <tr>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Dueño</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Clave Oculta</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Modificación</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tipo</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Permisos</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Acciones</th>
                         </tr>
                     </thead>
@@ -146,7 +179,8 @@
     // --- 1. ESTADO GLOBAL ---
     let userId = null;
     let companyId = null;
-    let currentPlainCodeToReveal = ''; 
+    let currentPlainCodeToReveal = '';
+    let clavesCargadasGlobal = []; // Almacenar claves cargadas para actualizaciones
 
     // --- 2. REFERENCIAS AL DOM ---
     const ownerNameInput = document.getElementById('owner-name');
@@ -168,6 +202,18 @@
     const btnRandomGenerate = document.getElementById('btn-random-generate');
     const generatedPasswordDisplay = document.getElementById('generated-password-display');
     const btnCopyPass = document.getElementById('btn-copy-pass');
+
+    // --- TOGGLE PERMISOS EN FORMULARIO ---
+    window.toggleFormPermissions = function(isMaster) {
+        const box = document.getElementById('form-permissions-box');
+        if (isMaster) {
+            box.style.opacity = '0.4';
+            box.style.pointerEvents = 'none';
+        } else {
+            box.style.opacity = '1';
+            box.style.pointerEvents = 'auto';
+        }
+    };
 
     // --- 3. INICIALIZACIÓN LOCAL ---
     async function inicializarModuloLocal() {
@@ -205,13 +251,39 @@
         btnGenerate.disabled = true;
 
         try {
+            // Leer estado del checkbox Super Admin
+            const isMaster = document.getElementById('is-master-check').checked;
+
+            // Leer los permisos granulares del formulario
+            const permisos = {};
+            if (isMaster) {
+                // Super Admin: todos los permisos en true
+                permisos.eliminar_producto = true;
+                permisos.vaciar_carrito = true;
+                permisos.eliminar_factura = true;
+                permisos.opciones_fiscales = true;
+                permisos.guia_despacho = true;
+                permisos.cierre_de_caja = true;
+                permisos.ejecutar_cierre_z = true;
+                permisos.reporte_x = true;
+                permisos.autorizar_credito = true;
+            } else {
+                // Leer checkboxes individuales
+                const checkboxes = document.querySelectorAll('input[name="form_perm"]');
+                checkboxes.forEach(cb => {
+                    permisos[cb.value] = cb.checked;
+                });
+            }
+
             const nuevaClave = {
                 id: `ADMIN-${Date.now()}`,
                 ownerName: ownerName,
-                plainCode: code, // Se enviará plano, main.js lo cifrará antes de guardarlo en SQLite
+                plainCode: code,
                 company_id: companyId,
                 created_by: userId,
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date().toISOString(),
+                is_master: isMaster ? 1 : 0,
+                permisos: permisos
             };
 
             const resultado = await window.nexusAPI.guardarClaveAdminMaestro(nuevaClave);
@@ -221,6 +293,11 @@
                 ownerNameInput.value = '';
                 adminCodeInput.value = '';
                 confirmCodeInput.value = '';
+                // Reset form
+                document.getElementById('is-master-check').checked = false;
+                window.toggleFormPermissions(false);
+                document.querySelectorAll('input[name="form_perm"]').forEach(cb => cb.checked = false);
+                document.querySelector('input[name="form_perm"][value="eliminar_producto"]').checked = true;
                 loadAdminCode(); // Refrescar tabla
             } else {
                 throw new Error(resultado.error || "Error desconocido al guardar en SQLite");
@@ -238,16 +315,13 @@
         const message = document.getElementById('nexus-confirm-message');
         const yesBtn = document.getElementById('nexus-confirm-yes-btn');
 
-        // Insertamos el texto dinámico resaltando el nombre
         message.innerHTML = `¿Seguro que quieres eliminar la clave de <strong>${ownerName}</strong>?`;
         
-        // Asignamos la acción real de eliminar al botón rojo
         yesBtn.onclick = () => {
             modal.classList.add('hidden');
-            deleteCode(docId); // Tu función original que elimina la base de datos
+            deleteCode(docId);
         };
 
-        // Mostramos el modal
         modal.classList.remove('hidden');
     }
 
@@ -255,9 +329,9 @@
         if (!companyId) return;
         
         try {
-            // main.js se encargará de desencriptar las claves antes de devolverlas al Front-End
             const claves = await window.nexusAPI.obtenerClavesAdminMaestro(companyId);
-            renderAdminCodeTable(claves);
+            clavesCargadasGlobal = claves || [];
+            renderAdminCodeTable(clavesCargadasGlobal);
         } catch (error) {
             console.error("Error al cargar la tabla de códigos:", error);
             showCustomAlert("Error al leer la base de datos local.", 'error');
@@ -270,7 +344,7 @@
             const result = await window.nexusAPI.eliminarClaveAdminMaestro(docId);
             if (result && !result.error) {
                 showCustomAlert("Clave eliminada correctamente.", 'success');
-                loadAdminCode(); // Refrescar tabla
+                loadAdminCode();
             } else {
                 throw new Error(result.error);
             }
@@ -280,36 +354,176 @@
         }
     }
 
+    // --- ACTUALIZAR PERMISO INDIVIDUAL DE UNA CLAVE YA EXISTENTE ---
+    window.actualizarPermisoClave = async function(claveId, permiso, valor) {
+        // Buscar la clave en la caché local
+        const clave = clavesCargadasGlobal.find(c => c.id === claveId);
+        if (!clave) {
+            showCustomAlert('Error: No se encontró la clave.', 'error');
+            return;
+        }
+
+        let permisos = clave.permisos || {};
+        if (typeof permisos === 'string') {
+            try { permisos = JSON.parse(permisos); } catch(e) { permisos = {}; }
+        }
+
+        // Si estamos cambiando is_master
+        if (permiso === 'is_master') {
+            clave.is_master = valor ? 1 : 0;
+            if (valor) {
+                // Al marcar como Super Admin, activar todos los permisos
+                permisos.eliminar_producto = true;
+                permisos.vaciar_carrito = true;
+                permisos.eliminar_factura = true;
+                permisos.opciones_fiscales = true;
+                permisos.guia_despacho = true;
+                permisos.cierre_de_caja = true;
+                permisos.ejecutar_cierre_z = true;
+                permisos.reporte_x = true;
+                permisos.autorizar_credito = true;
+            }
+        } else {
+            permisos[permiso] = valor;
+            // Si se desmarca cualquier permiso individual, quitar Super Admin
+            if (!valor) {
+                clave.is_master = 0;
+            }
+        }
+
+        clave.permisos = permisos;
+
+        try {
+            const datosActualizar = {
+                id: clave.id,
+                ownerName: clave.ownerName,
+                company_id: clave.company_id || companyId,
+                created_by: clave.created_by || userId,
+                updatedAt: new Date().toISOString(),
+                is_master: clave.is_master,
+                permisos: permisos
+                // No enviamos plainCode ni encryptedCode para no sobreescribir la contraseña
+            };
+
+            const resultado = await window.nexusAPI.guardarClaveAdminMaestro(datosActualizar);
+            if (resultado && !resultado.error) {
+                showCustomAlert(`Permiso actualizado para ${clave.ownerName}.`, 'success');
+                loadAdminCode(); // Refrescar tabla
+            } else {
+                throw new Error(resultado.error || 'Error desconocido');
+            }
+        } catch (e) {
+            console.error("Error actualizando permiso:", e);
+            showCustomAlert(`Error al actualizar permiso: ${e.message}`, 'error');
+        }
+    };
+
     // --- 5. RENDERIZADO DE TABLA E INTERFAZ ---
-function renderAdminCodeTable(claves) {
+    function renderAdminCodeTable(claves) {
         tableBody.innerHTML = '';
         
         if (claves && claves.length > 0) { 
             claves.forEach((codeData) => {
                 const row = tableBody.insertRow();
+                row.className = 'hover:bg-gray-50 transition-all';
                 
-                row.insertCell(0).textContent = codeData.ownerName || 'Administrador Principal';
+                // Columna 1: Dueño
+                const ownerCell = row.insertCell(0);
+                ownerCell.className = 'px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900';
+                ownerCell.textContent = codeData.ownerName || 'Administrador Principal';
                 
+                // Columna 2: Clave Oculta
                 const codeCell = row.insertCell(1);
+                codeCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono';
                 codeCell.textContent = '••••••••';
-                codeCell.style.fontFamily = 'monospace';
-                
-                const fechaLocal = new Date(codeData.updatedAt).toLocaleString('es-VE');
-                row.insertCell(2).textContent = fechaLocal;
-                
-                // Botones de acción alineados como en facturacion.html
-                const actionCell = row.insertCell(3);
+
+                // Columna 3: Tipo (Super Admin o Restringido)
+                const isMaster = (codeData.is_master === 1 || codeData.is_master === true || codeData.is_master === '1' || codeData.is_master === 'true');
+                const typeCell = row.insertCell(2);
+                typeCell.className = 'px-6 py-4 whitespace-nowrap text-sm';
+                typeCell.innerHTML = `
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" onchange="window.actualizarPermisoClave('${codeData.id}', 'is_master', this.checked)" class="accent-amber-600 cursor-pointer w-4 h-4" ${isMaster ? 'checked' : ''}>
+                        <span class="text-xs font-bold ${isMaster ? 'text-amber-700' : 'text-gray-500'}">${isMaster ? '👑 Super Admin' : '🔒 Restringido'}</span>
+                    </label>
+                `;
+
+                // Columna 4: Permisos desplegables por Frontend
+                const p = (typeof codeData.permisos === 'object' && codeData.permisos) ? codeData.permisos : {};
+                const permCell = row.insertCell(3);
+                permCell.className = 'px-4 py-3 text-sm';
+                permCell.innerHTML = `
+                    <div class="space-y-2">
+                        <!-- 🛒 FRONTEND FACTURACIÓN -->
+                        <details class="border border-gray-200 rounded-lg overflow-hidden" ${!isMaster ? 'open' : ''}>
+                            <summary class="bg-blue-50 px-3 py-2 cursor-pointer text-xs font-bold text-blue-800 hover:bg-blue-100 transition flex items-center gap-2">
+                                <i class="fas fa-cash-register"></i> Frontend: Facturación
+                            </summary>
+                            <div class="p-2 space-y-1.5 bg-white">
+                                <label class="flex items-center gap-2 text-[11px] text-gray-700 cursor-pointer">
+                                    <input type="checkbox" onchange="window.actualizarPermisoClave('${codeData.id}', 'eliminar_producto', this.checked)" class="accent-blue-600" ${p.eliminar_producto ? 'checked' : ''}>
+                                    Eliminar producto del carrito
+                                </label>
+                                <label class="flex items-center gap-2 text-[11px] text-gray-700 cursor-pointer">
+                                    <input type="checkbox" onchange="window.actualizarPermisoClave('${codeData.id}', 'vaciar_carrito', this.checked)" class="accent-blue-600" ${p.vaciar_carrito ? 'checked' : ''}>
+                                    Vaciar carrito completo (F8)
+                                </label>
+                                <label class="flex items-center gap-2 text-[11px] text-gray-700 cursor-pointer">
+                                    <input type="checkbox" onchange="window.actualizarPermisoClave('${codeData.id}', 'eliminar_factura', this.checked)" class="accent-blue-600" ${p.eliminar_factura ? 'checked' : ''}>
+                                    Eliminar borrador / factura guardada
+                                </label>
+                                <label class="flex items-center gap-2 text-[11px] text-gray-700 cursor-pointer">
+                                    <input type="checkbox" onchange="window.actualizarPermisoClave('${codeData.id}', 'opciones_fiscales', this.checked)" class="accent-blue-600" ${p.opciones_fiscales ? 'checked' : ''}>
+                                    Notas de Crédito / Débito / Anulaciones
+                                </label>
+                                <label class="flex items-center gap-2 text-[11px] text-gray-700 cursor-pointer">
+                                    <input type="checkbox" onchange="window.actualizarPermisoClave('${codeData.id}', 'guia_despacho', this.checked)" class="accent-blue-600" ${p.guia_despacho ? 'checked' : ''}>
+                                    Emitir Guía de Despacho
+                                </label>
+                                <label class="flex items-center gap-2 text-[11px] text-gray-700 cursor-pointer">
+                                    <input type="checkbox" onchange="window.actualizarPermisoClave('${codeData.id}', 'autorizar_credito', this.checked)" class="accent-purple-600" ${p.autorizar_credito ? 'checked' : ''}>
+                                    Autorizar ventas a crédito con deuda
+                                </label>
+                            </div>
+                        </details>
+
+                        <!-- 💵 FRONTEND CIERRE DE CAJA -->
+                        <details class="border border-gray-200 rounded-lg overflow-hidden">
+                            <summary class="bg-emerald-50 px-3 py-2 cursor-pointer text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition flex items-center gap-2">
+                                <i class="fas fa-vault"></i> Frontend: Cierre de Caja
+                            </summary>
+                            <div class="p-2 space-y-1.5 bg-white">
+                                <label class="flex items-center gap-2 text-[11px] text-gray-700 cursor-pointer">
+                                    <input type="checkbox" onchange="window.actualizarPermisoClave('${codeData.id}', 'cierre_de_caja', this.checked)" class="accent-emerald-600" ${p.cierre_de_caja ? 'checked' : ''}>
+                                    Acceso al Cierre de Caja / Arqueo
+                                </label>
+                                <label class="flex items-center gap-2 text-[11px] text-gray-700 cursor-pointer">
+                                    <input type="checkbox" onchange="window.actualizarPermisoClave('${codeData.id}', 'ejecutar_cierre_z', this.checked)" class="accent-emerald-600" ${p.ejecutar_cierre_z ? 'checked' : ''}>
+                                    Ejecutar Cierre Z Fiscal
+                                </label>
+                                <label class="flex items-center gap-2 text-[11px] text-gray-700 cursor-pointer">
+                                    <input type="checkbox" onchange="window.actualizarPermisoClave('${codeData.id}', 'reporte_x', this.checked)" class="accent-emerald-600" ${p.reporte_x ? 'checked' : ''}>
+                                    Ejecutar Reporte X
+                                </label>
+                            </div>
+                        </details>
+                    </div>
+                `;
+
+                // Columna 5: Acciones (Revelar / Eliminar)
+                const actionCell = row.insertCell(4);
+                actionCell.className = 'px-6 py-4 whitespace-nowrap';
                 actionCell.style.display = 'flex';
                 actionCell.style.alignItems = 'center';
-                actionCell.style.gap = '15px'; // Un poco más de espacio entre iconos
+                actionCell.style.gap = '15px';
                 
-                // Botón de Revelar (Ojo)
                 const revealBtn = document.createElement('button');
                 revealBtn.innerHTML = '<i class="fas fa-eye"></i>'; 
                 revealBtn.className = 'text-blue-600 hover:text-blue-900 transition-colors text-lg';
                 revealBtn.title = 'Revelar Clave';
                 revealBtn.onclick = () => showRevealModal(codeData.plainCode); 
                 actionCell.appendChild(revealBtn);
+
                 const deleteBtn = document.createElement('button');
                 deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i>'; 
                 deleteBtn.className = 'text-red-600 hover:text-red-900 transition-colors text-lg';
@@ -320,9 +534,9 @@ function renderAdminCodeTable(claves) {
         } else {
             const row = tableBody.insertRow();
             const cell = row.insertCell(0);
-            cell.colSpan = 4;
+            cell.colSpan = 5;
             cell.textContent = '❌ No hay códigos de administrador en esta estación.';
-            cell.className = 'text-center text-gray-500 py-3';
+            cell.className = 'text-center text-gray-500 py-6';
         }
     }
 
