@@ -958,7 +958,7 @@ async function descargarYValidarProductos(companyId) {
                 estado_sync: 1, // Sigue bajando como 1 porque viene puro de la nube
                 
                 datos_json: JSON.stringify(datosParsed), 
-                fecha_modificacion: pServidor.ultima_sincronizacion || new Date().toISOString()
+                fecha_modificacion: pServidor.ultima_sincronizacion || (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})()
             };
 
             loteParaSincronizar.push(productoParaValidar);
@@ -1433,7 +1433,7 @@ async function addProduct(companyId) {
         producto_ID: `PROD-${Date.now()}`,
         id: `PROD-${Date.now()}`,         
         empresa_ID: companyId,
-        fecha_modificacion: new Date().toISOString(),
+        fecha_modificacion: (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})(),
         status: 1,
         estado_sync: 0 // <--- Declarado desde la raíz
     };
@@ -1619,7 +1619,7 @@ document.getElementById('permanent-confirm-btn').onclick = async function() {
         id: docId, 
         empresa_ID: companyId || window.currentCompanyId,
         company_id: companyId || window.currentCompanyId,
-        fecha_modificacion: new Date().toISOString(),
+        fecha_modificacion: (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})(),
         estado_sync: 0 // Reinicio estricto a 0
     };
 
@@ -1702,7 +1702,7 @@ window.updateProduct = async function(idEmpresa) {
         producto_codigo: data.codigo, // 🔥 REFUERZO para el servidor
         producto_nombre: data.nombre,
         status: currentProductInEditing.status,
-        fecha_modificacion: new Date().toISOString()
+        fecha_modificacion: (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})()
     };
 
     try {
@@ -1787,7 +1787,7 @@ async function handleStockUpdate(productId, name) {
             empresa_ID: currentCompanyId,
             stock_nuevo: currentStock + totalToAdd,
             cantidad_añadida: totalToAdd,
-            fecha_modificacion: new Date().toISOString()
+            fecha_modificacion: (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})()
         };
 
         if (navigator.onLine && respaldoActivo && SERVER_URL) {
@@ -1906,7 +1906,7 @@ async function confirmDeleteAction(companyId, docId, productName, newStatus) {
         producto_ID: docId, 
         id: docId, 
         empresa_ID: companyId,
-        fecha_modificacion: new Date().toISOString(),
+        fecha_modificacion: (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})(),
         estado_sync: 0 // 🟢 REINICIO ESTRICTO A 0
     };
 

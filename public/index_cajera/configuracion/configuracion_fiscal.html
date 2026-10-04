@@ -694,7 +694,7 @@
             const existingDataRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
             let facturaData = existingDataRaw ? JSON.parse(existingDataRaw) : {};
 
-            facturaData.ultimoCambio = new Date().toISOString();
+            facturaData.ultimoCambio = (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})();
             facturaData.modificadoPor = userId;
             
             if (tipoEmisionSelect) facturaData.tipo_emision = tipoEmisionSelect.value;
@@ -905,7 +905,7 @@
         const now = new Date();
         const ef = document.getElementById('fiscalFecha');
         const eh = document.getElementById('fiscalHora');
-        if (ef) ef.value = now.toISOString().split('T')[0];
+        if (ef) ef.value = ((function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})()).split(' ')[0];
         if (eh) eh.value = now.toTimeString().split(' ')[0];
     });
 

@@ -1739,14 +1739,51 @@ async function loadBasculaConfigAndInitSocket() {
             const data = JSON.parse(basculaDataRaw);
             const enableScale = data.enableScale === true;
             const puerto = data.puertoCOM; 
+            const baudRate = data.baudRate || 9600;
 
             updateWeightUI(enableScale); 
 
             if (enableScale && puerto) {
                 console.log(`🚀 Iniciando lectura directa en ${puerto}`);
                 
+                // Helper para aplicar curva de calibración por tramos o factor directo
+                const aplicarCurvaCalibracionPOS = (raw) => {
+                    if (!data.calibracion) return raw;
+
+                    // Si se calibró con factor directo por peso real
+                    if (data.calibracion.factorDirecto && typeof data.calibracion.factorDirecto === 'number' && data.calibracion.factorDirecto > 0) {
+                        return raw * data.calibracion.factorDirecto;
+                    }
+
+                    if (!data.calibracion.puntos) return raw;
+                    const p = data.calibracion.puntos;
+                    const puntosValidos = p.filter(pt => pt.validado && pt.rawMedido !== null && pt.rawMedido > 0);
+                    if (puntosValidos.length === 0) return raw;
+                    if (raw <= 0) return 0.000;
+
+                    const p1 = p.find(pt => pt.id === 1);
+                    if (p1 && p1.validado && raw <= p1.rawMedido) {
+                        return (raw / p1.rawMedido) * p1.objetivoKg;
+                    }
+
+                    for (let i = 1; i < p.length - 1; i++) {
+                        const act = p[i];
+                        const sig = p[i+1];
+                        if (act.validado && sig.validado && raw >= act.rawMedido && raw <= sig.rawMedido) {
+                            const ratio = (raw - act.rawMedido) / (sig.rawMedido - act.rawMedido);
+                            return act.objetivoKg + ratio * (sig.objetivoKg - act.objetivoKg);
+                        }
+                    }
+
+                    const ultimo = puntosValidos[puntosValidos.length - 1];
+                    if (ultimo && ultimo.rawMedido > 0) {
+                        return raw * (ultimo.objetivoKg / ultimo.rawMedido);
+                    }
+                    return raw;
+                };
+
                 // 2. ORDEN AL MAIN: "Abre el puerto y envíame el peso"
-                window.nexusAPI.iniciarLecturaPuerto(puerto);
+                window.nexusAPI.iniciarLecturaPuerto(puerto, baudRate);
 
                 // 3. RECEPTOR: Escuchar el evento que enviará Electron
                 window.nexusAPI.onPesoRecibido((pesoPuro) => {
@@ -1756,10 +1793,10 @@ async function loadBasculaConfigAndInitSocket() {
 
                     const cantidadInput = document.getElementById('cantidad');
                     if (cantidadInput) {
-                        const pesoNumerico = parseFloat(pesoPuro);
-                        if (!isNaN(pesoNumerico)) {
-                            // Sincronizado con los 3 decimales de tu Arduino
-                            cantidadInput.value = pesoNumerico.toFixed(3);
+                        const rawNum = parseFloat(pesoPuro);
+                        if (!isNaN(rawNum)) {
+                            const pesoCalibrado = aplicarCurvaCalibracionPOS(rawNum);
+                            cantidadInput.value = pesoCalibrado.toFixed(3);
                         }
                     }
                 });
@@ -2338,8 +2375,8 @@ function updateCartAndRender(producto, cantidad) {
     if (tierDeseado !== 'p1' && preciosProducto) {
         const tierData = preciosProducto[tierDeseado] || preciosProducto[tierDeseado.toUpperCase()];
         let precioTier = 0;
-        if (typeof tierData === 'number') {
-            precioTier = tierData;
+        if (typeof tierData === 'number' || typeof tierData === 'string') {
+            precioTier = parseFloat(tierData) || 0;
         } else if (typeof tierData === 'object' && tierData) {
             precioTier = parseFloat(tierData.venta !== undefined && tierData.venta !== null ? tierData.venta : (tierData.precio !== undefined ? tierData.precio : 0)) || 0;
             if (tierData.compra) costoEfectivo = parseFloat(tierData.compra) || costoEfectivo;
@@ -2472,8 +2509,8 @@ window.updateItemTier = async function(index, newTier) {
     let nuevoCosto = parseFloat(item.precio_compra || item.costo || 0);
 
     if (tierData) {
-        if (typeof tierData === 'number') {
-            nuevoPrecio = tierData;
+        if (typeof tierData === 'number' || typeof tierData === 'string') {
+            nuevoPrecio = parseFloat(tierData) || 0;
         } else if (typeof tierData === 'object') {
             nuevoPrecio = parseFloat(tierData.venta !== undefined && tierData.venta !== null ? tierData.venta : (tierData.precio !== undefined ? tierData.precio : 0)) || 0;
             if (tierData.compra !== undefined && tierData.compra !== null && tierData.compra !== "") {
@@ -2623,8 +2660,8 @@ window.refrescarPreciosCarrito = async function() {
             if (preciosActualizados) {
                 const tierData = preciosActualizados[tierActual] || preciosActualizados[tierActual.toUpperCase()];
                 if (tierData) {
-                    if (typeof tierData === 'number') {
-                        nuevoPrecioNivel = tierData;
+                    if (typeof tierData === 'number' || typeof tierData === 'string') {
+                        nuevoPrecioNivel = parseFloat(tierData) || 0;
                     } else if (typeof tierData === 'object') {
                         nuevoPrecioNivel = parseFloat(tierData.venta !== undefined && tierData.venta !== null ? tierData.venta : (tierData.precio !== undefined ? tierData.precio : 0)) || 0;
                         if (tierData.compra !== undefined && tierData.compra !== null && tierData.compra !== "") {
@@ -3231,8 +3268,8 @@ window.aplicarTierATodoElCarrito = async function(newTier) {
             let nuevoCosto = parseFloat(item.precio_compra || item.costo || 0);
 
             if (tierData) {
-                if (typeof tierData === 'number') {
-                    nuevoPrecio = tierData;
+                if (typeof tierData === 'number' || typeof tierData === 'string') {
+                    nuevoPrecio = parseFloat(tierData) || 0;
                 } else if (typeof tierData === 'object' && tierData) {
                     nuevoPrecio = parseFloat(tierData.venta !== undefined && tierData.venta !== null ? tierData.venta : (tierData.precio !== undefined ? tierData.precio : 0)) || 0;
                     if (tierData.compra) nuevoCosto = parseFloat(tierData.compra) || nuevoCosto;
@@ -4065,6 +4102,11 @@ async function imprimirTicketNoFiscal(saleData) {
 async function processSale() {
     const confirmBtn = document.getElementById('btn-confirm-payment');
     
+    // VALIDACION DE SEGURIDAD: Evitar procesar mediante Enter o F3 si el pago no cuadra
+    if (confirmBtn && confirmBtn.disabled && confirmBtn.textContent !== 'Verificando...') {
+        return; // El boton esta deshabilitado (falta dinero o sobra vuelto), abortamos.
+    }
+
     if (window.isProcessingSale) return;
     window.isProcessingSale = true;
 
@@ -4564,13 +4606,13 @@ async function processSale() {
             }
         });
         if (montoPagoMovil > 0) {
-            let fechaPagoStr = new Date().toISOString();
+            let fechaPagoStr = (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})();
             const pmHoraVal = document.getElementById('pm-hora')?.value;
             if (pmHoraVal) {
                 const hoy = new Date();
                 const [horas, minutos] = pmHoraVal.split(':');
                 hoy.setHours(horas, minutos, 0, 0);
-                fechaPagoStr = hoy.toISOString();
+                fechaPagoStr = (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})();
             }
 
             const pagoMovilData = {
@@ -4605,7 +4647,7 @@ async function processSale() {
                 monto_bs: montoCreditoBs,
                 monto_usd: parseFloat(calculoCreditoUSD.toFixed(2)),
                 monto_pagado: 0, 
-                fecha: new Date().toISOString()
+                fecha: (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})()
             };
 
             try {
@@ -6460,7 +6502,7 @@ const GestorClientes = {
                 empresa_ID: companyIdActual,
                 datos_json: '{}',
                 estado_sync: 0,
-                fecha_modificacion: new Date().toISOString()
+                fecha_modificacion: (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})()
             };
 
             // Guardado directo en base de datos
@@ -10670,7 +10712,7 @@ function validarPermisoDeClave(claveObj, accion) {
                     admin_name: claveValida.ownerName || 'Administrador',
                     accion: infoAuditoria.accion,
                     detalles: infoAuditoria.descripcion,
-                    fecha: new Date().toISOString()
+                    fecha: (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})()
                 });
             }
             
@@ -10758,7 +10800,7 @@ async function verificarPinContraMaestro() {
                     admin_name: claveValida.ownerName || 'Administrador',
                     accion: infoAuditoria.accion,
                     detalles: infoAuditoria.descripcion,
-                    fecha: new Date().toISOString()
+                    fecha: (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})()
                 });
             }
             
@@ -12054,7 +12096,7 @@ window.generarPresupuestoFinal = async function() {
         moneda: 'USD',
         validez_dias: 1,
         estado: 'EMITIDO',
-        fecha_emision: new Date().toISOString(),
+        fecha_emision: (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})(),
         datos_json: {
             items: itemsPresupuesto,
             subtotalUSD,

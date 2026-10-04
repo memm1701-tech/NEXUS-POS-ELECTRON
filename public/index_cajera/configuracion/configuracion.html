@@ -73,6 +73,13 @@
                     <option value="">Cargando puertos USB/COM...</option>
                 </select>
             </div>
+            <div class="space-y-2 pt-2">
+                <label for="scaleBaudRate" class="block text-sm font-medium text-gray-700">Velocidad en Baudios (Baud Rate):</label>
+                <select id="scaleBaudRate" class="mt-1 block w-full pl-3 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-none shadow-sm bg-white border">
+                    <option value="9600">9600 baudios</option>
+                    <option value="115200">115200 baudios</option>
+                </select>
+            </div>
         </div>
 
         <div class="space-y-4 text-left p-6 border border-gray-200 bg-white rounded-none">
@@ -230,7 +237,8 @@
     const logoPreviewImg = document.getElementById('logo-preview-img');
     const logoPlaceholder = document.getElementById('logo-placeholder');
 
-    const scaleVpsUrl = document.getElementById('scaleVpsUrl'); 
+    const scaleVpsUrl = document.getElementById('scaleVpsUrl');
+    const scaleBaudRate = document.getElementById('scaleBaudRate');
     const enableScaleCheckbox = document.getElementById('config-enable-scale'); 
     const multicurrencyCheckbox = document.getElementById('config-multicurrency');
     const validarEliminarCheckbox = document.getElementById('config-validar-eliminar');
@@ -500,6 +508,9 @@
                 if (savedPort && puertosCOMValidos.includes(savedPort)) {
                     if (scaleVpsUrl) scaleVpsUrl.value = savedPort;
                 }
+                if (data.baudRate && scaleBaudRate) {
+                    scaleBaudRate.value = data.baudRate;
+                }
                 if (enableScaleCheckbox) {
                      enableScaleCheckbox.checked = data.enableScale || false;
                 }
@@ -561,7 +572,7 @@
             const existingDataRaw = await window.nexusAPI.obtenerConfiguracion('config_factura');
             let facturaData = existingDataRaw ? JSON.parse(existingDataRaw) : {};
 
-            facturaData.ultimoCambio = new Date().toISOString();
+            facturaData.ultimoCambio = (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})();
             facturaData.modificadoPor = userId;
             
             // Tipo de impresora activa
@@ -607,13 +618,14 @@
     async function saveBasculaConfiguration() {
         try {
             const comPortToSave = scaleVpsUrl ? scaleVpsUrl.value : ''; 
+            const baudRateToSave = scaleBaudRate ? parseInt(scaleBaudRate.value) : 9600;
             const enableScaleState = enableScaleCheckbox ? enableScaleCheckbox.checked : false;
             
             const basculaData = {
-                ultimoCambio: new Date().toISOString(),
+                ultimoCambio: (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})(),
                 modificadoPor: userId,
                 puertoCOM: comPortToSave || "", 
-                baudRate: 9600,           
+                baudRate: baudRateToSave,           
                 enableScale: enableScaleState 
             };
 

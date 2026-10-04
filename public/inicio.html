@@ -508,10 +508,14 @@
                 activarVigilanteFirebase(sesion.companyId);
                 iniciarVigilanteHorarioPlan(sesion.companyId);
 
-                // 4. DESCARGA DELTA INICIAL DE PRODUCTOS Y STOCK DESDE EL VPS
+                // 4. HIDRATACION INICIAL (sucursales, categorías, empaques) + DESCARGA DELTA DE PRODUCTOS Y STOCK DESDE EL VPS
                 if (respaldoActivo && SERVER_URL && navigator.onLine) {
-                    descargarYValidarInventarioGlobal(sesion.companyId);
-                    descargarYValidarStockGlobal(sesion.companyId);
+                    hidratarDesdeVPS(sesion.companyId).finally(() => {
+                        descargarYValidarInventarioGlobal(sesion.companyId);
+                        descargarYValidarStockGlobal(sesion.companyId);
+                    });
+                } else {
+                    console.warn(`[ARRANQUE] Descarga desde VPS omitida (respaldoActivo=${respaldoActivo}, SERVER_URL=${SERVER_URL}, online=${navigator.onLine}).`);
                 }
 
             } else {
@@ -1399,6 +1403,7 @@ if (logoutBtn) {
                 contadorDescargas++;
                 if (contadorDescargas >= 30) { // 30 ticks = 30 segundos
                     contadorDescargas = 0;
+                    if (!window.hidratacionVpsOk) hidratarDesdeVPS(window.currentCompanyId);
                     descargarYValidarInventarioGlobal(window.currentCompanyId);
                     descargarYValidarStockGlobal(window.currentCompanyId);
                 }
@@ -1432,7 +1437,7 @@ async function descargarYValidarInventarioGlobal(companyId) {
         // 3. Si el servidor responde con un arreglo vacío [], no hay nada nuevo.
         if (productosServidor.length === 0) {
             // Actualizamos el reloj local para la próxima revisión y nos vamos en silencio
-            localStorage.setItem(claveStorage, new Date().toISOString());
+            localStorage.setItem(claveStorage, (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})());
             return; 
         }
 
@@ -1477,7 +1482,7 @@ async function descargarYValidarInventarioGlobal(companyId) {
                 imagen: datosParsed.imagen || pServidor.imagen || '',
                 estado_sync: 1, 
                 datos_json: JSON.stringify(datosParsed), 
-                fecha_modificacion: pServidor.ultima_sincronizacion || new Date().toISOString()
+                fecha_modificacion: pServidor.ultima_sincronizacion || (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})()
             };
 
             await api.sincronizarProductoServidor(productoParaValidar);
@@ -1489,10 +1494,11 @@ async function descargarYValidarInventarioGlobal(companyId) {
         }
 
         // 4. ÉXITO: Guardamos la hora exacta en la que terminamos para usarla en el próximo ciclo
-        localStorage.setItem(claveStorage, new Date().toISOString());
+        localStorage.setItem(claveStorage, (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})());
 
     } catch (error) {
-        // Fallo silencioso, no actualizamos el localStorage para que lo reintente luego
+        // No actualizamos el localStorage para que lo reintente luego
+        console.warn('[DOWNLOAD INVENTARIO] Falló la descarga delta:', error.message);
     } finally {
         window.descargandoFondo = false;
     }
@@ -1518,7 +1524,7 @@ async function descargarYValidarStockGlobal(companyId) {
         const stockServidor = await response.json();
         
         if (!Array.isArray(stockServidor) || stockServidor.length === 0) {
-            localStorage.setItem(claveStorage, new Date().toISOString());
+            localStorage.setItem(claveStorage, (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})());
             return; 
         }
 
@@ -1539,13 +1545,129 @@ async function descargarYValidarStockGlobal(companyId) {
             console.log(`📥 [DOWNLOAD STOCK GLOBAL] ${procesados} stocks sincronizados desde VPS.`);
             window.dispatchEvent(new CustomEvent('stock-actualizado-vps', { detail: { cantidad: procesados } }));
         }
-        localStorage.setItem(claveStorage, new Date().toISOString());
+        localStorage.setItem(claveStorage, (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})());
 
     } catch (error) {
-        // Fallo silencioso en background
+        console.warn('[DOWNLOAD STOCK] Falló la descarga delta:', error.message);
     } finally {
         window.descargandoStockFondo = false;
     }
+}
+
+// HIDRATACION INICIAL: baja del VPS los datos base que no dependen de abrir cada pantalla
+window.hidratacionVpsOk = false;
+window.hidratandoVps = false;
+async function hidratarDesdeVPS(companyId) {
+    if (!companyId || window.hidratandoVps) return;
+    if (!navigator.onLine || !respaldoActivo || !SERVER_URL) {
+        console.warn(`[HIDRATACION] Omitida (online=${navigator.onLine}, respaldoActivo=${respaldoActivo}, SERVER_URL=${SERVER_URL}). Active respaldo_datos=true en .env para descargar datos del VPS.`);
+        return;
+    }
+
+    window.hidratandoVps = true;
+    const api = window.nexusAPI;
+    const resumen = { sucursales: 0, categorias: 0, empaques: 0 };
+    let huboErrores = false;
+
+    let colaIds = { categorias: new Set(), empaques: new Set() };
+    try {
+        const cola = (api && api.obtenerColaSincronizacion) ? await api.obtenerColaSincronizacion() : [];
+        (cola || []).forEach(r => {
+            try {
+                const d = typeof r.datos === 'string' ? JSON.parse(r.datos) : r.datos;
+                const id = d && (d.id || d.categoria_id || d.categoria_ID || d.empaque_id || d.empaque_ID);
+                if (!id) return;
+                if (r.tabla === 'categorias') colaIds.categorias.add(id);
+                if (r.tabla === 'unidades_empaque' || r.tabla === 'empaques') colaIds.empaques.add(id);
+            } catch (e) { console.warn('[HIDRATACION] Registro de cola ilegible:', e.message); }
+        });
+    } catch (e) {
+        console.warn('[HIDRATACION] No se pudo leer la cola de sincronización:', e.message);
+    }
+
+    // 1. SUCURSALES (primero: cajeras y otras pantallas dependen de ellas)
+    try {
+        const res = await fetch(`${SERVER_URL}/api/maestro/sucursales/${encodeURIComponent(companyId)}`, { signal: AbortSignal.timeout(15000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const sucursalesVps = await res.json();
+        const locales = await api.obtenerSucursalesLocal(companyId);
+        const mapaLocal = {};
+        (Array.isArray(locales) ? locales : []).forEach(s => { mapaLocal[s.id] = s; });
+
+        for (const s of (Array.isArray(sucursalesVps) ? sucursalesVps : [])) {
+            if (!s || !s.id) continue;
+            const local = mapaLocal[s.id];
+            if (local && local.estado_sync === 0) continue; // cambio local pendiente de subir
+            await api.guardarSucursalLocal({
+                id: s.id,
+                company_id: s.company_id || companyId,
+                nombre: s.nombre,
+                direccion: s.direccion || '',
+                telefono: s.telefono || '',
+                estado_sync: 1,
+                fecha_modificacion: s.fecha_modificacion ? new Date(s.fecha_modificacion).toISOString() : (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})()
+            });
+            resumen.sucursales++;
+        }
+    } catch (e) {
+        huboErrores = true;
+        console.error('[HIDRATACION] Error descargando sucursales:', e.message);
+    }
+
+    // 2. CATEGORIAS
+    try {
+        const res = await fetch(`${SERVER_URL}/api/maestro/categorias/${encodeURIComponent(companyId)}`, { signal: AbortSignal.timeout(15000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const categoriasVps = await res.json();
+        for (const c of (Array.isArray(categoriasVps) ? categoriasVps : [])) {
+            const id = c.categoria_id || c.id;
+            if (!id || colaIds.categorias.has(id)) continue;
+            await api.sincronizarCategoriaServidor({
+                id,
+                company_id: c.company_id || companyId,
+                nombre: c.nombre,
+                fecha_modificacion: c.fecha_modificacion ? new Date(c.fecha_modificacion).toISOString() : (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})()
+            });
+            resumen.categorias++;
+        }
+    } catch (e) {
+        huboErrores = true;
+        console.error('[HIDRATACION] Error descargando categorías:', e.message);
+    }
+
+    // 3. UNIDADES DE EMPAQUE
+    try {
+        const res = await fetch(`${SERVER_URL}/api/maestro/empaque/${encodeURIComponent(companyId)}`, { signal: AbortSignal.timeout(20000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        const lista = Array.isArray(json) ? json : (json && Array.isArray(json.data) ? json.data : []);
+        const lote = lista
+            .filter(e => e && e.id && !colaIds.empaques.has(e.id))
+            .map(e => ({
+                id: e.id,
+                company_id: e.company_id || companyId,
+                product_id: e.product_id || '',
+                nombre_producto: e.nombre_producto || '',
+                nombre_unidad: e.nombre_unidad || '',
+                tipo_medida: e.tipo_medida || 'Unidades',
+                factor_cantidad: parseFloat(e.factor_cantidad || 1),
+                estado_sync: 1,
+                fecha_modificacion: e.fecha_modificacion ? new Date(e.fecha_modificacion).toISOString() : (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})(),
+                ultima_sincronizacion: e.ultima_sincronizacion ? new Date(e.ultima_sincronizacion).toISOString() : (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})()
+            }));
+        if (lote.length > 0) {
+            await api.sincronizarUnidadesEmpaqueLote(lote);
+            resumen.empaques = lote.length;
+        }
+    } catch (e) {
+        huboErrores = true;
+        console.error('[HIDRATACION] Error descargando unidades de empaque:', e.message);
+    }
+
+    window.hidratandoVps = false;
+    window.hidratacionVpsOk = !huboErrores;
+    console.log(`[HIDRATACION] Finalizada. Sucursales=${resumen.sucursales}, Categorías=${resumen.categorias}, Empaques=${resumen.empaques}, errores=${huboErrores}`);
+    window.dispatchEvent(new CustomEvent('datos-hidratados-vps', { detail: resumen }));
 }
 
     async function cargarPanelOffline(sesion) {

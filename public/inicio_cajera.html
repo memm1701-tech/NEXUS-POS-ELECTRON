@@ -232,6 +232,7 @@
                         <ul>
                             <li><a href="#" onclick="sessionStorage.setItem('pendingConfigTarget', 'index_cajera/configuracion/configuracion.html')" data-page="index_cajera/login.html"><i class="fa-solid fa-sliders"></i> General</a></li>
                             <li><a href="#" onclick="sessionStorage.setItem('pendingConfigTarget', 'index_cajera/configuracion/configuracion_fiscal.html')" data-page="index_cajera/login.html"><i class="fa-solid fa-file-invoice"></i> Fiscal</a></li>
+                            <li><a href="#" data-page="index_cajera/configuracion/configuracion_balanza.html"><i class="fa-solid fa-scale-balanced"></i> Balanza</a></li>
                         </ul>
                     </li>
                     <li><a href="#" onclick="document.getElementById('zoom-modal').classList.remove('hidden'); return false;"><i class="fa-solid fa-display"></i> Apariencia</a></li>
@@ -765,7 +766,7 @@ async function iniciarSincronizacionSilenciosa() {
                 const productosServidor = await response.json();
                 
                 if (productosServidor.length === 0) {
-                    localStorage.setItem(claveStorage, new Date().toISOString());
+                    localStorage.setItem(claveStorage, (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})());
                     return;
                 }
                 
@@ -816,7 +817,7 @@ async function iniciarSincronizacionSilenciosa() {
                         imagen: datosParsed.imagen || pServidor.imagen || '',
                         estado_sync: 1, 
                         datos_json: JSON.stringify(datosParsed),
-                        fecha_modificacion: pServidor.ultima_sincronizacion || new Date().toISOString()
+                        fecha_modificacion: pServidor.ultima_sincronizacion || (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})()
                     };
 
                     await window.nexusAPI.sincronizarProductoServidor(productoParaValidar);
@@ -836,7 +837,7 @@ async function iniciarSincronizacionSilenciosa() {
                     }
                 }
 
-                localStorage.setItem(claveStorage, new Date().toISOString());
+                localStorage.setItem(claveStorage, (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})());
             }
         } catch (error) {
             console.log("⏸️ Sincronización de inventario en pausa.");

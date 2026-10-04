@@ -379,6 +379,7 @@
                 showModal('Sesión Requerida', 'Por favor, inicia sesión para continuar.', false);
             }
         } catch (error) {
+            console.error("[SUCURSALES] Error en arranque del módulo:", error.message);
         }
     }
 
@@ -392,6 +393,7 @@
             renderizarTabla(sucursales);
             return sucursales;
         } catch (error) {
+            console.error("[SUCURSALES] Error cargando sucursales locales:", error.message);
             
             return [];
         }
@@ -432,6 +434,7 @@
 
             await cargarSucursalesLocales();
         } catch (error) {
+            console.error("[SUCURSALES] Error sincronizando con el VPS:", error.message);
             
         }
     }
@@ -451,6 +454,7 @@
                 await window.nexusAPI.guardarSucursalLocal(datos);
             }
         } catch (e) {
+            console.error("[SUCURSALES] Error subiendo sucursal al VPS:", e.message);
             
         }
     }
@@ -551,7 +555,7 @@
                 nombre: branchNameInput.value.trim(),
                 direccion: branchAddressInput.value.trim(),
                 telefono: branchPhoneInput.value.trim() || 'N/A',
-                fecha_modificacion: new Date().toISOString(),
+                fecha_modificacion: (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})(),
                 estado_sync: 0 
             };
 

@@ -581,7 +581,10 @@
                 }
             };
 
-            input.addEventListener('input', actualizarVistaDistribucion);
+            input.addEventListener('input', (e) => {
+                e.target.value = formatNumberToLocal(e.target.value);
+                actualizarVistaDistribucion();
+            });
             select.addEventListener('change', actualizarVistaDistribucion);
             
             actualizarVistaDistribucion();

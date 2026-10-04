@@ -1,3 +1,12 @@
+process.env.TZ = 'America/Caracas';
+
+function getCaracasTime() {
+    const d = new Date();
+    const utcMillis = d.getTime() + (d.getTimezoneOffset() * 60000);
+    const cDate = new Date(utcMillis - (4 * 60 * 60 * 1000));
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${cDate.getFullYear()}-${pad(cDate.getMonth() + 1)}-${pad(cDate.getDate())} ${pad(cDate.getHours())}:${pad(cDate.getMinutes())}:${pad(cDate.getSeconds())}`;
+}
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -66,34 +75,34 @@ if (config.isServer) {
     // Inicialización de Tablas Maestras automatizada con ESQUEMA_MAESTRO
     // Inicialización de Tablas Maestras automatizada con ESQUEMA_MAESTRO
     const ESQUEMA_MAESTRO = {
-        stock_maestro: { producto_id: "TEXT", sucursal_id: "TEXT", company_id: "TEXT", cantidad_real: "REAL DEFAULT 0", ultima_sincronizacion: "DATETIME DEFAULT CURRENT_TIMESTAMP", "PRIMARY KEY": "(producto_id, sucursal_id)" },
-        movimientos_stock_maestro: { id: "INTEGER PRIMARY KEY AUTOINCREMENT", company_id: "TEXT NOT NULL", sucursal_id: "TEXT", producto_id: "TEXT NOT NULL", cantidad: "REAL DEFAULT 0", tipo_movimiento: "TEXT", fecha_movimiento: "DATETIME DEFAULT CURRENT_TIMESTAMP", referencia_id: "TEXT", estado_sync: "INTEGER DEFAULT 0" },
+        stock_maestro: { producto_id: "TEXT", sucursal_id: "TEXT", company_id: "TEXT", cantidad_real: "REAL DEFAULT 0", ultima_sincronizacion: "DATETIME DEFAULT (datetime('now', '-4 hours'))", "PRIMARY KEY": "(producto_id, sucursal_id)" },
+        movimientos_stock_maestro: { id: "INTEGER PRIMARY KEY AUTOINCREMENT", company_id: "TEXT NOT NULL", sucursal_id: "TEXT", producto_id: "TEXT NOT NULL", cantidad: "REAL DEFAULT 0", tipo_movimiento: "TEXT", fecha_movimiento: "DATETIME DEFAULT (datetime('now', '-4 hours'))", referencia_id: "TEXT", estado_sync: "INTEGER DEFAULT 0" },
         correlativos_maestros: { tipo: "TEXT PRIMARY KEY", prefijo: "TEXT DEFAULT ''", ultimo_numero: "INTEGER DEFAULT 0", correlativo_nc_actual: "INTEGER DEFAULT 0" },
-        clientes_maestro: { rif: "TEXT PRIMARY KEY", company_id: "TEXT", nombre: "TEXT NOT NULL", direccion: "TEXT", telefono: "TEXT", correo: "TEXT", datos_json: "TEXT", es_contribuyente_especial: "INTEGER DEFAULT 0", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP", saldo_deuda: "REAL DEFAULT 0" },
+        clientes_maestro: { rif: "TEXT PRIMARY KEY", company_id: "TEXT", nombre: "TEXT NOT NULL", direccion: "TEXT", telefono: "TEXT", correo: "TEXT", datos_json: "TEXT", es_contribuyente_especial: "INTEGER DEFAULT 0", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT (datetime('now', '-4 hours'))", saldo_deuda: "REAL DEFAULT 0" },
         cuentas_por_cobrar: { id: "INTEGER PRIMARY KEY AUTOINCREMENT", cliente_id: "TEXT", cliente_nombre: "TEXT", monto_bs: "REAL DEFAULT 0", monto_usd: "REAL DEFAULT 0", factura_nro: "TEXT", monto_pagado: "REAL DEFAULT 0", fecha: "TEXT", estado: "TEXT DEFAULT 'PENDIENTE'" },
         facturas_borradores: { id: "TEXT PRIMARY KEY", cliente_nombre: "TEXT", cliente_id: "TEXT", items: "TEXT", subtotal: "REAL DEFAULT 0", iva: "REAL DEFAULT 0", total: "REAL DEFAULT 0", metodos_pago: "TEXT", fecha: "INTEGER", usuario_id: "TEXT", sucursal_id: "TEXT", company_id: "TEXT" },
-        cierres_caja_maestros: { id: "TEXT PRIMARY KEY", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", total_ventas_bs: "REAL DEFAULT 0", total_ventas_usd: "REAL DEFAULT 0", total_gastos_bs: "REAL DEFAULT 0", total_gastos_usd: "REAL DEFAULT 0", total_ingresos_bs: "REAL DEFAULT 0", total_diferencia_bs: "REAL DEFAULT 0", total_diferencia_usd: "REAL DEFAULT 0", detalle_pagos_json: "TEXT" },
-        movimientos_caja_locales: { id: "TEXT PRIMARY KEY", tipo: "TEXT", concepto: "TEXT", monto: "REAL DEFAULT 0", monto_usd: "REAL DEFAULT 0", metodo_pago: "TEXT", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP", cashier_id: "TEXT", company_id: "TEXT", branch_id: "TEXT", estado_cierre: "INTEGER DEFAULT 0" },
-        ventas_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_factura: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", monto_exento: "REAL DEFAULT 0", base_imponible: "REAL DEFAULT 0", monto_iva: "REAL DEFAULT 0", total_iva: "REAL DEFAULT 0", monto_igtf: "REAL DEFAULT 0", monto_total: "REAL DEFAULT 0", tasa_bcv: "REAL DEFAULT 1", metodo_pago: "TEXT", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0", sync_server: "INTEGER DEFAULT 0", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", estado_cierre: "INTEGER DEFAULT 0", es_nota_credito: "INTEGER DEFAULT 0", es_nota_debito: "INTEGER DEFAULT 0", factura_afectada: "TEXT", monto_factura_afectada: "REAL DEFAULT 0", fecha_factura_afectada: "TEXT", comprobante_retencion_id: "TEXT DEFAULT NULL", ganancia_venta: "REAL DEFAULT 0", estado: "TEXT DEFAULT 'EMITIDA'", es_anulada: "INTEGER DEFAULT 0" },
-        presupuestos_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_presupuesto: "TEXT UNIQUE", cliente_nombre: "TEXT", cliente_rif: "TEXT", cliente_direccion: "TEXT", cliente_telefono: "TEXT", subtotal: "REAL DEFAULT 0", monto_iva: "REAL DEFAULT 0", monto_total: "REAL DEFAULT 0", tasa_bcv: "REAL DEFAULT 1", moneda: "TEXT DEFAULT 'USD'", validez_dias: "INTEGER DEFAULT 1", estado: "TEXT DEFAULT 'EMITIDO'", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0" },
+        cierres_caja_maestros: { id: "TEXT PRIMARY KEY", fecha: "DATETIME DEFAULT (datetime('now', '-4 hours'))", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", total_ventas_bs: "REAL DEFAULT 0", total_ventas_usd: "REAL DEFAULT 0", total_gastos_bs: "REAL DEFAULT 0", total_gastos_usd: "REAL DEFAULT 0", total_ingresos_bs: "REAL DEFAULT 0", total_diferencia_bs: "REAL DEFAULT 0", total_diferencia_usd: "REAL DEFAULT 0", detalle_pagos_json: "TEXT" },
+        movimientos_caja_locales: { id: "TEXT PRIMARY KEY", tipo: "TEXT", concepto: "TEXT", monto: "REAL DEFAULT 0", monto_usd: "REAL DEFAULT 0", metodo_pago: "TEXT", fecha: "DATETIME DEFAULT (datetime('now', '-4 hours'))", cashier_id: "TEXT", company_id: "TEXT", branch_id: "TEXT", estado_cierre: "INTEGER DEFAULT 0" },
+        ventas_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_factura: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", monto_exento: "REAL DEFAULT 0", base_imponible: "REAL DEFAULT 0", monto_iva: "REAL DEFAULT 0", total_iva: "REAL DEFAULT 0", monto_igtf: "REAL DEFAULT 0", monto_total: "REAL DEFAULT 0", tasa_bcv: "REAL DEFAULT 1", metodo_pago: "TEXT", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0", sync_server: "INTEGER DEFAULT 0", fecha_emision: "DATETIME DEFAULT (datetime('now', '-4 hours'))", estado_cierre: "INTEGER DEFAULT 0", es_nota_credito: "INTEGER DEFAULT 0", es_nota_debito: "INTEGER DEFAULT 0", factura_afectada: "TEXT", monto_factura_afectada: "REAL DEFAULT 0", fecha_factura_afectada: "TEXT", comprobante_retencion_id: "TEXT DEFAULT NULL", ganancia_venta: "REAL DEFAULT 0", estado: "TEXT DEFAULT 'EMITIDA'", es_anulada: "INTEGER DEFAULT 0" },
+        presupuestos_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_presupuesto: "TEXT UNIQUE", cliente_nombre: "TEXT", cliente_rif: "TEXT", cliente_direccion: "TEXT", cliente_telefono: "TEXT", subtotal: "REAL DEFAULT 0", monto_iva: "REAL DEFAULT 0", monto_total: "REAL DEFAULT 0", tasa_bcv: "REAL DEFAULT 1", moneda: "TEXT DEFAULT 'USD'", validez_dias: "INTEGER DEFAULT 1", estado: "TEXT DEFAULT 'EMITIDO'", fecha_emision: "DATETIME DEFAULT (datetime('now', '-4 hours'))", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0" },
         configuraciones_maestras: { clave: "TEXT PRIMARY KEY", valor: "TEXT" },
-        auditoria_fiscal: { id: "TEXT PRIMARY KEY", usuario: "TEXT", accion: "TEXT", valores: "TEXT", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
+        auditoria_fiscal: { id: "TEXT PRIMARY KEY", usuario: "TEXT", accion: "TEXT", valores: "TEXT", fecha: "DATETIME DEFAULT (datetime('now', '-4 hours'))" },
         metodos_pago_maestro: { id: "TEXT PRIMARY KEY", nombre: "TEXT NOT NULL", tecla: "TEXT", tipo_moneda: "TEXT DEFAULT 'BS'", activo: "INTEGER DEFAULT 1", flag_impresora: "TEXT DEFAULT '00'" },
-        claves_admin_maestras: { id: "TEXT PRIMARY KEY", ownerName: "TEXT", encryptedCode: "TEXT", company_id: "TEXT", created_by: "TEXT", updatedAt: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
-        guia_despacho: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_guia: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", factura_asociada: "TEXT", fecha_emision: "DATETIME DEFAULT CURRENT_TIMESTAMP", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0" },
-        guias_despacho: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_guia: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", factura_asociada: "TEXT", datos_json: "TEXT", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
-        empleados: { ID_empleado: "TEXT PRIMARY KEY", nombre: "TEXT", cedula: "TEXT", cargo: "TEXT", sueldo_base: "REAL DEFAULT 0", telefono: "TEXT", sucursal: "TEXT", saldo_pendiente: "REAL DEFAULT 0", estado_sync: "INTEGER DEFAULT 0", fecha_creacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
-        proveedores: { rif: "TEXT PRIMARY KEY", company_id: "TEXT", nombre: "TEXT", telefono: "TEXT", contacto: "TEXT", direccion: "TEXT", saldo_deuda: "REAL DEFAULT 0", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
-        movimientos_cuentas_pagar: { id: "TEXT PRIMARY KEY", proveedor_rif: "TEXT", motivo: "TEXT", nota: "TEXT", monto: "REAL DEFAULT 0", company_id: "TEXT", comprobante: "TEXT", estado: "TEXT DEFAULT 'PENDIENTE'", monto_abonado: "REAL DEFAULT 0", metodo_pago: "TEXT", referencia: "TEXT", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP", estado_sync: "INTEGER DEFAULT 0" },
-        empleados_movimientos: { id: "TEXT PRIMARY KEY", empleado_id: "TEXT", motivo: "TEXT", razon: "TEXT", monto: "REAL DEFAULT 0", company_id: "TEXT", fecha: "DATETIME DEFAULT CURRENT_TIMESTAMP", estado_sync: "INTEGER DEFAULT 0" },
-        productos_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", codigo: "TEXT", nombre: "TEXT", precio: "REAL DEFAULT 0", precio_compra: "REAL DEFAULT 0", porcentaje_ganancia: "REAL DEFAULT 0", categoria: "TEXT", status: "INTEGER DEFAULT 1", imagen: "TEXT", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
-        categorias_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", nombre: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
+        claves_admin_maestras: { id: "TEXT PRIMARY KEY", ownerName: "TEXT", encryptedCode: "TEXT", company_id: "TEXT", created_by: "TEXT", updatedAt: "DATETIME DEFAULT (datetime('now', '-4 hours'))" },
+        guia_despacho: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_guia: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", factura_asociada: "TEXT", fecha_emision: "DATETIME DEFAULT (datetime('now', '-4 hours'))", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0" },
+        guias_despacho: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", cashier_id: "TEXT", numero_guia: "TEXT", numero_control: "TEXT", cliente_nombre: "TEXT", cliente_rif: "TEXT", factura_asociada: "TEXT", datos_json: "TEXT", fecha: "DATETIME DEFAULT (datetime('now', '-4 hours'))" },
+        empleados: { ID_empleado: "TEXT PRIMARY KEY", nombre: "TEXT", cedula: "TEXT", cargo: "TEXT", sueldo_base: "REAL DEFAULT 0", telefono: "TEXT", sucursal: "TEXT", saldo_pendiente: "REAL DEFAULT 0", estado_sync: "INTEGER DEFAULT 0", fecha_creacion: "DATETIME DEFAULT (datetime('now', '-4 hours'))" },
+        proveedores: { rif: "TEXT PRIMARY KEY", company_id: "TEXT", nombre: "TEXT", telefono: "TEXT", contacto: "TEXT", direccion: "TEXT", saldo_deuda: "REAL DEFAULT 0", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT (datetime('now', '-4 hours'))" },
+        movimientos_cuentas_pagar: { id: "TEXT PRIMARY KEY", proveedor_rif: "TEXT", motivo: "TEXT", nota: "TEXT", monto: "REAL DEFAULT 0", company_id: "TEXT", comprobante: "TEXT", estado: "TEXT DEFAULT 'PENDIENTE'", monto_abonado: "REAL DEFAULT 0", metodo_pago: "TEXT", referencia: "TEXT", fecha: "DATETIME DEFAULT (datetime('now', '-4 hours'))", estado_sync: "INTEGER DEFAULT 0" },
+        empleados_movimientos: { id: "TEXT PRIMARY KEY", empleado_id: "TEXT", motivo: "TEXT", razon: "TEXT", monto: "REAL DEFAULT 0", company_id: "TEXT", fecha: "DATETIME DEFAULT (datetime('now', '-4 hours'))", estado_sync: "INTEGER DEFAULT 0" },
+        productos_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", codigo: "TEXT", nombre: "TEXT", precio: "REAL DEFAULT 0", precio_compra: "REAL DEFAULT 0", porcentaje_ganancia: "REAL DEFAULT 0", categoria: "TEXT", status: "INTEGER DEFAULT 1", imagen: "TEXT", datos_json: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT (datetime('now', '-4 hours'))" },
+        categorias_locales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", nombre: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT (datetime('now', '-4 hours'))" },
         sucursales: { id: "TEXT PRIMARY KEY", company_id: "TEXT", nombre: "TEXT", direccion: "TEXT", telefono: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "TEXT" },
-        unidades_empaque: { id: "TEXT PRIMARY KEY", company_id: "TEXT", product_id: "TEXT", nombre_producto: "TEXT DEFAULT ''", nombre_unidad: "TEXT", tipo_medida: "TEXT", factor_cantidad: "REAL DEFAULT 1", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP", ultima_sincronizacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
+        unidades_empaque: { id: "TEXT PRIMARY KEY", company_id: "TEXT", product_id: "TEXT", nombre_producto: "TEXT DEFAULT ''", nombre_unidad: "TEXT", tipo_medida: "TEXT", factor_cantidad: "REAL DEFAULT 1", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT (datetime('now', '-4 hours'))", ultima_sincronizacion: "DATETIME DEFAULT (datetime('now', '-4 hours'))" },
         historial_tasas: { fecha: "DATE PRIMARY KEY", valor: "DECIMAL(18, 8) DEFAULT 0", fuente: "TEXT DEFAULT 'BCV'" },
-        comprobantes_retencion: { id: "TEXT PRIMARY KEY", datos_json: "TEXT", fecha_registro: "DATETIME DEFAULT CURRENT_TIMESTAMP", estatus: "TEXT DEFAULT 'EMITIDO'" },
-        salidas_inventario: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", product_id: "TEXT", cantidad: "REAL DEFAULT 0", unidad: "TEXT", motivo: "TEXT", observacion: "TEXT", usuario_id: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" },
-        entradas_inventario: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", product_id: "TEXT", cantidad: "REAL DEFAULT 0", costo_unitario: "REAL DEFAULT 0", precio_venta: "REAL DEFAULT 0", proveedor_id: "TEXT", factura_referencia: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT CURRENT_TIMESTAMP" }
+        comprobantes_retencion: { id: "TEXT PRIMARY KEY", datos_json: "TEXT", fecha_registro: "DATETIME DEFAULT (datetime('now', '-4 hours'))", estatus: "TEXT DEFAULT 'EMITIDO'" },
+        salidas_inventario: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", product_id: "TEXT", cantidad: "REAL DEFAULT 0", unidad: "TEXT", motivo: "TEXT", observacion: "TEXT", usuario_id: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT (datetime('now', '-4 hours'))" },
+        entradas_inventario: { id: "TEXT PRIMARY KEY", company_id: "TEXT", branch_id: "TEXT", product_id: "TEXT", cantidad: "REAL DEFAULT 0", costo_unitario: "REAL DEFAULT 0", precio_venta: "REAL DEFAULT 0", proveedor_id: "TEXT", factura_referencia: "TEXT", estado_sync: "INTEGER DEFAULT 0", fecha_modificacion: "DATETIME DEFAULT (datetime('now', '-4 hours'))" }
     };
 
     function asegurarEsquema(dbConnection, esquema) {
@@ -138,7 +147,7 @@ if (config.isServer) {
                         dbConnection.prepare(alterQuery).run();
                         if (hasDynamicDefault) {
                             try {
-                                dbConnection.prepare(`UPDATE ${tabla} SET ${colName} = datetime('now', 'localtime') WHERE ${colName} IS NULL`).run();
+                                dbConnection.prepare(`UPDATE ${tabla} SET ${colName} = datetime('now', '-4 hours') WHERE ${colName} IS NULL`).run();
                             } catch(eUp) {}
                         }
                         console.log(`[DB AUTO-SYNC] Columna añadida: '${colName}' (${cleanType}) en la tabla '${tabla}'`);
@@ -220,7 +229,7 @@ server.post('/api/maestro/registrar-guia-despacho', (req, res) => {
                 cliente_rif TEXT,
                 factura_asociada TEXT,
                 datos_json TEXT,
-                fecha DATETIME DEFAULT CURRENT_TIMESTAMP
+                fecha DATETIME DEFAULT (datetime('now', '-4 hours'))
             )
         `);
 
@@ -420,7 +429,7 @@ server.post('/api/maestro/auditoria-fiscal', (req, res) => {
             usuario || 'Desconocido',
             accion,
             valores || 'Sin valores',
-            fecha || new Date().toISOString()
+            fecha || getCaracasTime()
         );
         res.json({ exito: true });
     } catch (error) {
@@ -971,7 +980,7 @@ server.post('/api/maestro/sucursales/sincronizar', (req, res) => {
             sucursal.direccion,
             sucursal.telefono,
             1,
-            sucursal.fecha_modificacion || new Date().toISOString()
+            sucursal.fecha_modificacion || getCaracasTime()
         );
         res.json({ exito: true, success: true });
     } catch (e) {
@@ -1329,7 +1338,7 @@ server.post('/api/maestro/categorias/sincronizar', (req, res) => {
                 fecha_modificacion = excluded.fecha_modificacion,
                 estado_sync = 1
         `);
-        upsert.run(cat.id, cat.company_id || cat.empresa_ID, cat.nombre, cat.fecha_modificacion || new Date().toISOString());
+        upsert.run(cat.id, cat.company_id || cat.empresa_ID, cat.nombre, cat.fecha_modificacion || getCaracasTime());
         res.json({ success: true, id: cat.id });
     } catch (error) {
         console.error("❌ Error en Maestro sincronizando categoría:", error.message);
@@ -1679,7 +1688,7 @@ server.post('/api/maestro/registrar-cierre', (req, res) => {
 
         stmt.run(
             c.id,
-            c.fecha || new Date().toISOString(),
+            c.fecha || getCaracasTime(),
             c.companyId,
             c.branchId,
             c.cashierId,
@@ -1730,6 +1739,23 @@ function sanitizarDatosJsonVenta(datosJsonRaw) {
     }
 }
 
+// Las estadísticas filtran con BETWEEN 'YYYY-MM-DD 00:00:00' AND 'YYYY-MM-DD 23:59:59' (comparación de texto).
+// Una fecha ISO ('2026-10-04T10:22:36.599Z') queda fuera de ese rango y además está en UTC.
+// Se normaliza SIEMPRE a hora local 'YYYY-MM-DD HH:MM:SS'.
+function normalizarFechaLocalVenta(fecha) {
+    const pad = (n) => String(n).padStart(2, '0');
+    let d = null;
+    if (fecha && typeof fecha === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(fecha.trim())) {
+        return fecha.trim(); // Ya está en formato local correcto
+    }
+    if (fecha) {
+        const parsed = new Date(fecha);
+        if (!isNaN(parsed.getTime())) d = parsed;
+    }
+    if (!d) d = new Date();
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
 server.post('/api/maestro/registrar-venta', (req, res) => {
     const v = req.body;
     console.log(`\n🛒 [API MAESTRO] Recibiendo Venta/NC: ${v.numero_factura} de Sucursal: ${v.branch_id}`);
@@ -1759,7 +1785,7 @@ server.post('/api/maestro/registrar-venta', (req, res) => {
             v.factura_afectada || null,
             v.monto_factura_afectada || null,
             v.fecha_factura_afectada || null,
-            v.fecha_emision || new Date().toISOString(),
+            normalizarFechaLocalVenta(v.fecha_emision),
             v.estado || 'EMITIDA'
         );
 
@@ -1795,7 +1821,7 @@ server.post('/api/maestro/registrar-venta', (req, res) => {
                     tabla TEXT,
                     id_registro TEXT,
                     datos TEXT,
-                    fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
+                    fecha_creacion DATETIME DEFAULT (datetime('now', '-4 hours'))
                 )`).run();
                 activeDb.prepare('INSERT INTO sync_queue (operacion, tabla, datos) VALUES (?, ?, ?)')
                     .run('CREAR', 'ventas_descuento_vps', JSON.stringify(payloadDescuento));
@@ -1856,7 +1882,7 @@ server.post('/api/maestro/anular-venta', (req, res) => {
                 const stmtMovCaja = serverDb.prepare(`
                     INSERT INTO movimientos_caja_locales (
                         id, tipo, concepto, monto, monto_usd, metodo_pago, fecha, cashier_id, company_id, branch_id, estado_cierre
-                    ) VALUES (?, 'GASTO', ?, ?, ?, ?, datetime('now', 'localtime'), ?, ?, ?, 0)
+                    ) VALUES (?, 'GASTO', ?, ?, ?, ?, datetime('now', '-4 hours'), ?, ?, ?, 0)
                 `);
 
                 metodosReintegro.forEach(m => {
@@ -1919,7 +1945,7 @@ server.post('/api/maestro/guardar-presupuesto', (req, res) => {
             moneda: datos.moneda || 'USD',
             validez_dias: datos.validez_dias || 1,
             estado: datos.estado || 'EMITIDO',
-            fecha_emision: datos.fecha_emision || new Date().toISOString(),
+            fecha_emision: datos.fecha_emision || getCaracasTime(),
             datos_json: typeof datos.datos_json === 'object' ? JSON.stringify(datos.datos_json) : (datos.datos_json || '{}')
         });
 

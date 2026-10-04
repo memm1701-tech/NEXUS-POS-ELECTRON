@@ -637,7 +637,7 @@ window.updateVitrinaData = updateVitrinaData;
 
             // 1. Recolección de datos
             const tiendaData = {
-                ultimoCambio: new Date().toISOString(),
+                ultimoCambio: (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})(),
                 companyId: companyId, 
                 storeName: storeNameInput?.value?.trim() || DEFAULT_STORE_NAME,
                 whatsappNumber: whatsappNumberInput?.value?.trim() || DEFAULT_WHATSAPP,

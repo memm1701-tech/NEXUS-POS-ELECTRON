@@ -608,8 +608,8 @@
                     tipo_medida: eServidor.tipo_medida || eServidor.medida || 'Unidades',
                     factor_cantidad: parseFloat(eServidor.factor_cantidad || eServidor.cantidad || 1.0),
                     estado_sync: 1,
-                    fecha_modificacion: eServidor.fecha_modificacion || new Date().toISOString(),
-                    ultima_sincronizacion: eServidor.ultima_sincronizacion || new Date().toISOString()
+                    fecha_modificacion: eServidor.fecha_modificacion || (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})(),
+                    ultima_sincronizacion: eServidor.ultima_sincronizacion || (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})()
                 };
 
                 loteParaSincronizar.push(empaqueValidado);
@@ -837,7 +837,7 @@
             tipo_medida: document.getElementById('measure-type').value,
             factor_cantidad: parseFloat(document.getElementById('quantity').value),
             estado_sync: 0,
-            fecha_modificacion: new Date().toISOString()
+            fecha_modificacion: (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})()
         };
 
         const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);

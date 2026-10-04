@@ -637,7 +637,7 @@
             observacion: document.getElementById('observation').value,
             usuarioId: idUsuario, // Para main.js
             usuario_id: idUsuario,
-            fecha_modificacion: new Date().toISOString()
+            fecha_modificacion: (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})()
         };
 
         try {

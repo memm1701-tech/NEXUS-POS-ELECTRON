@@ -352,7 +352,7 @@
                 monto: amountBs,
                 monto_usd: amountUsd,
                 metodo_pago: metodoUnido,
-                fecha: new Date().toISOString(),
+                fecha: (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})(),
                 cashier_id: userId,
                 company_id: companyId,
                 branch_id: branchId || 'SUC-01'

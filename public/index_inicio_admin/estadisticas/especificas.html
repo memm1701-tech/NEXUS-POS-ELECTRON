@@ -1115,16 +1115,14 @@
                 ini = new Date();
                 fin = new Date();
             } else if (periodo === 'semana') {
-                const dia = d.getDay();
-                const diff = d.getDate() - dia + (dia === 0 ? -6 : 1);
-                ini = new Date(d.getFullYear(), d.getMonth(), diff);
-                fin = new Date(d.getFullYear(), d.getMonth(), diff + 6);
+                ini.setDate(d.getDate() - 7);
+                fin = new Date();
             } else if (periodo === 'mes') {
-                ini = new Date(d.getFullYear(), d.getMonth(), 1);
-                fin = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+                ini.setDate(d.getDate() - 30);
+                fin = new Date();
             } else if (periodo === 'anual') {
-                ini = new Date(d.getFullYear(), 0, 1);
-                fin = new Date(d.getFullYear(), 11, 31);
+                ini.setFullYear(d.getFullYear() - 1);
+                fin = new Date();
             } else if (periodo === 'personalizado') {
                 const elDesde = document.getElementById(inputDesdeId);
                 const elHasta = document.getElementById(inputHastaId);
