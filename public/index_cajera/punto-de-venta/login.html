@@ -64,7 +64,7 @@
                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-2 focus:ring-red-500 sm:text-base p-2.5 border transition duration-150 ease-in-out">
             </div>
 
-            <button class="btn-submit w-full bg-red-600 text-white py-3 px-6 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition duration-150 ease-in-out text-lg font-semibold shadow-md" 
+            <button class="btn-submit w-full bg-[#2D3748] text-white py-3 px-6 rounded-lg hover:bg-[#1A202C] focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition duration-150 ease-in-out text-lg font-semibold shadow-md" 
                     id="btn-submit" disabled>
                 Desbloquear Funcionalidad
             </button>
@@ -180,8 +180,36 @@
                     }
 
                     // ÉXITO: Generar y almacenar el token de acceso
-                    const accessKey = generateSecureToken(32); 
-                    sessionStorage.setItem('adminAccessKey', accessKey); 
+                    const accessKey = generateSecureToken(32);
+                    sessionStorage.setItem('adminAccessKey', accessKey);
+
+                    // REGISTRO DE AUDITORÍA
+                    if (window.nexusAPI && window.nexusAPI.guardarAuditoriaAdmin) {
+                        try {
+                            const sesion = await window.nexusAPI.obtenerSesionLocal();
+                            const d = new Date();
+                            const c = new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));
+                            const p = (n) => String(n).padStart(2,'0');
+                            const fechaAudit = c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());
+
+                            let adminName = claveValida.ownerName || 'Administrador';
+                            let moduleName = "Cierre de Caja";
+
+                            await window.nexusAPI.guardarAuditoriaAdmin({
+                                id: 'AUDIT-' + Date.now(),
+                                company_id: companyId || (sesion ? sesion.companyId : 'unknown'),
+                                branch_id: (sesion ? sesion.branchId : 'unknown'),
+                                cashier_id: (sesion ? sesion.uid : 'unknown'),
+                                admin_name: adminName,
+                                accion: 'Acceso a ' + moduleName,
+                                detalles: 'Se autorizó el acceso a las opciones del sistema: ' + moduleName,
+                                fecha: fechaAudit
+                            });
+                        } catch (err) {
+                            console.error("Error guardando auditoría:", err);
+                        }
+                    }
+ 
                     
                     showCustomAlert('Acceso concedido. Redirigiendo...', 'success');
                     if(keyIcon) keyIcon.style.color = '#10B981'; // Verde (Éxito)

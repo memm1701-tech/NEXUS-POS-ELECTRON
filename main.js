@@ -1109,6 +1109,7 @@ ipcMain.handle('procesar-cierre-caja-local', async (event, reporte) => {
             const ipMaestro = config.isServer ? '127.0.0.1' : getIpMaestro();
             if (ipMaestro) {
                 await llamarMaestro('POST', '/api/maestro/registrar-cierre', reporte, { timeout: 6000, reintentos: 2 });
+                if (!config.isServer) db.prepare('UPDATE cierres_caja_locales SET estado_sync = 1 WHERE id = ?').run(reporte.id);
                 console.log("📡 Cierre sincronizado con el Servidor Maestro exitosamente.");
             } else {
                 console.warn('⚠️ [RED] Cierre no sincronizado: IP del maestro no configurada.');
@@ -1340,7 +1341,7 @@ ipcMain.on('tarear-bascula', () => {
     console.log(`âš–ï¸  BÃ¡scula Tareada (Software). Nuevo Offset: ${taraOffset}`);
 });
 
-ipcMain.on('iniciar-puerto-bascula', (event, puertoCOM, baudRate) => {
+ipcMain.on('iniciar-puerto-bascula', (event, puertoCOM, baudRate, tipoBalanza) => {
     // 1. SIEMPRE actualizamos a quiÃ©n le vamos a enviar la data (la nueva ventana)
     senderBasculaActivo = event.sender;
 
@@ -1372,7 +1373,15 @@ ipcMain.on('iniciar-puerto-bascula', (event, puertoCOM, baudRate) => {
 
         parser.on('data', (data) => {
             const rawStr = data.toString().trim();
-            const rawWeight = parseFloat(rawStr);
+            let rawWeight = NaN;
+            if (tipoBalanza === 'IMPORTADO') {
+                const match = rawStr.match(/([+-]?\s*\d+\.\d+)/);
+                if (match) {
+                    rawWeight = parseFloat(match[1].replace(/\s+/g, ''));
+                }
+            } else {
+                rawWeight = parseFloat(rawStr);
+            }
 
             if (!isNaN(rawWeight)) {
                 ultimoPesoBruto = rawWeight;
@@ -1809,11 +1818,15 @@ ipcMain.handle('obtener-productos-local', async (event, empresaId) => {
         if (!config.isServer) {
             const ipMaestro = getIpMaestro();
             if (ipMaestro) {
-                const url = `http://${ipMaestro}:3000/api/maestro/obtener-productos?empresaId=${encodeURIComponent(empresaId || '')}`;
-                const reqFetch = await fetch(url, { signal: AbortSignal.timeout(10000) });
-                if (reqFetch.ok) {
-                    const data = await reqFetch.json();
-                    if (Array.isArray(data)) return data;
+                try {
+                    const url = `http://${ipMaestro}:3000/api/maestro/obtener-productos?empresaId=${encodeURIComponent(empresaId || '')}`;
+                    const reqFetch = await fetch(url, { signal: AbortSignal.timeout(10000) });
+                    if (reqFetch.ok) {
+                        const data = await reqFetch.json();
+                        if (Array.isArray(data)) return data;
+                    }
+                } catch(netErr) {
+                    throw new Error("Sin conexión con el Servidor Maestro. Imposible operar facturación.");
                 }
             }
         }
@@ -2406,6 +2419,59 @@ async function reconciliarVentasPendientesMaestro() {
     }
 }
 
+
+
+// ============================================================================
+// 🔄 DAEMON DE RECONCILIACIÓN DE CIERRES PENDIENTES CON EL MAESTRO
+// ============================================================================
+let isReconciliandoCierres = false;
+async function reconciliarCierresPendientesMaestro() {
+    if (isReconciliandoCierres || config.isServer) return;
+    isReconciliandoCierres = true;
+    try {
+        const pendientes = db.prepare('SELECT * FROM cierres_caja_locales WHERE estado_sync = 0 ORDER BY fecha ASC LIMIT 10').all();
+
+        if (!pendientes || pendientes.length === 0) {
+            isReconciliandoCierres = false;
+            return;
+        }
+
+        console.log(`🔄 [RECONCILIACIÓN CIERRES] Detectados ${pendientes.length} cierres pendientes...`);
+        let count = 0;
+
+        for (const cierre of pendientes) {
+            try {
+                const reporte = {
+                    id: cierre.id,
+                    fecha: cierre.fecha,
+                    companyId: cierre.company_id,
+                    branchId: cierre.branch_id,
+                    cashierId: cierre.cashier_id,
+                    totalSalesBs: cierre.total_ventas_bs,
+                    totalSalesDollars: cierre.total_ventas_usd,
+                    totalExpensesBs: cierre.total_gastos_bs,
+                    totalExpensesDollars: cierre.total_gastos_usd,
+                    totalIncomes: cierre.total_ingresos_bs,
+                    totalDifferenceBs: cierre.total_diferencia_bs,
+                    totalDifferenceDollars: cierre.total_diferencia_usd,
+                    paymentsConciliation: cierre.detalle_pagos_json
+                };
+                
+                const res = await llamarMaestro('POST', '/api/maestro/registrar-cierre', reporte, { timeout: 6000, reintentos: 1 });
+                if (res && (res.data?.exito || res.status === 200)) {
+                    db.prepare("UPDATE cierres_caja_locales SET estado_sync = 1 WHERE id = ?").run(cierre.id);
+                    count++;
+                }
+            } catch (errItem) {
+                console.warn(`⚠️ Maestro no disponible al procesar cierre ${cierre.id}`);
+                break;
+            }
+        }
+
+        if (count > 0) console.log(`✅ [RECONCILIACIÓN CIERRES] ${count} sincronizados.`);
+    } catch(e) { } finally { isReconciliandoCierres = false; }
+}
+
 ipcMain.handle('reconciliar-ventas-maestro', async () => {
     return await reconciliarVentasPendientesMaestro();
 });
@@ -2413,6 +2479,7 @@ ipcMain.handle('reconciliar-ventas-maestro', async () => {
 // Daemon recurrente cada 30 segundos
 setInterval(() => {
     reconciliarVentasPendientesMaestro().catch(() => {});
+    reconciliarCierresPendientesMaestro().catch(() => {});
 }, 30000);
 
 // ============================================================================
