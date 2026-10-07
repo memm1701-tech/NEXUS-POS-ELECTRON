@@ -521,6 +521,8 @@
     
     async function obtenerConsejoIA() {
         const textElement = document.getElementById('recommendationText');
+        if (!textElement) return; // Prevents crash if user navigates away
+        
         textElement.innerHTML = '<em style="color: #64748b;">Analizando la economía y evaluando indicadores...</em>';
 
         try {
@@ -529,9 +531,16 @@
                 mensaje: "Analiza la tasa de cambio actual y dame un consejo financiero estratégico de máximo 3 líneas para mi negocio en Venezuela. Ve directo al grano, sin saludos.",
                 contexto: "Panel de Tasa Global Nexus. Rol: Analista financiero experto."
             });
-            textElement.innerHTML = `<strong style="color: #1a73e8;">Consejo del día:</strong> ${respuesta}`;
+            
+            const currentElement = document.getElementById('recommendationText');
+            if (currentElement) {
+                currentElement.innerHTML = `<strong style="color: #1a73e8;">Consejo del día:</strong> ${respuesta}`;
+            }
         } catch (e) {
-            textElement.innerHTML = "<span style='color: #ef4444;'>El servicio de Inteligencia Financiera no está disponible temporalmente.</span>";
+            const currentElement = document.getElementById('recommendationText');
+            if (currentElement) {
+                currentElement.innerHTML = "<span style='color: #ef4444;'>El servicio de Inteligencia Financiera no está disponible temporalmente.</span>";
+            }
         }
     }
 

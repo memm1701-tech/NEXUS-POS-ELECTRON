@@ -10402,6 +10402,10 @@ async function iniciarDetectorCambios() {
 
     async function conectarSSE() {
         try {
+        if (window.receptorActivoSSE) {
+            window.receptorActivoSSE.close();
+            window.receptorActivoSSE = null;
+        }
             const ip = await window.nexusAPI.obtenerIpMaestro();
 
             if (!ip || ip === 'null' || ip.trim() === '') {
@@ -10419,6 +10423,7 @@ async function iniciarDetectorCambios() {
 
             // Abrimos la manguera (EventSource es nativo del navegador)
             const receptor = new EventSource(urlStream);
+            window.receptorActivoSSE = receptor;
             receptorActivo = receptor;
 
             receptor.onopen = () => {
@@ -11898,7 +11903,15 @@ window.confirmarAnulacionFinal = async function() {
     }
 };
 
-window.addEventListener('productosActualizadosBackground', async () => { const pModal = document.getElementById('payment-modal'); if (pModal && !pModal.classList.contains('hidden') && pModal.style.display !== 'none') return;
+// --- LIMPIEZA DE EVENT LISTENERS GLOBALES ---
+if (window.productosActualizadosHandler) {
+    window.removeEventListener('productosActualizadosBackground', window.productosActualizadosHandler);
+    if (window.parent && window.parent !== window) {
+        try { window.parent.removeEventListener('productosActualizadosBackground', window.productosActualizadosHandler); } catch(e){}
+    }
+}
+
+window.productosActualizadosHandler = async () => {
     const pModal = document.getElementById('payment-modal');
     if (pModal && (!pModal.classList.contains('hidden') && pModal.style.display !== 'none')) {
         console.log("Ignorando actualización de catálogo porque el modal de pago está abierto.");
@@ -11915,17 +11928,17 @@ window.addEventListener('productosActualizadosBackground', async () => { const p
     if (typeof renderCart === 'function') {
         renderCart();
     }
-    if (typeof messageBox === 'function') {
-        messageBox("Catálogo y precios actualizados en segundo plano", "bg-indigo-600");
-    }
-});
+    // NOTA: Se elimina el messageBox azul para evitar redundancia y spam en UI
+};
+
+window.addEventListener('productosActualizadosBackground', window.productosActualizadosHandler);
 
 if (window.nexusAPI && typeof window.nexusAPI.onProductosCambiados === 'function') {
-    window.nexusAPI.onProductosCambiados(async () => { const pModal = document.getElementById('payment-modal'); if (pModal && !pModal.classList.contains('hidden') && pModal.style.display !== 'none') return;
-    const pModal = document.getElementById('payment-modal');
-    if (pModal && (!pModal.classList.contains('hidden') && pModal.style.display !== 'none')) {
-        return;
-    }
+    window.nexusAPI.onProductosCambiados(async () => {
+        const pModal = document.getElementById('payment-modal');
+        if (pModal && (!pModal.classList.contains('hidden') && pModal.style.display !== 'none')) {
+            return;
+        }
         console.log("⚡ [FACTURACIÓN] IPC productos-actualizados recibido.");
         allProducts = [];
         if (typeof fetchProducts === 'function') await fetchProducts();
@@ -11936,18 +11949,7 @@ if (window.nexusAPI && typeof window.nexusAPI.onProductosCambiados === 'function
 
 if (window.parent && window.parent !== window) {
     try {
-        window.parent.addEventListener('productosActualizadosBackground', async () => { const pModal = document.getElementById('payment-modal'); if (pModal && !pModal.classList.contains('hidden') && pModal.style.display !== 'none') return;
-    const pModal = document.getElementById('payment-modal');
-    if (pModal && (!pModal.classList.contains('hidden') && pModal.style.display !== 'none')) {
-        return;
-    }
-            allProducts = [];
-            if (typeof fetchProducts === 'function') await fetchProducts();
-            if (typeof window.refrescarPreciosCarrito === 'function') {
-                await window.refrescarPreciosCarrito();
-            }
-            if (typeof renderCart === 'function') renderCart();
-        });
+        window.parent.addEventListener('productosActualizadosBackground', window.productosActualizadosHandler);
     } catch(e){}
 }
 

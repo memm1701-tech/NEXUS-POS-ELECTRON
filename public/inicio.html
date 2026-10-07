@@ -1014,6 +1014,7 @@
             })
             .then(html => {
                 // 1. Inyectamos el HTML
+                html = html.replace(/<link[^>]*href=[\"'][^\"']*node_modules[^\"']*[\"'][^>]*>/gi, '');
                 mainContent.innerHTML = html;
                 
                 // 2. Reiniciamos el scroll arriba para la nueva vista
@@ -1212,6 +1213,7 @@ function cargarVistaDinamica(url) {
                 return response.text();
             })
             .then(html => {
+                html = html.replace(/<link[^>]*href=[\"'][^\"']*node_modules[^\"']*[\"'][^>]*>/gi, '');
                 mainContent.innerHTML = html;
                 
                 // Si tienes scripts dentro de las vistas, necesitas esta línea para que corran
