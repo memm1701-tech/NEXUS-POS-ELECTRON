@@ -68,8 +68,9 @@
     }
 
     /* ------------------ SECCIÓN GANANCIAS ------------------ */
-    .estadisticas-container .section-ganancias {
-        min-height: 440px;
+    .estadisticas-container .section-ganancias,
+    .estadisticas-container .section-ventas {
+        min-height: 290px;
     }
 
     .estadisticas-container .ganancias-header {
@@ -248,8 +249,35 @@
         border: 1px solid rgba(5, 150, 105, 0.2);
     }
 
+    .estadisticas-container .total-venta {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .estadisticas-container .total-venta .label {
+        font-size: 0.9rem;
+        color: #64748b;
+        font-weight: 500;
+    }
+    .estadisticas-container .total-venta .valor-venta {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--color-primary);
+        letter-spacing: -0.02em;
+    }
+    .estadisticas-container .total-venta .variacion-venta {
+        font-weight: 600;
+        font-size: 0.8rem;
+        padding: 3px 10px;
+        border-radius: 20px;
+        color: var(--color-primary);
+        background-color: rgba(2, 132, 199, 0.1);
+        border: 1px solid rgba(2, 132, 199, 0.2);
+    }
+
     .estadisticas-container .grafico-placeholder {
-        height: 320px;
+        height: 200px;
         background-color: #ffffff;
         display: flex;
         justify-content: center;
@@ -863,6 +891,47 @@
         </div>
     </section>
 
+    <!-- TARJETA 2: VENTAS TOTALES (GRÁFICA) -->
+    <section class="section-ventas card">
+        <div class="ganancias-header">
+            <div>
+                <h2>💳 Ventas Totales</h2>
+            </div>
+            <div class="selector-periodo" id="selector-ventas">
+                <button class="btn-periodo-ventas" data-periodo="dia">Día</button>
+                <button class="btn-periodo-ventas active" data-periodo="semana">Semana</button>
+                <button class="btn-periodo-ventas" data-periodo="mes">Mes</button>
+                <button class="btn-periodo-ventas" data-periodo="anual">Año</button>
+                <button class="btn-periodo-ventas" data-periodo="personalizado">📅 Rango</button>
+            </div>
+            <div class="total-venta">
+                <span class="label">Total Facturado:</span>
+                <span class="valor-venta" id="venta-total-val">$0.00</span>
+                <span class="subtexto-bs" id="venta-total-bs" style="font-size: 0.8rem; color: #64748b; font-weight: 500; margin-left: 6px;"></span>
+                <span class="variacion-venta" id="venta-variacion-badge">Semana actual</span>
+            </div>
+        </div>
+
+        <!-- Barra de Fechas Personalizadas para Ventas Totales -->
+        <div class="custom-date-bar" id="datebar-ventas">
+            <div class="date-input-group">
+                <label>Desde:</label>
+                <input type="date" id="fecha-desde-ventas">
+            </div>
+            <div class="date-input-group">
+                <label>Hasta:</label>
+                <input type="date" id="fecha-hasta-ventas">
+            </div>
+            <button class="btn-aplicar-rango" id="btn-aplicar-ventas">
+                <span style="font-size: 14px;">🔍</span> Filtrar
+            </button>
+        </div>
+
+        <div class="grafico-placeholder" id="grafico-ventas-container">
+            <p style="color: #94a3b8;">Cargando gráfica de ventas totales...</p>
+        </div>
+    </section>
+
     <!-- TARJETAS KPIS RÁPIDOS -->
     <section class="kpi-grid">
         
@@ -1101,8 +1170,8 @@
         const lunesStr = getLocalISODate(lunesSemana);
 
         // Inicializar valores de inputs de fecha
-        const inputsDesde = ['fecha-desde-ganancias', 'fecha-desde-producto', 'fecha-desde-cliente', 'fecha-desde-sucursal', 'fecha-desde-rotacion'];
-        const inputsHasta = ['fecha-hasta-ganancias', 'fecha-hasta-producto', 'fecha-hasta-cliente', 'fecha-hasta-sucursal', 'fecha-hasta-rotacion'];
+        const inputsDesde = ['fecha-desde-ganancias', 'fecha-desde-ventas', 'fecha-desde-producto', 'fecha-desde-cliente', 'fecha-desde-sucursal', 'fecha-desde-rotacion'];
+        const inputsHasta = ['fecha-hasta-ganancias', 'fecha-hasta-ventas', 'fecha-hasta-producto', 'fecha-hasta-cliente', 'fecha-hasta-sucursal', 'fecha-hasta-rotacion'];
         inputsDesde.forEach(id => { const el = document.getElementById(id); if (el) el.value = lunesStr; });
         inputsHasta.forEach(id => { const el = document.getElementById(id); if (el) el.value = hoyStr; });
 
@@ -1156,24 +1225,31 @@
             return { data: res.data, fecha_inicio, fecha_fin, ip, companyId, api };
         }
 
-        // --- MOTOR DE GRÁFICO SVG NATIVO INTERACTIVO ---
-        function renderGraficoGanancias(container, data) {
+        // --- MOTOR DE GRÁFICO SVG NATIVO INTERACTIVO REUTILIZABLE ---
+        function renderGraficoLinea(container, data, options = {}) {
             container.innerHTML = '';
             container.style.position = 'relative';
 
+            const {
+                primaryColor = '#0284c7',
+                accentColor = '#38bdf8',
+                tooltipTitle = 'Total',
+                emptyMessage = 'No hay datos registrados en este periodo'
+            } = options;
+
             if (!data || data.length === 0) {
-                container.innerHTML = '<div style="display:flex; height:100%; width:100%; align-items:center; justify-content:center; color:#94a3b8; font-weight:500;">No hay datos de ventas en este periodo seleccionado</div>';
+                container.innerHTML = `<div style="display:flex; height:100%; width:100%; align-items:center; justify-content:center; color:#94a3b8; font-weight:500;">${emptyMessage}</div>`;
                 return;
             }
 
-            const width = container.clientWidth - 40;
-            const height = container.clientHeight - 40;
-            const padding = { top: 25, right: 20, bottom: 35, left: 60 };
+            const width = Math.max(200, container.clientWidth - 40);
+            const height = Math.max(120, container.clientHeight - 40);
+            const padding = { top: 20, right: 20, bottom: 30, left: 60 };
             
             const graphWidth = Math.max(100, width - padding.left - padding.right);
-            const graphHeight = Math.max(100, height - padding.top - padding.bottom);
+            const graphHeight = Math.max(80, height - padding.top - padding.bottom);
 
-            let maxVal = Math.max(...data.map(d => Number(d.total_ganancia) || 0));
+            let maxVal = Math.max(...data.map(d => Number(d.val) || 0));
             if (maxVal <= 0) maxVal = 10;
             else maxVal = maxVal * 1.15; // 15% headroom superior
 
@@ -1181,9 +1257,9 @@
 
             const points = data.map((d, i) => {
                 const x = padding.left + (i * xStep);
-                const y = padding.top + graphHeight - ((d.total_ganancia / maxVal) * graphHeight);
-                const pointLabel = d.label || d.fecha.substring(5);
-                return { x, y, label: pointLabel, val: d.total_ganancia };
+                const y = padding.top + graphHeight - (((Number(d.val) || 0) / maxVal) * graphHeight);
+                const pointLabel = d.label || (d.fecha ? d.fecha.substring(5) : '');
+                return { x, y, label: pointLabel, val: Number(d.val) || 0 };
             });
 
             let areaPath = `M ${points[0].x} ${padding.top + graphHeight} `;
@@ -1229,7 +1305,7 @@
                 if (i % stepXLabel === 0 || i === points.length - 1) {
                     const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
                     text.setAttribute("x", p.x);
-                    text.setAttribute("y", padding.top + graphHeight + 22);
+                    text.setAttribute("y", padding.top + graphHeight + 20);
                     text.setAttribute("text-anchor", "middle");
                     text.setAttribute("fill", "#64748b");
                     text.setAttribute("font-size", "11px");
@@ -1241,7 +1317,7 @@
             // Área degradada
             const areaEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
             areaEl.setAttribute("d", areaPath);
-            areaEl.setAttribute("fill", "#0284c7");
+            areaEl.setAttribute("fill", primaryColor);
             areaEl.setAttribute("fill-opacity", "0.15");
             svg.appendChild(areaEl);
 
@@ -1249,7 +1325,7 @@
             const lineEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
             lineEl.setAttribute("d", linePath);
             lineEl.setAttribute("fill", "none");
-            lineEl.setAttribute("stroke", "#0284c7"); 
+            lineEl.setAttribute("stroke", primaryColor); 
             lineEl.setAttribute("stroke-width", "2.5");
             lineEl.setAttribute("stroke-linecap", "round");
             svg.appendChild(lineEl);
@@ -1258,7 +1334,7 @@
             const cursorLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
             cursorLine.setAttribute("y1", padding.top);
             cursorLine.setAttribute("y2", padding.top + graphHeight);
-            cursorLine.setAttribute("stroke", "#0284c7");
+            cursorLine.setAttribute("stroke", primaryColor);
             cursorLine.setAttribute("stroke-dasharray", "3 3");
             cursorLine.style.display = "none";
             svg.appendChild(cursorLine);
@@ -1270,7 +1346,7 @@
                 circle.setAttribute("cy", p.y);
                 circle.setAttribute("r", "0");
                 circle.setAttribute("fill", "#ffffff");
-                circle.setAttribute("stroke", "#0284c7");
+                circle.setAttribute("stroke", primaryColor);
                 circle.setAttribute("stroke-width", "2.5");
                 circle.style.transition = "r 0.15s ease";
                 circle.style.pointerEvents = "none";
@@ -1335,8 +1411,8 @@
 
                     tooltip.innerHTML = `
                         <div style="display:flex; justify-content:space-between; align-items:center; gap: 12px;">
-                            <span style="color:#94a3b8; font-weight:500;">${p.label}</span>
-                            <span style="font-weight:700; color:#34d399;">$${p.val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <span style="color:#94a3b8; font-weight:500;">${p.label} (${tooltipTitle})</span>
+                            <span style="font-weight:700; color:${accentColor};">$${p.val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                     `;
                     tooltip.style.display = "block";
@@ -1357,6 +1433,24 @@
 
             svg.appendChild(overlay);
             container.appendChild(svg);
+        }
+
+        function renderGraficoGanancias(container, data) {
+            renderGraficoLinea(container, data, {
+                primaryColor: '#059669',
+                accentColor: '#34d399',
+                tooltipTitle: 'Ganancia',
+                emptyMessage: 'No hay datos de ganancias en este periodo seleccionado'
+            });
+        }
+
+        function renderGraficoVentas(container, data) {
+            renderGraficoLinea(container, data, {
+                primaryColor: '#0284c7',
+                accentColor: '#38bdf8',
+                tooltipTitle: 'Ventas',
+                emptyMessage: 'No hay datos de ventas en este periodo seleccionado'
+            });
         }
 
         // ==========================================
@@ -1396,8 +1490,11 @@
                         const hStr = h.toString().padStart(2, '0');
                         const stringFecha = `${fecha_fin} ${hStr}:00:00`;
                         const item = mapaDatos[stringFecha] || { fecha: stringFecha, total_ganancia: 0 };
-                        item.label = `${hStr}:00`;
-                        serieCompleta.push(item);
+                        serieCompleta.push({
+                            fecha: stringFecha,
+                            label: `${hStr}:00`,
+                            val: Number(item.total_ganancia) || 0
+                        });
                     }
                 } else {
                     const iniDate = new Date(fecha_inicio + 'T00:00:00');
@@ -1405,8 +1502,11 @@
                     for (let d = new Date(iniDate); d <= finDate; d.setDate(d.getDate() + 1)) {
                         const stringFecha = getLocalISODate(d);
                         const item = mapaDatos[stringFecha] || { fecha: stringFecha, total_ganancia: 0 };
-                        item.label = stringFecha.substring(5); // MM-DD
-                        serieCompleta.push(item);
+                        serieCompleta.push({
+                            fecha: stringFecha,
+                            label: stringFecha.substring(5), // MM-DD
+                            val: Number(item.total_ganancia) || 0
+                        });
                     }
                 }
 
@@ -1414,6 +1514,75 @@
             } catch (err) {
                 console.error("Error al actualizar ganancias:", err);
                 if (valGanancia) valGanancia.textContent = '$0.00';
+            }
+        }
+
+        // ==========================================
+        // 1.1 ACTUALIZAR VENTAS TOTALES (GRÁFICA)
+        // ==========================================
+        async function actualizarVentas(periodo = 'semana') {
+            const valVenta = document.getElementById('venta-total-val');
+            const valVentaBs = document.getElementById('venta-total-bs');
+            const badgeVariacion = document.getElementById('venta-variacion-badge');
+            const graficoContainer = document.getElementById('grafico-ventas-container');
+            const datebar = document.getElementById('datebar-ventas');
+
+            if (periodo === 'personalizado') {
+                if (datebar) datebar.classList.add('activo');
+            } else {
+                if (datebar) datebar.classList.remove('activo');
+            }
+
+            try {
+                if (valVenta) valVenta.textContent = 'Calculando...';
+                if (valVentaBs) valVentaBs.textContent = '';
+                const { fecha_inicio, fecha_fin } = calcularRangoFechas(periodo, 'fecha-desde-ventas', 'fecha-hasta-ventas');
+                const { data } = await fetchEstadisticasAPI(fecha_inicio, fecha_fin, periodo);
+
+                if (valVenta) valVenta.textContent = formatMoney(data.total_venta);
+                if (valVentaBs && data.total_venta_bs && Number(data.total_venta_bs) > 0) {
+                    valVentaBs.textContent = `(Bs. ${Number(data.total_venta_bs).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+                }
+                if (badgeVariacion) {
+                    badgeVariacion.textContent = `${fecha_inicio} al ${fecha_fin}`;
+                }
+
+                const serieCompleta = [];
+                const mapaDatos = {};
+                if (data.serie_tiempo) {
+                    data.serie_tiempo.forEach(item => { mapaDatos[item.fecha] = item; });
+                }
+
+                // Desglose por hora si el periodo es 1 solo día
+                if (periodo === 'dia' || fecha_inicio === fecha_fin) {
+                    for (let h = 0; h < 24; h++) {
+                        const hStr = h.toString().padStart(2, '0');
+                        const stringFecha = `${fecha_fin} ${hStr}:00:00`;
+                        const item = mapaDatos[stringFecha] || { fecha: stringFecha, total_venta: 0 };
+                        serieCompleta.push({
+                            fecha: stringFecha,
+                            label: `${hStr}:00`,
+                            val: Number(item.total_venta) || 0
+                        });
+                    }
+                } else {
+                    const iniDate = new Date(fecha_inicio + 'T00:00:00');
+                    const finDate = new Date(fecha_fin + 'T00:00:00');
+                    for (let d = new Date(iniDate); d <= finDate; d.setDate(d.getDate() + 1)) {
+                        const stringFecha = getLocalISODate(d);
+                        const item = mapaDatos[stringFecha] || { fecha: stringFecha, total_venta: 0 };
+                        serieCompleta.push({
+                            fecha: stringFecha,
+                            label: stringFecha.substring(5), // MM-DD
+                            val: Number(item.total_venta) || 0
+                        });
+                    }
+                }
+
+                renderGraficoVentas(graficoContainer, serieCompleta);
+            } catch (err) {
+                console.error("Error al actualizar ventas totales:", err);
+                if (valVenta) valVenta.textContent = '$0.00';
             }
         }
 
@@ -1745,6 +1914,7 @@
         }
 
         vincularControles('.btn-periodo', actualizarGanancias);
+        vincularControles('.btn-periodo-ventas', actualizarVentas);
         vincularControles('.btn-periodo-producto', actualizarTopProducto);
         vincularControles('.btn-periodo-cliente', actualizarTopCliente);
         vincularControles('.btn-periodo-sucursal', actualizarTopSucursal);
@@ -1756,6 +1926,7 @@
             if (el) el.addEventListener('click', () => callback('personalizado'));
         };
         bindBotonFiltrar('btn-aplicar-ganancias', actualizarGanancias);
+        bindBotonFiltrar('btn-aplicar-ventas', actualizarVentas);
         bindBotonFiltrar('btn-aplicar-producto', actualizarTopProducto);
         bindBotonFiltrar('btn-aplicar-cliente', actualizarTopCliente);
         bindBotonFiltrar('btn-aplicar-sucursal', actualizarTopSucursal);
@@ -2252,6 +2423,7 @@
             } catch (e) {}
 
             actualizarGanancias('semana');
+            actualizarVentas('semana');
             actualizarTopProducto('semana');
             actualizarTopCliente('semana');
             actualizarTopSucursal('semana');
@@ -2261,10 +2433,15 @@
         inicializarModulo();
 
         window.addEventListener('resize', () => {
-            const btnActivo = document.querySelector('#selector-ganancias .btn-periodo.active');
-            if (btnActivo) {
-                const periodo = btnActivo.getAttribute('data-periodo');
+            const btnActivoGanancias = document.querySelector('#selector-ganancias .btn-periodo.active');
+            if (btnActivoGanancias) {
+                const periodo = btnActivoGanancias.getAttribute('data-periodo');
                 actualizarGanancias(periodo);
+            }
+            const btnActivoVentas = document.querySelector('#selector-ventas .btn-periodo-ventas.active');
+            if (btnActivoVentas) {
+                const periodo = btnActivoVentas.getAttribute('data-periodo');
+                actualizarVentas(periodo);
             }
         });
 

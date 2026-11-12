@@ -336,6 +336,179 @@
             document.querySelectorAll('.sale-row').forEach(row => row.classList.remove('bg-red-50'));
         }
 
+        
+        // ===================================================================
+        // --- TRADUCTOR DE CAJERAS Y CATÁLOGO DE MÉTODOS DE PAGO ---
+        // ===================================================================
+        let catalogoMetodosPago = {
+            '1000001': { nombre: 'Efectivo', moneda: 'BS', symbol: 'Bs' },
+            '1000002': { nombre: 'Débito', moneda: 'BS', symbol: 'Bs' },
+            '1000003': { nombre: 'Pago Móvil', moneda: 'BS', symbol: 'Bs' },
+            '1000004': { nombre: 'Biopago', moneda: 'BS', symbol: 'Bs' },
+            '1000005': { nombre: 'Dólares Físicos', moneda: 'USD', symbol: '$' },
+            '1000008': { nombre: 'Crédito', moneda: 'BS', symbol: 'Bs' },
+            'efectivo': { nombre: 'Efectivo (Bs)', moneda: 'BS', symbol: 'Bs' },
+            'debito': { nombre: 'Débito', moneda: 'BS', symbol: 'Bs' },
+            'pagomovil': { nombre: 'Pago Móvil', moneda: 'BS', symbol: 'Bs' },
+            'pago_movil': { nombre: 'Pago Móvil', moneda: 'BS', symbol: 'Bs' },
+            'biopago': { nombre: 'Biopago', moneda: 'BS', symbol: 'Bs' },
+            'dolar': { nombre: 'Efectivo ($)', moneda: 'USD', symbol: '$' },
+            'dolares': { nombre: 'Dólares', moneda: 'USD', symbol: '$' },
+            'transferencia': { nombre: 'Transferencia', moneda: 'BS', symbol: 'Bs' },
+            'deposito': { nombre: 'Depósito', moneda: 'BS', symbol: 'Bs' },
+            'credito': { nombre: 'A Crédito', moneda: 'BS', symbol: 'Bs' },
+            'tarjetaCredito': { nombre: 'T. Crédito', moneda: 'BS', symbol: 'Bs' }
+        };
+
+        function resolverMetodoPago(key) {
+            if (!key) return { nombre: 'Otro', moneda: 'BS', symbol: 'Bs' };
+            const k = String(key).trim();
+            if (catalogoMetodosPago[k]) return catalogoMetodosPago[k];
+            const kLower = k.toLowerCase();
+            if (catalogoMetodosPago[kLower]) return catalogoMetodosPago[kLower];
+            if (kLower.includes('dolar') || kLower.includes('usd') || kLower.includes('divisa') || kLower.includes('zinli')) {
+                return { nombre: k, moneda: 'USD', symbol: '$' };
+            }
+            return { nombre: k, moneda: 'BS', symbol: 'Bs' };
+        }
+
+        async function cargarCatalogoMetodosPago() {
+            try {
+                if (window.nexusAPI && typeof window.nexusAPI.obtenerMetodosPagoLocal === 'function') {
+                    const metodos = await window.nexusAPI.obtenerMetodosPagoLocal();
+                    if (Array.isArray(metodos)) {
+                        metodos.forEach(m => {
+                            const isUsd = (m.tipo_moneda || '').toUpperCase() === 'USD';
+                            catalogoMetodosPago[String(m.id)] = {
+                                nombre: m.nombre || `Método ${m.id}`,
+                                moneda: isUsd ? 'USD' : 'BS',
+                                symbol: isUsd ? '$' : 'Bs'
+                            };
+                            if (m.nombre) {
+                                catalogoMetodosPago[m.nombre.toLowerCase()] = catalogoMetodosPago[String(m.id)];
+                            }
+                        });
+                    }
+                }
+            } catch(e) {
+                console.warn("Aviso cargando métodos de pago:", e);
+            }
+        }
+
+        let cajerasMap = {
+            'aXKuKPXjzqSd4X7ADp5Z8uSxkp53': 'Sofia',
+            'vPVGgffOr9SNXkVcQADJXKJFuP42': 'Sofia 2',
+            'tavhgqj1v4er3RBdVL3yItxMCqD2': 'Barbara',
+            'CV8SHrCcu4Ub5Z0e3UoU0rIuGSD2': 'Administrador',
+            'gI2zPfH2wiMHTZVOJT5thNd26dP2': 'Administrador'
+        };
+
+        try {
+            const cached = JSON.parse(localStorage.getItem('nexus_cajeras_map') || '{}');
+            Object.assign(cajerasMap, cached);
+        } catch(e) {}
+
+        function capitalizarTexto(str) {
+            if (!str) return '';
+            return str.toString()
+                .split(' ')
+                .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+                .join(' ');
+        }
+
+        function traducirCajero(id) {
+            if (!id || id === 'N/A' || id === 'null' || id === 'undefined') return 'N/A';
+            const cleanId = String(id).trim();
+            if (cajerasMap[cleanId]) return cajerasMap[cleanId];
+            if (cajerasMap[cleanId.toLowerCase()]) return cajerasMap[cleanId.toLowerCase()];
+            
+            if (cleanId.includes('@')) {
+                const userPart = cleanId.split('@')[0].replace(/[._-]/g, ' ');
+                return capitalizarTexto(userPart);
+            }
+            
+            const lower = cleanId.toLowerCase();
+            if (lower === 'admin' || lower.includes('admin')) return 'Administrador';
+            if (lower === 'sistema') return 'Sistema';
+            if (lower.startsWith('caja-') || lower.startsWith('cajera-')) return cleanId.toUpperCase();
+            
+            if (cleanId.length > 20 && !cleanId.includes(' ')) {
+                return `Cajera (${cleanId.substring(0, 6)}...)`;
+            }
+            
+            return capitalizarTexto(cleanId);
+        }
+
+        async function cargarTraductorCajeras(companyId, branchId) {
+            // 1. Usuarios locales (SQLite)
+            try {
+                if (window.nexusAPI && typeof window.nexusAPI.obtenerUsuariosLocales === 'function') {
+                    const usuariosLocales = await window.nexusAPI.obtenerUsuariosLocales();
+                    if (Array.isArray(usuariosLocales)) {
+                        usuariosLocales.forEach(u => {
+                            if (u.uid && u.email) {
+                                const base = u.email.split('@')[0].replace(/[._-]/g, ' ');
+                                const formatted = capitalizarTexto(base);
+                                const nombreFinal = u.role === 'admin' ? 'Administrador' : formatted;
+                                if (!cajerasMap[u.uid]) cajerasMap[u.uid] = nombreFinal;
+                                if (!cajerasMap[u.email.toLowerCase()]) cajerasMap[u.email.toLowerCase()] = nombreFinal;
+                            }
+                        });
+                    }
+                }
+            } catch(e) {
+                console.warn("Aviso consultando usuarios locales:", e);
+            }
+
+            // 2. Firestore (si hay conexión a la nube)
+            try {
+                if (companyId && navigator.onLine) {
+                    const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
+                    const { getFirestore, collection, getDocs } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                    const firebaseConfig = {
+                        apiKey: "AIzaSyDN9mZ1n-OkC-Qz52eTCOy4yJH7M0U9zYI",
+                        authDomain: "nexus-pos-75593.firebaseapp.com",
+                        projectId: "nexus-pos-75593",
+                        storageBucket: "nexus-pos-75593.firebasestorage.app",
+                        messagingSenderId: "626840984883",
+                        appId: "1:626840984883:web:08d56544ee28bc8e637246"
+                    };
+                    const fApp = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
+                    const fDb = getFirestore(fApp);
+                    
+                    let sucursalesAExplorar = branchId ? [{ id: branchId }] : [];
+                    if (window.nexusAPI && window.nexusAPI.obtenerSucursalesLocal) {
+                        const sucs = await window.nexusAPI.obtenerSucursalesLocal(companyId);
+                        if (Array.isArray(sucs) && sucs.length > 0) sucursalesAExplorar = sucs;
+                    }
+                    
+                    for (const s of sucursalesAExplorar) {
+                        const sId = s.id || s.sucursal_ID;
+                        if (!sId) continue;
+                        const cSnap = await getDocs(collection(fDb, 'companies', companyId, 'branches', sId, 'cashiers'));
+                        cSnap.forEach(docSnap => {
+                            const cData = docSnap.data();
+                            const uid = docSnap.id || cData.uid;
+                            const nom = cData.name || cData.nombre || (cData.email ? cData.email.split('@')[0] : '');
+                            if (uid && nom) {
+                                const cNombre = capitalizarTexto(nom);
+                                cajerasMap[uid] = cNombre;
+                                if (cData.email) cajerasMap[cData.email.toLowerCase()] = cNombre;
+                            }
+                        });
+                    }
+                    localStorage.setItem('nexus_cajeras_map', JSON.stringify(cajerasMap));
+                    
+                    // Re-renderizar si ya hay ventas cargadas para reflejar nombres actualizados
+                    if (rawSalesData && rawSalesData.length > 0) {
+                        window.renderSalesTable();
+                    }
+                }
+            } catch(eNube) {
+                console.warn("Aviso al consultar cajeras en la nube:", eNube.message);
+            }
+        }
+
         function obtenerFechaDeVenta(sale) {
             if (sale.fecha_emision) return new Date(sale.fecha_emision);
             if (sale.createdAt) return new Date(sale.createdAt);
@@ -353,13 +526,20 @@
             let datosJson = {};
 
             try { datosJson = JSON.parse(saleData.datos_json || '{}'); } catch (e) {}
-            try { paymentsObject = JSON.parse(saleData.metodo_pago || '{}'); } catch (e) {}
+            try {
+                if (typeof saleData.metodo_pago === 'object') {
+                    paymentsObject = saleData.metodo_pago || {};
+                } else {
+                    paymentsObject = JSON.parse(saleData.metodo_pago || '{}');
+                }
+            } catch (e) {}
             
             itemsArray = datosJson.productos || [];
             
             const saleDate = obtenerFechaDeVenta(saleData);
             const createdAtDate = saleDate.toLocaleString('es-VE');
-            const cashierName = saleData.cashier_id || saleData.userId || 'N/A';
+            const cashierRaw = saleData.cashier_id || saleData.userId || 'N/A';
+            const cashierName = traducirCajero(cashierRaw);
             
             const subtotal = parseFloat(saleData.base_imponible || 0) + parseFloat(saleData.monto_exento || 0);
             const iva = parseFloat(saleData.monto_iva || 0);
@@ -369,7 +549,7 @@
             let details = '<div>';
             
             details += `<p><strong>Nro Control:</strong> ${saleData.numero_control || 'N/A'}</p>`;
-            details += `<p><strong>Cajero:</strong> ${cashierName}</p>`;
+            details += `<p><strong>Cajera:</strong> <span class="font-bold text-gray-800">${cashierName}</span> <span class="text-xs text-gray-400">(${cashierRaw})</span></p>`;
             details += `<p><strong>Fecha:</strong> ${createdAtDate}</p>`;
             details += `<p><strong>C.I./RIF:</strong> ${saleData.cliente_rif || 'N/A'}</p>`;
             details += `<p><strong>Cliente:</strong> ${saleData.cliente_nombre || 'N/A'}</p>`;
@@ -384,20 +564,21 @@
             details += '<hr class="my-4 border-gray-200">';
             details += '<h3>Métodos de Pago Utilizados</h3>';
             
-            const paymentLabels = {
-                'efectivo': 'Efectivo (Bs)', 'pagomovil': 'Pago Móvil', 'debito': 'Débito', 
-                'biopago': 'Biopago', 'dolar': 'Efectivo ($)', 'transferencia': 'Transferencia',
-                'deposito': 'Depósito', 'credito': 'A Crédito', 'tarjetaCredito': 'T. Crédito'
-            };
-
+            let metodosCount = 0;
             for (const [methodKey, amount] of Object.entries(paymentsObject)) {
                 const numAmount = parseFloat(amount);
-                if (!isNaN(numAmount) && numAmount > 0 && paymentLabels[methodKey]) {
-                    const isDollar = methodKey === 'dolar';
-                    const symbol = isDollar ? '$' : 'Bs';
+                if (!isNaN(numAmount) && numAmount > 0) {
+                    const info = resolverMetodoPago(methodKey);
+                    const isDollar = info.moneda === 'USD';
+                    const symbol = info.symbol || (isDollar ? '$' : 'Bs');
                     const colorClass = isDollar ? 'text-green-600 font-bold' : 'text-gray-800';
-                    details += `<p><strong>${paymentLabels[methodKey]}:</strong> <span class="${colorClass}">${symbol} ${numAmount.toFixed(2)}</span></p>`;
+                    details += `<p><strong>${info.nombre}:</strong> <span class="${colorClass}">${symbol} ${numAmount.toFixed(2)}</span></p>`;
+                    metodosCount++;
                 }
+            }
+
+            if (metodosCount === 0) {
+                details += `<p class="text-sm text-gray-400 italic">No se registraron métodos de pago detallados.</p>`;
             }
 
             details += '<hr class="my-4 border-gray-200">';
@@ -525,12 +706,31 @@
                 salesCache[saleId] = sale; 
 
                 let paymentsObject = {};
-                try { paymentsObject = JSON.parse(sale.metodo_pago || '{}'); } catch (e) {}
+                try {
+                    if (typeof sale.metodo_pago === 'object') {
+                        paymentsObject = sale.metodo_pago || {};
+                    } else {
+                        paymentsObject = JSON.parse(sale.metodo_pago || '{}');
+                    }
+                } catch (e) {}
 
-                const totalDolar = parseFloat(paymentsObject.dolar || 0);
-                const efectivoBs = parseFloat(paymentsObject.efectivo || 0);
-                const debitoBs = parseFloat(paymentsObject.debito || 0);
-                const pagomovilBs = parseFloat(paymentsObject.pagomovil || 0);
+                let listaPagosItems = [];
+                let totalDolar = 0;
+
+                for (const [methodKey, amount] of Object.entries(paymentsObject)) {
+                    const numAmount = parseFloat(amount);
+                    if (!isNaN(numAmount) && numAmount > 0) {
+                        const info = resolverMetodoPago(methodKey);
+                        if (info.moneda === 'USD') {
+                            totalDolar += numAmount;
+                            listaPagosItems.push(`<li class="text-green-600 font-bold">${info.nombre}: $${numAmount.toFixed(2)}</li>`);
+                        } else {
+                            listaPagosItems.push(`<li>${info.nombre}: Bs ${numAmount.toFixed(2)}</li>`);
+                        }
+                    }
+                }
+
+                const cashierDisplay = traducirCajero(sale.cashier_id || sale.userId);
                 
                 tableHTML += `
                     <tr id="sale-row-${saleId}" class="sale-row hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-200" onclick="window.displaySaleDetails('${saleId}')">
@@ -538,13 +738,10 @@
                             <div class="font-bold text-gray-900">${sale.cliente_nombre || 'Anónimo'}</div>
                             <div class="text-xs text-gray-500">${sale.cliente_rif || 'S/ID'}</div>
                         </td>
-                        <td class="p-3 text-gray-700 font-medium">${sale.cashier_id || 'N/A'}</td>
+                        <td class="p-3 text-gray-800 font-semibold">${cashierDisplay}</td>
                         <td class="p-3">
-                            <ul class="payment-summary text-xs">
-                                ${efectivoBs > 0 ? `<li>Efectivo: Bs ${efectivoBs.toFixed(2)}</li>` : ''}
-                                ${debitoBs > 0 ? `<li>Débito: Bs ${debitoBs.toFixed(2)}</li>` : ''}
-                                ${pagomovilBs > 0 ? `<li>Pago Móvil: Bs ${pagomovilBs.toFixed(2)}</li>` : ''}
-                                ${totalDolar > 0 ? `<li class="text-green-600 font-bold">Dólar: $${totalDolar.toFixed(2)}</li>` : ''}
+                            <ul class="payment-summary text-xs space-y-0.5">
+                                ${listaPagosItems.length > 0 ? listaPagosItems.join('') : '<li class="text-gray-400 italic">S/D</li>'}
                             </ul>
                         </td>
                         <td class="p-3 font-bold text-red-600">Bs ${parseFloat(sale.monto_total || 0).toFixed(2)}</td>
@@ -699,6 +896,8 @@
                     userRole = sesion.role;
                     
                     if (userCompanyId) {
+                        await cargarCatalogoMetodosPago();
+                        await cargarTraductorCajeras(userCompanyId, userBranchId);
                         await loadBranches(userCompanyId, userBranchId);
                     }
                 } else {

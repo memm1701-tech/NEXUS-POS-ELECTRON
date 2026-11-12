@@ -189,8 +189,19 @@
             </h1>
 
             <div class="mb-8 p-6 border border-gray-200 rounded-lg shadow-sm bg-white">
-                <h3 class="text-2xl font-semibold mb-6 text-gray-700 text-center">Registrar Nueva Cajera</h3>
-                <form id="cashier-form" class="space-y-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-200">
+                    <h3 class="text-2xl font-semibold text-gray-700 text-left">Registrar Nueva Cajera</h3>
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-left max-w-lg flex items-start gap-3 shadow-sm">
+                        <span class="material-icons text-blue-600 text-xl flex-shrink-0 mt-0.5">info</span>
+                        <div>
+                            <span class="block text-sm font-medium text-blue-900 font-bold mb-0.5">Aclaratoria Importante:</span>
+                            <span class="block text-sm font-medium text-blue-800 leading-snug">
+                                Es importante tomar en cuenta que este correo no puede ser el del administrador con el que se registró la empresa.
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <form id="cashier-form" class="space-y-6 text-left">
                     <div>
                         <label for="cashier-name" class="block text-sm font-medium text-gray-700 mb-2">Nombre de la Cajera:</label>
                         <input type="text" id="cashier-name" name="name" required
@@ -251,11 +262,22 @@
 
     <script type="module">
         import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, fetchSignInMethodsForEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         const BACKEND_CREATE_URL = 'https://api.nexusposgobal.com/createCashier';
         const BACKEND_DELETE_URL = 'http://68.168.218.147:3002/api/admin/deleteCashier';
+
+        // Configuración oficial de Firebase (Nexus POS)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDN9mZ1n-OkC-Qz52eTCOy4yJH7M0U9zYI",
+            authDomain: "nexus-pos-75593.firebaseapp.com",
+            projectId: "nexus-pos-75593",
+            storageBucket: "nexus-pos-75593.firebasestorage.app",
+            messagingSenderId: "626840984883",
+            appId: "1:626840984883:web:08d56544ee28bc8e637246",
+            measurementId: "G-K1EQVJWJHG"
+        };
 
         // --- Lógica de Modales ---
         function mostrarAlertaLimiteSaaS(nombrePlan, limite, tipo) {
@@ -285,10 +307,14 @@
             };
         }
 
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        let app, db, auth, userRole, userCompanyId;
+        let app = null;
+        let db = null;
+        let auth = null;
+        let userRole = 'admin';
+        let userCompanyId = null;
+        let adminEmail = null;
+        let unsubscribeCashiers = null;
+        let sucursalesMap = new Map(); // branchId -> nombre
 
         const cashierForm = document.getElementById('cashier-form');
         const branchSelect = document.getElementById('branch-id');
@@ -310,58 +336,84 @@
             setTimeout(() => { messageElement.remove(); }, 5000);
         }
 
-        async function verifyPermissionsAndLoadData(user) {
+        // Inicialización segura de Firebase
+        function initFirebaseSafe() {
             try {
-                if (!user) return;
-                const idTokenResult = await user.getIdTokenResult(true);
-                userRole = idTokenResult.claims.role || 'No asignado';
-                userCompanyId = idTokenResult.claims.companyId || 'No asignado';
-
-                if (userCompanyId !== 'No asignado' && userRole === 'admin') {
-                    // Llama a la nueva lógica local
-                    loadBranches(userCompanyId);
-                } else {
-                    branchSelect.innerHTML = '<option value="">Sin permisos</option>';
-                    cashiersList.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Acceso Denegado.</td></tr>';
+                if (!app) {
+                    app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
                 }
+                if (!db) {
+                    db = getFirestore(app);
+                }
+                if (!auth) {
+                    auth = getAuth(app);
+                }
+                return true;
             } catch (error) {
-                showInfoMessage('Error al verificar permisos de administrador.', 'error');
+                console.error("Error al inicializar Firebase en usuarios.html:", error);
+                return false;
             }
         }
 
-        function initializeFirebase() {
+        async function inicializarModulo() {
             try {
-                app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
-                db = getFirestore(app);
-                auth = getAuth(app);
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) verifyPermissionsAndLoadData(user);
-                    else if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken);
-                    else await signInAnonymously(auth);
-                });
-            } catch (error) {
-                showInfoMessage('Error al iniciar Firebase.', 'error');
+                // 1. Obtención de sesión local (SQLite)
+                let sesion = null;
+                if (window.nexusAPI && window.nexusAPI.obtenerSesionLocal) {
+                    sesion = await window.nexusAPI.obtenerSesionLocal();
+                }
+
+                userCompanyId = sesion?.companyId || window.currentCompanyId || null;
+                userRole = sesion?.role || 'admin';
+                adminEmail = (sesion?.email || '').trim().toLowerCase();
+
+                if (!userCompanyId) {
+                    showInfoMessage('No se detectó una sesión activa de empresa.', 'error');
+                    branchSelect.innerHTML = '<option value="" disabled selected>Sin sesión de empresa</option>';
+                    cashiersList.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Sesión requerida.</td></tr>';
+                    return;
+                }
+
+                if (userRole !== 'admin') {
+                    showInfoMessage('Acceso Denegado: Sólo administradores pueden gestionar cajeras.', 'error');
+                    branchSelect.innerHTML = '<option value="" disabled selected>Sin permisos</option>';
+                    cashiersList.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Acceso Denegado.</td></tr>';
+                    return;
+                }
+
+                // 2. Conexión segura con Firebase
+                initFirebaseSafe();
+
+                // 3. Carga inmediata de sucursales locales (desde SQLite)
+                await loadBranches(userCompanyId);
+
+            } catch (err) {
+                console.error("Error al inicializar gestión de cajeras:", err);
+                showInfoMessage('Error al inicializar el módulo: ' + err.message, 'error');
             }
         }
 
         async function loadBranches(companyId) {
             branchSelect.disabled = true;
+            branchSelect.innerHTML = '<option value="">Cargando sucursales...</option>';
             try {
-                // Ahora obtenemos las sucursales desde la base de datos local (SQLite)
+                // Obtenemos sucursales locales de SQLite de forma instantánea
                 const sucursales = await window.nexusAPI.obtenerSucursalesLocal(companyId);
-                
-                branchSelect.innerHTML = '<option value="">Selecciona una sucursal...</option>';
-                
-                // Validamos que los datos locales sean un array válido
                 const listaSucursales = Array.isArray(sucursales) ? sucursales : [];
+
+                sucursalesMap.clear();
+                listaSucursales.forEach((b) => {
+                    sucursalesMap.set(b.id, b.nombre || b.id);
+                });
 
                 if (listaSucursales.length === 0) {
                     showInfoMessage('No se encontraron sucursales registradas localmente.', 'info');
-                    branchSelect.innerHTML = '<option value="" disabled>No se encontraron sucursales</option>';
+                    branchSelect.innerHTML = '<option value="" disabled selected>No se encontraron sucursales</option>';
+                    cashiersList.innerHTML = '<tr><td colspan="4" class="px-6 py-10 text-center text-gray-500 italic">No hay sucursales registradas. Primero registre una sucursal en Datos Básicos > Sucursales.</td></tr>';
                 } else {
+                    branchSelect.innerHTML = '<option value="" disabled>Selecciona una sucursal...</option>';
                     listaSucursales.forEach((branch) => {
                         const option = document.createElement('option');
-                        // Usamos branch.id y branch.nombre según el esquema de sucursales.html
                         option.value = branch.id;
                         option.textContent = branch.nombre; 
                         branchSelect.appendChild(option);
@@ -369,7 +421,7 @@
                     
                     branchSelect.disabled = false;
                     
-                    // Seleccionamos la primera sucursal por defecto y activamos el listener de cajeras
+                    // Seleccionamos la primera sucursal por defecto
                     const firstBranchId = listaSucursales[0].id;
                     branchSelect.value = firstBranchId;
                     listenForCashiers(companyId, firstBranchId);
@@ -377,113 +429,247 @@
             } catch (error) {
                 console.error("Error al cargar sucursales desde SQLite:", error);
                 showInfoMessage('Error al cargar sucursales desde la base de datos local.', 'error');
-                branchSelect.innerHTML = '<option value="" disabled>Error al cargar sucursales</option>';
+                branchSelect.innerHTML = '<option value="" disabled selected>Error al cargar sucursales</option>';
+                cashiersList.innerHTML = '<tr><td colspan="4" class="px-6 py-10 text-center text-red-500">Error al cargar sucursales locales.</td></tr>';
+            }
+        }
+
+        function listenForCashiers(companyId, branchId) {
+            if (unsubscribeCashiers) {
+                unsubscribeCashiers();
+                unsubscribeCashiers = null;
+            }
+
+            if (!companyId || !branchId) {
+                cashiersList.innerHTML = '<tr><td colspan="4" class="px-6 py-10 text-center text-gray-500 italic">Selecciona una sucursal para listar sus cajeras.</td></tr>';
+                return;
+            }
+
+            cashiersList.innerHTML = '<tr><td colspan="4" class="px-6 py-10 text-center text-gray-500 italic"><div class="spinner inline-block mr-2 align-middle"></div> Cargando cajeras...</td></tr>';
+
+            if (!initFirebaseSafe() || !db) {
+                cashiersList.innerHTML = '<tr><td colspan="4" class="px-6 py-10 text-center text-red-500">No se pudo conectar a Firebase para consultar cajeras.</td></tr>';
+                return;
+            }
+
+            try {
+                const cashiersRef = collection(db, 'companies', companyId, 'branches', branchId, 'cashiers');
+                unsubscribeCashiers = onSnapshot(cashiersRef, (snapshot) => {
+                    cashiersList.innerHTML = '';
+                    if (snapshot.empty) {
+                        cashiersList.innerHTML = '<tr><td colspan="4" class="px-6 py-10 text-center text-gray-500 italic">No hay cajeras en esta sucursal.</td></tr>';
+                    } else {
+                        snapshot.forEach(doc => {
+                            const cashier = doc.data();
+                            try {
+                                let cMap = JSON.parse(localStorage.getItem('nexus_cajeras_map') || '{}');
+                                if (doc.id && cashier.name) cMap[doc.id] = cashier.name;
+                                if (cashier.uid && cashier.name) cMap[cashier.uid] = cashier.name;
+                                if (cashier.email && cashier.name) cMap[cashier.email.toLowerCase()] = cashier.name;
+                                localStorage.setItem('nexus_cajeras_map', JSON.stringify(cMap));
+                            } catch(eMap) {}
+                            const branchName = sucursalesMap.get(cashier.branchId) || sucursalesMap.get(branchId) || cashier.branchId || branchId;
+                            const row = document.createElement('tr');
+                            row.className = "hover:bg-gray-50 transition-all duration-200";
+                            row.innerHTML = `
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900 text-center">${cashier.name || 'N/A'}</td>
+                                <td class="px-6 py-4 text-sm text-gray-500 text-center">${cashier.email || 'N/A'}</td>
+                                <td class="px-6 py-4 text-sm text-gray-500 text-center">${branchName}</td>
+                                <td class="px-6 py-4 text-center text-sm font-medium">
+                                    <button class="text-red-600 hover:text-red-900 font-bold delete-btn" data-id="${doc.id}" data-name="${cashier.name || 'Cajera'}">ELIMINAR</button>
+                                </td>
+                            `;
+                            row.querySelector('.delete-btn').addEventListener('click', (e) => {
+                                cashierToDelete = e.target.dataset.id;
+                                modalText.innerHTML = `<strong>¿Está seguro que desea ELIMINAR a la cajera "${e.target.dataset.name}"?</strong> Esta acción removerá el acceso de la cajera en el sistema.`;
+                                modal.style.display = 'flex';
+                            });
+                            cashiersList.appendChild(row);
+                        });
+                    }
+                }, (error) => {
+                    console.error("Error al escuchar cajeras en Firestore:", error);
+                    cashiersList.innerHTML = `<tr><td colspan="4" class="px-6 py-10 text-center text-red-500">Error al sincronizar cajeras en la nube: ${error.message || 'Verifique la conexión a internet'}.</td></tr>`;
+                });
+            } catch (err) {
+                console.error("Error al suscribirse a cajeras:", err);
+                cashiersList.innerHTML = `<tr><td colspan="4" class="px-6 py-10 text-center text-red-500">Error al consultar cajeras: ${err.message}</td></tr>`;
             }
         }
 
         async function createCashier(e) {
             e.preventDefault();
-            if (!userCompanyId || userRole !== 'admin') return;
+            if (!userCompanyId || userRole !== 'admin') {
+                showInfoMessage('No tienes permisos para registrar cajeras.', 'error');
+                return;
+            }
+
+            const branchId = branchSelect.value;
+            if (!branchId) {
+                showInfoMessage('Por favor, selecciona una sucursal para asignar a la cajera.', 'error');
+                branchSelect.focus();
+                return;
+            }
+
+            const nameInput = document.getElementById('cashier-name');
+            const emailInput = document.getElementById('cashier-email');
+            const passwordInput = document.getElementById('cashier-password');
+
+            const cashierName = nameInput.value.trim();
+            const cashierEmail = emailInput.value.trim().toLowerCase();
+            const cashierPassword = passwordInput.value;
+
+            if (!cashierName) {
+                showInfoMessage('Por favor, ingresa el nombre de la cajera.', 'error');
+                nameInput.focus();
+                return;
+            }
+
+            // --- 1. Validación de Formato de Correo ---
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!cashierEmail || !emailRegex.test(cashierEmail)) {
+                showInfoMessage('Por favor, ingresa un correo electrónico válido.', 'error');
+                emailInput.focus();
+                return;
+            }
+
+            if (!cashierPassword || cashierPassword.length < 6) {
+                showInfoMessage('La contraseña debe tener un mínimo de 6 caracteres.', 'error');
+                passwordInput.focus();
+                return;
+            }
 
             registerCashierBtn.disabled = true;
             registerCashierText.classList.add('hidden');
             registerCashierSpinner.classList.remove('hidden');
 
-            const branchId = branchSelect.value; // ID obtenido del menú desplegable local
-
-            // === NUEVO: VERIFICACIÓN DEL PLAN SAAS PARA CAJERAS ===
-            /* COMENTADO TEMPORALMENTE A PETICIÓN
             try {
-                const planLocal = await window.nexusAPI.obtenerPlanLocal(userCompanyId);
-                const nombrePlan = planLocal?.nombre_plan || 'SIN PLAN';
-                const maxCashiers = parseInt(planLocal?.CASHIERS_MAX) || 1;
-                
-                // Necesitamos contar el total de cajeras de la empresa (sumando todas las sucursales locales)
-                const sucursalesLocales = await window.nexusAPI.obtenerSucursalesLocal(userCompanyId);
-                const listaLocalesSegura = Array.isArray(sucursalesLocales) ? sucursalesLocales : [];
-                
-                let totalCajeras = 0;
-                
-                for (const sucursal of listaLocalesSegura) {
-                    const cajerasSnapshot = await getDocs(collection(db, 'companies', userCompanyId, 'branches', sucursal.id, 'cashiers'));
-                    totalCajeras += cajerasSnapshot.size;
+                // --- 2. VALIDACIÓN: ¿Coincide con el correo del administrador de la empresa? ---
+                if (adminEmail && cashierEmail === adminEmail) {
+                    showInfoMessage('El correo de la cajera no puede ser el mismo correo del administrador con el que se registró la empresa.', 'error');
+                    emailInput.focus();
+                    return;
                 }
 
-                if (totalCajeras >= maxCashiers) {
-                    mostrarAlertaLimiteSaaS(nombrePlan, maxCashiers, 'cajeras');
-                    registerCashierBtn.disabled = false;
-                    registerCashierText.classList.remove('hidden');
-                    registerCashierSpinner.classList.add('hidden');
-                    return; // Bloquea la creación
+                // --- 3. VALIDACIÓN LOCAL: ¿Ya existe este correo en la base de datos local SQLite? ---
+                if (window.nexusAPI && window.nexusAPI.loginLocal) {
+                    try {
+                        const usuarioExistenteLocal = await window.nexusAPI.loginLocal(cashierEmail);
+                        if (usuarioExistenteLocal) {
+                            const rolDesc = usuarioExistenteLocal.role === 'admin' ? 'Administrador' : 'Cajera / Usuario';
+                            showInfoMessage(`El correo "${cashierEmail}" ya está registrado en el sistema local como ${rolDesc}. Ingrese un correo diferente.`, 'error');
+                            emailInput.focus();
+                            return;
+                        }
+                    } catch (errLocal) {
+                        console.warn("Aviso en validación local de usuario:", errLocal);
+                    }
                 }
-            } catch (error) {
-                console.error("Error al verificar límite de cajeras SaaS:", error);
-            }
-            */
-            // =========================================================
 
-            const payload = {
-                cashierName: document.getElementById('cashier-name').value,
-                cashierEmail: document.getElementById('cashier-email').value,
-                cashierPassword: document.getElementById('cashier-password').value,
-                companyId: userCompanyId,
-                branchId: branchId
-            };
+                // --- 3. VALIDACIÓN EN ESTA EMPRESA (FIRESTORE) Y LÍMITE DE PLAN SAAS ---
+                if (initFirebaseSafe() && db) {
+                    const planLocal = await window.nexusAPI.obtenerPlanLocal(userCompanyId);
+                    const nombrePlan = planLocal?.nombre_plan || 'SIN PLAN';
+                    const maxCashiers = parseInt(planLocal?.max_cashiers ?? planLocal?.CASHIERS_MAX) || 1;
+                    
+                    const sucursalesLocales = await window.nexusAPI.obtenerSucursalesLocal(userCompanyId);
+                    const listaLocalesSegura = Array.isArray(sucursalesLocales) ? sucursalesLocales : [];
+                    
+                    let totalCajeras = 0;
+                    let sucursalDuplicada = null;
+                    
+                    for (const sucursal of listaLocalesSegura) {
+                        try {
+                            const cajerasSnapshot = await getDocs(collection(db, 'companies', userCompanyId, 'branches', sucursal.id, 'cashiers'));
+                            totalCajeras += cajerasSnapshot.size;
 
-            try {
+                            for (const docSnap of cajerasSnapshot.docs) {
+                                const cajeraData = docSnap.data();
+                                const cEmail = (cajeraData.email || '').trim().toLowerCase();
+                                if (cEmail === cashierEmail) {
+                                    sucursalDuplicada = sucursal.nombre || sucursal.id;
+                                    break;
+                                }
+                            }
+
+                            if (sucursalDuplicada) break;
+                        } catch (errSnap) {
+                            console.warn(`Aviso al consultar sucursal ${sucursal.id}:`, errSnap);
+                        }
+                    }
+
+                    // A) Si el correo ya pertenece a una cajera de esta empresa:
+                    if (sucursalDuplicada) {
+                        showInfoMessage(`El correo "${cashierEmail}" ya está registrado como cajera en esta empresa (en la sucursal: "${sucursalDuplicada}").`, 'error');
+                        emailInput.focus();
+                        return;
+                    }
+
+                    // B) Si se excede el límite del plan SaaS:
+                    if (totalCajeras >= maxCashiers) {
+                        mostrarAlertaLimiteSaaS(nombrePlan, maxCashiers, 'cajeras');
+                        return;
+                    }
+                }
+
+                // --- 4. VALIDACIÓN EN FIREBASE AUTH (SI ESTÁ DISPONIBLE) ---
+                if (auth && typeof fetchSignInMethodsForEmail === 'function') {
+                    try {
+                        const methods = await fetchSignInMethodsForEmail(auth, cashierEmail);
+                        if (methods && methods.length > 0) {
+                            showInfoMessage(`El correo "${cashierEmail}" ya se encuentra registrado en el sistema. Ingrese un correo diferente.`, 'error');
+                            emailInput.focus();
+                            return;
+                        }
+                    } catch (authErr) {
+                        if (authErr.code === 'auth/email-already-in-use') {
+                            showInfoMessage(`El correo "${cashierEmail}" ya está en uso en el sistema.`, 'error');
+                            emailInput.focus();
+                            return;
+                        }
+                        console.warn("Aviso en comprobación de métodos de email:", authErr.message);
+                    }
+                }
+
+                // --- 5. REGISTRO EN EL SERVIDOR BACKEND ---
+                const payload = {
+                    cashierName: cashierName,
+                    cashierEmail: cashierEmail,
+                    cashierPassword: cashierPassword,
+                    companyId: userCompanyId,
+                    branchId: branchId
+                };
+
                 const response = await fetch(BACKEND_CREATE_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload),
                 });
                 
+                const data = await response.json().catch(() => ({}));
+
                 if (response.ok) {
                     showInfoMessage('Cajera registrada con éxito.', 'success');
                     cashierForm.reset();
-                    // Mantenemos la selección de la sucursal actual tras el reset
+                    // Restauramos la selección de la sucursal actual tras el reset
                     branchSelect.value = branchId;
                 } else {
-                    const data = await response.json();
-                    showInfoMessage(`Error: ${data.message}`, 'error');
+                    const rawError = (data.message || data.error || '').toString().toLowerCase();
+                    if (rawError.includes('already exists') || rawError.includes('already in use') || rawError.includes('email-already-in-use') || rawError.includes('correo ya')) {
+                        showInfoMessage(`El correo "${cashierEmail}" ya está registrado en el sistema. Ingrese un correo diferente.`, 'error');
+                        emailInput.focus();
+                    } else {
+                        showInfoMessage(`Error al registrar cajera: ${data.message || data.error || 'Respuesta inválida del servidor'}`, 'error');
+                    }
                 }
             } catch (error) {
-                showInfoMessage('Error de conexión con el servidor de registro.', 'error');
+                console.error("Error al registrar cajera:", error);
+                showInfoMessage('Error de conexión con el servidor de registro: ' + error.message, 'error');
             } finally {
                 registerCashierBtn.disabled = false;
                 registerCashierText.classList.remove('hidden');
                 registerCashierSpinner.classList.add('hidden');
             }
-        }
-
-        function listenForCashiers(companyId, branchId) {
-            if (!companyId || !branchId) return;
-            const cashiersRef = collection(db, 'companies', companyId, 'branches', branchId, 'cashiers');
-            onSnapshot(cashiersRef, (snapshot) => {
-                cashiersList.innerHTML = '';
-                if (snapshot.empty) {
-                    cashiersList.innerHTML = '<tr><td colspan="4" class="px-6 py-10 text-center text-gray-500 italic">No hay cajeras en esta sucursal.</td></tr>';
-                } else {
-                    snapshot.forEach(doc => {
-                        const cashier = doc.data();
-                        const row = document.createElement('tr');
-                        row.className = "hover:bg-gray-50 transition-all duration-200";
-                        row.innerHTML = `
-                            <td class="px-6 py-4 text-sm font-medium text-gray-900 text-center">${cashier.name || 'N/A'}</td>
-                            <td class="px-6 py-4 text-sm text-gray-500 text-center">${cashier.email || 'N/A'}</td>
-                            <td class="px-6 py-4 text-sm text-gray-500 text-center">${cashier.branchId}</td>
-                            <td class="px-6 py-4 text-center text-sm font-medium">
-                                <button class="text-red-600 hover:text-red-900 font-bold delete-btn" data-id="${doc.id}" data-name="${cashier.name}">ELIMINAR</button>
-                            </td>
-                        `;
-                        row.querySelector('.delete-btn').addEventListener('click', (e) => {
-                            cashierToDelete = e.target.dataset.id;
-                            modalText.innerHTML = `<strong>¿Está seguro que desea ELIMINAR a la cajera "${e.target.dataset.name}"?</strong> Esta acción podría afectar la integridad de los datos en el sistema.`;
-                            modal.style.display = 'flex';
-                        });
-                        cashiersList.appendChild(row);
-                    });
-                }
-            });
         }
 
         let cashierToDelete = null;
@@ -495,15 +681,30 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ userId: cashierToDelete, companyId: userCompanyId })
                     });
-                    if (res.ok) showInfoMessage('Cajera eliminada.', 'success');
-                } catch (e) { showInfoMessage('Error al eliminar.', 'error'); }
+                    if (res.ok) {
+                        showInfoMessage('Cajera eliminada con éxito.', 'success');
+                    } else {
+                        const errData = await res.json().catch(() => ({}));
+                        showInfoMessage(`Error al eliminar: ${errData.message || 'Error del servidor'}`, 'error');
+                    }
+                } catch (e) {
+                    showInfoMessage('Error de conexión al eliminar cajera.', 'error');
+                }
             }
             modal.style.display = 'none';
+            cashierToDelete = null;
         };
-        modalCancelBtn.onclick = () => modal.style.display = 'none';
+
+        modalCancelBtn.onclick = () => {
+            modal.style.display = 'none';
+            cashierToDelete = null;
+        };
+
         branchSelect.addEventListener('change', (e) => listenForCashiers(userCompanyId, e.target.value));
         cashierForm.addEventListener('submit', createCashier);
-        initializeFirebase();
+
+        // Arranque
+        inicializarModulo();
     </script>
 </body>
 </html>

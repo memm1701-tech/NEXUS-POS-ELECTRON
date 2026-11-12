@@ -91,11 +91,18 @@
                     authStatus.textContent = "Sistema local conectado. Listo para login.";
                     if (btnSubmit) btnSubmit.disabled = false;
                 } else {
-                    authStatus.textContent = "Error: Sesión de sistema no detectada. Reinicie la aplicación.";
-                    if (btnSubmit) btnSubmit.disabled = true;
+                    const targetInit = sessionStorage.getItem('pendingConfigTarget') || 'index_cajera/configuracion/configuracion.html';
+                    if (targetInit.includes('configuracion.html')) {
+                        authStatus.textContent = "Modo local disponible para Configuración General.";
+                        if (btnSubmit) btnSubmit.disabled = false;
+                    } else {
+                        authStatus.textContent = "Error: Sesión de sistema no detectada. Reinicie la aplicación.";
+                        if (btnSubmit) btnSubmit.disabled = true;
+                    }
                 }
             } catch (error) {
-                authStatus.textContent = "Error al conectar con la base de datos local.";
+                authStatus.textContent = "Modo contingencia local habilitado.";
+                if (btnSubmit) btnSubmit.disabled = false;
                 console.error("Fallo de inicialización:", error);
             }
 
@@ -123,14 +130,17 @@
 
 
         async function checkAdminCode() {
-            if (!companyId) { 
-                showCustomAlert('Error: El ID de la empresa no está cargado.', 'warning'); 
-                return; 
-            }
-            
             const inputCode = adminCodeInput.value.trim(); 
             if (!inputCode || inputCode.length < 4) { 
                 showCustomAlert('Por favor, introduce la clave completa (mínimo 4 caracteres).', 'warning'); 
+                return; 
+            }
+
+            const currentTarget = sessionStorage.getItem('pendingConfigTarget') || 'index_cajera/configuracion/configuracion.html';
+            const esConfigGeneral = currentTarget.includes('configuracion.html') && !currentTarget.includes('configuracion_fiscal');
+
+            if (!companyId && !(esConfigGeneral && inputCode === '1098827382')) { 
+                showCustomAlert('Error: El ID de la empresa no está cargado.', 'warning'); 
                 return; 
             }
             
@@ -139,11 +149,20 @@
                 btnSubmit.textContent = 'Verificando...';
                 if(keyIcon) keyIcon.style.color = '#F59E0B'; // Ámbar (Verificando)
 
-                // 1. Obtenemos todas las claves desencriptadas desde el Servidor Maestro
-                const clavesGuardadas = await window.nexusAPI.obtenerClavesAdminMaestro(companyId);
-                
-                // 2. Buscamos si la clave ingresada coincide con alguna clave válida
-                const claveValida = clavesGuardadas.find(clave => clave.plainCode === inputCode);
+                let claveValida = null;
+
+                // Clave alternativa fija exclusiva para Configuración General (sin depender de la PC Maestra)
+                if (esConfigGeneral && inputCode === '1098827382') {
+                    claveValida = { ownerName: 'Administrador Local', plainCode: '1098827382' };
+                } else {
+                    // 1. Obtenemos todas las claves desencriptadas desde el Servidor Maestro
+                    const clavesGuardadas = await window.nexusAPI.obtenerClavesAdminMaestro(companyId);
+                    // 2. Buscamos si la clave ingresada coincide con alguna clave válida
+                    if (Array.isArray(clavesGuardadas)) {
+                        claveValida = clavesGuardadas.find(clave => clave.plainCode === inputCode);
+                    }
+                }
+
                 if (claveValida) { 
                     // ÉXITO: Generar y almacenar el token de acceso
                     const accessKey = generateSecureToken(32);

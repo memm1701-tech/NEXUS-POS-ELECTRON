@@ -8,6 +8,7 @@
     <link rel="icon" type="image/png" href="logo_nexus.png">
     <link href="../node_modules/material-icons/iconfont/material-icons.css" rel="stylesheet">
     <link href="../node_modules/@fortawesome/fontawesome-free/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
     <script src="tailwindcss.js"></script>
     <style>
@@ -241,7 +242,7 @@
                         </ul>
                     </li>
                     <li><a href="#" onclick="document.getElementById('zoom-modal').classList.remove('hidden'); return false;"><i class="fa-solid fa-display"></i> Apariencia</a></li>
-                    <li><a href="#" data-page="ayuda.html"><i class="fa-solid fa-circle-question"></i> Ayuda</a></li>
+                    <li><a href="#" data-page="index_inicio_admin/ayuda/ayuda.html"><i class="fa-solid fa-circle-question"></i> Ayuda</a></li>
                     <li><a href="#" data-page="index_cajera/acerca_de.html"><i class="fa-solid fa-circle-info"></i> Acerca de</a></li>
                     <li><a id="logout-btn" href="javascript:void(0)" role="button"><i class="fa-solid fa-right-from-bracket"></i> Cerrar sesión</a></li>
                 </ul>
@@ -633,13 +634,61 @@ async function iniciarSincronizacionSilenciosa() {
                                 const response = await fetch(endpointCompleto, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify(datosJSON)
+                                    body: JSON.stringify((function() {
+                                        if (registro.tabla === 'movimientos_stock') {
+                                            const cId = datosJSON.companyId || datosJSON.company_id || window.companyId;
+                                            const sId = datosJSON.sucursalId || datosJSON.sucursal_id || window.branchId || 'principal';
+
+                                            if (!datosJSON.items && (datosJSON.producto_id || datosJSON.id || datosJSON.productoId)) {
+                                                const pId = datosJSON.id || datosJSON.producto_id || datosJSON.productoId;
+                                                return {
+                                                    companyId: cId,
+                                                    sucursalId: sId,
+                                                    items: [{
+                                                        id: pId,
+                                                        producto_id: pId,
+                                                        cantidad: parseFloat(datosJSON.cantidad) || 0,
+                                                        operacion: (datosJSON.operacion || 'SUMAR').toUpperCase()
+                                                    }]
+                                                };
+                                            }
+
+                                            if (Array.isArray(datosJSON.items)) {
+                                                return {
+                                                    ...datosJSON,
+                                                    companyId: cId,
+                                                    sucursalId: sId,
+                                                    items: datosJSON.items.map(it => {
+                                                        const pId = it.id || it.producto_id || it.productoId || it.producto_ID;
+                                                        return {
+                                                            ...it,
+                                                            id: pId,
+                                                            producto_id: pId,
+                                                            cantidad: parseFloat(it.cantidad || it.cantidadFinal || 0),
+                                                            operacion: (it.operacion || 'SUMAR').toUpperCase()
+                                                        };
+                                                    }).filter(it => Boolean(it.id))
+                                                };
+                                            }
+                                        }
+                                        return datosJSON;
+                                    })())
                                 });
 
                                 if (response.ok) {
                                     await api.eliminarDeCola(registro.id);
                                     procesadosConExito++;
                                     console.log(`✅ [CAJERA SYNC] Registro ${registro.id} (${registro.tabla}) sincronizado con VPS.`);
+                                } else {
+                                    let errorTexto = 'HTTP ' + response.status;
+                                    try {
+                                        const errJson = await response.json();
+                                        if (errJson && errJson.error) errorTexto = response.status + ': ' + errJson.error;
+                                    } catch (_) {}
+                                    console.warn('⚠️ [CAJERA SYNC] Registro ' + registro.id + ' (' + registro.tabla + ') falló: ' + errorTexto);
+                                    if (api && typeof api.registrarFalloCola === 'function') {
+                                        await api.registrarFalloCola(registro.id, errorTexto);
+                                    }
                                 }
                             } catch (uploadErr) {
                                 console.error(`❌ [CAJERA SYNC] Falló subida al VPS. Pausando.`);
@@ -1152,6 +1201,21 @@ async function inicializarDashboard() {
     window.addEventListener('online', () => actualizarUIConexion(true));
     window.addEventListener('offline', () => actualizarUIConexion(false));
 
+    // 🔌 Reconexión automática con el maestro (eventos del proceso principal, sin polling)
+    window.addEventListener('maestro-estado', (e) => {
+        const p = e.detail || {};
+        if (!window.esCajaHija) return;
+        if (p.estado === 'conectado' && p.ip && p.ip !== 'localhost') {
+            const nuevaUrl = `http://${p.ip}:3000`;
+            const cambio = SERVER_URL !== nuevaUrl;
+            SERVER_URL = nuevaUrl; window.SERVER_URL = nuevaUrl;
+            if (cambio || p.cambioIp || p.ipAnterior !== undefined) {
+                // Recuperamos datos perdidos durante la caída
+                try { descargarActualizacionesDeInventario(); descargarActualizacionesDeCategorias(); fetchDollarRate(); } catch (_) {}
+            }
+        }
+    });
+
     let contadorLatidos = 0; 
     let contadorDescargas = 0; 
     let contadorRate = 0; 
@@ -1312,13 +1376,26 @@ async function inicializarDashboard() {
 </script>
 <!-- MODAL DE ACTUALIZACIÓN GLOBAL (Estilo Bloqueo de Plan) -->
 <div id="global-update-modal" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(4px);">
-    <div style="background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
-        <i class="material-icons" style="font-size: 50px; color: #2563eb;">system_update</i>
-        <h2 style="font-size: 20px; color: #1f2937; margin: 15px 0 10px; font-weight: bold;">Actualización Disponible</h2>
-        <p style="color: #4b5563; font-size: 15px; line-height: 1.5;">
-            Tienes una nueva actualización disponible, por favor actualiza.
+    <div style="background: white; padding: 28px 24px; border-radius: 16px; text-align: center; max-width: 440px; width: 90%; box-shadow: 0 15px 35px rgba(0,0,0,0.25);">
+        <i class="material-icons" style="font-size: 48px; color: #2563eb;">system_update</i>
+        <h2 style="font-size: 20px; color: #1f2937; margin: 12px 0 8px; font-weight: bold;">Actualización Disponible</h2>
+        <p style="color: #4b5563; font-size: 14px; line-height: 1.5; margin-bottom: 16px;">
+            Hay una nueva versión disponible de <b>NEXUS POS</b> lista para instalar.
         </p>
-        <button onclick="document.getElementById('global-update-modal').style.display='none'" style="margin-top: 20px; background: #2563eb; color: white; border: none; padding: 10px 25px; border-radius: 8px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold;">Entendido</button>
+        
+        <!-- Recuadro de Advertencia de Cierre de Caja -->
+        <div style="background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; border-radius: 10px; padding: 12px 14px; text-align: left; margin-bottom: 18px;">
+            <div style="display: flex; align-items: flex-start; gap: 10px;">
+                <i class="material-icons" style="font-size: 24px; color: #d97706; flex-shrink: 0; margin-top: 1px;">warning</i>
+                <div style="font-size: 13px; color: #92400e; line-height: 1.45;">
+                    <strong style="color: #78350f; display: block; margin-bottom: 4px; font-size: 13.5px;">Importante antes de actualizar:</strong>
+                    Si esta computadora tiene una sesión de venta activa o pendiente (caja abierta con ventas por cerrar), <strong>no actualice en este momento</strong>.<br><br>
+                    Lo recomendable y el procedimiento correcto es <strong>esperar a realizar el cierre de caja</strong> y, una vez la sesión de caja chica quede en cero, proceder con la actualización del sistema.
+                </div>
+            </div>
+        </div>
+
+        <button onclick="document.getElementById('global-update-modal').style.display='none'" style="background: #2563eb; color: white; border: none; padding: 11px 24px; border-radius: 8px; cursor: pointer; font-size: 15px; width: 100%; font-weight: bold; transition: background 0.2s;" onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'">Entendido</button>
     </div>
 </div>
 <script>
@@ -1374,5 +1451,7 @@ async function inicializarDashboard() {
         window.addEventListener('configuracion_actualizada', checkBalanzaMenu);
     });
 </script>
+<script src="estado_maestro.js"></script>
+<script src="seguridad_consola.js"></script>
 </body>
 </html>

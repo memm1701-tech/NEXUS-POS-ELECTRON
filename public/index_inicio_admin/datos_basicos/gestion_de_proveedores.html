@@ -144,6 +144,9 @@
             if (sesion) {
                 companyId = sesion.companyId;
                 fetchProveedores();
+                if (window.nexusAPI?.sincronizarCuentasPagar) {
+                    window.nexusAPI.sincronizarCuentasPagar(companyId).then(() => fetchProveedores()).catch(console.error);
+                }
             }
         }
 

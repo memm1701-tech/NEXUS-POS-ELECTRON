@@ -293,6 +293,12 @@
     let idProductoSeleccionado = null;
     let factorEmpaque = 1;
     let focoProducto = -1; 
+    let unidadActual = 'UN';
+
+    // Variables VPS (Xeon / Cloud)
+    let SERVER_URL = null;
+    let respaldoActivo = false;
+    window.bloqueoTraspaso = false;
 
     // --- 2. REFERENCIAS DOM ---
     const selectOrigen = document.getElementById('storage-origin');
@@ -309,234 +315,233 @@
     // --- 3. INICIALIZACIÓN ---
     async function inicializar() {
         try {
-            const sesion = await window.nexusAPI.obtenerSesionLocal();
+            window.bloqueoTraspaso = false;
+            const api = window.nexusAPI;
+            if (!api) {
+                console.error("❌ [TRASP] window.nexusAPI no está disponible.");
+                return;
+            }
+
+            const sesion = await api.obtenerSesionLocal();
             if (sesion && sesion.companyId) {
                 idEmpresa = sesion.companyId;
                 idUsuario = sesion.uid || sesion.id;
+
+                // Cargar config VPS desde .env dinámicamente
+                try {
+                    if (api.obtenerConfigServer) {
+                        const config = await api.obtenerConfigServer();
+                        respaldoActivo = config.respaldo_datos === 'true' || config.respaldo_datos === true;
+                        if (respaldoActivo) {
+                            SERVER_URL = `http://${config.serverIp || config.SERVER_IP}:${config.serverPort || config.SERVER_PORT}`;
+                            console.log("🧠 [TRASP] Servidor VPS configurado en:", SERVER_URL);
+                        } else {
+                            SERVER_URL = null;
+                        }
+                    }
+                } catch (configError) {
+                    console.warn("⚠️ [TRASP] Error obteniendo config de servidor:", configError.message);
+                }
+
+                // Cargar catálogo de productos local de inmediato
+                const prods = await api.obtenerProductosLocal(idEmpresa);
+                catalogoProductosGlobal = (prods || []).filter(p => p.company_id === idEmpresa);
+
+                // Cargar sucursales
                 await cargarSucursales();
-                catalogoProductosGlobal = await window.nexusAPI.obtenerProductosLocal() || [];
+
+                // Si la sesión tiene sucursal asociada, preseleccionarla como origen
+                if (sesion.branchId && sucursalesDisponibles.some(s => s.id === sesion.branchId)) {
+                    selectOrigen.value = sesion.branchId;
+                    idSucursalOrigen = sesion.branchId;
+                    actualizarOpcionesDestino();
+                    await prepararEntornoOrigen();
+                }
             } else {
                 mostrarToast("No hay sesión activa.", "error");
             }
         } catch (e) { 
-            console.error("❌ [NEXUS] Error al inicializar:", e); 
+            console.error("❌ [TRASP] Error al inicializar:", e); 
         }
     }
 
     async function cargarSucursales() {
-        sucursalesDisponibles = await window.nexusAPI.obtenerSucursalesLocal(idEmpresa);
+        const api = window.nexusAPI;
+        sucursalesDisponibles = await api.obtenerSucursalesLocal(idEmpresa) || [];
         
         selectOrigen.innerHTML = '<option value="" disabled selected>Selecciona sucursal origen...</option>';
-        selectDestino.innerHTML = '<option value="" disabled selected>Selecciona sucursal destino...</option>';
-        
-        if(sucursalesDisponibles && sucursalesDisponibles.length > 0) {
+        if (sucursalesDisponibles.length > 0) {
             sucursalesDisponibles.forEach(s => {
-                const optOrigen = document.createElement('option');
-                optOrigen.value = s.id;
-                optOrigen.textContent = s.nombre;
-                selectOrigen.appendChild(optOrigen);
-
-                const optDestino = document.createElement('option');
-                optDestino.value = s.id;
-                optDestino.textContent = s.nombre;
-                selectDestino.appendChild(optDestino);
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.nombre;
+                selectOrigen.appendChild(opt);
             });
         }
-        selectDestino.disabled = false;
+        actualizarOpcionesDestino();
     }
 
-    // --- 4. PREPARACIÓN DEL ENTORNO (STOCK ORIGEN) ---
+    function actualizarOpcionesDestino() {
+        selectDestino.innerHTML = '<option value="" disabled selected>Selecciona sucursal destino...</option>';
+        if (!idSucursalOrigen) {
+            selectDestino.disabled = true;
+            return;
+        }
+
+        const sucursalesFiltradas = sucursalesDisponibles.filter(s => s.id !== idSucursalOrigen);
+        if (sucursalesFiltradas.length > 0) {
+            sucursalesFiltradas.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.nombre;
+                selectDestino.appendChild(opt);
+            });
+            selectDestino.disabled = false;
+        } else {
+            selectDestino.innerHTML = '<option value="" disabled selected>No hay otra sucursal registrada</option>';
+            selectDestino.disabled = true;
+        }
+
+        if (idSucursalDestino === idSucursalOrigen) {
+            idSucursalDestino = null;
+            selectDestino.value = "";
+        }
+    }
+
+    // --- 4. PREPARACIÓN DEL ENTORNO (STOCK ORIGEN DESDE SQLITE) ---
     async function prepararEntornoOrigen() {
-        if (!idSucursalOrigen) return;
+        if (!idSucursalOrigen) {
+            inputBusqueda.disabled = true;
+            inputBusqueda.placeholder = "Selecciona origen primero...";
+            return;
+        }
 
         inputBusqueda.disabled = false;
-        inputBusqueda.placeholder = "Buscando stock en el Maestro...";
-        inputCantidad.disabled = false;
-        
-        const servidorIP = localStorage.getItem('serverIP') || '192.168.0.111';
-        const URL_BASE = `http://${servidorIP}:3000`;
+        inputBusqueda.placeholder = "Escribe para buscar el producto a traspasar...";
 
         try {
             // 1. Catálogo local
-            const todosLosProductos = await window.nexusAPI.obtenerProductosLocal(); 
-            const productosBase = todosLosProductos.filter(p => p.company_id === idEmpresa);
+            if (!catalogoProductosGlobal || catalogoProductosGlobal.length === 0) {
+                const todosLosProductos = await window.nexusAPI.obtenerProductosLocal(idEmpresa); 
+                catalogoProductosGlobal = (todosLosProductos || []).filter(p => p.company_id === idEmpresa);
+            }
             
-            // 2. Stock del maestro para el ORIGEN
-            const params = new URLSearchParams({
-                sucursalId: idSucursalOrigen,
-                companyId: idEmpresa
-            });
-            const respuesta = await fetch(`${URL_BASE}/api/maestro/stock?${params.toString()}`);
-            const stockCentral = await respuesta.json();
+            // 2. Stock local SQLite instantáneo para el ORIGEN (0 ms, sin bloqueos de red)
+            const stockCentral = await window.nexusAPI.obtenerInventarioSucursal({
+                companyId: idEmpresa,
+                sucursalId: idSucursalOrigen
+            }) || [];
 
-            // 3. Cruzar datos (solo productos con stock > 0 para agilizar)
-            listaProductosOrigen = productosBase.map(prod => {
-                const servidorData = stockCentral.find(s => s.producto_id === prod.id);
+            // 3. Cruzar datos (incluimos todos los productos con su stock correspondiente)
+            listaProductosOrigen = catalogoProductosGlobal.map(prod => {
+                const servidorData = (stockCentral || []).find(s => s.producto_id === prod.id);
+                
+                let datosParsed = {};
+                try {
+                    datosParsed = typeof prod.datos_json === 'string' ? JSON.parse(prod.datos_json) : (prod.datos_json || {});
+                } catch(e) {}
+                const unidadReal = datosParsed.unit || datosParsed.unidad || prod.unit || prod.unidad || 'UN';
+
                 return {
                     ...prod,
-                    stock_sucursal: servidorData ? servidorData.cantidad_real : 0 
+                    unit: unidadReal,
+                    stock_sucursal: servidorData ? parseFloat(servidorData.cantidad_real !== undefined ? servidorData.cantidad_real : servidorData.stock || 0) : 0 
                 };
-            }).filter(p => p.stock_sucursal > 0);
+            });
 
-            inputBusqueda.placeholder = "Escribe el producto a traspasar...";
-            
             // 4. Cargar Historial de Traspasos Local
             await cargarHistorialTraspasos();
 
+            // 5. Descargar stock fresco de VPS en segundo plano (si hay red y respaldo activo)
+            if (respaldoActivo && SERVER_URL && navigator.onLine) {
+                descargarStockFrescoOrigen(idEmpresa, idSucursalOrigen);
+            }
+
         } catch (error) {
-            console.error("❌ Error cargando origen:", error);
-            mostrarToast("Error de conexión con el servidor", "error");
+            console.error("❌ [TRASP] Error cargando origen:", error);
+            mostrarToast("Error al cargar inventario de origen", "error");
+        }
+    }
+
+    async function descargarStockFrescoOrigen(empresa, sucursal) {
+        if (!empresa || !sucursal || !SERVER_URL || !respaldoActivo || !navigator.onLine) return;
+        try {
+            const resp = await fetch(`${SERVER_URL}/api/maestro/inventario/stock?companyId=${encodeURIComponent(empresa)}&sucursalId=${encodeURIComponent(sucursal)}`, {
+                signal: AbortSignal.timeout(5000)
+            });
+            if (resp.ok) {
+                const stockServidor = await resp.json();
+                if (Array.isArray(stockServidor) && stockServidor.length > 0) {
+                    for (const item of stockServidor) {
+                        const prodId = item.producto_id || item.id;
+                        const cant = parseFloat(item.cantidad_real !== undefined ? item.cantidad_real : item.stock || 0);
+                        await window.nexusAPI.guardarStockSucursal({
+                            productoId: prodId,
+                            sucursalId: sucursal,
+                            companyId: empresa,
+                            cantidad: cant,
+                            operacion: 'FIJAR',
+                            datosStock: { estado_sync: 1 }
+                        });
+                    }
+                    if (idSucursalOrigen === sucursal) {
+                        const stockActualizado = await window.nexusAPI.obtenerInventarioSucursal({
+                            companyId: empresa,
+                            sucursalId: sucursal
+                        }) || [];
+                        listaProductosOrigen.forEach(p => {
+                            const found = stockActualizado.find(s => s.producto_id === p.id);
+                            if (found) p.stock_sucursal = parseFloat(found.cantidad_real !== undefined ? found.cantidad_real : found.stock || 0);
+                        });
+                    }
+                }
+            }
+        } catch(e) {
+            console.warn("⚠️ [TRASP] Sincronización en segundo plano con VPS omitida:", e.message);
         }
     }
 
     // --- 5. LÓGICA DE AUTOCOMPLETADO Y SELECCIÓN ---
-    async function seleccionarProducto(p) {
-        idProductoSeleccionado = p.id;
-        inputBusqueda.value = p.nombre;
-        contenedorResultados.innerHTML = "";
-        contenedorResultados.classList.remove('activo');
-        
-        // Cargar Empaques
-        const empaques = await window.nexusAPI.obtenerEmpaquePorProducto(p.id);
-        selectEmpaque.innerHTML = `<option value="1">Unidad Individual (1.00 ${p.unit || 'UN'})</option>`;
-        selectEmpaque.disabled = false;
-        
-        if (empaques && empaques.length > 0) {
-            empaques.forEach(emp => {
-                const opt = document.createElement('option');
-                opt.value = emp.factor_cantidad;
-                opt.textContent = `${emp.nombre_unidad} (x${emp.factor_cantidad} ${emp.tipo_medida})`;
-                selectEmpaque.appendChild(opt);
-            });
-        }
-        
-        factorEmpaque = 1;
-        recalcular();
-        inputCantidad.focus();
+    function filtrarProductos(termino) {
+        const cleanTerm = (termino || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        if (!cleanTerm) return [];
+
+        return listaProductosOrigen.filter(p => {
+            const nom = (p.nombre || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const cod = (p.codigo || '').toLowerCase();
+            const cat = (p.categoria || '').toLowerCase();
+            return nom.includes(cleanTerm) || cod.includes(cleanTerm) || cat.includes(cleanTerm);
+        }).slice(0, 15);
     }
 
-    function recalcular() {
-        const cant = parseFloat(inputCantidad.value) || 0;
-        const total = cant * factorEmpaque;
-        visorTotal.value = `${total.toFixed(2)} unidad(es)`;
-    }
-
-    // --- 6. HISTORIAL DE TRASPASOS ---
-    async function cargarHistorialTraspasos() {
-        try {
-            // Reutilizamos tu API de salidas para leer el historial local
-            let historialLocal = await window.nexusAPI.obtenerSalidasLocal({
-                companyId: idEmpresa,
-                branchId: idSucursalOrigen
-            });
-
-            // Filtramos solo los movimientos que contengan "Traspaso" en el motivo
-            const traspasos = historialLocal.filter(h => (h.motivo || '').toLowerCase().includes('traspaso'));
-            historialTraspasosCompleto = traspasos;
-            renderizarHistorial();
-        } catch (error) {
-            console.error("❌ Error leyendo historial:", error);
-        }
-    }
-
-    function renderizarHistorial() {
-        cuerpoHistorial.innerHTML = '';
-        
-        let lista = [...historialTraspasosCompleto];
-        
-        // Filtros
-        const fechaDesde = document.getElementById('filtro-desde').value;
-        const fechaHasta = document.getElementById('filtro-hasta').value;
-        const limite = parseInt(document.getElementById('filtro-limite').value) || 100;
-
-        if (fechaDesde) {
-            const msDesde = new Date(fechaDesde).getTime();
-            lista = lista.filter(h => new Date(h.fecha_modificacion).getTime() >= msDesde);
-        }
-        if (fechaHasta) {
-            const dtHasta = new Date(fechaHasta);
-            dtHasta.setHours(23, 59, 59, 999);
-            lista = lista.filter(h => new Date(h.fecha_modificacion).getTime() <= dtHasta.getTime());
-        }
-
-        // Ordenar y Limitar
-        lista.sort((a,b) => new Date(b.fecha_modificacion) - new Date(a.fecha_modificacion));
-        lista = lista.slice(0, limite);
-        
-        if (!lista || lista.length === 0) {
-            cuerpoHistorial.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500 italic">No hay traspasos recientes desde esta sucursal.</td></tr>';
-            return;
-        }
-
-        lista.forEach(h => {
-            const fila = document.createElement('tr');
-            
-            let nombreCruce = h.product_id;
-            if (catalogoProductosGlobal && catalogoProductosGlobal.length > 0) {
-                const prod = catalogoProductosGlobal.find(p => p.id === h.product_id);
-                if (prod) nombreCruce = prod.nombre;
-            }
-            
-            const nombreProd = h.nombre_producto || nombreCruce || 'Producto Desconocido';
-            const unidadLimpia = h.unidad ? h.unidad.split(' ')[0] : 'UN';
-            
-            // Extraer el nombre del destino del motivo (Ej: "Traspaso a Sucursal Centro")
-            const motivoTexto = h.motivo || '';
-            const destinoAprox = motivoTexto.replace('Traspaso a ', '');
-
-            fila.innerHTML = `
-                <td class="px-6 py-4 text-xs text-gray-500">${new Date(h.fecha_modificacion).toLocaleString()}</td>
-                <td class="px-6 py-4 text-sm font-bold text-gray-900">${nombreProd}</td>
-                <td class="px-6 py-4 text-sm font-bold text-purple-600">${h.cantidad} ${unidadLimpia}</td>
-                <td class="px-6 py-4 text-sm text-gray-600">${h.branch_id}</td>
-                <td class="px-6 py-4 text-sm text-gray-600">${destinoAprox}</td>
-            `;
-            cuerpoHistorial.appendChild(fila);
-        });
-    }
-
-    // --- 7. EVENT LISTENERS DOM ---
-    selectOrigen.onchange = async (e) => {
-        idSucursalOrigen = e.target.value;
-        if (idSucursalOrigen === idSucursalDestino) {
-            mostrarToast("Origen y Destino no pueden ser iguales.", "error");
-            selectOrigen.value = ""; idSucursalOrigen = null; return;
-        }
-        await prepararEntornoOrigen();
-    };
-
-    selectDestino.onchange = (e) => {
-        idSucursalDestino = e.target.value;
-        if (idSucursalOrigen === idSucursalDestino) {
-            mostrarToast("Destino y Origen no pueden ser iguales.", "error");
-            selectDestino.value = ""; idSucursalDestino = null;
-        }
-    };
-
-    // Buscador: Escritura
     inputBusqueda.oninput = (e) => {
-        const termino = e.target.value.toLowerCase().trim();
+        const termino = e.target.value;
         focoProducto = -1;
         contenedorResultados.innerHTML = "";
 
-        if (termino.length < 2) {
+        if (termino.trim().length < 1) {
             contenedorResultados.classList.remove('activo');
             return;
         }
 
-        const filtrados = listaProductosOrigen.filter(p => 
-            p.nombre.toLowerCase().includes(termino) || (p.codigo && p.codigo.includes(termino))
-        );
+        const filtrados = filtrarProductos(termino);
 
         if (filtrados.length > 0) {
             contenedorResultados.classList.add('activo');
             filtrados.forEach((p) => {
                 const item = document.createElement('div');
                 item.className = "result-item";
+                const tieneStock = p.stock_sucursal > 0;
+                const stockColor = tieneStock ? 'text-purple-600 font-bold' : 'text-red-500 font-semibold';
+                const stockTexto = tieneStock ? `Disp: ${p.stock_sucursal} ${p.unit || 'UN'}` : `Sin Stock (0.00 ${p.unit || 'UN'})`;
+                
                 item.innerHTML = `
-                    <div class="flex justify-between">
-                        <strong>${p.nombre}</strong>
-                        <span class="text-purple-600 font-bold">Disp: ${p.stock_sucursal} ${p.unit || 'UN'}</span>
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <strong>${p.nombre}</strong>
+                            <div class="text-xs text-gray-500">${p.categoria || 'General'} | Código: ${p.codigo || 'S/C'}</div>
+                        </div>
+                        <span class="${stockColor}">${stockTexto}</span>
                     </div>
                 `;
                 item.onclick = () => seleccionarProducto(p);
@@ -544,7 +549,7 @@
             });
         } else {
             contenedorResultados.classList.add('activo');
-            contenedorResultados.innerHTML = `<div class="no-results-msg px-4 py-3 italic text-gray-500">Sin stock disponible o no encontrado</div>`;
+            contenedorResultados.innerHTML = `<div class="no-results-msg px-4 py-3 italic text-gray-500">No se encontraron productos coincidentes</div>`;
         }
     };
 
@@ -554,106 +559,441 @@
         if (items.length === 0) return;
 
         if (e.key === "ArrowDown") {
-            e.preventDefault(); focoProducto++; if (focoProducto >= items.length) focoProducto = 0; aplicarResaltado(items);
+            e.preventDefault();
+            focoProducto++;
+            if (focoProducto >= items.length) focoProducto = 0;
+            aplicarResaltado(items);
         } else if (e.key === "ArrowUp") {
-            e.preventDefault(); focoProducto--; if (focoProducto < 0) focoProducto = items.length - 1; aplicarResaltado(items);
+            e.preventDefault();
+            focoProducto--;
+            if (focoProducto < 0) focoProducto = items.length - 1;
+            aplicarResaltado(items);
         } else if (e.key === "Enter") {
             e.preventDefault();
-            if (focoProducto > -1) items[focoProducto].click();
-            else if (items.length > 0) items[0].click();
+            if (focoProducto > -1 && items[focoProducto]) {
+                items[focoProducto].click();
+            } else if (items.length > 0) {
+                items[0].click();
+            }
+        } else if (e.key === "Escape") {
+            contenedorResultados.classList.remove('activo');
         }
     });
 
     function aplicarResaltado(items) {
         items.forEach(el => el.classList.remove("autocomplete-active"));
-        if (focoProducto > -1) {
+        if (focoProducto > -1 && items[focoProducto]) {
             items[focoProducto].classList.add("autocomplete-active");
             items[focoProducto].scrollIntoView({ block: "nearest" });
         }
     }
 
-    inputCantidad.oninput = recalcular;
-    selectEmpaque.onchange = (e) => { factorEmpaque = parseFloat(e.target.value) || 1; recalcular(); };
+    // Cerrar resultados al hacer click fuera
+    document.addEventListener('click', (e) => {
+        if (!inputBusqueda.contains(e.target) && !contenedorResultados.contains(e.target)) {
+            contenedorResultados.classList.remove('activo');
+        }
+    });
 
-    // --- 8. EJECUCIÓN DEL TRASPASO (DOBLE PARTIDA) ---
+    async function seleccionarProducto(p) {
+        idProductoSeleccionado = p.id;
+        inputBusqueda.value = p.nombre;
+        contenedorResultados.innerHTML = "";
+        contenedorResultados.classList.remove('activo');
+        
+        let datosParsed = {};
+        try {
+            datosParsed = typeof p.datos_json === 'string' ? JSON.parse(p.datos_json) : (p.datos_json || {});
+        } catch(e) {}
+        unidadActual = datosParsed.unit || datosParsed.unidad || p.unit || p.unidad || 'UN';
+
+        // Cargar Empaques desde SQLite
+        selectEmpaque.innerHTML = `<option value="1">Unidad Base (1.00 ${unidadActual})</option>`;
+        selectEmpaque.disabled = false;
+        
+        try {
+            const empaques = await window.nexusAPI.obtenerEmpaquePorProducto(p.id);
+            if (empaques && Array.isArray(empaques) && empaques.length > 0) {
+                empaques.forEach(emp => {
+                    const factor = parseFloat(emp.factor_cantidad || emp.factor || 1);
+                    const opt = document.createElement('option');
+                    opt.value = factor;
+                    opt.textContent = `${emp.nombre_unidad} (x${factor} ${emp.tipo_medida || unidadActual})`;
+                    selectEmpaque.appendChild(opt);
+                });
+            }
+        } catch (errEmp) {
+            console.warn("⚠️ No se pudieron cargar empaques del producto:", errEmp);
+        }
+        
+        factorEmpaque = 1;
+        inputCantidad.disabled = false;
+        if (!inputCantidad.value || parseFloat(inputCantidad.value) <= 0) {
+            inputCantidad.value = "1";
+        }
+        recalcular();
+        inputCantidad.focus();
+        inputCantidad.select();
+    }
+
+    function recalcular() {
+        const cant = parseFloat(inputCantidad.value) || 0;
+        const total = cant * factorEmpaque;
+        visorTotal.value = `${total.toFixed(2)} ${unidadActual}`;
+    }
+
+    inputCantidad.oninput = recalcular;
+    selectEmpaque.onchange = (e) => { 
+        factorEmpaque = parseFloat(e.target.value) || 1; 
+        recalcular(); 
+    };
+
+    // --- 6. HISTORIAL DE TRASPASOS ---
+    async function cargarHistorialTraspasos() {
+        if (!idSucursalOrigen) return;
+        try {
+            let historialLocal = await window.nexusAPI.obtenerSalidasLocal({
+                companyId: idEmpresa,
+                branchId: idSucursalOrigen
+            }) || [];
+
+            // Filtramos solo los movimientos que contengan "Traspaso" en el motivo
+            const traspasos = historialLocal.filter(h => (h.motivo || '').toLowerCase().includes('traspaso'));
+            historialTraspasosCompleto = traspasos;
+            renderizarHistorial();
+        } catch (error) {
+            console.error("❌ Error leyendo historial de traspasos:", error);
+        }
+    }
+
+    function renderizarHistorial() {
+        if (!cuerpoHistorial) return;
+        cuerpoHistorial.innerHTML = '';
+        
+        let lista = [...historialTraspasosCompleto];
+        
+        // Filtros
+        const fechaDesde = document.getElementById('filtro-desde')?.value;
+        const fechaHasta = document.getElementById('filtro-hasta')?.value;
+        const limite = parseInt(document.getElementById('filtro-limite')?.value) || 100;
+
+        if (fechaDesde) {
+            const msDesde = new Date(fechaDesde).getTime();
+            lista = lista.filter(h => new Date(h.fecha_modificacion || h.created_at).getTime() >= msDesde);
+        }
+        if (fechaHasta) {
+            const dtHasta = new Date(fechaHasta);
+            dtHasta.setHours(23, 59, 59, 999);
+            lista = lista.filter(h => new Date(h.fecha_modificacion || h.created_at).getTime() <= dtHasta.getTime());
+        }
+
+        // Ordenar y Limitar
+        lista.sort((a,b) => new Date(b.fecha_modificacion || b.created_at || 0) - new Date(a.fecha_modificacion || a.created_at || 0));
+        lista = lista.slice(0, limite);
+        
+        if (!lista || lista.length === 0) {
+            cuerpoHistorial.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500 italic">No hay traspasos recientes desde esta sucursal.</td></tr>';
+            return;
+        }
+
+        let htmlBuffer = '';
+        lista.forEach(h => {
+            let nombreCruce = h.product_id;
+            if (catalogoProductosGlobal && catalogoProductosGlobal.length > 0) {
+                const prod = catalogoProductosGlobal.find(p => p.id === (h.product_id || h.productId));
+                if (prod) nombreCruce = prod.nombre;
+            }
+            
+            const nombreProd = h.nombre_producto || nombreCruce || 'Producto Desconocido';
+            const unidadLimpia = h.unidad ? h.unidad.split(' ')[0] : 'UN';
+            
+            const sucursalOrigenObj = sucursalesDisponibles.find(s => s.id === (h.branch_id || h.branchId));
+            const nombreOrigen = sucursalOrigenObj ? sucursalOrigenObj.nombre : (h.branch_id || 'Origen');
+
+            const motivoTexto = h.motivo || '';
+            const destinoAprox = motivoTexto.replace(/Traspaso a\s*/i, '').split('|')[0].trim() || 'Destino';
+            const fechaStr = h.fecha_modificacion || h.created_at;
+            const fechaVal = fechaStr ? new Date(fechaStr).toLocaleString() : 'N/D';
+
+            htmlBuffer += `
+                <tr>
+                    <td class="px-6 py-4 text-xs text-gray-500">${fechaVal}</td>
+                    <td class="px-6 py-4 text-sm font-bold text-gray-900">${nombreProd}</td>
+                    <td class="px-6 py-4 text-sm font-bold text-purple-600">${h.cantidad} ${unidadLimpia}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">${nombreOrigen}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">${destinoAprox}</td>
+                </tr>
+            `;
+        });
+        cuerpoHistorial.innerHTML = htmlBuffer;
+    }
+
+    // --- 7. EVENT LISTENERS DOM ---
+    selectOrigen.onchange = async (e) => {
+        idSucursalOrigen = e.target.value;
+        actualizarOpcionesDestino();
+        limpiarFormularioTraspaso();
+        await prepararEntornoOrigen();
+    };
+
+    selectDestino.onchange = (e) => {
+        idSucursalDestino = e.target.value;
+        if (idSucursalOrigen === idSucursalDestino) {
+            mostrarToast("La sucursal de destino no puede ser igual al origen.", "error");
+            selectDestino.value = ""; 
+            idSucursalDestino = null;
+        }
+    };
+
+    // --- 8. EJECUCIÓN DEL TRASPASO (DOBLE PARTIDA SQLITE + VPS) ---
     formulario.onsubmit = async (e) => {
         e.preventDefault();
         e.stopImmediatePropagation();
 
         if (window.bloqueoTraspaso) return;
-        if (!idSucursalOrigen || !idSucursalDestino) return mostrarToast("Faltan sucursales.", "error");
-        if (!idProductoSeleccionado) return mostrarToast("Selecciona un producto.", "error");
-
-        const cantidadRestar = parseFloat(inputCantidad.value) || 0;
-        const totalTraspaso = cantidadRestar * factorEmpaque;
-
-        // Validación visual rápida
-        const prod = listaProductosOrigen.find(p => p.id === idProductoSeleccionado);
-        if (prod && prod.stock_sucursal < totalTraspaso) {
-            return mostrarToast(`Stock insuficiente. Disponible: ${prod.stock_sucursal}`, "error");
+        if (!idSucursalOrigen || !idSucursalDestino) {
+            return mostrarToast("Debes seleccionar la sucursal de origen y de destino.", "error");
+        }
+        if (idSucursalOrigen === idSucursalDestino) {
+            return mostrarToast("La sucursal de origen y destino no pueden ser iguales.", "error");
+        }
+        if (!idProductoSeleccionado) {
+            return mostrarToast("Selecciona el producto a traspasar.", "error");
         }
 
-        const nombreDestino = selectDestino.options[selectDestino.selectedIndex].text;
-        const nombreOrigen = selectOrigen.options[selectOrigen.selectedIndex].text;
-        const obsAdicional = document.getElementById('observation').value;
-        const motivoFull = `Traspaso a ${nombreDestino}` + (obsAdicional ? ` | Obs: ${obsAdicional}` : '');
+        const cantidadPaquetes = parseFloat(inputCantidad.value) || 0;
+        if (cantidadPaquetes <= 0) {
+            return mostrarToast("Ingresa una cantidad mayor a 0.", "error");
+        }
+
+        const totalTraspaso = cantidadPaquetes * factorEmpaque;
+
+        // Validación visual de disponibilidad
+        const prod = listaProductosOrigen.find(p => p.id === idProductoSeleccionado);
+        const stockDisponible = prod ? (prod.stock_sucursal || 0) : 0;
+        if (stockDisponible < totalTraspaso) {
+            return mostrarToast(`Stock insuficiente en sucursal origen. Disponible: ${stockDisponible.toFixed(2)} ${unidadActual}`, "error");
+        }
+
+        const nombreOrigen = selectOrigen.options[selectOrigen.selectedIndex]?.text || idSucursalOrigen;
+        const nombreDestino = selectDestino.options[selectDestino.selectedIndex]?.text || idSucursalDestino;
+        const obsAdicional = (document.getElementById('observation').value || '').trim();
+        const motivoSalida = `Traspaso a ${nombreDestino}` + (obsAdicional ? ` | Obs: ${obsAdicional}` : '');
+
+        const fechaCaracas = (function(){
+            const d = new Date();
+            const c = new Date(d.getTime() + (d.getTimezoneOffset() * 60000) - (4 * 3600000));
+            const p = (n) => String(n).padStart(2, '0');
+            return `${c.getFullYear()}-${p(c.getMonth()+1)}-${p(c.getDate())} ${p(c.getHours())}:${p(c.getMinutes())}:${p(c.getSeconds())}`;
+        })();
 
         try {
             window.bloqueoTraspaso = true;
             btnSubmit.disabled = true;
             btnSubmit.textContent = "Procesando Traspaso...";
 
-            // PASO 1: SALIDA DE LA SUCURSAL ORIGEN (usa tu API que descuenta del maestro y guarda historial)
-            const datosSalida = {
+            // =========================================================
+            // PASO 1: SALIDA EN ORIGEN (LOCAL SQLite)
+            // =========================================================
+            const payloadStockOrigenLocal = {
+                productoId: idProductoSeleccionado,
+                sucursalId: idSucursalOrigen,
+                companyId: idEmpresa,
+                cantidad: totalTraspaso,
+                operacion: 'RESTAR'
+            };
+            const resStockOrigen = await window.nexusAPI.guardarStockSucursal(payloadStockOrigenLocal);
+            if (!resStockOrigen || !resStockOrigen.success) {
+                throw new Error(resStockOrigen?.error || "Error al descontar stock de la sucursal origen.");
+            }
+
+            // Registrar en historial local de salidas para trazabilidad
+            const datosSalidaAuditoria = {
                 id: `TRANS-${Date.now()}`,
+                companyId: idEmpresa,
                 company_id: idEmpresa,
+                branchId: idSucursalOrigen,
                 branch_id: idSucursalOrigen,
+                productId: idProductoSeleccionado,
                 product_id: idProductoSeleccionado,
                 nombre_producto: inputBusqueda.value,
                 cantidad: totalTraspaso,
-                unidad: selectEmpaque.options[selectEmpaque.selectedIndex].text,
-                motivo: motivoFull,
-                observacion: `Traspasado desde ${nombreOrigen}`,
+                unidad: selectEmpaque.options[selectEmpaque.selectedIndex]?.text || unidadActual,
+                motivo: motivoSalida,
+                observacion: `Traspaso desde ${nombreOrigen} hacia ${nombreDestino}`,
+                usuarioId: idUsuario,
                 usuario_id: idUsuario,
-                fecha_modificacion: (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})()
+                fecha_modificacion: fechaCaracas
+            };
+            await window.nexusAPI.guardarSalidaLocal(datosSalidaAuditoria);
+
+            // =========================================================
+            // PASO 2: ENTRADA EN DESTINO (LOCAL SQLite)
+            // =========================================================
+            const payloadStockDestinoLocal = {
+                productoId: idProductoSeleccionado,
+                sucursalId: idSucursalDestino,
+                companyId: idEmpresa,
+                cantidad: totalTraspaso,
+                operacion: 'SUMAR'
+            };
+            const resStockDestino = await window.nexusAPI.guardarStockSucursal(payloadStockDestinoLocal);
+            if (!resStockDestino || !resStockDestino.success) {
+                throw new Error(resStockDestino?.error || "Error al sumar stock en la sucursal destino.");
+            }
+
+            // =========================================================
+            // PASO 3: SINCRONIZACIÓN CON EL SERVIDOR VPS (PostgreSQL / Xeon)
+            // =========================================================
+            let exitoVPSOrigen = false;
+            let exitoVPSDestino = false;
+
+            const payloadVPSOrigen = {
+                companyId: idEmpresa,
+                company_id: idEmpresa,
+                sucursalId: idSucursalOrigen,
+                sucursal_id: idSucursalOrigen,
+                producto_id: idProductoSeleccionado,
+                id: idProductoSeleccionado,
+                cantidad: totalTraspaso,
+                operacion: 'RESTAR',
+                items: [{
+                    id: idProductoSeleccionado,
+                    cantidad: totalTraspaso,
+                    operacion: 'RESTAR'
+                }]
             };
 
-            const resSalida = await window.nexusAPI.guardarSalidaLocal(datosSalida);
-            if (!resSalida || !resSalida.success) {
-                throw new Error(resSalida.error || "Fallo al descontar del origen.");
+            const payloadVPSDestino = {
+                companyId: idEmpresa,
+                company_id: idEmpresa,
+                sucursalId: idSucursalDestino,
+                sucursal_id: idSucursalDestino,
+                producto_id: idProductoSeleccionado,
+                id: idProductoSeleccionado,
+                cantidad: totalTraspaso,
+                operacion: 'SUMAR',
+                items: [{
+                    id: idProductoSeleccionado,
+                    cantidad: totalTraspaso,
+                    operacion: 'SUMAR'
+                }]
+            };
+
+            if (respaldoActivo && SERVER_URL && navigator.onLine) {
+                btnSubmit.textContent = "Sincronizando con VPS...";
+                
+                // 3.1 Descontar en Origen (VPS)
+                try {
+                    let resOrigen = await fetch(`${SERVER_URL}/api/maestro/stock/actualizar`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            company_id: idEmpresa,
+                            sucursal_id: idSucursalOrigen,
+                            producto_id: idProductoSeleccionado,
+                            operacion: 'restar',
+                            cantidad: totalTraspaso
+                        }),
+                        signal: AbortSignal.timeout(6000)
+                    });
+                    if (resOrigen.ok) {
+                        const jsonO = await resOrigen.json();
+                        if (jsonO.exito || jsonO.success) exitoVPSOrigen = true;
+                    }
+                    
+                    if (!exitoVPSOrigen) {
+                        resOrigen = await fetch(`${SERVER_URL}/api/maestro/inventario/registrar-entrada`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                companyId: idEmpresa,
+                                sucursalId: idSucursalOrigen,
+                                items: [{ id: idProductoSeleccionado, cantidad: totalTraspaso, operacion: 'RESTAR' }]
+                            }),
+                            signal: AbortSignal.timeout(6000)
+                        });
+                        if (resOrigen.ok) {
+                            const jsonO = await resOrigen.json();
+                            if (jsonO.exito || jsonO.success) exitoVPSOrigen = true;
+                        }
+                    }
+                } catch(eOrig) {
+                    console.warn("⚠️ [TRASP] Descuento VPS origen fallido/omitido:", eOrig.message);
+                }
+
+                // 3.2 Sumar en Destino (VPS)
+                try {
+                    let resDestino = await fetch(`${SERVER_URL}/api/maestro/inventario/registrar-entrada`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            companyId: idEmpresa,
+                            sucursalId: idSucursalDestino,
+                            items: [{ id: idProductoSeleccionado, cantidad: totalTraspaso, operacion: 'SUMAR' }]
+                        }),
+                        signal: AbortSignal.timeout(6000)
+                    });
+                    if (resDestino.ok) {
+                        const jsonD = await resDestino.json();
+                        if (jsonD.exito || jsonD.success) exitoVPSDestino = true;
+                    }
+                    
+                    if (!exitoVPSDestino) {
+                        resDestino = await fetch(`${SERVER_URL}/api/maestro/stock/actualizar`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                company_id: idEmpresa,
+                                sucursal_id: idSucursalDestino,
+                                producto_id: idProductoSeleccionado,
+                                operacion: 'sumar',
+                                cantidad: totalTraspaso
+                            }),
+                            signal: AbortSignal.timeout(6000)
+                        });
+                        if (resDestino.ok) {
+                            const jsonD = await resDestino.json();
+                            if (jsonD.exito || jsonD.success) exitoVPSDestino = true;
+                        }
+                    }
+                } catch(eDest) {
+                    console.warn("⚠️ [TRASP] Suma VPS destino fallida/omitida:", eDest.message);
+                }
             }
 
-            // PASO 2: ENTRADA EN LA SUCURSAL DESTINO (Inyección directa al Maestro)
-            const servidorIP = localStorage.getItem('serverIP') || '192.168.0.111';
-            const resEntrada = await fetch(`http://${servidorIP}:3000/api/maestro/registrar-entrada`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    sucursalId: idSucursalDestino,
-                    companyId: idEmpresa,
-                    items: [{
-                        id: idProductoSeleccionado,
-                        cantidad: totalTraspaso,
-                        operacion: 'SUMAR'
-                    }]
-                })
-            });
-            
-            const jsonEntrada = await resEntrada.json();
-            if (!jsonEntrada.exito) {
-                throw new Error("El origen se descontó, pero falló la entrada al destino.");
+            // =========================================================
+            // PASO 4: ENCOLAR SI EL VPS NO RECIBIÓ LOS CAMBIOS
+            // =========================================================
+            if (respaldoActivo && SERVER_URL && window.nexusAPI.encolarSincronizacion) {
+                if (!exitoVPSOrigen) {
+                    await window.nexusAPI.encolarSincronizacion({
+                        operacion: 'UPSERT',
+                        tabla: 'movimientos_stock',
+                        datos: payloadVPSOrigen
+                    });
+                }
+                if (!exitoVPSDestino) {
+                    await window.nexusAPI.encolarSincronizacion({
+                        operacion: 'UPSERT',
+                        tabla: 'movimientos_stock',
+                        datos: payloadVPSDestino
+                    });
+                }
             }
 
-            mostrarToast("¡Traspaso exitoso!", "success");
-            
-            // Reset y Recarga
-            idProductoSeleccionado = null;
-            inputBusqueda.value = "";
-            inputCantidad.value = "";
-            visorTotal.value = "0.00 unidad(es)";
-            document.getElementById('observation').value = "";
-            selectEmpaque.innerHTML = '<option value="1">Unidad Individual (x1)</option>';
-            
+            // =========================================================
+            // PASO 5: FEEDBACK Y REINICIO DE FORMULARIO
+            // =========================================================
+            if (exitoVPSOrigen && exitoVPSDestino) {
+                mostrarToast("✅ Traspaso completado y sincronizado en la nube.", "success");
+            } else if (respaldoActivo && SERVER_URL) {
+                mostrarToast("⚠️ Traspaso guardado localmente y encolado para sincronización VPS.", "warning");
+            } else {
+                mostrarToast("✅ Traspaso de inventario registrado con éxito.", "success");
+            }
+
+            limpiarFormularioTraspaso();
             await prepararEntornoOrigen();
 
         } catch (error) {
@@ -666,13 +1006,37 @@
         }
     };
 
+    function limpiarFormularioTraspaso() {
+        idProductoSeleccionado = null;
+        inputBusqueda.value = "";
+        inputCantidad.value = "";
+        inputCantidad.disabled = true;
+        factorEmpaque = 1;
+        unidadActual = 'UN';
+        visorTotal.value = "0.00 UN";
+        const obsEl = document.getElementById('observation');
+        if (obsEl) obsEl.value = "";
+        selectEmpaque.innerHTML = '<option value="1">Unidad Individual (x1)</option>';
+        selectEmpaque.disabled = true;
+        contenedorResultados.innerHTML = "";
+        contenedorResultados.classList.remove('activo');
+    }
+
     function mostrarToast(mensaje, tipo = "success") {
         const contenedor = document.getElementById('toast-container');
         if(!contenedor) return;
         const toast = document.createElement('div');
-        const colorBase = tipo === "success" ? "bg-green-500" : "bg-red-500";
+        let colorBase = "bg-green-500";
+        let icono = "✅";
+        if (tipo === "error") {
+            colorBase = "bg-red-500";
+            icono = "❌";
+        } else if (tipo === "warning") {
+            colorBase = "bg-amber-500";
+            icono = "⚠️";
+        }
         toast.className = `${colorBase} text-white px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-300 translate-x-full opacity-0 flex items-center gap-3 font-bold`;
-        toast.innerHTML = `<span>${tipo === "success" ? '✅' : '❌'}</span><span>${mensaje}</span>`;
+        toast.innerHTML = `<span>${icono}</span><span>${mensaje}</span>`;
         contenedor.appendChild(toast);
         setTimeout(() => toast.classList.remove('translate-x-full', 'opacity-0'), 10);
         setTimeout(() => {
@@ -682,9 +1046,26 @@
     }
 
     // Eventos Filtros
-    document.getElementById('filtro-desde').addEventListener('change', renderizarHistorial);
-    document.getElementById('filtro-hasta').addEventListener('change', renderizarHistorial);
-    document.getElementById('filtro-limite').addEventListener('change', renderizarHistorial);
+    document.getElementById('filtro-desde')?.addEventListener('change', renderizarHistorial);
+    document.getElementById('filtro-hasta')?.addEventListener('change', renderizarHistorial);
+    document.getElementById('filtro-limite')?.addEventListener('change', renderizarHistorial);
+
+    // Listener reactivo en tiempo real para cambios de stock desde cualquier ventana
+    let timerRefrescoTraspaso = null;
+    function refrescarEntornoDebounced() {
+        if (timerRefrescoTraspaso) clearTimeout(timerRefrescoTraspaso);
+        timerRefrescoTraspaso = setTimeout(async () => {
+            if (idSucursalOrigen) {
+                await prepararEntornoOrigen();
+            }
+        }, 350);
+    }
+
+    const apiGlobal = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+    if (apiGlobal && apiGlobal.onStockCambiado) {
+        apiGlobal.onStockCambiado(refrescarEntornoDebounced);
+    }
+    window.addEventListener('stock-actualizado-vps', refrescarEntornoDebounced);
 
     // Arrancar el sistema
     inicializar();

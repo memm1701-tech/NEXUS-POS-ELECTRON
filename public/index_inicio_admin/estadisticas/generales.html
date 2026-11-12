@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Estadísticas Globales Nexus</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="../../chart.umd.js"></script>
     <style>
         :root {
             --primary-blue: #0284c7;
@@ -29,7 +29,7 @@
 
         .stats-container { 
             width: 100%; 
-            height: 100vh;
+            height: 100vh; 
             padding: 24px; 
             box-sizing: border-box; 
             overflow-y: auto;
@@ -62,7 +62,6 @@
         .icon-purple { background-color: #ede9fe; color: var(--purple-accent); }
         .icon-teal { background-color: #ccfbf1; color: var(--teal-accent); }
 
-        
         .selector-periodo { display: flex; gap: 5px; }
         .selector-periodo button { background-color: white; color: var(--color-text); border: 1px solid #d1d5db; padding: 8px 15px; cursor: pointer; border-radius: 4px; transition: all 0.2s; font-weight: 500; font-family: inherit; }
         .selector-periodo button.active, .selector-periodo button:hover { background-color: var(--primary-blue); color: white; border-color: var(--primary-blue); }
@@ -229,6 +228,19 @@
             </div>
         </div>
 
+        <!-- Banner Informativo cuando no hay cierres -->
+        <div id="banner-sin-cierres" style="display: none; background: #f0f9ff; border: 1px solid #bae6fd; border-left: 4px solid #0284c7; border-radius: 10px; padding: 14px 18px; margin-bottom: 24px; align-items: center; gap: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
+            <div style="background-color: #e0f2fe; color: #0284c7; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <span class="material-icons" style="font-size: 22px;">info</span>
+            </div>
+            <div style="flex-grow: 1;">
+                <h4 style="margin: 0; font-size: 0.95rem; color: #0369a1; font-weight: 700;">Esperando el primer cierre de caja</h4>
+                <p style="margin: 3px 0 0; font-size: 0.82rem; color: #334155; line-height: 1.4;">
+                    Aún no se registran cierres en este período. Las métricas de flujo y el balance de pagos se activarán automáticamente una vez que se procese el <strong>primer Cierre Z</strong> desde cualquier caja.
+                </p>
+            </div>
+        </div>
+
         <div class="kpi-grid">
             <div class="kpi-card">
                 <div class="kpi-icon-wrapper icon-green"><span class="material-icons">payments</span></div>
@@ -262,6 +274,16 @@
             <h2 style="font-size: 1.1rem; color: #374151; margin-bottom: 20px; font-weight: 700;">Distribución de Ingresos por Método de Pago</h2>
             <div class="chart-container-inner">
                 <canvas id="metodosPagoChart"></canvas>
+            </div>
+            <!-- Explicación de la gráfica cuando no hay cierres -->
+            <div id="mensaje-torta-vacia" style="display: none; margin-top: 18px; background-color: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 12px 18px; max-width: 480px; width: 100%; text-align: center; box-sizing: border-box;">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 6px; color: #334155; font-weight: 600; font-size: 0.82rem; margin-bottom: 4px;">
+                    <span class="material-icons" style="font-size: 18px; color: #0284c7;">pie_chart</span>
+                    <span>Distribución por Método de Pago (Vista Previa)</span>
+                </div>
+                <p style="margin: 0; font-size: 0.78rem; color: #64748b; line-height: 1.4;">
+                    Esta gráfica reflejará la proporción real de ingresos por cada método (Efectivo $, Transferencias, Pago Móvil, Punto Débito, Zinli, etc.). La data se calculará automáticamente en cuanto se procese el <strong>primer cierre de caja</strong>.
+                </p>
             </div>
         </div>
 
@@ -320,6 +342,7 @@
         let datosCargados = {
             productos: [],
             mapaStock: {},
+            mapaMetodosPago: {},
             totales: { costo: 0, venta: 0 },
             tasaBCV: 1
         };
@@ -403,42 +426,90 @@
             document.getElementById('view-details').style.display = 'none';
         };
 
-        function mapearMetodoPago(key) {
-            const k = key.toLowerCase();
-            // Bolívares
-            if (k === 'cash-bs') return { nombre: 'Efectivo (Bs)', esBs: true };
-            if (k === 'debit-card-bs') return { nombre: 'Punto Débito (Bs)', esBs: true };
-            if (k === 'mobile-payment-bs') return { nombre: 'Pago Móvil (Bs)', esBs: true };
+        function mapearMetodoPago(key, val = {}) {
+            const strKey = String(key || '').trim();
+            const k = strKey.toLowerCase();
+            
+            // 1. Si existe en el mapa de métodos de pago obtenido de la base de datos maestra (metodos_pago_maestro)
+            if (datosCargados.mapaMetodosPago && datosCargados.mapaMetodosPago[strKey]) {
+                const m = datosCargados.mapaMetodosPago[strKey];
+                const esBs = (m.tipo_moneda === 'BS' || m.tipo_moneda === 'VES');
+                const nombreLimpio = (m.nombre || '').trim();
+                const sufijo = esBs ? 'Bs' : '$';
+                const tieneSufijo = nombreLimpio.toLowerCase().includes('bs') || nombreLimpio.includes('$');
+                const nombreFinal = tieneSufijo ? nombreLimpio : `${nombreLimpio} (${sufijo})`;
+                return { nombre: nombreFinal, esBs: esBs };
+            }
+
+            // 2. Si el objeto de cierre (detalle_pagos_json) contiene method_name o nombre guardado
+            if (val && (val.method_name || val.nombre)) {
+                const nombreDet = (val.method_name || val.nombre).trim();
+                const esBs = (val.currency === 'BS' || val.currency === 'VES' || val.tipo_moneda === 'BS');
+                const sufijo = esBs ? 'Bs' : '$';
+                const tieneSufijo = nombreDet.toLowerCase().includes('bs') || nombreDet.includes('$');
+                const nombreFinal = tieneSufijo ? nombreDet : `${nombreDet} (${sufijo})`;
+                return { nombre: nombreFinal, esBs: esBs };
+            }
+
+            // 3. Mapeo para claves históricas o estándar en formato texto
+            if (k === 'cash-bs' || k === 'efectivo-bs') return { nombre: 'Efectivo (Bs)', esBs: true };
+            if (k === 'debit-card-bs' || k === 'debito-bs' || k === 'punto-bs') return { nombre: 'Punto Débito (Bs)', esBs: true };
+            if (k === 'mobile-payment-bs' || k === 'pago-movil-bs') return { nombre: 'Pago Móvil (Bs)', esBs: true };
             if (k === 'biopago-bs') return { nombre: 'Biopago (Bs)', esBs: true };
-            if (k === 'transfer-bs') return { nombre: 'Transferencia (Bs)', esBs: true };
-            if (k === 'deposit-bs') return { nombre: 'Depósito (Bs)', esBs: true };
-            if (k === 'credit-bs') return { nombre: 'Crédito (Bs)', esBs: true };
-            if (k === 'credit-card-bs') return { nombre: 'TDC (Bs)', esBs: true };
+            if (k === 'transfer-bs' || k === 'transferencia-bs') return { nombre: 'Transferencia (Bs)', esBs: true };
+            if (k === 'deposit-bs' || k === 'deposito-bs') return { nombre: 'Depósito (Bs)', esBs: true };
+            if (k === 'credit-bs' || k === 'credito-bs') return { nombre: 'Crédito (Bs)', esBs: true };
+            if (k === 'credit-card-bs' || k === 'tdc-bs') return { nombre: 'TDC (Bs)', esBs: true };
             
-            // Divisas
-            if (k === 'dollars') return { nombre: 'Efectivo ($)', esBs: false };
-            if (k === 'zinli-dollars') return { nombre: 'Zinli ($)', esBs: false };
+            // Divisas históricas
+            if (k === 'dollars' || k === 'dolares' || k === 'efectivo-$' || k === 'dolares-fisicos') return { nombre: 'Dólares Físicos ($)', esBs: false };
+            if (k === 'zinli-dollars' || k === 'zinli') return { nombre: 'Zinli ($)', esBs: false };
             
-            // Fallback dinámico (por si agregas un método nuevo en el futuro)
-            if (k.includes('bs')) return { nombre: `Otro Bs (${k})`, esBs: true };
-            return { nombre: `Otra Divisa (${k})`, esBs: false };
+            // 4. Fallback dinámico inteligente
+            const esBsFallback = k.includes('bs') || (val && (val.currency === 'BS' || val.tipo_moneda === 'BS'));
+            return {
+                nombre: esBsFallback ? `Método Bs (${strKey})` : `Divisa (${strKey})`,
+                esBs: esBsFallback
+            };
         }
 
-        
         function getFechasPorPeriodo(periodo) {
             const hoy = new Date();
             let inicio = new Date();
-            if (periodo === 'dia') inicio.setDate(hoy.getDate() - 1);
-            else if (periodo === 'semana') inicio.setDate(hoy.getDate() - 7);
-            else if (periodo === 'mes') inicio.setMonth(hoy.getMonth() - 1);
-            else if (periodo === 'anual') inicio.setFullYear(hoy.getFullYear() - 1);
+            if (periodo === 'dia') {
+                inicio = new Date();
+            } else if (periodo === 'semana') {
+                inicio.setDate(hoy.getDate() - 7);
+            } else if (periodo === 'mes') {
+                inicio.setDate(hoy.getDate() - 30);
+            } else if (periodo === 'anual') {
+                inicio.setFullYear(hoy.getFullYear() - 1);
+            }
+            const getLocalISODate = (d) => {
+                const tzOffset = d.getTimezoneOffset() * 60000;
+                return new Date(d.getTime() - tzOffset).toISOString().split('T')[0];
+            };
             return {
-                fecha_inicio: inicio.toISOString().split('T')[0],
-                fecha_fin: hoy.toISOString().split('T')[0]
+                fecha_inicio: getLocalISODate(inicio),
+                fecha_fin: getLocalISODate(hoy)
             };
         }
         
         async function procesarCierresMes(companyId, servidorIP, periodo = 'mes') {
+            // Asegurar que los métodos de pago maestros estén cargados para resolver los nombres de las divisas y métodos
+            if (!datosCargados.mapaMetodosPago || Object.keys(datosCargados.mapaMetodosPago).length === 0) {
+                try {
+                    const resMet = await fetch(`http://${servidorIP}:3000/api/maestro/metodos-pago`).then(r => r.json());
+                    if (resMet && Array.isArray(resMet.data)) {
+                        resMet.data.forEach(m => {
+                            datosCargados.mapaMetodosPago[String(m.id)] = m;
+                        });
+                    }
+                } catch(e) {
+                    console.warn("⚠️ [NEXUS DEBUG] No se pudieron precargar métodos de pago:", e.message);
+                }
+            }
+
             const fechas = getFechasPorPeriodo(periodo);
             console.log(`📡 [NEXUS DEBUG] Petición pagos: http://${servidorIP}:3000/api/maestro/estadisticas/pagos-mes?companyId=${companyId}&fecha_inicio=${fechas.fecha_inicio}&fecha_fin=${fechas.fecha_fin}`);
             
@@ -453,8 +524,12 @@
                 const cierres = await res.json();
                 console.log("📦 [NEXUS DEBUG] Cierres recibidos del servidor:", cierres);
 
-                if (cierres.length === 0) {
-                    console.warn("⚠️ [NEXUS DEBUG] El servidor devolvió 0 cierres para este mes. Verifica las fechas en server.js");
+                const bannerSinCierres = document.getElementById('banner-sin-cierres');
+                if (!cierres || cierres.length === 0) {
+                    console.log("ℹ️ [NEXUS INFO] 0 cierres devueltos para este período. Mostrando estado informativo.");
+                    if (bannerSinCierres) bannerSinCierres.style.display = 'flex';
+                } else {
+                    if (bannerSinCierres) bannerSinCierres.style.display = 'none';
                 }
 
                 let acumuladoVentasUsdCol = 0;
@@ -462,12 +537,11 @@
                 let totalFugasUsd = 0;
                 let sumatoriasMetodos = {};
 
-                cierres.forEach((c, index) => {
+                (cierres || []).forEach((c, index) => {
                     const cierreID = c.id || c.cierre_ID || c.ID || "ID_DESCONOCIDO";
                     const vUsd = parseFloat(c.total_ventas_usd || 0);
                     const vBs = parseFloat(c.total_ventas_bs || 0);
                     console.log(`✅ [ROW ${index}] ID: ${cierreID} | Ventas USD: ${vUsd} | Ventas BS: ${vBs}`);
-                    console.log(`Row[${index}] -> ID: ${c.id} | Ventas USD: ${vUsd} | Ventas BS: ${vBs}`);
 
                     acumuladoVentasUsdCol += vUsd;
                     acumuladoVentasBsCol += vBs;
@@ -485,7 +559,8 @@
                         const monto = parseFloat(val.registered || 0);
                         if (monto === 0) continue; 
 
-                        const infoMetodo = mapearMetodoPago(key);
+                        // Resuelve el nombre real de la divisa / método de pago mediante key y val
+                        const infoMetodo = mapearMetodoPago(key, val);
                         let montoEnUsd = monto;
                         
                         if (infoMetodo.esBs && datosCargados.tasaBCV > 0) {
@@ -515,20 +590,148 @@
                 elFugas.textContent = format.format(totalFugasUsd);
                 elFugas.style.color = totalFugasUsd < 0 ? 'var(--danger-red)' : 'var(--success-green)';
 
-                renderizarGraficoPagos(sumatoriasMetodos);
+                renderizarGraficoPagos(sumatoriasMetodos, (cierres || []).length);
 
             } catch(e) {
                 console.error("❌ [NEXUS DEBUG] Error crítico en procesarCierresMes:", e);
                 document.getElementById('kpi-total-divisas').textContent = 'Error';
+                renderizarGraficoPagos({}, 0);
             }
         }
 
-        function renderizarGraficoPagos(datos) {
+        function renderizarGraficoPagos(datos, totalCierres = 0) {
+            if (typeof Chart === 'undefined') {
+                console.warn("⚠️ Chart.js no disponible aún para renderizar el gráfico");
+                return;
+            }
             const ctx = document.getElementById('metodosPagoChart').getContext('2d');
+            const msgTortaVacia = document.getElementById('mensaje-torta-vacia');
             
+            // Revisar si hay data real
+            let hayDataReal = false;
+            if (datos && typeof datos === 'object') {
+                for (const k of Object.keys(datos)) {
+                    if (datos[k] > 0) {
+                        hayDataReal = true;
+                        break;
+                    }
+                }
+            }
+
+            if (window.metodosPagoChartInstance) {
+                window.metodosPagoChartInstance.destroy();
+            }
+
+            if (!hayDataReal) {
+                // --- MODO VACÍO / PLACEHOLDER INFORMATIVO ---
+                if (msgTortaVacia) msgTortaVacia.style.display = 'block';
+
+                // Mostrar los nombres reales de los métodos configurados en la DB
+                const metodosMaestros = Object.values(datosCargados.mapaMetodosPago || {});
+                let placeholderLabels = [];
+                if (metodosMaestros.length > 0) {
+                    placeholderLabels = metodosMaestros.slice(0, 5).map(m => {
+                        const esBs = (m.tipo_moneda === 'BS' || m.tipo_moneda === 'VES');
+                        const nombreLimpio = (m.nombre || '').trim();
+                        const tieneSufijo = nombreLimpio.toLowerCase().includes('bs') || nombreLimpio.includes('$');
+                        return tieneSufijo ? nombreLimpio : `${nombreLimpio} (${esBs ? 'Bs' : '$'})`;
+                    });
+                } else {
+                    placeholderLabels = [
+                        'Efectivo (Bs)',
+                        'Punto Débito (Bs)',
+                        'Pago Móvil (Bs)',
+                        'Dólares Físicos ($)',
+                        'Otros Métodos'
+                    ];
+                }
+                const placeholderData = [25, 25, 25, 15, 10].slice(0, placeholderLabels.length);
+                const placeholderColors = [
+                    '#e2e8f0', '#cbd5e1', '#d1d5db', '#e2e8f0', '#cbd5e1'
+                ].slice(0, placeholderLabels.length);
+
+                const pluginCentroVacio = {
+                    id: 'centerTextEmpty',
+                    beforeDraw: function(chart) {
+                        const meta = chart.getDatasetMeta(0);
+                        if (meta && meta.data && meta.data[0]) {
+                            const centerX = meta.data[0].x;
+                            const centerY = meta.data[0].y;
+                            const { ctx } = chart;
+                            ctx.save();
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            
+                            ctx.font = 'bold 11px Roboto, sans-serif';
+                            ctx.fillStyle = '#64748b';
+                            ctx.fillText('ESPERANDO CIERRE', centerX, centerY - 7);
+                            
+                            ctx.font = '500 10px Roboto, sans-serif';
+                            ctx.fillStyle = '#94a3b8';
+                            ctx.fillText('0 cierres en período', centerX, centerY + 9);
+                            ctx.restore();
+                        }
+                    }
+                };
+
+                window.metodosPagoChartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: placeholderLabels,
+                        datasets: [{
+                            data: placeholderData,
+                            backgroundColor: placeholderColors,
+                            borderWidth: 2,
+                            borderColor: '#ffffff',
+                            hoverBackgroundColor: placeholderColors
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '68%',
+                        animation: {
+                            duration: 500
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                                labels: {
+                                    boxWidth: 12,
+                                    padding: 10,
+                                    color: '#64748b',
+                                    font: { size: 11 },
+                                    generateLabels: function(chart) {
+                                        return chart.data.labels.map((lbl, idx) => ({
+                                            text: `${lbl} (Sin registros)`,
+                                            fillStyle: chart.data.datasets[0].backgroundColor[idx],
+                                            strokeStyle: '#cbd5e1',
+                                            lineWidth: 1,
+                                            hidden: false,
+                                            index: idx
+                                        }));
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return ` ${context.label}: $0.00 (Pendiente de cierre de caja)`;
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    plugins: [pluginCentroVacio]
+                });
+                return;
+            }
+
+            // --- MODO CON DATOS REALES ---
+            if (msgTortaVacia) msgTortaVacia.style.display = 'none';
+
             const labels = [];
             const data = [];
-            // Ampliamos la paleta de colores para soportar muchos métodos de pago
             const colors = [
                 '#3b82f6', '#10b981', '#14b8a6', '#f59e0b', '#8b5cf6', 
                 '#ef4444', '#ec4899', '#f97316', '#06b6d4', '#64748b'
@@ -537,8 +740,6 @@
 
             let colorIndex = 0;
             Object.keys(datos).forEach((key) => {
-                // Hay casos donde sumatoriasMetodos puede quedar negativo si hubo más notas de crédito que ventas en el mes.
-                // Chart.js no grafica bien negativos en un circular, por lo que solo metemos valores positivos.
                 if (datos[key] > 0) {
                     labels.push(key);
                     data.push(datos[key].toFixed(2));
@@ -547,7 +748,6 @@
                 }
             });
 
-            if (window.metodosPagoChartInstance) window.metodosPagoChartInstance.destroy();
             window.metodosPagoChartInstance = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
@@ -562,8 +762,16 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    cutout: '65%',
                     plugins: {
-                        legend: { position: 'right' },
+                        legend: { 
+                            position: 'right',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 10,
+                                font: { size: 12 }
+                            }
+                        },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
@@ -590,17 +798,31 @@
                 const sesion = await api.obtenerSesionLocal();
                 const companyId = sesion?.companyId;
                 
-                // Forzamos el uso exclusivo de localhost por ley
-                const servidorIP = 'localhost';
+                let servidorIP = 'localhost';
+                try {
+                    const ipMaestro = await api.obtenerIpMaestro();
+                    if (ipMaestro && ipMaestro !== 'null' && ipMaestro.trim() !== '') {
+                        servidorIP = ipMaestro.trim();
+                    }
+                } catch(e) {
+                    servidorIP = 'localhost';
+                }
 
                 const tasaSistema = await api.obtenerConfiguracion('TASA_BCV');
                 datosCargados.tasaBCV = parseFloat(tasaSistema) || 1;
 
-                // Llamadas paralelas para optimizar tiempos
-                const [productos, resStock] = await Promise.all([
+                // Llamadas paralelas para optimizar tiempos (Productos, Stock y Catálogo de Métodos de Pago)
+                const [productos, resStock, resMetodos] = await Promise.all([
                     api.obtenerProductosLocal(companyId),
-                    fetch(`http://${servidorIP}:3000/api/maestro/stock?companyId=${companyId}`).then(r => r.json())
+                    fetch(`http://${servidorIP}:3000/api/maestro/stock?companyId=${companyId}`).then(r => r.json()).catch(() => []),
+                    fetch(`http://${servidorIP}:3000/api/maestro/metodos-pago`).then(r => r.json()).catch(() => ({ data: [] }))
                 ]);
+
+                if (resMetodos && Array.isArray(resMetodos.data)) {
+                    resMetodos.data.forEach(m => {
+                        datosCargados.mapaMetodosPago[String(m.id)] = m;
+                    });
+                }
 
                 datosCargados.productos = productos || [];
                 resStock.forEach(s => {
@@ -641,7 +863,7 @@
                 elGanancia.textContent = format.format(ganancia);
                 elGanancia.style.color = ganancia >= 0 ? 'var(--indigo-profit)' : 'var(--danger-red)';
 
-                // Llamamos a la nueva función asíncrona de pagos
+                // Llamamos a la función asíncrona de pagos
                 await procesarCierresMes(companyId, servidorIP, 'semana');
                 
                 document.querySelectorAll('.btn-periodo-general').forEach(btn => {

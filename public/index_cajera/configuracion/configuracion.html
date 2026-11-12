@@ -56,6 +56,91 @@
             </label>
         </div>
 
+        <!-- CONFIGURACIÓN DE RED LOCAL (MAESTRA / CAJA HIJA) -->
+        <div class="space-y-4 text-left p-6 border border-gray-200 bg-white rounded-none">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b pb-4">
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                        <i class="fas fa-network-wired text-indigo-600"></i> Configuración de Red Local (Servidor Maestro / Caja Hija)
+                    </h2>
+                    <p class="text-sm text-gray-500">Defina si este equipo actúa como Servidor Maestro o como Caja Hija conectándose a la Maestra.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span id="badge-rol-equipo" class="px-3 py-1 text-xs font-bold rounded-none bg-blue-100 text-blue-800 uppercase tracking-wider">
+                        Cargando...
+                    </span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center pt-2">
+                <!-- Checkbox Maestra -->
+                <div class="p-4 bg-gray-50 border border-gray-200 flex items-center justify-between">
+                    <div>
+                        <span class="font-bold text-gray-800 text-sm block">¿Esta PC es la Maestra (Servidor)?</span>
+                        <span class="text-xs text-gray-500 block mt-0.5">Marque esta opción si este computador aloja la base de datos principal de la tienda.</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer ml-3">
+                        <input type="checkbox" id="config-is-server" class="h-6 w-6 text-indigo-600 border-gray-300 rounded-none focus:ring-indigo-500 cursor-pointer">
+                    </label>
+                </div>
+
+                <!-- Input IP Maestra -->
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs font-bold text-gray-600 uppercase tracking-wider">Dirección IP de la PC Maestra</label>
+                            <span id="ip-auto-detected-badge" class="text-xs font-bold text-green-600 hidden flex items-center gap-1">
+                                <i class="fas fa-check-circle"></i> En esta dirección se encontró el servidor
+                            </span>
+                        </div>
+                        <span id="ip-status-hint" class="text-[11px] text-gray-400 italic">IP a la que se conectará la caja hija</span>
+                    </div>
+                    
+                    <div id="ip-wrapper" class="border border-gray-300 p-2.5 flex justify-between items-center text-base bg-white transition-colors">
+                        
+                        <div id="ip-boxes" class="flex w-full justify-between items-center">
+                            <input type="text" id="ip1" maxlength="3" class="w-12 text-center bg-transparent outline-none font-mono font-bold text-gray-800" placeholder="192">
+                            <span class="text-gray-400 font-bold select-none">.</span>
+                            <input type="text" id="ip2" maxlength="3" class="w-12 text-center bg-transparent outline-none font-mono font-bold text-gray-800" placeholder="168">
+                            <span class="text-gray-400 font-bold select-none">.</span>
+                            <input type="text" id="ip3" maxlength="3" class="w-12 text-center bg-transparent outline-none font-mono font-bold text-gray-800" placeholder="0">
+                            <span class="text-gray-400 font-bold select-none">.</span>
+                            <input type="text" id="ip4" maxlength="3" class="w-12 text-center bg-transparent outline-none font-mono font-bold text-gray-800" placeholder="100">
+                        </div>
+
+                        <div id="ip-localhost" class="w-full text-center text-gray-600 font-mono font-bold hidden py-0.5">
+                            localhost (127.0.0.1) - Modo Maestro Activo
+                        </div>
+                    </div>
+
+                    <p class="text-[11px] text-gray-400 text-right">Si este equipo es Caja Hija, ingrese la IP de la computadora Maestra.</p>
+                </div>
+            </div>
+
+            <!-- Identificador Automático de IP -->
+            <div class="pt-4 border-t border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="flex-1">
+                    <span class="font-bold text-gray-800 text-sm block">Identificar automáticamente el servidor</span>
+                    <span class="text-xs text-gray-500 block mt-0.5">Escanea la red local (100 ms) para localizar la PC Maestra sin configuración manual.</span>
+                </div>
+                <div class="flex items-center justify-center gap-2">
+                    <button type="button" id="btn-auto-detect-server" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm rounded-none">
+                        <i class="fas fa-search" id="icon-auto-detect"></i>
+                        <span id="text-btn-auto-detect">Identificar Automáticamente</span>
+                    </button>
+                    <button type="button" id="btn-retry-1000ms" class="hidden px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 shadow-sm rounded-none">
+                        <i class="fas fa-redo"></i>
+                        <span>Reintentar con 1000ms</span>
+                    </button>
+                </div>
+                <div class="flex-1 text-right md:text-right">
+                    <span id="auto-detect-status" class="text-xs font-semibold text-gray-500">
+                        Listo para identificar
+                    </span>
+                </div>
+            </div>
+        </div>
+
         <div class="space-y-4 text-left p-6 border border-gray-200 bg-white rounded-none">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b pb-4">
                 <div>
@@ -64,15 +149,6 @@
                 </div>
                 
                 <div class="flex items-center gap-4">
-                    <div class="inline-flex bg-gray-100 p-1 rounded-lg border border-gray-200">
-                        <button type="button" id="tab-scale-traditional" class="px-4 py-2 text-xs md:text-sm font-bold rounded-md transition-all duration-200 bg-[#2D3748] text-white shadow-sm flex items-center gap-2">
-                            <i class="fas fa-balance-scale"></i> Pesos Tradicionales
-                        </button>
-                        <button type="button" id="tab-scale-imported" class="px-4 py-2 text-xs md:text-sm font-bold rounded-md transition-all duration-200 text-gray-600 hover:text-gray-900 flex items-center gap-2">
-                            <i class="fas fa-weight"></i> Pesos Importados
-                        </button>
-                    </div>
-
                     <label for="config-enable-scale" class="flex items-center cursor-pointer bg-white border border-gray-200 px-4 py-2 rounded-none shadow-sm">
                         <span class="mr-3 text-sm font-bold text-gray-700">Habilitar</span>
                         <input type="checkbox" id="config-enable-scale" class="h-6 w-6 text-indigo-600 border-gray-300 rounded-none focus:ring-indigo-500">
@@ -228,7 +304,7 @@
     let currentActivePrinterType = 'TERMICA';
     let currentLogoBase64 = '';
     
-    let currentActiveBalanzaType = 'TRADICIONAL';
+    let currentActiveBalanzaType = 'IMPORTADO';
 
     const saveConfigBtn = document.getElementById('saveConfigBtn');
     const messageBox = document.getElementById('messageBox');
@@ -266,26 +342,238 @@
     const configLine5 = document.getElementById('configLine5');
     const configLine6 = document.getElementById('configLine6');   
 
-    // Alternar entre pestañas de balanza
-    function switchBalanzaTab(type) {
-        currentActiveBalanzaType = type;
-        const tabScaleTraditional = document.getElementById('tab-scale-traditional');
-        const tabScaleImported = document.getElementById('tab-scale-imported');
-        if (type === 'TRADICIONAL') {
-            if (tabScaleTraditional) {
-                tabScaleTraditional.className = "px-4 py-2 text-xs md:text-sm font-bold rounded-md transition-all duration-200 bg-indigo-600 text-white shadow-sm flex items-center gap-2";
+    // Elementos de Red Local (Maestra / Caja Hija)
+    const configIsServer = document.getElementById('config-is-server');
+    const badgeRolEquipo = document.getElementById('badge-rol-equipo');
+    const ipStatusHint = document.getElementById('ip-status-hint');
+    const ipWrapper = document.getElementById('ip-wrapper');
+    const ipBoxes = document.getElementById('ip-boxes');
+    const ipLocalhost = document.getElementById('ip-localhost');
+    const ipInputs = [
+        document.getElementById('ip1'),
+        document.getElementById('ip2'),
+        document.getElementById('ip3'),
+        document.getElementById('ip4')
+    ];
+    const btnAutoDetectServer = document.getElementById('btn-auto-detect-server');
+    const iconAutoDetect = document.getElementById('icon-auto-detect');
+    const textBtnAutoDetect = document.getElementById('text-btn-auto-detect');
+    const autoDetectStatus = document.getElementById('auto-detect-status');
+    const ipAutoDetectedBadge = document.getElementById('ip-auto-detected-badge');
+    const btnRetry1000ms = document.getElementById('btn-retry-1000ms');
+
+    const getFullIP = () => {
+        if (!ipInputs[0]) return "";
+        const p1 = ipInputs[0].value.trim();
+        const p2 = ipInputs[1].value.trim();
+        const p3 = ipInputs[2].value.trim();
+        const p4 = ipInputs[3].value.trim();
+        if (!p1 && !p2 && !p3 && !p4) return "";
+        return `${p1 || '0'}.${p2 || '0'}.${p3 || '0'}.${p4 || '0'}`;
+    };
+
+    const setFullIP = (ip) => {
+        if (!ip || ip === 'localhost' || ip === '127.0.0.1') {
+            ipInputs.forEach(i => { if (i) i.value = ""; });
+            return;
+        }
+        const parts = String(ip).split('.');
+        parts.forEach((p, i) => {
+            if (ipInputs[i]) ipInputs[i].value = p.replace(/[^0-9]/g, '').slice(0, 3);
+        });
+    };
+
+    function actualizarEstadoIP() {
+        if (!configIsServer) return;
+        const esMaestra = configIsServer.checked;
+
+        if (esMaestra) {
+            if (ipBoxes) ipBoxes.classList.add('hidden');
+            if (ipLocalhost) ipLocalhost.classList.remove('hidden');
+            if (ipWrapper) {
+                ipWrapper.classList.add('bg-gray-100');
+                ipWrapper.classList.remove('bg-white');
             }
-            if (tabScaleImported) {
-                tabScaleImported.className = "px-4 py-2 text-xs md:text-sm font-bold rounded-md transition-all duration-200 text-gray-600 hover:text-gray-900 flex items-center gap-2";
+            if (badgeRolEquipo) {
+                badgeRolEquipo.textContent = "PC Maestra (Servidor)";
+                badgeRolEquipo.className = "px-3 py-1 text-xs font-bold rounded-none bg-green-100 text-green-800 uppercase tracking-wider";
+            }
+            if (ipStatusHint) {
+                ipStatusHint.textContent = "Servidor local (127.0.0.1)";
+            }
+            if (btnAutoDetectServer) {
+                btnAutoDetectServer.disabled = true;
+                btnAutoDetectServer.title = "Deshabilitado porque esta PC está configurada como Maestra (Servidor).";
+            }
+            if (autoDetectStatus) {
+                autoDetectStatus.textContent = "Deshabilitado (Modo Maestro)";
+                autoDetectStatus.className = "text-xs font-semibold text-gray-400";
+            }
+            if (ipAutoDetectedBadge) {
+                ipAutoDetectedBadge.classList.add('hidden');
             }
         } else {
-            if (tabScaleImported) {
-                tabScaleImported.className = "px-4 py-2 text-xs md:text-sm font-bold rounded-md transition-all duration-200 bg-indigo-600 text-white shadow-sm flex items-center gap-2";
+            if (ipBoxes) ipBoxes.classList.remove('hidden');
+            if (ipLocalhost) ipLocalhost.classList.add('hidden');
+            if (ipWrapper) {
+                ipWrapper.classList.remove('bg-gray-100');
+                ipWrapper.classList.add('bg-white');
             }
-            if (tabScaleTraditional) {
-                tabScaleTraditional.className = "px-4 py-2 text-xs md:text-sm font-bold rounded-md transition-all duration-200 text-gray-600 hover:text-gray-900 flex items-center gap-2";
+            if (badgeRolEquipo) {
+                badgeRolEquipo.textContent = "Caja Hija (Terminal Esclava)";
+                badgeRolEquipo.className = "px-3 py-1 text-xs font-bold rounded-none bg-blue-100 text-blue-800 uppercase tracking-wider";
+            }
+            if (ipStatusHint) {
+                ipStatusHint.textContent = "IP de la Maestra a conectar";
+            }
+            if (btnAutoDetectServer) {
+                btnAutoDetectServer.disabled = false;
+                btnAutoDetectServer.title = "Buscar automáticamente el Servidor Maestro en la red local";
+            }
+            if (autoDetectStatus && autoDetectStatus.textContent.includes("Modo Maestro")) {
+                autoDetectStatus.textContent = "Listo para identificar";
+                autoDetectStatus.className = "text-xs font-semibold text-gray-500";
             }
         }
+    }
+
+    if (configIsServer) {
+        configIsServer.addEventListener('change', actualizarEstadoIP);
+    }
+
+    ipInputs.forEach((input, index) => {
+        if (!input) return;
+        input.addEventListener('input', (e) => {
+            if (ipAutoDetectedBadge) ipAutoDetectedBadge.classList.add('hidden');
+            e.target.value = e.target.value.replace(/[^0-9]/g, '');
+            if (e.target.value.length === 3 && index < 3) {
+                ipInputs[index + 1].focus();
+                ipInputs[index + 1].select();
+            }
+        });
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' && e.target.value === '' && index > 0) {
+                ipInputs[index - 1].focus();
+            }
+            if ((e.key === '.' || e.key === 'Enter') && index < 3) {
+                e.preventDefault();
+                ipInputs[index + 1].focus();
+                ipInputs[index + 1].select();
+            }
+        });
+
+        input.addEventListener('paste', (e) => {
+            if (ipAutoDetectedBadge) ipAutoDetectedBadge.classList.add('hidden');
+            const pasteData = (e.clipboardData || window.clipboardData).getData('text');
+            if (pasteData && pasteData.includes('.')) {
+                e.preventDefault();
+                const segments = pasteData.trim().split('.');
+                segments.forEach((seg, i) => {
+                    if (ipInputs[i]) {
+                        ipInputs[i].value = seg.replace(/[^0-9]/g, '').slice(0, 3);
+                    }
+                });
+                if (ipInputs[3]) ipInputs[3].focus();
+            }
+        });
+    });
+
+    // Manejador de Identificación Automática del Servidor Maestro con soporte de 100 ms y 1000 ms
+    async function ejecutarIdentificacionServidor(timeoutMs = 100) {
+        if (configIsServer && configIsServer.checked) {
+            await window.showCustomAlert("Esta PC está configurada como Maestra (Servidor).\n\nPara buscar e identificar la PC Maestra en la red, desmarque primero la opción '¿Esta PC es la Maestra?' para operar en modo Caja Hija.", "Modo Servidor Activo");
+            return;
+        }
+
+        btnAutoDetectServer.disabled = true;
+        if (btnRetry1000ms) {
+            btnRetry1000ms.disabled = true;
+            if (timeoutMs >= 1000) {
+                btnRetry1000ms.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Reintentando (1000ms)...';
+            }
+        }
+        if (iconAutoDetect) iconAutoDetect.className = "fas fa-spinner fa-spin";
+        if (textBtnAutoDetect) textBtnAutoDetect.textContent = timeoutMs >= 1000 ? "Buscando (1000ms)..." : "Buscando (100ms)...";
+        if (autoDetectStatus) {
+            autoDetectStatus.className = "text-xs font-semibold text-blue-600";
+            autoDetectStatus.innerHTML = `<i class="fas fa-satellite-dish mr-1"></i> Escaneando red (<${timeoutMs} ms)...`;
+        }
+        if (ipAutoDetectedBadge) ipAutoDetectedBadge.classList.add('hidden');
+
+        try {
+            if (!window.nexusAPI || typeof window.nexusAPI.identificarServidorMaestro !== 'function') {
+                throw new Error("Módulo de escaneo de red no disponible en esta versión.");
+            }
+
+            const res = await window.nexusAPI.identificarServidorMaestro(timeoutMs);
+            if (res && res.success && res.ip && res.ip !== '127.0.0.1' && res.ip !== 'localhost') {
+                setFullIP(res.ip);
+                if (ipAutoDetectedBadge) ipAutoDetectedBadge.classList.remove('hidden');
+                if (btnRetry1000ms) btnRetry1000ms.classList.add('hidden');
+                if (autoDetectStatus) {
+                    autoDetectStatus.className = "text-xs font-bold text-green-600";
+                    autoDetectStatus.innerHTML = `<i class="fas fa-check-circle mr-1"></i> Servidor en ${res.ip} (${res.latency || '<'+timeoutMs} ms)`;
+                }
+                showMessage(`✅ Servidor Maestro identificado en ${res.ip} (${res.latency || '<'+timeoutMs} ms). Guarde la configuración.`, 'green');
+            } else {
+                if (ipAutoDetectedBadge) ipAutoDetectedBadge.classList.add('hidden');
+                if (autoDetectStatus) {
+                    autoDetectStatus.className = "text-xs font-bold text-red-600";
+                    autoDetectStatus.innerHTML = '<i class="fas fa-times-circle mr-1"></i> No se encontró el servidor';
+                }
+
+                if (btnRetry1000ms) {
+                    btnRetry1000ms.classList.remove('hidden');
+                    btnRetry1000ms.disabled = false;
+                    btnRetry1000ms.innerHTML = '<i class="fas fa-redo"></i> Reintentar con 1000ms';
+                }
+
+                if (timeoutMs < 1000) {
+                    const quiereReintentar = await window.showCustomConfirm(
+                        "⚠️ No se encontró ningún servidor NEXUS POS activo en las otras computadoras de la red local que responda en menos de 100 ms.\n\nVerifique que la PC Maestra esté encendida, con el sistema abierto y conectada a la misma red local.\n\n¿Desea reintentar con 1000 ms (1 segundo) para conexiones Wi-Fi o routers con mayor latencia?",
+                        "Servidor No Detectado (100 ms)",
+                        "Reintentar con 1000ms",
+                        "Cancelar"
+                    );
+                    if (quiereReintentar) {
+                        return await ejecutarIdentificacionServidor(1000);
+                    }
+                } else {
+                    await window.showCustomAlert(
+                        "⚠️ No se encontró ningún servidor NEXUS POS activo tras escanear con 1000 ms.\n\nPor favor revise en la PC Maestra (Laptop):\n1. Que NEXUS POS esté abierto y en ejecución.\n2. Que ambos equipos estén conectados a la misma red Wi-Fi o router local.\n3. Que el Firewall de Windows en la laptop permita conexiones entrantes al puerto 3000.",
+                        "Sin Respuesta en 1000 ms"
+                    );
+                }
+            }
+        } catch (err) {
+            console.error("Error en detección automática de servidor:", err);
+            if (ipAutoDetectedBadge) ipAutoDetectedBadge.classList.add('hidden');
+            if (autoDetectStatus) {
+                autoDetectStatus.className = "text-xs font-bold text-red-600";
+                autoDetectStatus.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i> Error en escaneo';
+            }
+            await window.showCustomAlert(`Ocurrió un error al escanear la red: ${err.message}`, "Error de Escaneo");
+        } finally {
+            if (iconAutoDetect) iconAutoDetect.className = "fas fa-search";
+            if (textBtnAutoDetect) textBtnAutoDetect.textContent = "Identificar Automáticamente";
+            if (btnRetry1000ms) {
+                btnRetry1000ms.disabled = false;
+            }
+            actualizarEstadoIP();
+        }
+    }
+
+    if (btnAutoDetectServer) {
+        btnAutoDetectServer.addEventListener('click', () => ejecutarIdentificacionServidor(100));
+    }
+    if (btnRetry1000ms) {
+        btnRetry1000ms.addEventListener('click', () => ejecutarIdentificacionServidor(1000));
+    }
+
+    // Configuración estándar por defecto: Pesos Importados
+    function switchBalanzaTab() {
+        currentActiveBalanzaType = 'IMPORTADO';
     }
 
     // Alternar entre pestañas de impresora
@@ -367,11 +655,6 @@
 
     if (tabPrinterThermal) tabPrinterThermal.addEventListener('click', () => switchPrinterTab('TERMICA'));
     if (tabPrinterStandard) tabPrinterStandard.addEventListener('click', () => switchPrinterTab('ESTANDAR'));
-    
-    const tabScaleTraditionalEl = document.getElementById('tab-scale-traditional');
-    const tabScaleImportedEl = document.getElementById('tab-scale-imported');
-    if (tabScaleTraditionalEl) tabScaleTraditionalEl.addEventListener('click', () => switchBalanzaTab('TRADICIONAL'));
-    if (tabScaleImportedEl) tabScaleImportedEl.addEventListener('click', () => switchBalanzaTab('IMPORTADO'));
 
     if (btnUploadLogo) btnUploadLogo.addEventListener('click', () => { if (logoFileInput) logoFileInput.click(); });
     if (logoFileInput) logoFileInput.addEventListener('change', handleLogoUpload);
@@ -379,6 +662,35 @@
         updateLogoUI('');
         showMessage("Logotipo eliminado. Presione 'Guardar Configuración' para aplicar.", 'orange');
     });
+
+    window.showCustomConfirm = function(message, title = "Atención", textOk = "Reintentar con 1000ms", textCancel = "Cancelar") {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('custom-modal');
+            document.getElementById('custom-modal-title').textContent = title;
+            document.getElementById('custom-modal-message').textContent = message;
+            const btnCancel = document.getElementById('custom-modal-cancel');
+            const btnOk = document.getElementById('custom-modal-ok');
+            if (btnCancel) {
+                btnCancel.style.display = 'block';
+                btnCancel.textContent = textCancel;
+                btnCancel.onclick = () => {
+                    modal.classList.add('hidden');
+                    btnCancel.style.display = 'none';
+                    resolve(false);
+                };
+            }
+            if (btnOk) {
+                btnOk.textContent = textOk;
+                btnOk.onclick = () => {
+                    modal.classList.add('hidden');
+                    if (btnCancel) btnCancel.style.display = 'none';
+                    resolve(true);
+                };
+            }
+            modal.classList.remove('hidden');
+            if (btnOk) btnOk.focus();
+        });
+    };
 
     window.showCustomAlert = function(message, title = "Atención") {
         return new Promise((resolve) => {
@@ -547,8 +859,14 @@
             if (basculaDataRaw) {
                 const data = JSON.parse(basculaDataRaw);
                 const savedPort = data.puertoCOM;
-                if (savedPort && puertosCOMValidos.includes(savedPort)) {
-                    if (scaleVpsUrl) scaleVpsUrl.value = savedPort;
+                if (savedPort && scaleVpsUrl) {
+                    if (!puertosCOMValidos.includes(savedPort)) {
+                        const opt = document.createElement('option');
+                        opt.value = savedPort;
+                        opt.textContent = `${savedPort} (Guardado - Verificar conexión)`;
+                        scaleVpsUrl.appendChild(opt);
+                    }
+                    scaleVpsUrl.value = savedPort;
                 }
                 if (data.baudRate && scaleBaudRate) {
                     scaleBaudRate.value = data.baudRate;
@@ -557,19 +875,52 @@
                      enableScaleCheckbox.checked = data.enableScale || false;
                 }
                 
-                const savedBalanzaType = data.tipoBalanza || 'TRADICIONAL';
-                switchBalanzaTab(savedBalanzaType);
-                
+                currentActiveBalanzaType = 'IMPORTADO';
                 basculaLoaded = true;
             } else {
-                switchBalanzaTab('TRADICIONAL');
+                currentActiveBalanzaType = 'IMPORTADO';
                 if (enableScaleCheckbox) enableScaleCheckbox.checked = false; 
             }
         } catch (error) {
             console.error("Error al cargar Báscula:", error);
         }
+
+        let redLoaded = false;
+        try {
+            let isServerVal = await window.nexusAPI.obtenerConfiguracion('isServer');
+            let serverIPVal = await window.nexusAPI.obtenerConfiguracion('serverIP');
+
+            if ((isServerVal === null || isServerVal === undefined) && window.nexusAPI.obtenerConfigServer) {
+                try {
+                    const srvCfg = await window.nexusAPI.obtenerConfigServer();
+                    if (srvCfg) {
+                        isServerVal = srvCfg.isServer;
+                        if (!serverIPVal) serverIPVal = srvCfg.serverIP || srvCfg.serverIp;
+                    }
+                } catch(e) {}
+            }
+
+            if (!serverIPVal && window.nexusAPI.obtenerIpMaestro) {
+                try {
+                    const ipM = await window.nexusAPI.obtenerIpMaestro();
+                    if (ipM && ipM !== '127.0.0.1' && ipM !== 'localhost') {
+                        serverIPVal = ipM;
+                    }
+                } catch(e) {}
+            }
+
+            const parseBool = (val) => (val === true || val === 'true');
+            if (configIsServer) {
+                configIsServer.checked = parseBool(isServerVal);
+            }
+            setFullIP(serverIPVal);
+            actualizarEstadoIP();
+            redLoaded = true;
+        } catch (error) {
+            console.error("Error al cargar configuración de red:", error);
+        }
         
-        if (facturaLoaded || basculaLoaded) {
+        if (facturaLoaded || basculaLoaded || redLoaded) {
             showMessage(`✅ Configuración cargada correctamente.`, 'green');
         } else {
             showMessage("Ajuste los parámetros y presione Guardar.", 'blue');
@@ -579,32 +930,29 @@
     async function verificarAutenticacionLocal() {
         try {
             const sesion = await window.nexusAPI.obtenerSesionLocal();
+            userId = (sesion && sesion.uid) ? sesion.uid : 'admin-local';
+            companyId = (sesion && sesion.companyId) ? sesion.companyId : 'local';
+            branchId = (sesion && sesion.branchId) ? sesion.branchId : 'principal';
+            cashierId = (sesion && sesion.uid) ? sesion.uid : 'admin-local';
+
+            showMessage("Escaneando hardware e inventario...", 'blue');
             if (sesion && sesion.companyId) {
-                userId = sesion.uid;
-                companyId = sesion.companyId;
-                branchId = sesion.branchId; 
-                cashierId = sesion.uid; 
-
-                showMessage("Escaneando hardware e inventario...", 'blue');
                 window.allProductsConfig = await window.nexusAPI.obtenerProductosLocal(companyId) || [];
-
-                const [puertos, impresoras] = await Promise.all([
-                    getPuertosCOM(),
-                    getImpresorasOS()
-                ]);
-
-                await loadAllConfigs(puertos, impresoras); 
-                iniciarBuscadorAutoProductos();
-                const autoProdsRaw = await window.nexusAPI.obtenerConfiguracion('config_auto_productos');
-                if (autoProdsRaw) {
-                    window.autoProductsSelected = JSON.parse(autoProdsRaw);
-                    window.renderAutoProducts();
-                }
             } else {
-                userId = null;
-                companyId = null;
-                branchId = null; 
-                cashierId = null; 
+                window.allProductsConfig = [];
+            }
+
+            const [puertos, impresoras] = await Promise.all([
+                getPuertosCOM(),
+                getImpresorasOS()
+            ]);
+
+            await loadAllConfigs(puertos, impresoras); 
+            iniciarBuscadorAutoProductos();
+            const autoProdsRaw = await window.nexusAPI.obtenerConfiguracion('config_auto_productos');
+            if (autoProdsRaw) {
+                window.autoProductsSelected = JSON.parse(autoProdsRaw);
+                window.renderAutoProducts();
             }
         } catch (error) {
             console.error("Error de sesión:", error);
@@ -652,6 +1000,7 @@
 
             await window.nexusAPI.guardarConfiguracion('config_factura', JSON.stringify(facturaData));
             await window.nexusAPI.guardarConfiguracion('config_auto_productos', JSON.stringify(window.autoProductsSelected));
+            console.log("💾 [CONFIG] Productos automáticos guardados en SQLite:", window.autoProductsSelected);
             if (showConsoleCheckbox) {
                 await window.nexusAPI.guardarConfiguracion('showConsole', showConsoleCheckbox.checked);
             }
@@ -674,16 +1023,39 @@
                 puertoCOM: comPortToSave || "", 
                 baudRate: baudRateToSave,           
                 enableScale: enableScaleState,
-                tipoBalanza: currentActiveBalanzaType
+                tipoBalanza: 'IMPORTADO'
             };
 
-            
             await window.nexusAPI.guardarConfiguracion('config_bascula', JSON.stringify(basculaData));
+            if (enableScaleState && comPortToSave && window.nexusAPI && typeof window.nexusAPI.iniciarLecturaPuerto === 'function') {
+                window.nexusAPI.iniciarLecturaPuerto(comPortToSave, baudRateToSave, 'IMPORTADO');
+            }
             window.dispatchEvent(new Event('configuracion_actualizada'));
 
             return true;
         } catch(e) {
             console.error("Error al guardar balanza config:", e);
+            return false;
+        }
+    }
+
+    async function saveRedConfiguration() {
+        try {
+            if (!configIsServer) return true;
+            const esMaestra = configIsServer.checked;
+            const finalIP = esMaestra ? "localhost" : getFullIP();
+
+            if (!esMaestra && (!finalIP || finalIP === "0.0.0.0" || finalIP.split('.').length !== 4)) {
+                await window.showCustomAlert("Por favor ingrese una dirección IP válida para la computadora Maestra (formato: Ej. 192.168.0.100).", "IP Incompleta o Inválida");
+                return false;
+            }
+
+            await window.nexusAPI.guardarConfiguracion('isServer', esMaestra);
+            await window.nexusAPI.guardarConfiguracion('serverIP', finalIP);
+            try { await window.nexusAPI.reiniciarGestorConexionMaestro(); } catch (_) {}
+            return true;
+        } catch (e) {
+            console.error("Error al guardar configuración de red:", e);
             return false;
         }
     }
@@ -697,9 +1069,11 @@
         showMessage("Guardando configuración...", 'blue');
         let facturaSuccess = await saveFacturaConfiguration();
         let basculaSuccess = await saveBasculaConfiguration();
+        let redSuccess = await saveRedConfiguration();
 
-        if (facturaSuccess && basculaSuccess) {
+        if (facturaSuccess && basculaSuccess && redSuccess) {
             showMessage("✅ Configuración guardada correctamente en el equipo.", 'green');
+            await window.showCustomAlert("✅ Configuración guardada correctamente.\n\nSi modificó la dirección IP o el rol del equipo (Maestra / Hija), reinicie la aplicación para aplicar todos los cambios de red en el sistema.", "Configuración Guardada");
         } else {
             showMessage("❌ Hubo un problema al guardar. Revisa la consola.", 'red');
         }
@@ -747,7 +1121,24 @@
     window.addAutoProduct = function(prod, qty = 1) {
         const prodId = prod.id || prod.producto_ID;
         if (!window.autoProductsSelected.find(p => p.id === prodId)) {
-            window.autoProductsSelected.push({ id: prodId, nombre: prod.nombre, cantidad: qty });
+            const precioVenta = parseFloat(prod.precio_venta || prod.precio || 0);
+            const precioCompra = parseFloat(prod.precio_compra || prod.costo || 0);
+            window.autoProductsSelected.push({ 
+                id: prodId, 
+                nombre: prod.nombre, 
+                codigo: prod.codigo || '',
+                precio: precioVenta,
+                precio_venta: precioVenta,
+                precio_compra: precioCompra,
+                costo: precioCompra,
+                iva: (prod.iva !== undefined && prod.iva !== null) ? prod.iva : (prod.tipo_alicuota !== undefined ? prod.tipo_alicuota : '16'),
+                tipo_alicuota: (prod.tipo_alicuota !== undefined && prod.tipo_alicuota !== null) ? prod.tipo_alicuota : (prod.iva !== undefined ? prod.iva : '16'),
+                moneda: prod.moneda || prod.currency || 'BS',
+                currency: prod.moneda || prod.currency || 'BS',
+                unit: prod.unit || prod.unidad || 'UN',
+                datos_json: prod.datos_json || null,
+                cantidad: qty 
+            });
             window.renderAutoProducts();
         }
     };
@@ -784,4 +1175,5 @@
         });
     };
 
-</script>
+
+    </script>

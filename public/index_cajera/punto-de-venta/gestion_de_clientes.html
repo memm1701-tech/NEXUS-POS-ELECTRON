@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Clientes - Nexus POS</title>
+    <script src="../../js/tailwindcss.js"></script>
+    <link href="../../node_modules/@fontsource/inter/index.css" rel="stylesheet">
+    <link href="../../node_modules/material-icons/iconfont/material-icons.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .table-body-scroll { max-height: calc(100vh - 420px); overflow-y: auto; }
+        .message-box {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+        }
+        /* Forzar bordes estrictamente cuadrados en toda la vista de cajero */
+        #clientes-cajera-root *,
+        #clientes-cajera-root input,
+        #clientes-cajera-root button,
+        #clientes-cajera-root div {
+            border-radius: 0px !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+<main id="clientes-cajera-root" class="flex flex-col w-full h-screen bg-white">
+    <header class="w-full p-6 border-b border-gray-200 bg-white shadow-sm shrink-0">
+        <h1 class="text-3xl font-extrabold text-gray-800 flex items-center">
+            <span class="material-icons text-[#2D3748] mr-3 text-4xl">person_pin</span>
+            Gestión de Clientes
+        </h1>
+        <p class="text-gray-500 text-sm mt-1">Administra la base de datos de clientes sincronizada en tiempo real con el Servidor Maestro.</p>
+    </header>
+
+    <div class="flex-1 p-6 space-y-6 overflow-y-auto bg-gray-50">
+        
+        <div class="bg-white p-6 rounded-none border border-gray-200 shadow-sm">
+            <h2 id="form-title" class="text-lg font-bold text-gray-700 mb-4 flex items-center">
+                <span class="material-icons mr-2 text-gray-500 text-base">person_add</span>
+                Registrar o Actualizar Cliente
+            </h2>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase">Cédula / RIF *</label>
+                    <input type="text" id="client-rif" placeholder="V-12345678" autocomplete="off" class="mt-1 block w-full rounded-none border-gray-300 shadow-sm p-2 border focus:border-[#2D3748] focus:ring-1 focus:ring-[#2D3748] outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase">Nombre o Razón Social *</label>
+                    <input type="text" id="client-name" placeholder="Juan Pérez / Empresa C.A." autocomplete="off" class="mt-1 block w-full rounded-none border-gray-300 shadow-sm p-2 border focus:border-[#2D3748] focus:ring-1 focus:ring-[#2D3748] outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase">Teléfono</label>
+                    <input type="tel" id="client-phone" placeholder="0414-0000000" autocomplete="off" class="mt-1 block w-full rounded-none border-gray-300 shadow-sm p-2 border focus:border-[#2D3748] focus:ring-1 focus:ring-[#2D3748] outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase">Correo Electrónico</label>
+                    <input type="email" id="client-email" placeholder="cliente@correo.com" autocomplete="off" class="mt-1 block w-full rounded-none border-gray-300 shadow-sm p-2 border focus:border-[#2D3748] focus:ring-1 focus:ring-[#2D3748] outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase">Dirección Fiscal</label>
+                    <input type="text" id="client-address" placeholder="Av. Principal, Edif. A..." autocomplete="off" class="mt-1 block w-full rounded-none border-gray-300 shadow-sm p-2 border focus:border-[#2D3748] focus:ring-1 focus:ring-[#2D3748] outline-none">
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end space-x-3">
+                <button id="btn-cancel-edit" type="button" class="hidden bg-gray-500 text-white py-2 px-6 rounded-none hover:bg-gray-600 font-bold transition duration-150 shadow-sm flex items-center justify-center">
+                    <span class="material-icons mr-1 text-base">close</span> Cancelar
+                </button>
+                <button id="btn-save-client" type="button" class="bg-[#2D3748] text-white py-2 px-8 rounded-none hover:bg-[#1A202C] font-bold transition duration-150 shadow-sm flex items-center justify-center">
+                    <span class="material-icons mr-2 text-base">save</span> Guardar Cliente
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-none border border-gray-200 shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                <h3 class="text-sm font-bold text-gray-600 uppercase">Clientes Registrados</h3>
+            </div>
+            
+            <div class="overflow-x-auto table-body-scroll">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-100 sticky top-0">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Cédula / RIF</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Nombre</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Teléfono</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Correo</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Dirección</th>
+                            <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="client-list-body" class="bg-white divide-y divide-gray-200">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de confirmación cuadrado para eliminar sin congelar el foco en Electron -->
+    <div id="confirm-delete-client-modal" class="hidden fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4">
+        <div class="bg-white border border-gray-300 shadow-2xl max-w-md w-full p-6 rounded-none">
+            <div class="flex items-center mb-3">
+                <span class="material-icons text-red-600 mr-2 text-2xl">warning</span>
+                <h3 class="text-lg font-extrabold text-gray-800 uppercase">Confirmar Eliminación</h3>
+            </div>
+            <p id="confirm-delete-client-text" class="text-sm text-gray-600 mb-6"></p>
+            <div class="flex justify-end space-x-3">
+                <button id="btn-cancel-delete-modal" type="button" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-5 rounded-none transition duration-150">
+                    Cancelar
+                </button>
+                <button id="btn-confirm-delete-modal" type="button" class="bg-[#2D3748] hover:bg-[#1A202C] text-white font-bold py-2 px-6 rounded-none transition duration-150">
+                    Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="info-message-modal" class="message-box hidden transform translate-y-4 opacity-0">
+        <div class="p-4 rounded-none shadow-2xl text-white flex items-center space-x-3">
+            <span class="material-icons">info</span>
+            <p id="info-message-text" class="text-sm font-medium"></p>
+        </div>
+    </div>
+</main>
+
+<script type="module">
+    // --- ESTADO GLOBAL ---
+    let clients = [];
+    let currentCompanyId = null;
+    let editingClientRif = null;
+
+    // --- ELEMENTOS DEL DOM ---
+    const rifInput = document.getElementById('client-rif');
+    const nameInput = document.getElementById('client-name');
+    const phoneInput = document.getElementById('client-phone');
+    const emailInput = document.getElementById('client-email');
+    const addressInput = document.getElementById('client-address');
+    const btnSave = document.getElementById('btn-save-client');
+    const btnCancel = document.getElementById('btn-cancel-edit');
+    const formTitle = document.getElementById('form-title');
+    const listBody = document.getElementById('client-list-body');
+
+    const confirmModal = document.getElementById('confirm-delete-client-modal');
+    const confirmText = document.getElementById('confirm-delete-client-text');
+    const btnCancelDeleteModal = document.getElementById('btn-cancel-delete-modal');
+    const btnConfirmDeleteModal = document.getElementById('btn-confirm-delete-modal');
+
+    // --- 1. INICIALIZACIÓN ---
+    async function init() {
+        try {
+            const sesion = await window.nexusAPI.obtenerSesionLocal();
+            if (!sesion || !sesion.companyId) {
+                showToast("Error: No se detectó una sesión activa.", "bg-red-600");
+                return;
+            }
+            currentCompanyId = sesion.companyId;
+            await loadClientsFromSQLite();
+        } catch (err) {
+            console.error("Error inicializando módulo de clientes en cajera:", err);
+            showToast("Error al inicializar módulo de clientes.", "bg-red-600");
+        }
+    }
+
+    // --- 2. CARGA DESDE EL SERVIDOR MAESTRO / SQLITE LOCAL ---
+    async function loadClientsFromSQLite() {
+        try {
+            if (window.nexusAPI && typeof window.nexusAPI.obtenerClientesCajera === 'function') {
+                clients = await window.nexusAPI.obtenerClientesCajera(currentCompanyId);
+            } else {
+                clients = await window.nexusAPI.obtenerClientesLocal();
+            }
+            if (!Array.isArray(clients)) clients = [];
+            renderTable();
+        } catch (error) {
+            console.error("Error cargando clientes:", error);
+            showToast("Fallo al leer la base de datos de clientes.", "bg-red-600");
+        }
+    }
+
+    // --- 3. GUARDAR O ACTUALIZAR (CAJA HIJA <-> MAESTRO) ---
+    async function saveOrUpdateClient() {
+        const rif = rifInput.value.trim().toUpperCase();
+        const nombre = nameInput.value.trim();
+        const telefono = phoneInput.value.trim();
+        const correo = emailInput.value.trim();
+        const direccion = addressInput.value.trim();
+
+        if (!rif || !nombre) {
+            showToast("Cédula/RIF y Nombre son obligatorios.", "bg-yellow-600");
+            return;
+        }
+
+        const nuevoCliente = {
+            rif: rif,
+            company_id: currentCompanyId,
+            nombre: nombre,
+            telefono: telefono || 'N/A',
+            correo: correo || 'S/C',
+            direccion: direccion || 'No especificada'
+        };
+
+        try {
+            let res;
+            if (editingClientRif) {
+                if (window.nexusAPI && typeof window.nexusAPI.actualizarClienteCajera === 'function') {
+                    res = await window.nexusAPI.actualizarClienteCajera(nuevoCliente);
+                } else {
+                    res = await window.nexusAPI.guardarClienteLocal(nuevoCliente);
+                }
+            } else {
+                if (window.nexusAPI && typeof window.nexusAPI.guardarClienteCajera === 'function') {
+                    res = await window.nexusAPI.guardarClienteCajera(nuevoCliente);
+                } else {
+                    res = await window.nexusAPI.guardarClienteLocal(nuevoCliente);
+                }
+            }
+
+            if (res && !res.error && res.success !== false) {
+                showToast(editingClientRif ? "Cliente actualizado con éxito." : "Cliente procesado con éxito.", "bg-green-600");
+                clearForm();
+                await loadClientsFromSQLite();
+            } else {
+                throw new Error(res?.error || "Error desconocido en base de datos");
+            }
+        } catch (err) {
+            showToast("Error al guardar: " + err.message, "bg-red-600");
+        }
+    }
+
+    // --- 4. ELIMINAR CLIENTE ---
+    function askDeleteConfirmation(rif) {
+        return new Promise((resolve) => {
+            if (!confirmModal) {
+                resolve(window.confirm(`¿Estás seguro de eliminar al cliente con RIF ${rif}?`));
+                return;
+            }
+            confirmText.textContent = `¿Estás seguro de eliminar al cliente con RIF ${rif}?`;
+            confirmModal.classList.remove('hidden');
+
+            const cleanup = (result) => {
+                confirmModal.classList.add('hidden');
+                btnCancelDeleteModal.onclick = null;
+                btnConfirmDeleteModal.onclick = null;
+                resolve(result);
+            };
+
+            btnCancelDeleteModal.onclick = () => cleanup(false);
+            btnConfirmDeleteModal.onclick = () => cleanup(true);
+        });
+    }
+
+    async function deleteClient(rif) {
+        const confirmado = await askDeleteConfirmation(rif);
+        if (!confirmado) return;
+
+        try {
+            let res;
+            if (window.nexusAPI && typeof window.nexusAPI.eliminarClienteCajera === 'function') {
+                res = await window.nexusAPI.eliminarClienteCajera(rif);
+            } else {
+                res = await window.nexusAPI.eliminarClienteLocal(rif);
+            }
+            if (res && !res.error) {
+                showToast("Cliente eliminado.", "bg-gray-700");
+                if (editingClientRif === rif) {
+                    clearForm();
+                }
+                await loadClientsFromSQLite();
+            } else {
+                throw new Error(res?.error || "No se pudo eliminar el cliente.");
+            }
+        } catch (err) {
+            showToast("No se pudo eliminar el cliente.", "bg-red-600");
+        }
+    }
+
+    // --- 5. RENDERIZADO DE TABLA ---
+    function renderTable() {
+        listBody.innerHTML = '';
+
+        if (clients.length === 0) {
+            listBody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-400">No hay clientes en la base de datos local.</td></tr>`;
+            return;
+        }
+
+        clients.forEach(client => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-gray-50 transition duration-75";
+            tr.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-[#2D3748]">${client.rif}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-medium">${client.nombre}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${client.telefono || 'N/A'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${client.correo || 'S/C'}</td>
+                <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">${client.direccion || 'No especificada'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                    <button type="button" class="bg-[#2D3748] text-white px-3 py-1 rounded-none hover:bg-[#1A202C] text-xs font-bold inline-flex items-center shadow-sm transition edit-btn" data-rif="${client.rif}" title="Modificar cliente">
+                        <span class="material-icons text-sm mr-1">edit</span> Editar
+                    </button>
+                    <button type="button" class="bg-red-600 text-white px-3 py-1 rounded-none hover:bg-red-700 text-xs font-bold inline-flex items-center shadow-sm transition delete-btn" data-rif="${client.rif}" title="Eliminar cliente">
+                        <span class="material-icons text-sm mr-1">delete</span> Eliminar
+                    </button>
+                </td>
+            `;
+            listBody.appendChild(tr);
+        });
+
+        // Eventos para botones de acción en la tabla
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.onclick = () => loadClientIntoForm(btn.dataset.rif);
+        });
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.onclick = () => deleteClient(btn.dataset.rif);
+        });
+    }
+
+    // --- 6. UTILIDADES ---
+    function loadClientIntoForm(rif) {
+        const c = clients.find(item => item.rif === rif);
+        if (c) {
+            editingClientRif = c.rif;
+            rifInput.value = c.rif;
+            rifInput.readOnly = true;
+            rifInput.classList.add('bg-gray-100', 'cursor-not-allowed', 'text-gray-500');
+            nameInput.value = c.nombre;
+            phoneInput.value = c.telefono === 'N/A' ? '' : (c.telefono || '');
+            emailInput.value = c.correo === 'S/C' ? '' : (c.correo || '');
+            addressInput.value = c.direccion === 'No especificada' ? '' : (c.direccion || '');
+            
+            if (formTitle) {
+                formTitle.innerHTML = `<span class="material-icons mr-2 text-[#2D3748] text-base">edit</span> Modificando Cliente: ${c.rif}`;
+            }
+            btnSave.innerHTML = `<span class="material-icons mr-2 text-base">save</span> Actualizar Cliente`;
+            if (btnCancel) btnCancel.classList.remove('hidden');
+
+            nameInput.focus();
+            showToast(`Editando a ${c.nombre}`, "bg-[#2D3748]");
+        }
+    }
+
+    function clearForm() {
+        editingClientRif = null;
+        rifInput.value = '';
+        rifInput.readOnly = false;
+        rifInput.classList.remove('bg-gray-100', 'cursor-not-allowed', 'text-gray-500');
+        nameInput.value = '';
+        phoneInput.value = '';
+        emailInput.value = '';
+        addressInput.value = '';
+
+        if (formTitle) {
+            formTitle.innerHTML = `<span class="material-icons mr-2 text-gray-500 text-base">person_add</span> Registrar o Actualizar Cliente`;
+        }
+        btnSave.innerHTML = `<span class="material-icons mr-2 text-base">save</span> Guardar Cliente`;
+        if (btnCancel) btnCancel.classList.add('hidden');
+    }
+
+    function showToast(msg, colorClass) {
+        const modal = document.getElementById('info-message-modal');
+        const text = document.getElementById('info-message-text');
+        if (!modal || !text) return;
+        const box = modal.firstElementChild;
+
+        text.textContent = msg;
+        box.className = `p-4 rounded-none shadow-2xl text-white flex items-center space-x-3 ${colorClass}`;
+        
+        modal.classList.remove('hidden', 'translate-y-4', 'opacity-0');
+        setTimeout(() => {
+            modal.classList.add('translate-y-4', 'opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }, 3000);
+    }
+
+    // --- EVENTOS ---
+    btnSave.addEventListener('click', saveOrUpdateClient);
+    if (btnCancel) {
+        btnCancel.addEventListener('click', clearForm);
+    }
+    init();
+</script>
+</body>
+</html>

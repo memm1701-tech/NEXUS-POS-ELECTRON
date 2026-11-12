@@ -237,13 +237,14 @@
                         <thead class="text-xs text-gray-700 uppercase sticky top-0 bg-gray-50 shadow-sm">
                             <tr>
                                 <th>Fecha y Hora de Cierre</th>
+                                <th>Cajera</th>
                                 <th>Total Divisa ($)</th>
                                 <th>Total Bolívares (Bs)</th>
                                 <th>Diferencia ($ y Bs)</th>
                             </tr>
                         </thead>
                         <tbody id="closure-history-body">
-                            <tr><td colspan="4" class="text-center p-4" id="log-status">Seleccione sucursal y espere la carga...</td></tr>
+                            <tr><td colspan="5" class="text-center p-4" id="log-status">Seleccione sucursal y espere la carga...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -306,6 +307,7 @@
                     userRole = sesion.role;
                     
                     if (userCompanyId) {
+                        await cargarTraductorCajeras(userCompanyId, userBranchId);
                         await loadBranches(userCompanyId, userBranchId);
                     }
                 } else {
@@ -364,10 +366,157 @@
         }
         
         window.clearClosureHistory = function() {
-            historyBody.innerHTML = '<tr><td colspan="4" class="text-center p-4">Presiona "Buscar Todos los Cierres" para aplicar los filtros.</td></tr>';
+            historyBody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Presiona "Buscar Todos los Cierres" para aplicar los filtros.</td></tr>';
             window.hideClosureDetails(); 
         }
         
+        
+        // ===================================================================
+        // --- TRADUCTOR DE CAJERAS Y CATÁLOGO DE MÉTODOS DE PAGO ---
+        // ===================================================================
+        let catalogoMetodosPago = {
+            '1000001': { nombre: 'Efectivo', moneda: 'BS', symbol: 'Bs' },
+            '1000002': { nombre: 'Débito', moneda: 'BS', symbol: 'Bs' },
+            '1000003': { nombre: 'Pago Móvil', moneda: 'BS', symbol: 'Bs' },
+            '1000004': { nombre: 'Biopago', moneda: 'BS', symbol: 'Bs' },
+            '1000005': { nombre: 'Dólares Físicos', moneda: 'USD', symbol: '$' },
+            '1000008': { nombre: 'Crédito', moneda: 'BS', symbol: 'Bs' },
+            'efectivo': { nombre: 'Efectivo (Bs)', moneda: 'BS', symbol: 'Bs' },
+            'debito': { nombre: 'Débito', moneda: 'BS', symbol: 'Bs' },
+            'pagomovil': { nombre: 'Pago Móvil', moneda: 'BS', symbol: 'Bs' },
+            'pago_movil': { nombre: 'Pago Móvil', moneda: 'BS', symbol: 'Bs' },
+            'biopago': { nombre: 'Biopago', moneda: 'BS', symbol: 'Bs' },
+            'dolar': { nombre: 'Efectivo ($)', moneda: 'USD', symbol: '$' },
+            'dolares': { nombre: 'Dólares', moneda: 'USD', symbol: '$' },
+            'transferencia': { nombre: 'Transferencia', moneda: 'BS', symbol: 'Bs' },
+            'deposito': { nombre: 'Depósito', moneda: 'BS', symbol: 'Bs' },
+            'credito': { nombre: 'A Crédito', moneda: 'BS', symbol: 'Bs' },
+            'tarjetaCredito': { nombre: 'T. Crédito', moneda: 'BS', symbol: 'Bs' }
+        };
+
+        function resolverMetodoPago(key) {
+            if (!key) return { nombre: 'Otro', moneda: 'BS', symbol: 'Bs' };
+            const k = String(key).trim();
+            if (catalogoMetodosPago[k]) return catalogoMetodosPago[k];
+            const kLower = k.toLowerCase();
+            if (catalogoMetodosPago[kLower]) return catalogoMetodosPago[kLower];
+            if (kLower.includes('dolar') || kLower.includes('usd') || kLower.includes('divisa') || kLower.includes('zinli')) {
+                return { nombre: k, moneda: 'USD', symbol: '$' };
+            }
+            return { nombre: k, moneda: 'BS', symbol: 'Bs' };
+        }
+
+        let cajerasMap = {
+            'aXKuKPXjzqSd4X7ADp5Z8uSxkp53': 'Sofia',
+            'vPVGgffOr9SNXkVcQADJXKJFuP42': 'Sofia 2',
+            'tavhgqj1v4er3RBdVL3yItxMCqD2': 'Barbara',
+            'CV8SHrCcu4Ub5Z0e3UoU0rIuGSD2': 'Administrador',
+            'gI2zPfH2wiMHTZVOJT5thNd26dP2': 'Administrador'
+        };
+
+        try {
+            const cached = JSON.parse(localStorage.getItem('nexus_cajeras_map') || '{}');
+            Object.assign(cajerasMap, cached);
+        } catch(e) {}
+
+        function capitalizarTexto(str) {
+            if (!str) return '';
+            return str.toString()
+                .split(' ')
+                .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+                .join(' ');
+        }
+
+        function traducirCajero(id) {
+            if (!id || id === 'N/A' || id === 'null' || id === 'undefined') return 'N/A';
+            const cleanId = String(id).trim();
+            if (cajerasMap[cleanId]) return cajerasMap[cleanId];
+            if (cajerasMap[cleanId.toLowerCase()]) return cajerasMap[cleanId.toLowerCase()];
+            
+            if (cleanId.includes('@')) {
+                const userPart = cleanId.split('@')[0].replace(/[._-]/g, ' ');
+                return capitalizarTexto(userPart);
+            }
+            
+            const lower = cleanId.toLowerCase();
+            if (lower === 'admin' || lower.includes('admin')) return 'Administrador';
+            if (lower === 'sistema') return 'Sistema';
+            if (lower.startsWith('caja-') || lower.startsWith('cajera-')) return cleanId.toUpperCase();
+            
+            if (cleanId.length > 20 && !cleanId.includes(' ')) {
+                return `Cajera (${cleanId.substring(0, 6)}...)`;
+            }
+            
+            return capitalizarTexto(cleanId);
+        }
+
+        async function cargarTraductorCajeras(companyId, branchId) {
+            try {
+                if (window.nexusAPI && typeof window.nexusAPI.obtenerUsuariosLocales === 'function') {
+                    const usuariosLocales = await window.nexusAPI.obtenerUsuariosLocales();
+                    if (Array.isArray(usuariosLocales)) {
+                        usuariosLocales.forEach(u => {
+                            if (u.uid && u.email) {
+                                const base = u.email.split('@')[0].replace(/[._-]/g, ' ');
+                                const formatted = capitalizarTexto(base);
+                                const nombreFinal = u.role === 'admin' ? 'Administrador' : formatted;
+                                if (!cajerasMap[u.uid]) cajerasMap[u.uid] = nombreFinal;
+                                if (!cajerasMap[u.email.toLowerCase()]) cajerasMap[u.email.toLowerCase()] = nombreFinal;
+                            }
+                        });
+                    }
+                }
+            } catch(e) {
+                console.warn("Aviso consultando usuarios locales:", e);
+            }
+
+            try {
+                if (companyId && navigator.onLine) {
+                    const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
+                    const { getFirestore, collection, getDocs } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                    const firebaseConfig = {
+                        apiKey: "AIzaSyDN9mZ1n-OkC-Qz52eTCOy4yJH7M0U9zYI",
+                        authDomain: "nexus-pos-75593.firebaseapp.com",
+                        projectId: "nexus-pos-75593",
+                        storageBucket: "nexus-pos-75593.firebasestorage.app",
+                        messagingSenderId: "626840984883",
+                        appId: "1:626840984883:web:08d56544ee28bc8e637246"
+                    };
+                    const fApp = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
+                    const fDb = getFirestore(fApp);
+                    
+                    let sucursalesAExplorar = branchId ? [{ id: branchId }] : [];
+                    if (window.nexusAPI && window.nexusAPI.obtenerSucursalesLocal) {
+                        const sucs = await window.nexusAPI.obtenerSucursalesLocal(companyId);
+                        if (Array.isArray(sucs) && sucs.length > 0) sucursalesAExplorar = sucs;
+                    }
+                    
+                    for (const s of sucursalesAExplorar) {
+                        const sId = s.id || s.sucursal_ID;
+                        if (!sId) continue;
+                        const cSnap = await getDocs(collection(fDb, 'companies', companyId, 'branches', sId, 'cashiers'));
+                        cSnap.forEach(docSnap => {
+                            const cData = docSnap.data();
+                            const uid = docSnap.id || cData.uid;
+                            const nom = cData.name || cData.nombre || (cData.email ? cData.email.split('@')[0] : '');
+                            if (uid && nom) {
+                                const cNombre = capitalizarTexto(nom);
+                                cajerasMap[uid] = cNombre;
+                                if (cData.email) cajerasMap[cData.email.toLowerCase()] = cNombre;
+                            }
+                        });
+                    }
+                    localStorage.setItem('nexus_cajeras_map', JSON.stringify(cajerasMap));
+                    
+                    if (closuresCache && closuresCache.length > 0) {
+                        window.renderClosureHistory();
+                    }
+                }
+            } catch(eNube) {
+                console.warn("Aviso al consultar cajeras en la nube (cierres):", eNube.message);
+            }
+        }
+
         function formatCurrency(amount, symbol) {
             return `${symbol} ${parseFloat(amount || 0).toFixed(2)}`;
         }
@@ -397,24 +546,29 @@
             document.querySelectorAll('.closure-row').forEach(row => row.classList.remove('bg-blue-50'));
         }
 
-        function getPaymentMethodInfo(key) {
-            let translated = key;
+        function getPaymentMethodInfo(key, data = {}) {
+            let translated = data.method_name || key;
+            let isDollar = (data.currency || '').toUpperCase() === 'USD' || key.includes('dollars') || key.includes('zinli') || key.includes('usd') || key.includes('divisa') || key === '1000005';
             let order = 99; 
             
-            if (key.includes('cash-bs') || key.includes('efectivo-bs')) { translated = 'Efectivo (Bs)'; order = 1; }
-            else if (key.includes('cash-dollars') || key.includes('efectivo-usd')) { translated = 'Efectivo ($)'; order = 1; }
-            else if (key.includes('debit-card-bs') || key.includes('debito')) { translated = 'Tarjeta de Débito (Bs)'; order = 2; }
-            else if (key.includes('mobile-payment-bs') || key.includes('pago-movil')) { translated = 'Pago Móvil (Bs)'; order = 3; }
-            else if (key.includes('zinli-dollars') || key.includes('zinli')) { translated = 'Zinli ($)'; order = 4; }
-            else if (key.includes('biopago-bs') || key.includes('biopago')) { translated = 'Biopago (Bs)'; order = 5; }
-            else if (key.includes('dollars') || key.includes('divisa')) { translated = 'Dólar (Otros)'; order = 6; }
+            if (data.method_name) {
+                translated = data.method_name;
+            } else if (catalogoMetodosPago[key]) {
+                translated = catalogoMetodosPago[key].nombre;
+                isDollar = catalogoMetodosPago[key].moneda === 'USD';
+            } else if (key.includes('cash-bs') || key.includes('efectivo-bs') || key === '1000001') { translated = 'Efectivo (Bs)'; order = 1; }
+            else if (key.includes('cash-dollars') || key.includes('efectivo-usd') || key === '1000005') { translated = 'Efectivo ($)'; order = 1; isDollar = true; }
+            else if (key.includes('debit-card-bs') || key.includes('debito') || key === '1000002') { translated = 'Tarjeta de Débito (Bs)'; order = 2; }
+            else if (key.includes('mobile-payment-bs') || key.includes('pago-movil') || key === '1000003') { translated = 'Pago Móvil (Bs)'; order = 3; }
+            else if (key.includes('zinli-dollars') || key.includes('zinli')) { translated = 'Zinli ($)'; order = 4; isDollar = true; }
+            else if (key.includes('biopago-bs') || key.includes('biopago') || key === '1000004') { translated = 'Biopago (Bs)'; order = 5; }
+            else if (key.includes('dollars') || key.includes('divisa')) { translated = 'Dólar (Otros)'; order = 6; isDollar = true; }
             else if (key.includes('transfer-bs') || key.includes('transferencia')) { translated = 'Transferencia (Bs)'; order = 7; }
             else if (key.includes('deposit-bs')) { translated = 'Depósito (Bs)'; order = 8; }
-            else if (key.includes('credit-bs')) { translated = 'Crédito (Bs)'; order = 9; }
+            else if (key.includes('credit-bs') || key.includes('credito') || key === '1000008') { translated = 'Crédito (Bs)'; order = 9; }
             else if (key.includes('credit-card-bs')) { translated = 'Tarjeta de Crédito (Bs)'; order = 10; }
             
-            const currencySymbol = key.includes('dollars') || key.includes('zinli') || key.includes('usd') || key.includes('divisa') ? '$' : 'Bs';
-
+            const currencySymbol = isDollar ? '$' : 'Bs';
             return { translated, order, currencySymbol };
         };
 
@@ -428,13 +582,14 @@
 
             const dateDisplay = document.getElementById('closure-date-display');
             const contentDiv = document.getElementById('closure-details-content');
-            const cashierName = closure.cashier_id || closure.cashierId || closure.userId || 'N/A';
+            const cashierRaw = closure.cashier_id || closure.cashierId || closure.userId || 'N/A';
+            const cashierName = traducirCajero(cashierRaw);
 
             dateDisplay.textContent = docId;
             
             let htmlContent = '<div>';
             
-            htmlContent += `<p><strong>Cajero:</strong> ${cashierName}</p>`;
+            htmlContent += `<p><strong>Cajera:</strong> <span class="font-bold text-gray-800">${cashierName}</span> <span class="text-xs text-gray-400">(${cashierRaw})</span></p>`;
             htmlContent += `<p><strong>Fecha y Hora:</strong> ${formattedDateFromTable}</p>`;
             
             // Adaptación de lectura para la columna detalle_pagos_json proveniente del servidor maestro
@@ -453,7 +608,7 @@
                 const paymentMethodsArray = Object.keys(conciliation).map(key => ({
                     key,
                     data: conciliation[key],
-                    ...getPaymentMethodInfo(key.toLowerCase()) 
+                    ...getPaymentMethodInfo(key.toLowerCase(), conciliation[key]) 
                 }));
 
                 paymentMethodsArray.sort((a, b) => a.order - b.order);
@@ -527,12 +682,12 @@
             const btnLoadMore = document.getElementById('btn-load-more');
             
             if (!branchId) {
-                if(historyBody) historyBody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-gray-500">Seleccione una sucursal.</td></tr>`;
+                if(historyBody) historyBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-500">Seleccione una sucursal.</td></tr>`;
                 return;
             }
 
             if (currentOffset === 0) {
-                if(historyBody) historyBody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-gray-500">Sincronizando con el Servidor Maestro (Puerto 3000)...</td></tr>`;
+                if(historyBody) historyBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-500">Sincronizando con el Servidor Maestro (Puerto 3000)...</td></tr>`;
             } else if (btnLoadMore) {
                 btnLoadMore.disabled = true;
                 btnLoadMore.innerHTML = `Cargando... <i class="fas fa-spinner fa-spin ml-2"></i>`;
@@ -575,7 +730,7 @@
                 }
 
                 if (closuresCache.length === 0) {
-                    if(historyBody) historyBody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-gray-500">No hay cierres registrados en el Servidor Maestro para esta sucursal.</td></tr>`;
+                    if(historyBody) historyBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-500">No hay cierres registrados en el Servidor Maestro para esta sucursal.</td></tr>`;
                     document.getElementById('load-more-container')?.classList.add('hidden');
                     return;
                 }
@@ -600,7 +755,7 @@
                     btnLoadMore.innerHTML = `Ver más cierres <i class="fas fa-chevron-down ml-2"></i>`;
                 }
                 if (currentOffset === 0) {
-                    if(historyBody) historyBody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-red-500">Error conectando al Servidor Maestro: Verifica que el endpoint exista en server.js. (${error.message})</td></tr>`;
+                    if(historyBody) historyBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-red-500">Error conectando al Servidor Maestro: Verifica que el endpoint exista en server.js. (${error.message})</td></tr>`;
                 } else {
                     showMessage("Error al cargar más cierres.", "error");
                 }
@@ -634,7 +789,7 @@
                 return;
             }
             
-            historyBody.innerHTML = '<tr><td colspan="4" class="text-center p-4">Filtrando historial de cierres...</td></tr>';
+            historyBody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Filtrando historial de cierres...</td></tr>';
             window.hideClosureDetails(); 
             selectedClosureMap = {};
             
@@ -667,7 +822,7 @@
             });
 
             if (cierresMostrar.length === 0) {
-                historyBody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-gray-500">No hay historial de cierres para los filtros seleccionados.</td></tr>';
+                historyBody.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-gray-500">No hay historial de cierres para los filtros seleccionados.</td></tr>';
                 return;
             }
 
@@ -690,10 +845,12 @@
                 const diffDollarsDisplay = formatCurrency(diffDollars, '$');
                 const diffBsDisplay = formatCurrency(diffBs, 'Bs');
 
+                const cashierDisplay = traducirCajero(closure.cashier_id || closure.cashierId || closure.userId);
                 tableHTML += `
                     <tr id="closure-row-${docId}" class="closure-row hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-200" 
                         onclick="window.displayClosureDetails('${docId}', '${dateString}', '${diffDollarsDisplay}', '${diffBsDisplay}')">
                         <td class="p-3 font-medium text-gray-900">${dateString}</td>
+                        <td class="p-3 text-gray-800 font-semibold">${cashierDisplay}</td>
                         <td class="p-3 text-green-600 font-bold">${formatCurrency(totalDollars, '$')}</td>
                         <td class="p-3 text-red-600 font-bold">${formatCurrency(totalBs, 'Bs')}</td>
                         <td class="p-3 text-gray-700 font-medium">${differenceText}</td>

@@ -7,6 +7,7 @@
 
     <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
     <script src="tailwindcss.js"></script>
+    <script src="xlsx.full.min.js"></script>
 
 <style>
     /* =========================================
@@ -356,7 +357,10 @@
                                 <input type="number" id="product-buy-price" placeholder="Ej: 20.00" step="0.01" required>
                             </div>
                             <div>
-                                <label for="product-profit-percentage" id="label-profit-percentage">Ganancia Deseada (%):</label>
+                                <label for="product-profit-percentage" id="label-profit-percentage" class="flex items-center justify-between">
+                                    <span id="label-profit-percentage-text">Ganancia Deseada (%):</span>
+                                    <span id="badge-tipo-calculo-margen" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">Sobre Costo</span>
+                                </label>
                                 <input type="number" id="product-profit-percentage" placeholder="Ej: 30" min="0" required>
                             </div>
                             <div>
@@ -444,11 +448,27 @@
             <hr class="my-6">
 
             <div class="table-section-container">
-                <h2 style="font-size: 1.8em; font-weight: 800; color: #333; letter-spacing: -0.5px; text-align: left;">Productos Disponibles</h2>
-                
-                <!-- A-Z FILTER CONTAINER -->
-                <div id="az-filter-container" style="display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 15px; justify-content: flex-start;">
-                    <!-- Javascript will populate this -->
+                <!-- CABECERA: TÍTULO, FILTRO A-Z Y RECUADRO DE EXPORTAR EXCEL -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: nowrap; gap: 20px; margin-bottom: 15px;">
+                    <div style="flex: 1; min-width: 0;">
+                        <h2 style="font-size: 1.8em; font-weight: 800; color: #333; letter-spacing: -0.5px; text-align: left; margin: 0 0 10px 0;">Productos Disponibles</h2>
+                        <!-- A-Z FILTER CONTAINER: Se limita el ancho para que las tarjetas de las letras pasen debajo de las otras letras en dos filas y dejen el recuadro a la derecha -->
+                        <div id="az-filter-container" style="display: flex; flex-wrap: wrap; gap: 5px; justify-content: flex-start; max-width: 560px;">
+                            <!-- Javascript will populate this -->
+                        </div>
+                    </div>
+
+                    <!-- RECUADRO SENCILLO PARA EXPORTAR EXCEL (FIJO A LA DERECHA) -->
+                    <div style="border: 1px solid #d1d5db; border-radius: 8px; padding: 10px 16px; display: inline-flex; align-items: center; gap: 12px; background: transparent; flex-shrink: 0; align-self: flex-end; margin-bottom: 2px;">
+                        <span style="font-size: 0.9em; font-weight: 700; color: #374151; white-space: nowrap;">Desea exportar el inventario en Excel</span>
+                        <button id="btn-export-excel" onclick="exportarInventarioAExcel()" type="button" style="background-color: #10b981; color: #ffffff; font-weight: 700; font-size: 0.85em; padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); transition: background-color 0.2s; white-space: nowrap;" onmouseover="this.style.backgroundColor='#059669'" onmouseout="this.style.backgroundColor='#10b981'">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M5.884 6.68a.5.5 0 1 0-.768.64L7.349 10l-2.233 2.68a.5.5 0 0 0 .768.64L8 10.748l2.116 2.572a.5.5 0 0 0 .768-.64L8.651 10l2.233-2.68a.5.5 0 0 0-.768-.64L8 9.252 5.884 6.68z"/>
+                                <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>
+                            </svg>
+                            <span>Exportar a Excel</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="search-bar-container" style="margin-bottom: 20px; text-align: left;">
@@ -616,6 +636,9 @@
     if (productProfitPercentageInput) {
         productProfitPercentageInput.addEventListener('input', calcularPrecios);
     }
+    if (productPriceInput) {
+        productPriceInput.addEventListener('input', calcularPorcentajeDesdeVenta);
+    }
 
     modalConfirmBtn.addEventListener('click', () => {
         if (productToDelete && companyId) {
@@ -639,7 +662,7 @@
 
             currentTier = tab.dataset.tier;
             document.getElementById('label-buy-price').textContent = `Precio Compra (P${currentTier}):`;
-            document.getElementById('label-profit-percentage').textContent = `Ganancia % (P${currentTier}):`;
+            actualizarLabelProfitPercentage(`Ganancia % (P${currentTier}):`);
             document.getElementById('label-price').textContent = `Base Imponible(P. venta) (P${currentTier}):`;
             
             cargarTier(currentTier);
@@ -678,10 +701,10 @@
             preciosData.p2.compra = costoVal;
             preciosData.p3.compra = costoVal;
             if (preciosData.p2.porcentaje) {
-                preciosData.p2.venta = parseFloat((costoVal * (1 + (preciosData.p2.porcentaje / 100))).toFixed(2));
+                preciosData.p2.venta = window.calcularVentaSegunMargen(costoVal, preciosData.p2.porcentaje);
             }
             if (preciosData.p3.porcentaje) {
-                preciosData.p3.venta = parseFloat((costoVal * (1 + (preciosData.p3.porcentaje / 100))).toFixed(2));
+                preciosData.p3.venta = window.calcularVentaSegunMargen(costoVal, preciosData.p3.porcentaje);
             }
         }
     }
@@ -807,17 +830,85 @@ async function loadCategories() {
     }
 }
 
+
+// 🛡️ CONFIGURACIÓN DE TIPO DE CÁLCULO DE MARGEN
+window.tipoCalculoMargen = 'SOBRE_COSTO';
+
+window.calcularVentaSegunMargen = function(costo, porcentaje) {
+    const c = parseFloat(costo) || 0;
+    const p = parseFloat(porcentaje) || 0;
+    if (c <= 0) return 0;
+    if (window.tipoCalculoMargen === 'SOBRE_VENTA') {
+        if (p >= 100) return c; // Prevenir división por cero o negativo
+        return parseFloat((c / (1 - (p / 100))).toFixed(2));
+    }
+    // SOBRE_COSTO (Por defecto):
+    return parseFloat((c * (1 + (p / 100))).toFixed(2));
+};
+
+async function cargarConfiguracionMargenInventario() {
+    try {
+        const api = window.nexusAPI || (window.parent && window.parent.nexusAPI ? window.parent.nexusAPI : null);
+        if (api && typeof api.obtenerConfiguracion === 'function') {
+            const cfg = await api.obtenerConfiguracion('tipo_calculo_margen');
+            if (cfg) {
+                window.tipoCalculoMargen = String(cfg).toUpperCase();
+            }
+        }
+        actualizarBadgeMargenInventario();
+    } catch(e) {
+        console.warn("Aviso cargando tipo_calculo_margen en inventario:", e);
+    }
+}
+
+function actualizarBadgeMargenInventario() {
+    const b = document.getElementById('badge-tipo-calculo-margen');
+    if (!b) return;
+    if (window.tipoCalculoMargen === 'SOBRE_VENTA') {
+        b.textContent = 'Sobre Venta (Real)';
+        b.className = 'text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800';
+        b.title = 'Fórmula: Costo ÷ (1 - %) -> Ej: Costo 80 con 20% = 100.00';
+    } else {
+        b.textContent = 'Sobre Costo (Markup)';
+        b.className = 'text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600';
+        b.title = 'Fórmula: Costo × (1 + %) -> Ej: Costo 80 + 20% = 96.00';
+    }
+}
+
+function actualizarLabelProfitPercentage(texto) {
+    const txtSpan = document.getElementById('label-profit-percentage-text');
+    if (txtSpan) {
+        txtSpan.textContent = texto;
+    } else {
+        const lbl = document.getElementById('label-profit-percentage');
+        if (lbl) {
+            const badge = document.getElementById('badge-tipo-calculo-margen');
+            lbl.innerHTML = `<span id="label-profit-percentage-text">${texto}</span>`;
+            if (badge) {
+                lbl.appendChild(badge);
+            } else {
+                lbl.insertAdjacentHTML('beforeend', `<span id="badge-tipo-calculo-margen" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">Sobre Costo</span>`);
+            }
+        }
+    }
+    actualizarBadgeMargenInventario();
+}
+
+// Carga inmediata al instanciar el script y al recuperar foco de ventana
+cargarConfiguracionMargenInventario();
+window.addEventListener('focus', cargarConfiguracionMargenInventario);
+
 function calcularPrecios() {
-    const valorCosto = productBuyPriceInput.value;
-    const valorPorcentaje = productProfitPercentageInput.value;
+    const valorCosto = productBuyPriceInput ? productBuyPriceInput.value : "";
+    const valorPorcentaje = productProfitPercentageInput ? productProfitPercentageInput.value : "";
     const alertBox = document.getElementById('profit-warning-alert');
     
     const costo = parseFloat(valorCosto) || 0;
     const porcentaje = parseFloat(valorPorcentaje) || 0;
 
     if (valorCosto !== "" && valorPorcentaje !== "") {
-        const baseImponible = costo * (1 + (porcentaje / 100));
-        productPriceInput.value = baseImponible.toFixed(2);
+        const baseImponible = window.calcularVentaSegunMargen(costo, porcentaje);
+        if (productPriceInput) productPriceInput.value = baseImponible.toFixed(2);
         if (alertBox) {
             if (porcentaje > 30) {
                 alertBox.classList.remove('hidden');
@@ -826,11 +917,11 @@ function calcularPrecios() {
             }
         }
     } else {
-        productPriceInput.value = "";
+        if (productPriceInput) productPriceInput.value = "";
         if (alertBox) alertBox.classList.add('hidden');
     }
 
-    const ventaCalculada = parseFloat(productPriceInput.value) || 0;
+    const ventaCalculada = productPriceInput ? (parseFloat(productPriceInput.value) || 0) : 0;
 
     // 🔥 REGLA DE NEGOCIO:
     // Si estamos editando el nivel 1 (P1), sincronizamos automáticamente el precio de compra
@@ -842,11 +933,11 @@ function calcularPrecios() {
 
         // Recalcular venta de P2 si ya tiene porcentaje configurado
         if (preciosData.p2.porcentaje) {
-            preciosData.p2.venta = parseFloat((costo * (1 + (preciosData.p2.porcentaje / 100))).toFixed(2));
+            preciosData.p2.venta = window.calcularVentaSegunMargen(costo, preciosData.p2.porcentaje);
         }
         // Recalcular venta de P3 si ya tiene porcentaje configurado
         if (preciosData.p3.porcentaje) {
-            preciosData.p3.venta = parseFloat((costo * (1 + (preciosData.p3.porcentaje / 100))).toFixed(2));
+            preciosData.p3.venta = window.calcularVentaSegunMargen(costo, preciosData.p3.porcentaje);
         }
     } else if (String(currentTier) === "2") {
         preciosData.p2 = { compra: costo, porcentaje: porcentaje, venta: ventaCalculada };
@@ -855,8 +946,55 @@ function calcularPrecios() {
     }
 }
 
+function calcularPorcentajeDesdeVenta() {
+    const valorCosto = productBuyPriceInput ? productBuyPriceInput.value : "";
+    const valorVenta = productPriceInput ? productPriceInput.value : "";
+    const alertBox = document.getElementById('profit-warning-alert');
+    
+    const costo = parseFloat(valorCosto) || 0;
+    const venta = parseFloat(valorVenta) || 0;
+
+    if (valorCosto !== "" && valorVenta !== "" && costo > 0) {
+        let porcentaje = 0;
+        if (window.tipoCalculoMargen === 'SOBRE_VENTA') {
+            if (venta > 0) {
+                porcentaje = ((venta - costo) / venta) * 100;
+            }
+        } else {
+            porcentaje = ((venta - costo) / costo) * 100;
+        }
+        porcentaje = Math.round(porcentaje * 100) / 100;
+        if (productProfitPercentageInput) {
+            productProfitPercentageInput.value = porcentaje >= 0 ? porcentaje : 0;
+        }
+        
+        if (alertBox) {
+            if (porcentaje > 30) alertBox.classList.remove('hidden');
+            else alertBox.classList.add('hidden');
+        }
+    }
+
+    const porcentajeCalculado = productProfitPercentageInput ? (parseFloat(productProfitPercentageInput.value) || 0) : 0;
+    if (String(currentTier) === "1") {
+        preciosData.p1 = { compra: costo, porcentaje: porcentajeCalculado, venta: venta };
+        preciosData.p2.compra = costo;
+        preciosData.p3.compra = costo;
+        if (preciosData.p2.porcentaje) {
+            preciosData.p2.venta = window.calcularVentaSegunMargen(costo, preciosData.p2.porcentaje);
+        }
+        if (preciosData.p3.porcentaje) {
+            preciosData.p3.venta = window.calcularVentaSegunMargen(costo, preciosData.p3.porcentaje);
+        }
+    } else if (String(currentTier) === "2") {
+        preciosData.p2 = { compra: costo, porcentaje: porcentajeCalculado, venta: venta };
+    } else if (String(currentTier) === "3") {
+        preciosData.p3 = { compra: costo, porcentaje: porcentajeCalculado, venta: venta };
+    }
+}
+
    
 async function checkLocalSession() {
+    await cargarConfiguracionMargenInventario();
     const session = await window.nexusAPI.obtenerSesionLocal();
     if (session) {
         // Usamos la variable global
@@ -1000,6 +1138,9 @@ async function iniciarMotorInventario() {
             setTimeout(iniciarMotorInventario, 100); 
             return;
         }
+
+        // 🔥 CARGAR CONFIGURACIÓN DE TIPO DE CÁLCULO DE MARGEN
+        await cargarConfiguracionMargenInventario();
 
         // --- Obtener IP, Puerto y Respaldo del .env ---
         try {
@@ -1253,10 +1394,19 @@ async function procesarEntradaStock(productoId, idEmpresa) {
     // 📦 Payload para Servidor VPS / Maestro
     const payloadVPS = {
         company_id: idEmpresa,
+        companyId: idEmpresa,
         sucursal_id: sucursalId,
+        sucursalId: sucursalId,
         producto_id: productoId,
+        id: productoId,
         operacion: 'sumar',
-        cantidad: cantFinal
+        cantidad: cantFinal,
+        items: [{
+            id: productoId,
+            producto_id: productoId,
+            cantidad: cantFinal,
+            operacion: 'SUMAR'
+        }]
     };
 
     try {
@@ -1390,7 +1540,7 @@ window.enableEditing = async function(docId) {
 
     // 4. Actualizar Labels para indicar que estamos en P1
     document.getElementById('label-buy-price').textContent = `Precio Compra (P1):`;
-    document.getElementById('label-profit-percentage').textContent = `Ganancia % (P1):`;
+    actualizarLabelProfitPercentage(`Ganancia % (P1):`);
     document.getElementById('label-price').textContent = `Base Imponible(P. venta) (P1):`;
 
     // 5. 🔥 CARGA Y LIMPIEZA SIMULTÁNEA
@@ -1528,7 +1678,7 @@ function clearForm() {
         tab1.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
     }
     if (document.getElementById('label-buy-price')) document.getElementById('label-buy-price').textContent = `Precio Compra (P1):`;
-    if (document.getElementById('label-profit-percentage')) document.getElementById('label-profit-percentage').textContent = `Ganancia % (P1):`;
+    actualizarLabelProfitPercentage(`Ganancia Deseada (%):`);
     if (document.getElementById('label-price')) document.getElementById('label-price').textContent = `Base Imponible(P. venta) (P1):`;
 
     // 🔥 LIMPIAMOS LA IMAGEN DE LA UI Y LA VARIABLE GLOBAL
@@ -2352,6 +2502,361 @@ window.addEventListener('online', async () => {
         console.error("❌ Error en la sincronización automática:", err);
     }
 });
+
+// =========================================================
+// 📊 EXPORTACIÓN DE INVENTARIO A EXCEL (OFFLINE Y NATIVO)
+// =========================================================
+async function asegurarLibreriaXLSX() {
+    if (typeof XLSX !== 'undefined') return true;
+
+    const rutas = [
+        'xlsx.full.min.js',
+        'index_inicio_admin/gestion_de_inventario/xlsx.full.min.js',
+        './xlsx.full.min.js',
+        '../xlsx.full.min.js',
+        '../../xlsx.full.min.js'
+    ];
+
+    for (const r of rutas) {
+        try {
+            await new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = r;
+                s.onload = () => resolve();
+                s.onerror = () => reject();
+                document.head.appendChild(s);
+            });
+            if (typeof XLSX !== 'undefined') {
+                console.log(`✅ [XLSX] Librería cargada desde: ${r}`);
+                return true;
+            }
+        } catch (e) {
+            // continuar con la siguiente ruta
+        }
+    }
+    return (typeof XLSX !== 'undefined');
+}
+
+async function exportarInventarioAExcel() {
+    if (window._isExportingExcelActive) {
+        console.warn("⚠️ Exportación a Excel ya en curso. Ignorando clic duplicado.");
+        return;
+    }
+    window._isExportingExcelActive = true;
+
+    const btn = document.getElementById('btn-export-excel');
+    let textoOriginal = '';
+    if (btn) {
+        textoOriginal = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `
+            <svg style="animation: spin 1s linear infinite; display: inline-block; width: 16px; height: 16px; margin-right: 6px;" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" style="opacity: 0.25;"></circle>
+                <path fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" style="opacity: 0.75;"></path>
+            </svg>
+            <span>Generando...</span>
+        `;
+    }
+
+    try {
+        const ok = await asegurarLibreriaXLSX();
+        if (!ok || typeof XLSX === 'undefined') {
+            if (typeof showCustomAlert === 'function') {
+                showCustomAlert("Error: La librería Excel (XLSX) no está disponible localmente.", "error");
+            } else {
+                alert("Error: La librería Excel (XLSX) no está disponible localmente.");
+            }
+            return;
+        }
+
+        const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+        if (!api) {
+            if (typeof showCustomAlert === 'function') {
+                showCustomAlert("Error: Conexión local de Nexus POS no encontrada.", "error");
+            } else {
+                alert("Error: Conexión local de Nexus POS no encontrada.");
+            }
+            return;
+        }
+
+        let empId = companyId || window.currentCompanyId;
+        if (!empId) {
+            try {
+                const sesion = await api.obtenerSesionLocal();
+                if (sesion && sesion.companyId) empId = sesion.companyId;
+            } catch (e) {}
+        }
+
+        // 1. Obtener catálogo completo de productos
+        let productos = [];
+        try {
+            productos = await api.obtenerProductosLocal(empId);
+        } catch (errP) {
+            console.warn("Fallo al obtener productos con obtenerProductosLocal, intentando paginado:", errP);
+        }
+
+        if (!Array.isArray(productos) || productos.length === 0) {
+            try {
+                const res = await api.obtenerProductosPaginados({ empresaId: empId, limit: -1, offset: 0 });
+                productos = res && res.data ? res.data : [];
+            } catch (errP2) {
+                console.error("Fallo al obtener productos paginados:", errP2);
+            }
+        }
+
+        if (!Array.isArray(productos) || productos.length === 0) {
+            if (typeof showCustomAlert === 'function') {
+                showCustomAlert("No hay productos disponibles para exportar.", "error");
+            } else {
+                alert("No hay productos disponibles para exportar.");
+            }
+            return;
+        }
+
+        // Si empId no estaba definido, inferirlo del primer producto
+        if (!empId && productos[0] && productos[0].company_id) {
+            empId = productos[0].company_id;
+        }
+
+        // 2. Obtener mapa de categorías
+        const catMap = Object.assign({}, window.categoryMap || {});
+        try {
+            const cats = await api.obtenerCategoriasLocal(empId);
+            if (Array.isArray(cats)) {
+                cats.forEach(c => {
+                    if (c && c.id) catMap[c.id] = c.nombre || c.name || '';
+                });
+            }
+        } catch (errC) {
+            console.warn("No se pudieron cargar categorías:", errC);
+        }
+
+        // 3. Obtener sucursales e inventario por sucursal
+        let sucursales = [];
+        try {
+            sucursales = await api.obtenerSucursalesLocal(empId);
+        } catch (errS) {
+            console.warn("No se pudieron cargar sucursales:", errS);
+        }
+        if (!Array.isArray(sucursales)) sucursales = [];
+
+        const stockPorSucursal = {}; // { [sucursalId]: { [producto_id]: cantidad } }
+        for (const s of sucursales) {
+            stockPorSucursal[s.id] = {};
+            try {
+                const inv = await api.obtenerInventarioSucursal({ companyId: empId, sucursalId: s.id });
+                if (Array.isArray(inv)) {
+                    inv.forEach(item => {
+                        if (item && item.producto_id) {
+                            stockPorSucursal[s.id][item.producto_id] = Number(item.cantidad_real) || 0;
+                        }
+                    });
+                }
+            } catch (errInv) {
+                console.warn(`Error al consultar inventario de sucursal ${s.nombre}:`, errInv);
+            }
+        }
+
+        // 4. Construir encabezados (P1, P2 y P3 en lugar de Base Imponible)
+        const encabezados = [
+            'Nombre de producto',
+            'Precio de compra',
+            'Porcentaje de ganancia del producto',
+            'P1',
+            'P2',
+            'P3',
+            'Categoría',
+            'Código de barra',
+            'Moneda registro',
+            'Tipo de alícuota',
+            'Unidad de venta',
+            '|',
+            'Cantidad stock'
+        ];
+
+        sucursales.forEach(s => {
+            encabezados.push(s.nombre || 'Sucursal');
+        });
+
+        // 5. Construir filas de datos
+        const filas = [encabezados];
+
+        productos.forEach(p => {
+            if (!p) return;
+            let d = {};
+            try {
+                d = (typeof p.datos_json === 'string') ? JSON.parse(p.datos_json) : (p.datos_json || {});
+            } catch (e) {
+                d = {};
+            }
+
+            const preciosObj = (d.precios && typeof d.precios === 'object') ? d.precios : null;
+            const p1Obj = (preciosObj && preciosObj.p1) ? preciosObj.p1 : null;
+            const nombre = d.nombre || p.nombre || 'Sin nombre';
+
+            // Precios y ganancia numéricos
+            const precioCompra = Number(p1Obj ? p1Obj.compra : (p.precio_compra !== undefined && p.precio_compra !== null ? p.precio_compra : (d.precio_compra || d.costo || 0))) || 0;
+            const ganancia = Number(p1Obj ? p1Obj.porcentaje : (p.porcentaje_ganancia !== undefined && p.porcentaje_ganancia !== null ? p.porcentaje_ganancia : (d.porcentaje_ganancia || 0))) || 0;
+
+            // Extracción estricta de P1, P2 y P3
+            const parseVenta = (raw) => {
+                if (raw === undefined || raw === null || raw === '') return 0;
+                if (typeof raw === 'object' && raw.venta !== undefined) return Number(raw.venta) || 0;
+                return Number(raw) || 0;
+            };
+
+            let p1Venta = 0;
+            let p2Venta = 0;
+            let p3Venta = 0;
+
+            if (preciosObj) {
+                p1Venta = parseVenta(preciosObj.p1);
+                p2Venta = parseVenta(preciosObj.p2);
+                p3Venta = parseVenta(preciosObj.p3);
+            } else {
+                if (d.p1 !== undefined) p1Venta = parseVenta(d.p1);
+                if (d.p2 !== undefined) p2Venta = parseVenta(d.p2);
+                if (d.p3 !== undefined) p3Venta = parseVenta(d.p3);
+            }
+
+            // Fallback de P1 al precio general si fuera 0
+            if (!p1Venta) {
+                p1Venta = Number(p.precio !== undefined && p.precio !== null ? p.precio : (d.precio_venta || 0)) || 0;
+            }
+
+            // Si no tienen P2 o P3 quedan explícitamente en 0
+            p2Venta = Number(p2Venta) || 0;
+            p3Venta = Number(p3Venta) || 0;
+
+            // Categoría resuelta a nombre legible
+            const catRaw = d.categoria || p.categoria || '';
+            const categoriaNombre = catMap[catRaw] || catRaw || 'Sin categoría';
+
+            // Código de barra
+            const codigoBarra = String(d.codigo || p.codigo || '');
+
+            // Moneda registro: Dólares (USD) o Bolívares (VES)
+            const curRaw = String(d.currency || p.currency || 'USD').toUpperCase().trim();
+            const monedaRegistro = (curRaw === 'BS' || curRaw === 'VES' || curRaw === 'BOLIVARES') ? 'Bolívares (VES)' : 'Dólares (USD)';
+
+            // Tipo de alícuota: G (General - %), R (Reducida - %), A (Adicional - %), E (Exento - %)
+            const aliRaw = String(d.tipo_alicuota !== undefined && d.tipo_alicuota !== null ? d.tipo_alicuota : (p.tipo_alicuota !== undefined && p.tipo_alicuota !== null ? p.tipo_alicuota : '16')).trim();
+            let tipoAlicuota = 'G (General - 16%)';
+            if (aliRaw === '0' || aliRaw.toUpperCase() === 'E' || aliRaw.toLowerCase().includes('exent')) {
+                tipoAlicuota = 'E (Exento - 0%)';
+            } else if (aliRaw === '8' || aliRaw.toUpperCase() === 'R' || aliRaw.toLowerCase().includes('reduc')) {
+                tipoAlicuota = 'R (Reducida - 8%)';
+            } else if (aliRaw === '31' || aliRaw.toUpperCase() === 'A' || aliRaw.toLowerCase().includes('adicion')) {
+                tipoAlicuota = 'A (Adicional - 31%)';
+            } else if (aliRaw === '16' || aliRaw.toUpperCase() === 'G' || aliRaw.toLowerCase().includes('gener')) {
+                tipoAlicuota = 'G (General - 16%)';
+            } else {
+                tipoAlicuota = `G (General - ${aliRaw}%)`;
+            }
+
+            // Unidad de venta: e.g. Unidad (UN), Kilogramos (KG)
+            const unitRaw = String(d.unit || p.unit || 'UN').toUpperCase().trim();
+            let unidadVenta = 'Unidad (UN)';
+            if (unitRaw === 'KG') unidadVenta = 'Kilogramos (KG)';
+            else if (unitRaw === 'G') unidadVenta = 'Gramos (G)';
+            else if (unitRaw === 'L') unidadVenta = 'Litros (L)';
+            else if (unitRaw === 'M') unidadVenta = 'Metros (M)';
+            else if (unitRaw === 'UN') unidadVenta = 'Unidad (UN)';
+            else unidadVenta = `${unitRaw}`;
+
+            // Cantidades por sucursal y stock total acumulado
+            let stockTotal = 0;
+            const cantidadesPorSucursal = [];
+            const prodId = p.id;
+
+            sucursales.forEach(s => {
+                const cant = (stockPorSucursal[s.id] && stockPorSucursal[s.id][prodId] !== undefined)
+                    ? Number(stockPorSucursal[s.id][prodId])
+                    : 0;
+                stockTotal += cant;
+                cantidadesPorSucursal.push(cant);
+            });
+
+            const fila = [
+                nombre,
+                precioCompra,
+                ganancia,
+                p1Venta,
+                p2Venta,
+                p3Venta,
+                categoriaNombre,
+                codigoBarra,
+                monedaRegistro,
+                tipoAlicuota,
+                unidadVenta,
+                '|',
+                stockTotal,
+                ...cantidadesPorSucursal
+            ];
+
+            filas.push(fila);
+        });
+
+        // Nombre de archivo sugerido: Inventario_NEXUSPOS_(fecha).xlsx
+        const ahora = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        const fechaStr = `${ahora.getFullYear()}-${pad(ahora.getMonth() + 1)}-${pad(ahora.getDate())}`;
+        const nombreArchivoSugerido = `Inventario_NEXUSPOS_${fechaStr}.xlsx`;
+
+        // Generar fallback base64 con SheetJS si estuviera disponible
+        let base64Fallback = null;
+        try {
+            if (typeof XLSX !== 'undefined') {
+                const ws = XLSX.utils.aoa_to_sheet(filas);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Inventario');
+                base64Fallback = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+            }
+        } catch(eXlsx) {}
+
+        // Llamar a IPC para abrir diálogo de Guardar Como... y generar Excel con logo y diseño corporativo
+        const resultado = await api.guardarArchivoExcel({
+            datosExportacion: {
+                filas: filas,
+                sucursales: sucursales.map(s => s.nombre || 'Sucursal')
+            },
+            base64Data: base64Fallback,
+            nombreArchivoSugerido
+        });
+
+        if (resultado && resultado.success) {
+            if (typeof showCustomAlert === 'function') {
+                showCustomAlert(`✅ Inventario exportado exitosamente: ${resultado.filePath}`, 'success', 5000);
+            } else {
+                alert(`✅ Inventario exportado exitosamente:\n${resultado.filePath}`);
+            }
+        } else if (resultado && resultado.canceled) {
+            console.log("ℹ️ Guardado de Excel cancelado por el usuario.");
+        } else {
+            const errMsg = resultado ? resultado.error : 'Error desconocido al guardar el archivo.';
+            if (typeof showCustomAlert === 'function') {
+                showCustomAlert(`Error al exportar inventario: ${errMsg}`, 'error', 5000);
+            } else {
+                alert(`Error al exportar inventario: ${errMsg}`);
+            }
+        }
+
+    } catch (errGlobal) {
+        console.error("❌ Error en exportarInventarioAExcel:", errGlobal);
+        if (typeof showCustomAlert === 'function') {
+            showCustomAlert(`Error al exportar: ${errGlobal.message}`, 'error', 5000);
+        } else {
+            alert(`Error al exportar: ${errGlobal.message}`);
+        }
+    } finally {
+        window._isExportingExcelActive = false;
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = textoOriginal;
+        }
+    }
+}
+window.exportarInventarioAExcel = exportarInventarioAExcel;
 
 // ✅ FIX #6: loadCategories() duplicado eliminado. Ya se llama dentro del DOMContentLoaded (línea ~1087).
 </script>

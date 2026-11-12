@@ -68,8 +68,6 @@
             font-size: 1.125rem; 
             font-weight: 700;
             border-bottom: 1px solid #e5e7eb;
-            border-left: 4px solid #2563eb; 
-            padding-left: 12px; 
             display: flex;
             align-items: center;
         }
@@ -177,28 +175,112 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 shrink-0">
             
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col">
-                <h2 class="text-lg font-bold mb-4 text-gray-800 border-b pb-2">BASE DE DATOS PRINCIPAL</h2>
-                <div class="flex-1 flex flex-col justify-center">
-                    <p class="text-sm text-gray-600 mb-4">
-                        La copia de seguridad clonará el archivo <strong>nexus_pos.db</strong> al instante. Esto protege tu información de ventas, inventario, clientes y configuraciones fiscales.
+            <!-- TARJETA IZQUIERDA: BASE DE DATOS PRINCIPAL -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col justify-between">
+                <div>
+                    <h2 class="text-lg font-bold mb-4 text-gray-800 border-b pb-2">BASE DE DATOS PRINCIPAL</h2>
+                    <p class="text-sm text-gray-600 mb-4 leading-relaxed">
+                        Se creará un archivo comprimido <strong>.ZIP</strong> seguro que incluye automáticamente ambas bases de datos del sistema (<strong>nexus_pos.db</strong> y <strong>nexus-local-server.db</strong>).
                     </p>
-                    <button id="btn-create-backup" class="btn-submit bg-blue-600 flex items-center justify-center">
-                        <i class="fas fa-database mr-2"></i> Crear Nuevo Respaldo Ahora
-                    </button>
                 </div>
+                <button id="btn-create-backup" class="btn-submit bg-blue-600 flex items-center justify-center">
+                    <i class="fas fa-database mr-2"></i> Crear Nuevo Respaldo Ahora
+                </button>
             </div>
 
-            <div class="bg-gradient-to-br from-indigo-50 to-blue-50 p-6 rounded-2xl shadow-sm border border-blue-100 flex flex-col items-center justify-center text-center">
-                <i class="fas fa-shield-alt text-4xl text-blue-500 mb-3"></i>
-                <h3 class="text-lg font-bold text-blue-900 mb-1">Protección Local Activa</h3>
-                <p class="text-sm text-blue-700">Tus respaldos se guardan físicamente en la carpeta <strong>/data/backups</strong> de esta computadora.</p>
+            <!-- TARJETA DERECHA: PROTECCIÓN LOCAL Y RESPALDOS AUTOMÁTICOS -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col justify-between">
+                <div>
+                    <!-- Encabezado con Checkbox de Respaldos Automáticos y Estado -->
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="flex items-center gap-2.5 cursor-pointer select-none">
+                            <input type="checkbox" id="chk-auto-backup" checked class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer">
+                            <span class="font-bold text-gray-800 text-sm">Hacer respaldos automáticos</span>
+                        </label>
+                        <span id="auto-backup-status-badge" class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Activo</span>
+                    </div>
+
+                    <!-- Mensaje informativo solicitado -->
+                    <p class="text-xs text-gray-500 mb-3 leading-relaxed">
+                        Por favor, seleccione las horas en las que está seguro de que el sistema está funcional.
+                    </p>
+
+                    <!-- Sección para configurar la hora de respaldo (1 sola hora en formato no militar AM/PM) -->
+                    <div id="auto-backup-hours-section" class="space-y-1.5 mb-3">
+                        <label class="block text-xs font-semibold text-gray-700">Hora de respaldo diario:</label>
+                        
+                        <div class="flex items-center gap-2">
+                            <!-- Hora (01 a 12) -->
+                            <select id="auto-backup-hour" class="p-2 border border-gray-300 rounded-lg text-sm font-semibold focus:border-blue-500 bg-white">
+                                <option value="01">01</option>
+                                <option value="02">02</option>
+                                <option value="03">03</option>
+                                <option value="04">04</option>
+                                <option value="05">05</option>
+                                <option value="06" selected>06</option>
+                                <option value="07">07</option>
+                                <option value="08">08</option>
+                                <option value="09">09</option>
+                                <option value="10">10</option>
+                                <option value="11">11</option>
+                                <option value="12">12</option>
+                            </select>
+                            
+                            <span class="font-bold text-gray-400">:</span>
+
+                            <!-- Minutos (00 a 55) -->
+                            <select id="auto-backup-minute" class="p-2 border border-gray-300 rounded-lg text-sm font-semibold focus:border-blue-500 bg-white">
+                                <option value="00" selected>00</option>
+                                <option value="05">05</option>
+                                <option value="10">10</option>
+                                <option value="15">15</option>
+                                <option value="20">20</option>
+                                <option value="25">25</option>
+                                <option value="30">30</option>
+                                <option value="35">35</option>
+                                <option value="40">40</option>
+                                <option value="45">45</option>
+                                <option value="50">50</option>
+                                <option value="55">55</option>
+                            </select>
+
+                            <!-- Período (AM / PM) -->
+                            <select id="auto-backup-period" class="p-2 border border-gray-300 rounded-lg text-sm font-bold focus:border-blue-500 bg-white text-blue-700">
+                                <option value="AM">AM</option>
+                                <option value="PM" selected>PM</option>
+                            </select>
+
+                            <div class="text-xs text-gray-500 ml-2">
+                                Programado: <strong id="preview-scheduled-time" class="text-blue-600 font-bold">06:00 PM</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <!-- Botón de guardado -->
+                    <button id="btn-save-auto-backup" class="btn-submit bg-blue-600 hover:bg-blue-700 text-white text-sm py-2.5 px-4 rounded-lg font-bold transition flex items-center justify-center w-full shadow-sm">
+                        <i class="fas fa-save mr-2"></i> Guardar Configuración
+                    </button>
+
+                    <!-- Texto de ubicación física de respaldos: Documentos / Nexus POS Gobal / backups -->
+                    <div class="text-[11px] text-gray-600 mt-2.5 bg-slate-50 border border-slate-200 rounded-lg p-2.5 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 truncate">
+                            <i class="fas fa-folder text-blue-500 text-sm shrink-0"></i>
+                            <span class="truncate">Tus respaldos se guardan en: <strong>Documentos / Nexus POS Gobal / backups</strong></span>
+                        </div>
+                        <button type="button" id="btn-open-backup-folder" class="shrink-0 text-blue-600 hover:text-blue-800 text-xs font-semibold cursor-pointer underline flex items-center gap-1 focus:outline-none">
+                            <i class="fas fa-external-link-alt text-[10px]"></i> Abrir carpeta
+                        </button>
+                    </div>
+                </div>
             </div>
 
         </div>
 
+        <!-- SECCIÓN INFERIOR: HISTORIAL DE RESPALDOS -->
         <div class="flex-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden mt-2">
-            <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-3 shrink-0">HISTORIAL DE RESPALDOS</h2>
+            <h2 class="text-lg font-bold mb-4 text-gray-800 border-b pb-2 shrink-0">HISTORIAL DE RESPALDOS</h2>
             
             <div class="flex-1 overflow-y-auto pr-2 table-container">
                 <table class="min-w-full divide-y divide-gray-200 relative">
@@ -211,13 +293,30 @@
                         </tr>
                     </thead>
                     <tbody id="backups-table-body" class="bg-white divide-y divide-gray-200">
-                        </tbody>
+                    </tbody>
                 </table>
             </div>
         </div>
         
     </main>
 
+    
+    <!-- MODAL DE RESTAURACIÓN -->
+    <div id="restore-modal" class="modal">
+        <div class="modal-content">
+            <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-history text-2xl"></i>
+            </div>
+            <h3 style="color: #2563eb;">Restaurar Respaldo</h3>
+            <p id="restore-modal-message" class="text-gray-600 mb-6 text-sm"></p>
+            <div class="modal-buttons">
+                <button id="cancel-restore-btn" class="btn-cancel">Cancelar</button>
+                <button id="confirm-restore-btn" class="btn-submit bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl flex-1 border-none cursor-pointer">Sí, Restaurar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE ELIMINACIÓN -->
     <div id="delete-modal" class="modal">
         <div class="modal-content">
             <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -236,26 +335,177 @@
         const tableBody = document.getElementById('backups-table-body');
         const btnCreate = document.getElementById('btn-create-backup');
         
+        const chkAutoBackup = document.getElementById('chk-auto-backup');
+        const autoBackupStatusBadge = document.getElementById('auto-backup-status-badge');
+        const autoBackupHoursSection = document.getElementById('auto-backup-hours-section');
+        const autoBackupHour = document.getElementById('auto-backup-hour');
+        const autoBackupMinute = document.getElementById('auto-backup-minute');
+        const autoBackupPeriod = document.getElementById('auto-backup-period');
+        const previewScheduledTime = document.getElementById('preview-scheduled-time');
+        const btnSaveAutoBackup = document.getElementById('btn-save-auto-backup');
+        const btnOpenBackupFolder = document.getElementById('btn-open-backup-folder');
+
         let fileToDelete = null;
+        let fileToRestore = null;
+
+        // Estado del Front para Respaldos Automáticos (1 sola hora en formato no militar 12h AM/PM)
+        let autoBackupConfig = {
+            enabled: true,
+            hour: '06',
+            minute: '00',
+            period: 'PM'
+        };
 
         async function initBackupsModule() {
-            // Seguridad eliminada. Vía libre a la creación de respaldos.
-
             btnCreate.addEventListener('click', createBackup);
             
+            // Delete modal handlers
             document.getElementById('cancel-delete-btn').addEventListener('click', () => {
                 document.getElementById('delete-modal').style.display = 'none';
                 fileToDelete = null;
             });
-            
             document.getElementById('confirm-delete-btn').addEventListener('click', confirmDelete);
+
+            // Restore modal handlers
+            const cancelRestoreBtn = document.getElementById('cancel-restore-btn');
+            const confirmRestoreBtn = document.getElementById('confirm-restore-btn');
+            if (cancelRestoreBtn) {
+                cancelRestoreBtn.addEventListener('click', () => {
+                    document.getElementById('restore-modal').style.display = 'none';
+                    fileToRestore = null;
+                });
+            }
+            if (confirmRestoreBtn) {
+                confirmRestoreBtn.addEventListener('click', confirmRestore);
+            }
+
+            // Inicializar configuración de respaldos automáticos
+            await initAutoBackupControls();
 
             await loadBackups();
         }
 
+        // --- GESTIÓN DE RESPALDOS AUTOMÁTICOS ---
+        async function initAutoBackupControls() {
+            const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+            
+            // 1. Carga desde backend si existe
+            if (api && api.obtenerConfigAutoBackup) {
+                try {
+                    const cfg = await api.obtenerConfigAutoBackup();
+                    if (cfg) {
+                        autoBackupConfig.enabled = !!cfg.enabled;
+                        autoBackupConfig.hour = cfg.hour || '06';
+                        autoBackupConfig.minute = cfg.minute || '00';
+                        autoBackupConfig.period = cfg.period || 'PM';
+                    }
+                } catch(e) {}
+            } else {
+                // Fallback a localStorage
+                try {
+                    const saved = localStorage.getItem('nexus_auto_backup_config');
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        autoBackupConfig.enabled = !!parsed.enabled;
+                        autoBackupConfig.hour = parsed.hour || '06';
+                        autoBackupConfig.minute = parsed.minute || '00';
+                        autoBackupConfig.period = parsed.period || 'PM';
+                    }
+                } catch (e) {}
+            }
+
+            if (chkAutoBackup) {
+                chkAutoBackup.checked = autoBackupConfig.enabled;
+                chkAutoBackup.addEventListener('change', (e) => {
+                    autoBackupConfig.enabled = e.target.checked;
+                    renderAutoBackupState();
+                });
+            }
+
+            if (autoBackupHour) autoBackupHour.value = autoBackupConfig.hour;
+            if (autoBackupMinute) autoBackupMinute.value = autoBackupConfig.minute;
+            if (autoBackupPeriod) autoBackupPeriod.value = autoBackupConfig.period;
+
+            function updateTimePreview() {
+                autoBackupConfig.hour = autoBackupHour ? autoBackupHour.value : '06';
+                autoBackupConfig.minute = autoBackupMinute ? autoBackupMinute.value : '00';
+                autoBackupConfig.period = autoBackupPeriod ? autoBackupPeriod.value : 'PM';
+                if (previewScheduledTime) {
+                    previewScheduledTime.textContent = `${autoBackupConfig.hour}:${autoBackupConfig.minute} ${autoBackupConfig.period}`;
+                }
+            }
+
+            [autoBackupHour, autoBackupMinute, autoBackupPeriod].forEach(el => {
+                if (el) el.addEventListener('change', updateTimePreview);
+            });
+
+            if (btnSaveAutoBackup) {
+                btnSaveAutoBackup.addEventListener('click', saveAutoBackupConfig);
+            }
+
+            if (btnOpenBackupFolder) {
+                btnOpenBackupFolder.addEventListener('click', async () => {
+                    if (api && api.abrirCarpetaRespaldos) {
+                        await api.abrirCarpetaRespaldos();
+                    }
+                });
+            }
+
+            renderAutoBackupState();
+            updateTimePreview();
+        }
+
+        function renderAutoBackupState() {
+            const isEnabled = autoBackupConfig.enabled;
+
+            if (autoBackupStatusBadge) {
+                autoBackupStatusBadge.textContent = isEnabled ? 'Activo' : 'Inactivo';
+                autoBackupStatusBadge.className = isEnabled 
+                    ? 'text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    : 'text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-500';
+            }
+
+            if (autoBackupHoursSection) {
+                if (isEnabled) {
+                    autoBackupHoursSection.classList.remove('opacity-40', 'pointer-events-none');
+                } else {
+                    autoBackupHoursSection.classList.add('opacity-40', 'pointer-events-none');
+                }
+            }
+        }
+
+        async function saveAutoBackupConfig() {
+            try {
+                const formattedTime = `${autoBackupConfig.hour}:${autoBackupConfig.minute} ${autoBackupConfig.period}`;
+                const configToSave = {
+                    ...autoBackupConfig,
+                    formatted: formattedTime
+                };
+
+                localStorage.setItem('nexus_auto_backup_config', JSON.stringify(configToSave));
+
+                const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+                if (api && api.guardarConfigAutoBackup) {
+                    const res = await api.guardarConfigAutoBackup(configToSave);
+                    if (!res || !res.success) throw new Error(res?.error || 'Error backend');
+                }
+
+                const msg = autoBackupConfig.enabled 
+                    ? `Configuración guardada: respaldo diario a las ${formattedTime}.`
+                    : 'Configuración guardada: respaldos automáticos desactivados.';
+                showCustomAlert(msg, "success");
+            } catch (e) {
+                console.error("Error guardando config:", e);
+                showCustomAlert("Error al guardar la configuración.", "error");
+            }
+        }
+
+        // --- GESTIÓN DE RESPALDOS MANUALES Y TABLA ---
         async function loadBackups() {
             try {
-                const backups = await window.nexusAPI.obtenerRespaldosLocales();
+                const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+                if (!api || !api.obtenerRespaldosLocales) return;
+                const backups = await api.obtenerRespaldosLocales();
                 renderTable(backups);
             } catch (e) {
                 showCustomAlert("Error cargando el historial.", "error");
@@ -264,17 +514,21 @@
 
         async function createBackup() {
             btnCreate.disabled = true;
-            btnCreate.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Procesando...';
+            btnCreate.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Creando respaldo ZIP...';
             
             try {
-                const res = await window.nexusAPI.crearRespaldoLocal();
+                const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+                if (!api || !api.crearRespaldoLocal) throw new Error("API no disponible");
+
+                const res = await api.crearRespaldoLocal('MANUAL');
                 if (res && res.success) {
                     showCustomAlert(`Respaldo creado con éxito (${res.size} MB)`, 'success');
                     await loadBackups();
                 } else {
-                    throw new Error(res.error);
+                    throw new Error(res.error || "No se pudo generar el archivo");
                 }
             } catch (e) {
+                console.error("Error al crear respaldo:", e);
                 showCustomAlert("Fallo al crear la copia de seguridad.", 'error');
             } finally {
                 btnCreate.disabled = false;
@@ -292,7 +546,8 @@
             if (!fileToDelete) return;
             
             try {
-                const res = await window.nexusAPI.eliminarRespaldoLocal(fileToDelete);
+                const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+                const res = await api.eliminarRespaldoLocal(fileToDelete);
                 if (res && res.success) {
                     showCustomAlert("Archivo eliminado correctamente.", 'success');
                     document.getElementById('delete-modal').style.display = 'none';
@@ -305,30 +560,85 @@
             }
         }
 
+        function restoreBackupRequest(fileName) {
+            fileToRestore = fileName;
+            const msgEl = document.getElementById('restore-modal-message');
+            if (msgEl) {
+                msgEl.innerHTML = `¿Estás seguro de que deseas restaurar la copia <strong>${fileName}</strong>?<br><br><span class="text-xs text-amber-700 bg-amber-50 p-2 rounded block border border-amber-200"><strong>Advertencia:</strong> Esto reemplazará las bases de datos actuales y el sistema se reiniciará automáticamente.</span>`;
+            }
+            document.getElementById('restore-modal').style.display = 'flex';
+        }
+
+        async function confirmRestore() {
+            if (!fileToRestore) return;
+            const confirmBtn = document.getElementById('confirm-restore-btn');
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Restaurando...';
+            }
+
+            try {
+                const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+                const res = await api.restaurarRespaldoLocal(fileToRestore);
+                if (res && res.success) {
+                    showCustomAlert("Respaldo restaurado. Reiniciando sistema...", 'success');
+                } else {
+                    throw new Error(res?.error || "Error al restaurar");
+                }
+            } catch(e) {
+                console.error("Error al restaurar:", e);
+                showCustomAlert("Error al restaurar la copia: " + e.message, 'error');
+                if (confirmBtn) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerHTML = 'Sí, Restaurar';
+                }
+            }
+        }
+
         function renderTable(backups) {
             tableBody.innerHTML = '';
             
             if (!backups || backups.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-gray-500 italic">No hay copias de seguridad registradas.</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-gray-500 italic">No hay copias de seguridad registradas en Documentos / Nexus POS Gobal / backups.</td></tr>';
                 return;
             }
 
             backups.forEach(b => {
                 const tr = document.createElement('tr');
                 const fecha = new Date(b.createdAt).toLocaleString('es-VE');
-                
+                const isZip = b.fileName.endsWith('.zip');
+                const isAuto = b.tipo === 'AUTOMATICO' || b.fileName.toLowerCase().includes('automatico') || b.fileName.toLowerCase().includes('automático');
+
+                const iconHtml = isZip 
+                    ? '<i class="fas fa-file-archive text-amber-500 mr-2 text-base"></i>' 
+                    : '<i class="fas fa-database text-blue-500 mr-2 text-base"></i>';
+
+                const badgeHtml = isAuto
+                    ? '<span class="ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Automático</span>'
+                    : '<span class="ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">Manual</span>';
+
                 tr.innerHTML = `
-                    <td class="font-mono text-blue-700 font-bold text-sm">${b.fileName}</td>
-                    <td class="text-sm font-medium">${fecha}</td>
-                    <td class="text-sm"><span class="bg-gray-100 text-gray-600 px-2 py-1 rounded border border-gray-200">${b.size} MB</span></td>
+                    <td>
+                        <div class="flex items-center">
+                            ${iconHtml}
+                            <span class="font-mono text-gray-800 font-bold text-xs truncate max-w-[280px]" title="${b.fileName}">${b.fileName}</span>
+                            ${badgeHtml}
+                        </div>
+                    </td>
+                    <td class="text-xs font-medium text-gray-600">${fecha}</td>
+                    <td class="text-xs"><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded font-semibold border border-gray-200">${b.size} MB</span></td>
                     <td class="action-cell">
-                        <button class="text-red-500 hover:text-red-800 transition p-2 text-lg" title="Eliminar Copia">
+                        <button class="btn-restore text-blue-600 hover:text-blue-800 transition p-2 text-base cursor-pointer mr-1 focus:outline-none" title="Restaurar esta Copia">
+                            <i class="fas fa-history"></i>
+                        </button>
+                        <button class="btn-delete text-red-500 hover:text-red-800 transition p-2 text-base cursor-pointer focus:outline-none" title="Eliminar Copia">
                             <i class="fas fa-trash-alt"></i>
                         </button>
                     </td>
                 `;
 
-                tr.querySelector('button').onclick = () => deleteBackupRequest(b.fileName);
+                tr.querySelector('.btn-restore').onclick = () => restoreBackupRequest(b.fileName);
+                tr.querySelector('.btn-delete').onclick = () => deleteBackupRequest(b.fileName);
                 tableBody.appendChild(tr);
             });
         }
@@ -339,12 +649,12 @@
             const bgColor = type === 'success' ? '#10B981' : '#EF4444'; 
             alertDiv.style.cssText = `
                 position: fixed; top: 20px; right: 20px;
-                background-color: ${bgColor}; color: white; padding: 15px 25px; 
-                border-radius: 8px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
-                z-index: 10000; transition: opacity 0.5s ease;
+                background-color: ${bgColor}; color: white; padding: 14px 22px; 
+                border-radius: 10px; font-weight: bold; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2); 
+                z-index: 10000; transition: opacity 0.4s ease; font-size: 0.875rem;
             `;
             document.body.appendChild(alertDiv);
-            setTimeout(() => { alertDiv.style.opacity = '0'; setTimeout(() => alertDiv.remove(), 500); }, 3000);
+            setTimeout(() => { alertDiv.style.opacity = '0'; setTimeout(() => alertDiv.remove(), 400); }, 3200);
         }
 
         initBackupsModule();

@@ -19,50 +19,75 @@
             overflow: hidden; 
         }
 
-        .main-content-wrapper {
-            display: flex; flex-direction: column; gap: 16px; 
-            width: 100%; max-width: 100%; height: 100vh;
-            margin: 0; padding: 16px; box-sizing: border-box;
-        }
-
-        .container {
-            background-color: #ffffff; width: 100%; box-sizing: border-box;
-            text-align: left; border-radius: 16px; border: 1px solid #e5e7eb;
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); padding: 24px; 
-        }
-
-        .container:first-of-type { flex-shrink: 0; }
-        .container:last-of-type {
-            flex: 1; display: flex; flex-direction: column; overflow: hidden; margin-top: 8px;
-        }
-
         h1 {
-            color: #1f2937; margin-bottom: 20px; font-size: 1.5rem; font-weight: 700;
-            text-align: center; letter-spacing: 0.025em; 
+            color: #1f2937;
+            margin-bottom: 8px;
+            font-size: 1.5rem; 
+            font-weight: 700;
+            text-align: center;
+            letter-spacing: 0.025em; 
         }
         
         h2 {
-            color: #1f2937; margin-top: 0; margin-bottom: 16px; padding-bottom: 8px;
-            font-size: 1.125rem; font-weight: 700; border-bottom: 1px solid #e5e7eb;
-            border-left: 4px solid #f59e0b; padding-left: 12px; display: flex; align-items: center;
+            color: #1f2937;
+            margin-top: 0;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            font-size: 1.125rem; 
+            font-weight: 700;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
         }
 
         /* --- Tabla Expansible --- */
-        .table-container { flex: 1; overflow-y: auto; padding-right: 8px; }
-        table { min-width: 100%; border-collapse: collapse; position: relative; }
-        th, td { border-bottom: 1px solid #e5e7eb; padding: 12px 24px; text-align: left; }
+        .table-container {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
 
+        table {
+            min-width: 100%;
+            border-collapse: collapse;
+            position: relative;
+        }
+
+        th, td {
+            border-bottom: 1px solid #e5e7eb;
+            padding: 10px 18px;
+            text-align: left;
+        }
+
+        /* Encabezados azules estilo Nexus */
         th {
-            background-color: #fffbeb; /* Fondo amarillo/naranja muy claro */
-            color: #b45309; /* Texto naranja oscuro */
-            font-weight: 800; text-transform: uppercase; font-size: 0.75rem; 
-            letter-spacing: 0.05em; position: sticky; top: 0; z-index: 10;
-            box-shadow: inset 0 -2px 0 rgba(245, 158, 11, 0.2); 
+            background-color: #eff6ff; 
+            color: #1e40af; 
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 0.75rem; 
+            letter-spacing: 0.05em;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            box-shadow: inset 0 -2px 0 rgba(37, 99, 235, 0.2); 
         }   
 
-        td { font-size: 0.875rem; color: #374151; }
-        tr:hover td { background-color: #fffbeb; color: #b45309; font-weight: 500; }
-        .action-cell { text-align: right; white-space: nowrap; }
+        td {
+            font-size: 0.875rem;
+            color: #374151;
+        }
+
+        tr:hover td {
+            background-color: #f8fafc;
+            color: #1d4ed8;
+            font-weight: 500;
+        }
+
+        .action-cell {
+            text-align: right;
+            white-space: nowrap;
+        }
 
         /* Scrollbars */
         .table-container::-webkit-scrollbar { width: 6px; }
@@ -72,112 +97,272 @@
 
         /* --- Modales --- */
         .modal {
-            display: none; position: fixed; z-index: 1000; left: 0; top: 0; 
-            width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); 
-            backdrop-filter: blur(4px); justify-content: center; align-items: center; 
-            padding: 16px; box-sizing: border-box;
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0; top: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); 
+            backdrop-filter: blur(4px);
+            justify-content: center; align-items: center; 
+            padding: 16px;
+            box-sizing: border-box;
         }
 
         .modal-content {
-            background-color: #ffffff; padding: 24px; border: none; width: 100%; max-width: 400px;
-            border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); text-align: center;
+            background-color: #ffffff;
+            padding: 24px;
+            border: none;
+            width: 100%;
+            max-width: 440px;
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            text-align: center;
         }
         
-        .modal-content h3 { color: #dc2626; margin-top: 16px; margin-bottom: 8px; font-size: 1.25rem; font-weight: 700; }
-        .modal-buttons { display: flex; justify-content: center; gap: 12px; margin-top: 24px; }
-        .btn-cancel, .btn-confirm-restore {
-            padding: 12px 0; border-radius: 12px; font-weight: 700; flex: 1; border: none; cursor: pointer;
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 20px;
         }
+
+        .btn-cancel, .btn-confirm-restore {
+            padding: 10px 0;
+            border-radius: 10px;
+            font-weight: 700;
+            flex: 1;
+            border: none;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+
         .btn-cancel { background-color: #e5e7eb; color: #1f2937; }
         .btn-cancel:hover { background-color: #d1d5db; }
-        .btn-confirm-restore { background-color: #f59e0b; color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        .btn-confirm-restore:hover { background-color: #d97706; }
+        .btn-confirm-restore { background-color: #2563eb; color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .btn-confirm-restore:hover { background-color: #1d4ed8; }
     </style>
 </head>
 <body class="bg-gray-50 font-sans overflow-hidden">
     
-    <main class="flex flex-col w-full h-screen p-4 gap-4">
+    <main class="flex flex-col w-full h-screen p-4 gap-3">
         
-        <div class="text-center shrink-0 mb-2">
+        <!-- Header Principal -->
+        <div class="text-center shrink-0">
             <h1 class="text-2xl font-bold text-gray-800 tracking-wide">RESTAURAR SISTEMA DESDE RESPALDO</h1>
         </div>
 
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 shrink-0">
-            <div class="flex items-start gap-4 bg-orange-50 border border-orange-200 p-4 rounded-xl">
-                <div class="w-12 h-12 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center shrink-0">
-                    <i class="fas fa-exclamation-triangle text-2xl"></i>
-                </div>
-                <div>
-                    <h3 class="text-lg font-bold text-orange-800 mb-1">¡Advertencia de Seguridad!</h3>
-                    <p class="text-sm text-orange-700 leading-relaxed">
-                        Al restaurar una copia de seguridad, <strong>toda la información actual del sistema será reemplazada</strong> por los datos de esa fecha (ventas, clientes, inventario). El sistema de NEXUS POS se reiniciará automáticamente para aplicar los cambios de forma segura.
-                    </p>
-                </div>
-            </div>
-        </div>
-
-        <div class="flex-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden mt-2">
-            <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-3 shrink-0">SELECCIONA UN RESPALDO</h2>
+        <!-- TARJETA ÚNICA UNIFICADA -->
+        <div class="flex-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
             
-            <div class="flex-1 overflow-y-auto pr-2 table-container">
+            <!-- Título de Sección (Sin barra naranja) -->
+            <div class="flex items-center justify-between border-b pb-2 mb-3 shrink-0">
+                <h2 class="text-lg font-bold text-gray-800 m-0 p-0 border-0 flex items-center gap-2">
+                    <i class="fas fa-database text-blue-600 text-base"></i>
+                    SELECCIONA UN RESPALDO
+                </h2>
+                <span id="backups-counter-badge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                    0 respaldos disponibles
+                </span>
+            </div>
+
+            <!-- TARJETA HORIZONTAL (50% ADVERTENCIA DE SEGURIDAD SIMPLIFICADA / 50% FILTRADO) -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-3.5 shrink-0">
+                
+                <!-- Mitad Izquierda: Advertencia de Seguridad Simplificada -->
+                <div class="p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-xl flex items-start gap-3">
+                    <div class="w-9 h-9 bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center shrink-0 text-base">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="text-xs leading-relaxed">
+                        <h3 class="font-bold text-amber-900 mb-0.5 text-xs flex items-center gap-1.5">
+                            ¡Advertencia de Seguridad!
+                        </h3>
+                        <p class="text-amber-800 text-[11.5px]">
+                            Al restaurar una copia, <strong>toda la información actual del sistema será reemplazada</strong> por los datos de esa fecha (ventas, clientes, inventario). El sistema se reiniciará automáticamente.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Mitad Derecha: Filtrado de la Tabla -->
+                <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                            <i class="fas fa-filter text-blue-600 text-xs"></i> Filtrar Respaldos
+                        </span>
+                        <button type="button" id="btn-clear-filters" class="text-[11px] text-blue-600 hover:text-blue-800 font-semibold cursor-pointer underline focus:outline-none">
+                            Limpiar filtros
+                        </button>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <!-- Filtro por Tipo (Automáticos / Manuales) -->
+                        <div>
+                            <label for="filter-tipo" class="block text-[11px] font-medium text-gray-600 mb-0.5">Tipo de Respaldo:</label>
+                            <select id="filter-tipo" class="w-full p-1.5 text-xs border border-gray-300 rounded-lg bg-white focus:border-blue-500 font-medium">
+                                <option value="TODOS">Todos los tipos</option>
+                                <option value="AUTOMATICO">Solo Automáticos</option>
+                                <option value="MANUAL">Solo Manuales</option>
+                            </select>
+                        </div>
+
+                        <!-- Filtro por Fecha -->
+                        <div>
+                            <label for="filter-fecha" class="block text-[11px] font-medium text-gray-600 mb-0.5">Fecha de Creación:</label>
+                            <input type="date" id="filter-fecha" class="w-full p-1.5 text-xs border border-gray-300 rounded-lg bg-white focus:border-blue-500 font-medium">
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            
+            <!-- TABLA DE RESPALDOS -->
+            <div class="flex-1 overflow-y-auto pr-1 table-container">
                 <table class="min-w-full divide-y divide-gray-200 relative">
                     <thead class="bg-gray-50 sticky top-0 z-10">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider">Nombre del Archivo</th>
-                            <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider">Fecha de Creación</th>
-                            <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider">Tamaño</th>
-                            <th class="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider action-cell">Acciones</th>
+                            <th class="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider">Nombre del Archivo</th>
+                            <th class="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider">Fecha de Creación</th>
+                            <th class="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider">Tamaño</th>
+                            <th class="px-6 py-2.5 text-right text-xs font-bold uppercase tracking-wider action-cell">Acción</th>
                         </tr>
                     </thead>
                     <tbody id="backups-table-body" class="bg-white divide-y divide-gray-200">
-                        </tbody>
+                        <tr><td colspan="4" class="px-6 py-8 text-center text-gray-500 italic text-xs">Cargando respaldos disponibles...</td></tr>
+                    </tbody>
                 </table>
             </div>
+
+            <!-- Footer de la Tabla -->
+            <div class="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500 shrink-0">
+                <span id="filter-stats-text">Mostrando todos los respaldos</span>
+                <span class="text-[11px] text-gray-400">Ubicación: Documentos / Nexus POS Gobal / backups</span>
+            </div>
+
         </div>
         
     </main>
 
+    <!-- MODAL DE CONFIRMAR RESTAURACIÓN -->
     <div id="restore-modal" class="modal">
         <div class="modal-content">
-            <div class="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-history text-3xl"></i>
+            <div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                <i class="fas fa-history text-2xl"></i>
             </div>
-            <h3 class="text-orange-600">Confirmar Restauración</h3>
-            <p id="modal-message" class="text-gray-600 mb-6 text-sm"></p>
+            <h3 class="text-base font-bold text-gray-800 mb-1">Confirmar Restauración</h3>
+            <p id="modal-message" class="text-gray-600 mb-4 text-xs leading-relaxed"></p>
             <div class="modal-buttons">
                 <button id="cancel-restore-btn" class="btn-cancel">Cancelar</button>
-                <button id="confirm-restore-btn" class="btn-confirm-restore">Sí, Restaurar</button>
+                <button id="confirm-restore-btn" class="btn-confirm-restore">Sí, Restaurar Ahora</button>
             </div>
         </div>
     </div>
 
     <script type="module">
         const tableBody = document.getElementById('backups-table-body');
+        const filterTipo = document.getElementById('filter-tipo');
+        const filterFecha = document.getElementById('filter-fecha');
+        const btnClearFilters = document.getElementById('btn-clear-filters');
+        const backupsCounterBadge = document.getElementById('backups-counter-badge');
+        const filterStatsText = document.getElementById('filter-stats-text');
+
+        let allBackups = [];
         let fileToRestore = null;
 
         async function initRestoreModule() {
-            // El guardia de seguridad fue eliminado, vía libre para restaurar.
+            // Modal handlers
             document.getElementById('cancel-restore-btn').addEventListener('click', () => {
                 document.getElementById('restore-modal').style.display = 'none';
                 fileToRestore = null;
             });
             
             document.getElementById('confirm-restore-btn').addEventListener('click', confirmRestore);
+
+            // Filtros
+            if (filterTipo) filterTipo.addEventListener('change', applyFiltersAndRender);
+            if (filterFecha) filterFecha.addEventListener('input', applyFiltersAndRender);
+            if (btnClearFilters) {
+                btnClearFilters.addEventListener('click', () => {
+                    if (filterTipo) filterTipo.value = 'TODOS';
+                    if (filterFecha) filterFecha.value = '';
+                    applyFiltersAndRender();
+                });
+            }
+
             await loadBackups();
         }
 
         async function loadBackups() {
             try {
-                const backups = await window.nexusAPI.obtenerRespaldosLocales();
-                renderTable(backups);
+                const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+                if (!api || !api.obtenerRespaldosLocales) {
+                    throw new Error("API de Nexus no disponible");
+                }
+                const backups = await api.obtenerRespaldosLocales();
+                allBackups = Array.isArray(backups) ? backups : [];
+                applyFiltersAndRender();
             } catch (e) {
+                console.error("Error cargando respaldos:", e);
                 showCustomAlert("Error cargando el historial de respaldos.", "error");
+                tableBody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-red-500 italic text-xs">Error cargando respaldos desde la carpeta local.</td></tr>';
+            }
+        }
+
+        function applyFiltersAndRender() {
+            const tipoSeleccionado = filterTipo ? filterTipo.value : 'TODOS';
+            const fechaSeleccionada = filterFecha ? filterFecha.value.trim() : '';
+
+            let filtered = allBackups.filter(b => {
+                const isAuto = b.tipo === 'AUTOMATICO' || b.fileName.toLowerCase().includes('automatico') || b.fileName.toLowerCase().includes('automático');
+
+                // 1. Filtro por tipo
+                if (tipoSeleccionado === 'AUTOMATICO' && !isAuto) return false;
+                if (tipoSeleccionado === 'MANUAL' && isAuto) return false;
+
+                // 2. Filtro por fecha (YYYY-MM-DD)
+                if (fechaSeleccionada) {
+                    const matchInName = b.fileName.includes(fechaSeleccionada);
+                    let matchInDate = false;
+                    try {
+                        const d = new Date(b.createdAt);
+                        const yyyy = d.getFullYear();
+                        const mm = String(d.getMonth() + 1).padStart(2, '0');
+                        const dd = String(d.getDate()).padStart(2, '0');
+                        matchInDate = `${yyyy}-${mm}-${dd}` === fechaSeleccionada;
+                    } catch (_) {}
+
+                    if (!matchInName && !matchInDate) return false;
+                }
+
+                return true;
+            });
+
+            renderTable(filtered);
+
+            // Actualizar contadores
+            if (backupsCounterBadge) {
+                backupsCounterBadge.textContent = `${allBackups.length} respaldo${allBackups.length === 1 ? '' : 's'} disponible${allBackups.length === 1 ? '' : 's'}`;
+            }
+
+            if (filterStatsText) {
+                if (tipoSeleccionado === 'TODOS' && !fechaSeleccionada) {
+                    filterStatsText.textContent = `Mostrando todos los respaldos (${filtered.length})`;
+                } else {
+                    filterStatsText.textContent = `Filtrados: ${filtered.length} de ${allBackups.length} respaldo(s)`;
+                }
             }
         }
 
         function restoreBackupRequest(fileName) {
             fileToRestore = fileName;
-            document.getElementById('modal-message').innerHTML = `Vas a sobreescribir la base de datos con el archivo:<br><br><strong class="text-gray-800">${fileName}</strong><br><br>El sistema se cerrará y se reiniciará. ¿Deseas continuar?`;
+            const modalMsg = document.getElementById('modal-message');
+            if (modalMsg) {
+                modalMsg.innerHTML = `
+                    Vas a sobreescribir la base de datos con el archivo:<br>
+                    <strong class="font-mono text-blue-700 font-bold block my-2 text-xs bg-blue-50 py-1.5 px-2 rounded border border-blue-200 truncate">${fileName}</strong>
+                    <span class="text-amber-700 block text-[11px] mt-1 font-semibold">⚠️ El sistema cerrará conexiones, restaurará ambas bases de datos y se reiniciará automáticamente. ¿Deseas continuar?</span>
+                `;
+            }
             document.getElementById('restore-modal').style.display = 'flex';
         }
 
@@ -186,22 +371,25 @@
             
             const confirmBtn = document.getElementById('confirm-restore-btn');
             confirmBtn.disabled = true;
-            confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Restaurando...';
+            confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Restaurando bases de datos...';
             
             try {
-                // LLAMADA AL CEREBRO (main.js)
-                const res = await window.nexusAPI.restaurarRespaldoLocal(fileToRestore);
-                
+                const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+                if (!api || !api.restaurarRespaldoLocal) {
+                    throw new Error("Función de restauración no disponible");
+                }
+
+                const res = await api.restaurarRespaldoLocal(fileToRestore);
                 if (res && res.success) {
-                    showCustomAlert("Restauración iniciada. Reiniciando el sistema...", 'success');
-                    // No hacemos nada más aquí, Electron matará la ventana y la reiniciará automáticamente.
+                    showCustomAlert("Copia de seguridad previa guardada en respaldos_previos. Restauración completada. Reiniciando...", 'success');
                 } else {
-                    throw new Error(res.error);
+                    throw new Error(res ? res.error : "Error desconocido");
                 }
             } catch (e) {
-                showCustomAlert("Fallo Crítico al restaurar el archivo.", 'error');
+                console.error("Fallo al restaurar:", e);
+                showCustomAlert("Fallo crítico al restaurar el archivo: " + e.message, 'error');
                 confirmBtn.disabled = false;
-                confirmBtn.innerHTML = 'Sí, Restaurar';
+                confirmBtn.innerHTML = 'Sí, Restaurar Ahora';
             }
         }
 
@@ -209,26 +397,42 @@
             tableBody.innerHTML = '';
             
             if (!backups || backups.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-gray-500 italic">No tienes copias de seguridad para restaurar.</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-gray-500 italic text-xs">No se encontraron copias de seguridad con los filtros aplicados.</td></tr>';
                 return;
             }
 
             backups.forEach(b => {
                 const tr = document.createElement('tr');
                 const fecha = new Date(b.createdAt).toLocaleString('es-VE');
-                
+                const isZip = b.fileName.endsWith('.zip');
+                const isAuto = b.tipo === 'AUTOMATICO' || b.fileName.toLowerCase().includes('automatico') || b.fileName.toLowerCase().includes('automático');
+
+                const iconHtml = isZip 
+                    ? '<i class="fas fa-file-archive text-amber-500 mr-2 text-sm"></i>' 
+                    : '<i class="fas fa-database text-blue-500 mr-2 text-sm"></i>';
+
+                const badgeHtml = isAuto
+                    ? '<span class="ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Automático</span>'
+                    : '<span class="ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">Manual</span>';
+
                 tr.innerHTML = `
-                    <td class="font-mono text-gray-800 font-bold text-sm">${b.fileName}</td>
-                    <td class="text-sm font-medium">${fecha}</td>
-                    <td class="text-sm"><span class="bg-gray-100 text-gray-600 px-2 py-1 rounded border border-gray-200">${b.size} MB</span></td>
+                    <td>
+                        <div class="flex items-center">
+                            ${iconHtml}
+                            <span class="font-mono text-gray-800 font-bold text-xs truncate max-w-[280px]" title="${b.fileName}">${b.fileName}</span>
+                            ${badgeHtml}
+                        </div>
+                    </td>
+                    <td class="text-xs font-medium text-gray-600">${fecha}</td>
+                    <td class="text-xs"><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded font-semibold border border-gray-200">${b.size} MB</span></td>
                     <td class="action-cell">
-                        <button class="bg-orange-100 text-orange-600 hover:bg-orange-600 hover:text-white border border-orange-200 font-bold px-4 py-2 rounded-lg transition-colors shadow-sm" title="Restaurar Copia">
-                            <i class="fas fa-cloud-download-alt mr-2"></i> Restaurar
+                        <button class="btn-restore-item bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition shadow-sm inline-flex items-center gap-1.5 cursor-pointer focus:outline-none" title="Restaurar esta Copia">
+                            <i class="fas fa-history text-xs"></i> Restaurar
                         </button>
                     </td>
                 `;
 
-                tr.querySelector('button').onclick = () => restoreBackupRequest(b.fileName);
+                tr.querySelector('.btn-restore-item').onclick = () => restoreBackupRequest(b.fileName);
                 tableBody.appendChild(tr);
             });
         }
@@ -236,15 +440,15 @@
         function showCustomAlert(message, type = 'success') {
             const alertDiv = document.createElement('div');
             alertDiv.textContent = message;
-            const bgColor = type === 'success' ? '#F59E0B' : '#EF4444'; // Color Naranja para éxito aquí
+            const bgColor = type === 'success' ? '#2563eb' : '#EF4444'; 
             alertDiv.style.cssText = `
                 position: fixed; top: 20px; right: 20px;
-                background-color: ${bgColor}; color: white; padding: 15px 25px; 
-                border-radius: 8px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
-                z-index: 10000; transition: opacity 0.5s ease;
+                background-color: ${bgColor}; color: white; padding: 14px 22px; 
+                border-radius: 10px; font-weight: bold; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2); 
+                z-index: 10000; transition: opacity 0.4s ease; font-size: 0.875rem;
             `;
             document.body.appendChild(alertDiv);
-            setTimeout(() => { alertDiv.style.opacity = '0'; setTimeout(() => alertDiv.remove(), 500); }, 3000);
+            setTimeout(() => { alertDiv.style.opacity = '0'; setTimeout(() => alertDiv.remove(), 400); }, 3200);
         }
 
         initRestoreModule();

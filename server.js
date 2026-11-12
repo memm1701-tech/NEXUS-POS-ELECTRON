@@ -46,6 +46,16 @@ const PORT = 3000;
 server.use(cors());
 server.use(express.json());
 
+// Endpoint ultraligero de ping para identificación automática de servidor maestro en la red local
+server.get('/api/nexus-ping', (req, res) => {
+    res.json({
+        status: 'ok',
+        app: 'NEXUS-POS-SERVER',
+        port: PORT,
+        serverTime: Date.now()
+    });
+});
+
 // Configuración de Axios para el BCV (Scraping)
 const axiosConfigBCV = {
     httpsAgent: new https.Agent({ rejectUnauthorized: false }),
@@ -1036,13 +1046,17 @@ server.delete('/api/maestro/sucursales/:id', (req, res) => {
 
 server.get('/api/maestro/consultar-deuda/:rif', (req, res) => {
     const rif = req.params.rif;
+    if (!rif || rif === 'null' || rif === 'undefined' || String(rif).trim() === '') {
+        return res.json({ existe: false, monto_bs: 0, monto_deuda_usd: 0, detalles: [] });
+    }
     try {
         const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
         const tasaActual = config.tasa_bcv || 1;
 
-        // 🔥 AHORA TRAEMOS TODAS LAS FACTURAS (PAGADAS Y PENDIENTES)
+        // 🔥 AHORA TRAEMOS TODAS LAS FACTURAS (PAGADAS Y PENDIENTES) CON BÚSQUEDA ROBUSTA DE RIF
         const facturasHistorial = serverDb.prepare(`
             SELECT 
+                id,
                 factura_nro,
                 fecha,
                 monto_bs,  
@@ -1050,9 +1064,13 @@ server.get('/api/maestro/consultar-deuda/:rif', (req, res) => {
                 monto_pagado,
                 estado
             FROM cuentas_por_cobrar 
-            WHERE cliente_id = ? 
+            WHERE (
+                REPLACE(UPPER(TRIM(COALESCE(cliente_id, ''))), '-', '') = REPLACE(UPPER(TRIM(?)), '-', '')
+                OR REPLACE(UPPER(TRIM(COALESCE(cliente_rif, ''))), '-', '') = REPLACE(UPPER(TRIM(?)), '-', '')
+                OR REPLACE(UPPER(TRIM(COALESCE(rif_cliente, ''))), '-', '') = REPLACE(UPPER(TRIM(?)), '-', '')
+            )
             ORDER BY fecha DESC -- Las más recientes arriba
-        `).all(rif);
+        `).all(rif, rif, rif);
 
         if (facturasHistorial.length > 0) {
             let saldo_total_usd = 0;
@@ -1060,17 +1078,24 @@ server.get('/api/maestro/consultar-deuda/:rif', (req, res) => {
             facturasHistorial.forEach(f => {
                 const usdReal = (f.monto_usd && f.monto_usd > 0) ? f.monto_usd : parseFloat((f.monto_bs / tasaActual).toFixed(2));
                 f.monto_usd = usdReal; 
-                
-                // Solo sumamos al "Total Pendiente" lo que aún se debe
-                if (f.estado !== 'PAGADA') {
-                    saldo_total_usd += (usdReal - (f.monto_pagado || 0));
+                const yaPagado = parseFloat(f.monto_pagado || 0);
+                const resta = Math.max(0, parseFloat((usdReal - yaPagado).toFixed(2)));
+                const estadoUpper = String(f.estado || '').toUpperCase().trim();
+
+                // Normalización rigurosa de estado
+                if (resta <= 0.01 || estadoUpper === 'PAGADA' || estadoUpper === 'PAGADO') {
+                    f.estado = 'PAGADA';
+                } else {
+                    f.estado = 'PENDIENTE';
+                    saldo_total_usd += resta;
                 }
             });
             
-            const montoEnBs = saldo_total_usd * tasaActual;
+            saldo_total_usd = parseFloat(saldo_total_usd.toFixed(2));
+            const montoEnBs = parseFloat((saldo_total_usd * tasaActual).toFixed(2));
 
             res.json({ 
-                existe: true, 
+                existe: saldo_total_usd > 0, 
                 monto_bs: montoEnBs, 
                 monto_deuda_usd: saldo_total_usd,
                 detalles: facturasHistorial 
@@ -1107,10 +1132,15 @@ server.get('/api/maestro/consultar-deuda/:rif', (req, res) => {
     });
 
 server.post('/api/maestro/registrar-abono', (req, res) => {
-    const { cliente_id, monto_bs, tasa } = req.body;
+    const { cliente_id, factura_nro, monto_bs, tasa } = req.body;
     
+    if (!cliente_id || String(cliente_id).trim() === '' || cliente_id === 'null' || cliente_id === 'undefined') {
+        return res.json({ exito: false, mensaje: "Identificador de cliente inválido o no proporcionado." });
+    }
+
     console.log(`\n💳 [API MAESTRO] --- NUEVO PAGO DE DEUDA RECIBIDO ---`);
     console.log(`   - Cliente ID: ${cliente_id}`);
+    console.log(`   - Factura específica: ${factura_nro || 'Cualquiera (Cascada)'}`);
     console.log(`   - Monto abonado: Bs. ${monto_bs}`);
     console.log(`   - Tasa recibida: ${tasa}`);
 
@@ -1127,62 +1157,111 @@ server.post('/api/maestro/registrar-abono', (req, res) => {
 
         if (abonoUSD <= 0) return res.json({ exito: false, mensaje: "Monto inválido." });
 
-        const deudas = serverDb.prepare(`
+        // Búsqueda flexible e inmune a estados ('PENDIENTE', 'ABONADO', etc.) y con RIF normalizado
+        let deudas = serverDb.prepare(`
             SELECT * FROM cuentas_por_cobrar 
-            WHERE cliente_id = ? AND estado = 'PENDIENTE'
+            WHERE (
+                REPLACE(UPPER(TRIM(COALESCE(cliente_id, ''))), '-', '') = REPLACE(UPPER(TRIM(?)), '-', '')
+                OR REPLACE(UPPER(TRIM(COALESCE(cliente_rif, ''))), '-', '') = REPLACE(UPPER(TRIM(?)), '-', '')
+                OR REPLACE(UPPER(TRIM(COALESCE(rif_cliente, ''))), '-', '') = REPLACE(UPPER(TRIM(?)), '-', '')
+            )
+            AND UPPER(TRIM(COALESCE(estado, ''))) NOT IN ('PAGADA', 'PAGADO')
             ORDER BY fecha ASC
-        `).all(cliente_id);
+        `).all(cliente_id, cliente_id, cliente_id);
+
+        // Filtrar deudas que realmente tengan saldo pendiente (> 0.01 USD)
+        deudas = deudas.filter(f => {
+            const origUSD = (f.monto_usd && f.monto_usd > 0) ? f.monto_usd : parseFloat(((f.monto_bs || 0) / rate).toFixed(2));
+            const pagUSD = parseFloat(f.monto_pagado || 0);
+            return (origUSD - pagUSD) > 0.01;
+        });
 
         if (deudas.length === 0) {
-            console.log(`   - ⚠️ El cliente no tiene deudas en estado PENDIENTE.`);
-            return res.json({ exito: false, mensaje: "Sin deudas." });
+            console.log(`   - ⚠️ El cliente no tiene deudas pendientes con saldo por pagar.`);
+            return res.json({ exito: false, mensaje: "Sin deudas pendientes." });
         }
 
-        console.log(`   - 📋 Facturas pendientes encontradas: ${deudas.length}`);
+        // Si el usuario seleccionó una factura específica, la priorizamos al inicio del array
+        if (factura_nro) {
+            const idx = deudas.findIndex(d => String(d.factura_nro || '').trim() === String(factura_nro).trim());
+            if (idx > -1) {
+                const facturaTarget = deudas.splice(idx, 1)[0];
+                deudas.unshift(facturaTarget);
+                console.log(`   - 🎯 Factura objetivo [${factura_nro}] priorizada para pago primero.`);
+            }
+        }
 
-        const procesoCascada = serverDb.transaction((lista, montoAPagarUSD, montoAPagarBs) => {
-            const update = serverDb.prepare(`UPDATE cuentas_por_cobrar SET monto_pagado = ?, estado = ? WHERE id = ?`);
+        console.log(`   - 📋 Facturas pendientes a procesar: ${deudas.length}`);
+
+        const procesoCascada = serverDb.transaction((lista, montoAPagarUSD) => {
+            const update = serverDb.prepare(`
+                UPDATE cuentas_por_cobrar 
+                SET monto_pagado = ?, estado = ?, estado_sync = 0 
+                WHERE id = ?
+            `);
             let saldoRestantePago = montoAPagarUSD;
 
             for (let factura of lista) {
                 if (saldoRestantePago <= 0) break;
 
-                // 🔥 REPARACIÓN AL VUELO: Si la factura vieja está corrupta (0 USD), la reparamos usando sus Bs.
+                // Reparación al vuelo si no tenía monto_usd
                 const originalUSD = (factura.monto_usd && factura.monto_usd > 0) 
                     ? factura.monto_usd 
-                    : parseFloat((factura.monto_bs / rate).toFixed(2));
+                    : parseFloat(((factura.monto_bs || 0) / rate).toFixed(2));
 
-                const yaPagadoUSD = factura.monto_pagado || 0;
+                const yaPagadoUSD = parseFloat(factura.monto_pagado || 0);
                 const loQueFaltaUSD = parseFloat((originalUSD - yaPagadoUSD).toFixed(2));
 
-                console.log(`      > Evaluando Factura ${factura.factura_nro} | Debe: $${loQueFaltaUSD} | Saldo en mano: $${saldoRestantePago}`);
+                console.log(`      > Evaluando Factura ${factura.factura_nro} | Debe: $${loQueFaltaUSD} | Saldo disponible: $${saldoRestantePago}`);
 
-                if (loQueFaltaUSD <= 0) {
+                if (loQueFaltaUSD <= 0.01) {
                     update.run(originalUSD, 'PAGADA', factura.id);
                     continue;
                 }
 
-                if (saldoRestantePago >= loQueFaltaUSD) {
+                if (saldoRestantePago >= loQueFaltaUSD - 0.01) {
                     console.log(`        ✅ Pagando COMPLETA la factura ${factura.factura_nro}.`);
                     update.run(originalUSD, 'PAGADA', factura.id);
-                    saldoRestantePago = parseFloat((saldoRestantePago - loQueFaltaUSD).toFixed(2));
+                    saldoRestantePago = parseFloat(Math.max(0, saldoRestantePago - loQueFaltaUSD).toFixed(2));
                 } else {
                     const nuevoAcumuladoUSD = parseFloat((yaPagadoUSD + saldoRestantePago).toFixed(2));
-                    console.log(`        ⏳ Pago PARCIAL en factura ${factura.factura_nro}. Se abonó $${saldoRestantePago}. Acumulado total pagado: $${nuevoAcumuladoUSD}`);
+                    console.log(`        ⏳ Pago PARCIAL en factura ${factura.factura_nro}. Se abonó $${saldoRestantePago}. Acumulado pagado: $${nuevoAcumuladoUSD}`);
                     update.run(nuevoAcumuladoUSD, 'PENDIENTE', factura.id);
                     saldoRestantePago = 0;
                 }
             }
 
-            // Actualizar el historial global del cliente
+            // Recalcular saldo_deuda en clientes_maestro sumando las deudas reales restantes
+            const saldoRestanteCliente = serverDb.prepare(`
+                SELECT COALESCE(SUM(
+                    CASE 
+                        WHEN (COALESCE(monto_usd, 0) - COALESCE(monto_pagado, 0)) > 0.01 
+                        THEN (COALESCE(monto_usd, 0) - COALESCE(monto_pagado, 0))
+                        ELSE 0 
+                    END
+                ), 0) AS total_usd
+                FROM cuentas_por_cobrar
+                WHERE (
+                    REPLACE(UPPER(TRIM(COALESCE(cliente_id, ''))), '-', '') = REPLACE(UPPER(TRIM(?)), '-', '')
+                    OR REPLACE(UPPER(TRIM(COALESCE(cliente_rif, ''))), '-', '') = REPLACE(UPPER(TRIM(?)), '-', '')
+                    OR REPLACE(UPPER(TRIM(COALESCE(rif_cliente, ''))), '-', '') = REPLACE(UPPER(TRIM(?)), '-', '')
+                )
+                AND UPPER(TRIM(COALESCE(estado, ''))) NOT IN ('PAGADA', 'PAGADO')
+            `).get(cliente_id, cliente_id, cliente_id);
+
+            const saldoUSDTotal = saldoRestanteCliente ? (saldoRestanteCliente.total_usd || 0) : 0;
+            const nuevoSaldoBs = parseFloat((saldoUSDTotal * rate).toFixed(2));
+
             serverDb.prepare(`
                 UPDATE clientes_maestro 
-                SET saldo_deuda = MAX(0, saldo_deuda - ?) 
-                WHERE rif = ?
-            `).run(montoAPagarBs, cliente_id);
+                SET saldo_deuda = ?, estado_sync = 0 
+                WHERE REPLACE(UPPER(TRIM(rif)), '-', '') = REPLACE(UPPER(TRIM(?)), '-', '')
+            `).run(nuevoSaldoBs, cliente_id);
+            
+            console.log(`   - 🔄 Saldo global deudor actualizado: $${saldoUSDTotal.toFixed(2)} (Bs. ${nuevoSaldoBs.toFixed(2)})`);
         });
 
-        procesoCascada(deudas, abonoUSD, monto_bs);
+        procesoCascada(deudas, abonoUSD);
         console.log(`✅ [API MAESTRO] Cascada de pagos finalizada con éxito.\n`);
         res.json({ exito: true, mensaje: "Abono aplicado correctamente." });
 
@@ -1664,6 +1743,18 @@ server.get('/api/cuentas_por_cobrar', (req, res) => {
     try {
         const sql = `SELECT * FROM cuentas_por_cobrar ORDER BY fecha DESC`;
         const rows = serverDb.prepare(sql).all();
+        rows.forEach(r => {
+            const mUsd = parseFloat(r.monto_usd || 0);
+            const pagado = parseFloat(r.monto_pagado || 0);
+            const estadoUpper = String(r.estado || '').toUpperCase().trim();
+            if ((mUsd > 0 && (mUsd - pagado) <= 0.01) || estadoUpper === 'PAGADA' || estadoUpper === 'PAGADO') {
+                r.estado = 'PAGADA';
+            } else if (pagado > 0) {
+                r.estado = 'ABONADO';
+            } else {
+                r.estado = 'PENDIENTE';
+            }
+        });
         res.json(rows);
     } catch (error) {
         console.error("❌ Error consultando la tabla cuentas_por_cobrar:", error.message);
@@ -2094,6 +2185,19 @@ server.get('/api/maestro/estadisticas', (req, res) => {
         `).get(companyId, fechaIni, fechaFin);
         const total_ganancia = gananciaResult?.total_ganancia || 0;
 
+        // 1.1 Ventas Totales (USD y Bs)
+        const ventaResult = serverDb.prepare(`
+            SELECT 
+                SUM(monto_total / COALESCE(NULLIF(tasa_bcv, 0), 1)) as total_venta,
+                SUM(monto_total) as total_venta_bs
+            FROM ventas_locales 
+            WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?
+              AND (estado != 'ANULADA' OR estado IS NULL)
+              AND (es_nota_credito = 0 OR es_nota_credito IS NULL)
+        `).get(companyId, fechaIni, fechaFin);
+        const total_venta = ventaResult?.total_venta || 0;
+        const total_venta_bs = ventaResult?.total_venta_bs || 0;
+
         // 1.1 Costo de Mercancía Vendida (COGS) en USD
         const cogsResult = serverDb.prepare(`
             SELECT SUM((monto_total / COALESCE(NULLIF(tasa_bcv, 0), 1)) - ganancia_venta) as total_cogs
@@ -2200,7 +2304,9 @@ server.get('/api/maestro/estadisticas', (req, res) => {
         let serieTiempo;
         if (periodo === 'dia' || fecha_inicio === fecha_fin) {
             serieTiempo = serverDb.prepare(`
-                SELECT strftime('%Y-%m-%d %H:00:00', fecha_emision) as fecha, SUM(ganancia_venta) as total_ganancia
+                SELECT strftime('%Y-%m-%d %H:00:00', fecha_emision) as fecha, 
+                       SUM(ganancia_venta) as total_ganancia,
+                       SUM(monto_total / COALESCE(NULLIF(tasa_bcv, 0), 1)) as total_venta
                 FROM ventas_locales
                 WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?
                   AND (estado != 'ANULADA' OR estado IS NULL)
@@ -2210,7 +2316,9 @@ server.get('/api/maestro/estadisticas', (req, res) => {
             `).all(companyId, fechaIni, fechaFin);
         } else {
             serieTiempo = serverDb.prepare(`
-                SELECT date(fecha_emision) as fecha, SUM(ganancia_venta) as total_ganancia
+                SELECT date(fecha_emision) as fecha, 
+                       SUM(ganancia_venta) as total_ganancia,
+                       SUM(monto_total / COALESCE(NULLIF(tasa_bcv, 0), 1)) as total_venta
                 FROM ventas_locales
                 WHERE company_id = ? AND fecha_emision BETWEEN ? AND ?
                   AND (estado != 'ANULADA' OR estado IS NULL)
@@ -2251,6 +2359,8 @@ server.get('/api/maestro/estadisticas', (req, res) => {
             exito: true,
             data: {
                 total_ganancia,
+                total_venta,
+                total_venta_bs,
                 total_cogs,
                 top_clientes: topClientes,
                 top_productos: topProductos,

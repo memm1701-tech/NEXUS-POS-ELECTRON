@@ -51,6 +51,60 @@
             <h2 class="text-2xl font-bold text-gray-800">Configuración de Sistema</h2>
         </div>
 
+        <!-- MODALIDAD DE CÁLCULO DE UTILIDAD Y PRECIOS -->
+        <div class="nexus-card p-6">
+            <div class="border-b pb-3 mb-4">
+                <h3 class="text-lg font-bold text-gray-800 flex items-center">
+                    <i class="material-icons mr-2 text-emerald-600">calculate</i>
+                    Modalidad de Cálculo de Precios y Margen de Ganancia
+                </h3>
+                <p class="text-sm text-gray-500 mt-1">
+                    Seleccione cómo el inventario calcula automáticamente el precio de venta a partir del costo y el porcentaje de ganancia.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Opción 1: Margen sobre Costo (Markup) -->
+                <label for="calc-mode-costo" class="relative flex flex-col p-4 border-2 cursor-pointer transition-all rounded-none hover:border-emerald-500 bg-white" id="card-calc-costo">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center space-x-2">
+                            <input type="radio" id="calc-mode-costo" name="tipo_calculo_margen" value="SOBRE_COSTO" class="h-5 w-5 text-emerald-600 focus:ring-emerald-500" checked>
+                            <span class="font-bold text-gray-800 text-sm">Margen sobre Costo (Markup)</span>
+                        </div>
+                        <span class="text-[10px] font-bold px-2 py-0.5 bg-gray-100 text-gray-600 uppercase">Estándar</span>
+                    </div>
+                    <p class="text-xs text-gray-500 mb-2">
+                        Multiplica directamente el porcentaje sobre el costo base.
+                    </p>
+                    <div class="bg-gray-50 p-2 text-xs font-mono text-gray-700 border border-gray-100 mt-auto">
+                        Fórmula: <span class="font-bold text-emerald-700">Costo × (1 + %)</span><br>
+                        Ejemplo: Costo 80 + 20% = <span class="font-bold text-emerald-800">96.00</span>
+                    </div>
+                </label>
+
+                <!-- Opción 2: Margen sobre Venta (Margen Real) -->
+                <label for="calc-mode-venta" class="relative flex flex-col p-4 border-2 cursor-pointer transition-all rounded-none hover:border-emerald-500 bg-white" id="card-calc-venta">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center space-x-2">
+                            <input type="radio" id="calc-mode-venta" name="tipo_calculo_margen" value="SOBRE_VENTA" class="h-5 w-5 text-emerald-600 focus:ring-emerald-500">
+                            <span class="font-bold text-gray-800 text-sm">Margen sobre Precio de Venta (Margen Real)</span>
+                        </div>
+                        <span class="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 uppercase">Comercial</span>
+                    </div>
+                    <p class="text-xs text-gray-500 mb-2">
+                        Calcula el precio para que el porcentaje sea la ganancia neta exacta sobre el total facturado.
+                    </p>
+                    <div class="bg-gray-50 p-2 text-xs font-mono text-gray-700 border border-gray-100 mt-auto">
+                        Fórmula: <span class="font-bold text-emerald-700">Costo ÷ (1 - %)</span><br>
+                        Ejemplo: Costo 80 con 20% margen = <span class="font-bold text-emerald-800">100.00</span>
+                    </div>
+                </label>
+            </div>
+            <div class="mt-3 bg-emerald-50 p-3 text-xs text-emerald-800 italic font-medium">
+                * Por defecto está activo el cálculo sobre costo tradicional (80 + 20% = 96). Si selecciona margen sobre venta, el porcentaje representará el margen comercial neto en inventario (80 + 20% = 100).
+            </div>
+        </div>
+
         <div class="nexus-card p-6">
             <div class="flex items-center justify-between">
                 <div>
@@ -177,6 +231,15 @@
                     const serverIP = await window.nexusAPI.obtenerConfiguracion('serverIP');
                     const allowNoStock = await window.nexusAPI.obtenerConfiguracion('allowNoStock');
                     const showConsole = await window.nexusAPI.obtenerConfiguracion('showConsole');
+                    const tipoCalculo = await window.nexusAPI.obtenerConfiguracion('tipo_calculo_margen') || 'SOBRE_COSTO';
+                    const rCosto = document.getElementById('calc-mode-costo');
+                    const rVenta = document.getElementById('calc-mode-venta');
+                    if (tipoCalculo === 'SOBRE_VENTA' && rVenta) {
+                        rVenta.checked = true;
+                    } else if (rCosto) {
+                        rCosto.checked = true;
+                    }
+                    actualizarEstiloCardsMargen();
                     
                     // MEJORA: Parseo booleano estricto consolidado para evitar fallos de lectura
                     const parseBool = (val) => val === true || val === "true";
@@ -188,6 +251,7 @@
                     // Configuramos la interfaz
                     setFullIP(serverIP);
                     actualizarEstadoIP();
+                    actualizarEstiloCardsMargen();
 
                 } catch (e) {
                     console.error("Error al leer config:", e);
@@ -231,6 +295,23 @@
                 });
             });
 
+            
+            function actualizarEstiloCardsMargen() {
+                const cardCosto = document.getElementById('card-calc-costo');
+                const cardVenta = document.getElementById('card-calc-venta');
+                const rVenta = document.getElementById('calc-mode-venta');
+                if (rVenta && rVenta.checked) {
+                    if (cardVenta) { cardVenta.classList.add('border-emerald-600', 'bg-emerald-50/20'); cardVenta.classList.remove('border-gray-200'); }
+                    if (cardCosto) { cardCosto.classList.remove('border-emerald-600', 'bg-emerald-50/20'); cardCosto.classList.add('border-gray-200'); }
+                } else {
+                    if (cardCosto) { cardCosto.classList.add('border-emerald-600', 'bg-emerald-50/20'); cardCosto.classList.remove('border-gray-200'); }
+                    if (cardVenta) { cardVenta.classList.remove('border-emerald-600', 'bg-emerald-50/20'); cardVenta.classList.add('border-gray-200'); }
+                }
+            }
+            document.querySelectorAll('input[name="tipo_calculo_margen"]').forEach(r => {
+                r.addEventListener('change', actualizarEstiloCardsMargen);
+            });
+
             saveBtn.addEventListener('click', async () => {
                 statusMsg.textContent = "⏳ Guardando...";
                 statusMsg.className = "text-center font-bold text-[#0288D1]";
@@ -250,6 +331,10 @@
                     await window.nexusAPI.guardarConfiguracion('serverIP', finalIP);
                     await window.nexusAPI.guardarConfiguracion('allowNoStock', allowNoStockCb.checked);
                     if (showConsoleCb) await window.nexusAPI.guardarConfiguracion('showConsole', showConsoleCb.checked);
+                    const selectedMargen = document.querySelector('input[name="tipo_calculo_margen"]:checked')?.value || 'SOBRE_COSTO';
+                    await window.nexusAPI.guardarConfiguracion('tipo_calculo_margen', selectedMargen);
+                    window.tipoCalculoMargen = selectedMargen;
+                    if (window.parent) window.parent.tipoCalculoMargen = selectedMargen;
 
                     let maestroError = false;
 

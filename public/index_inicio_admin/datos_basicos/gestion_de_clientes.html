@@ -128,6 +128,9 @@
                     companyId = sesion.companyId;
                     console.log("-> Conexión con SQLite establecida (Clientes).");
                     fetchClients(); 
+                    if (window.nexusAPI?.sincronizarCuentasCobrar) {
+                        window.nexusAPI.sincronizarCuentasCobrar(companyId).then(() => fetchClients()).catch(console.error);
+                    }
                 } else {
                     showCustomAlert("Error de sesión local.", 'error');
                 }

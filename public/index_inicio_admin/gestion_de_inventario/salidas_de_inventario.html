@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Salida de Inventario - Nexus POS</title>
     <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <link href="../../../node_modules/@fortawesome/fontawesome-free/css/all.min.css" rel="stylesheet">
     <script src="tailwindcss.js"></script>
 <style>
     body {
@@ -15,19 +16,31 @@
         min-height: 100vh;
     }
 
-    /* --- ESTILO EXPANSIVO NEXUS (100% + 1rem de margen) --- */
-    #app-container {
-        background-color: transparent !important;
+    .container {
+        background-color: transparent;
+        padding: 20px;
+        border-radius: 0;
+        box-shadow: none;
         width: 100% !important;
         max-width: 100% !important;
-        padding: 20px 1rem !important; 
         box-sizing: border-box;
-        display: flex;
-        flex-direction: column;
+        text-align: center;
+        margin: 0;
     }
 
     @media (min-width: 768px) {
-        #app-container { padding: 30px 1rem !important; }
+        .container {
+            padding: 20px 40px;
+            width: 100%;
+        }
+    }
+
+    #app-container {
+        background-color: transparent;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     h1 {
@@ -71,7 +84,24 @@
         font-size: 0.95em;
     }
 
-    .form-section input, .form-section select, .form-section textarea {
+    .form-section input[type="text"],
+    .form-section input[type="number"],
+    .form-section select {
+        width: 100%;
+        padding: 14px;
+        border: 1px solid #cbd5e0;
+        border-radius: 8px;
+        box-sizing: border-box;
+        font-size: 1em;
+        appearance: none;
+        background-color: white;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%234a5568'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 1rem center;
+        background-size: 1.5em;
+    }
+
+    .form-section textarea {
         width: 100%;
         padding: 14px;
         border: 1px solid #cbd5e0;
@@ -81,10 +111,12 @@
         background-color: white;
     }
 
-    .form-section input:focus, .form-section select:focus, .form-section textarea:focus {
+    .form-section input:focus,
+    .form-section select:focus,
+    .form-section textarea:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
         outline: none;
-        border-color: #ef4444;
-        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
     }
 
     #final-stock-display {
@@ -96,22 +128,163 @@
     }
 
     .btn-submit {
-        background-color: #ef4444;
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
         color: white;
-        padding: 18px 30px;
+        padding: 16px 28px;
         border: none;
-        border-radius: 8px;
+        border-radius: 12px;
         font-size: 1.1em;
-        font-weight: 600;
+        font-weight: 700;
         cursor: pointer;
-        transition: all 0.3s;
-        margin-top: 10px;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        margin-top: 14px;
         width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+        letter-spacing: 0.3px;
     }
 
-    .btn-submit:hover { background-color: #dc2626; }
+    .btn-submit:hover {
+        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+        box-shadow: 0 6px 20px rgba(220, 38, 38, 0.45);
+        transform: translateY(-2px);
+    }
 
-    /* --- TABLA DE HISTORIAL (ESTILO ENTRADAS) --- */
+    .btn-submit:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25);
+    }
+
+    /* --- BOTONES Y COMPONENTES NUEVOS --- */
+    .btn-add-lote {
+        background: linear-gradient(135deg, #475569 0%, #334155 100%);
+        color: white;
+        padding: 10px 18px;
+        border: none;
+        border-radius: 10px;
+        font-size: 0.95em;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 6px rgba(51, 65, 85, 0.25);
+    }
+    .btn-add-lote:hover {
+        background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(51, 65, 85, 0.35);
+    }
+
+    .btn-toggle-factura {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        background: #fef2f2;
+        color: #b91c1c;
+        border: 1.5px solid #fecaca;
+        padding: 10px 18px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.92rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+
+    .btn-toggle-factura:hover {
+        background: #fee2e2;
+        border-color: #fca5a5;
+        color: #991b1b;
+        transform: translateY(-1px);
+    }
+
+    .btn-quitar-item {
+        background: #fee2e2;
+        color: #dc2626;
+        border: 1px solid #fca5a5;
+        border-radius: 6px;
+        padding: 6px 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .btn-quitar-item:hover {
+        background: #dc2626;
+        color: white;
+    }
+
+    .tabla-lote-temporal {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.88rem;
+    }
+    .tabla-lote-temporal th {
+        background-color: #475569 !important;
+        color: white !important;
+        font-weight: 700;
+        font-size: 0.8rem;
+        padding: 10px 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .tabla-lote-temporal td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .tabla-lote-temporal tr:hover td {
+        background-color: #f8fafc;
+    }
+
+    /* Autocomplete de proveedores */
+    .autocomplete-container {
+        position: relative;
+        width: 100%;
+    }
+    .autocomplete-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        max-height: 220px;
+        overflow-y: auto;
+        background-color: #fff;
+        box-shadow: 0px 4px 10px rgba(0,0,0,0.12);
+        border: 1px solid #cbd5e0;
+        border-radius: 0 0 8px 8px;
+        z-index: 99999;
+    }
+    .autocomplete-item {
+        padding: 10px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #f1f5f9;
+        text-align: left;
+        transition: background 0.15s ease;
+    }
+    .autocomplete-item:hover, .autocomplete-active {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+
+    /* Tooltip informativo flotante */
+    .info-tooltip-container {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+    }
+    .info-tooltip-container:hover .info-tooltip-box {
+        display: block !important;
+        animation: fadeInTooltip 0.2s ease;
+    }
+    @keyframes fadeInTooltip {
+        from { opacity: 0; transform: translate(-50%, 6px); }
+        to { opacity: 1; transform: translate(-50%, 0); }
+    }
+
+    /* --- TABLA DE HISTORIAL --- */
     .table-container {
         margin-top: 30px;
         overflow-x: auto;
@@ -162,29 +335,44 @@
         left: 0;
         right: 0;
         background-color: white;
-        border-radius: 0 0 8px 8px;
+        border-radius: 0 0 8px 8px; /* Redondeado solo abajo */
         max-height: 250px;
         overflow-y: auto;
-        z-index: 9999;
+        z-index: 9999; /* Prioridad máxima sobre otros inputs */
         display: none; 
         border: 1px solid #cbd5e0;
+        border-top: none;
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     }
     #product-results.activo { display: block !important; }
-    .result-item { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #edf2f7; text-align: left; }
-    .result-item.autocomplete-active { background-color: #fee2e2 !important; border-left: 4px solid #ef4444 !important; color: #991b1b; }
+    .result-item {
+        padding: 12px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #edf2f7;
+        transition: background-color 0.2s;
+        text-align: left;
+    }
+    .result-item.autocomplete-active {
+        background-color: #bfdbfe !important;
+        border-left: 4px solid #2563eb !important;
+        outline: none !important;
+        color: #1e3a8a;
+    }
+    .result-item:hover {
+        background-color: #ebf8ff;
+    }
     .no-results-msg { padding: 12px 15px; color: #718096; font-style: italic; text-align: center; }
 </style>
 </head>
 <body>
 <div id="toast-container" class="fixed top-5 right-5 z-[10000] flex flex-col gap-3"></div>
-    <div id="app-container">
+    <div id="app-container" class="container">
         <h1>Salida de Inventario</h1>
         
         <form id="inventory-form" class="form-section">
             <div class="input-group-item">
                 <label for="storage-location">Sucursal de Retiro:</label>
-                <select id="storage-location" required>
+                <select id="storage-location" class="w-full text-left" required>
                     <option value="" disabled selected>Cargando sucursales...</option>
                 </select>
             </div>
@@ -198,7 +386,7 @@
 
                 <div class="input-group-item md:w-1/2">
                     <label for="packaging-unit-select">Unidad de Empaque (Conversión):</label>
-                    <select id="packaging-unit-select" disabled>
+                    <select id="packaging-unit-select" class="w-full text-left" disabled>
                         <option value="1" selected>Unidad Individual (x1)</option> 
                     </select>
                 </div>
@@ -216,13 +404,25 @@
                 </div>
             </div>
 
+            <!-- PREVISUALIZACIÓN DE VALORIZACIÓN ESTIMADA DE LA SALIDA -->
+            <div id="preview-valor-salida" class="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-900" style="display: none;">
+                <div class="flex justify-between items-center mb-1">
+                    <span>Costo Unitario Ref.: <strong id="lbl-costo-ref">$0.00</strong></span>
+                    <span>Stock Disponible en Sucursal: <strong id="lbl-stock-disponible">0.00</strong></span>
+                </div>
+                <div class="pt-1 border-t border-red-200 flex justify-between items-center">
+                    <span class="font-semibold">Valor Estimado del Retiro (Pérdida/Costo):</span>
+                    <span id="lbl-valor-estimado" class="text-sm font-bold text-red-700">$0.00</span>
+                </div>
+            </div>
+
             <div class="input-group-item">
                 <label for="exit-reason">Motivo de Salida:</label>
-                <select id="exit-reason" required>
+                <select id="exit-reason" class="w-full text-left" required>
                     <option value="" disabled selected>Selecciona el motivo...</option>
                     <option value="Venta">Venta</option>
                     <option value="Desperdicio">Desperdicio</option>
-                    <option value="Devolución">Devolución</option>
+                    <option value="Devolución">Devolución (A Proveedor)</option>
                     <option value="Caducidad">Caducidad</option>
                     <option value="Merma">Merma</option>
                     <option value="Uso Interno">Uso Interno</option>
@@ -233,9 +433,160 @@
                 <label for="observation">Observación:</label>
                 <textarea id="observation" rows="2" placeholder="Añade una nota opcional sobre este retiro..."></textarea>
             </div>
+
+            <!-- BOTONES DE ACCIÓN: AÑADIR A LA LISTA Y ASOCIAR PROVEEDOR/FACTURA -->
+            <div class="pt-3 flex flex-wrap items-center gap-3">
+                <!-- BOTÓN AÑADIR PRODUCTO A LA LISTA DE SALIDAS CON BOTÓN DE DUDA / GUÍA -->
+                <div class="flex items-center gap-2">
+                    <button type="button" id="btn-agregar-al-lote" class="btn-add-lote">
+                        <i class="fa-solid fa-cart-arrow-down"></i>
+                        <span>Añadir producto a la lista de salidas</span>
+                    </button>
+
+                    <!-- BOTÓN DE DUDA DE GUÍA (TOOLTIP AL PASAR EL MOUSE) -->
+                    <div class="info-tooltip-container">
+                        <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: #e2e8f0; color: #475569; font-weight: 700; font-size: 12px; cursor: help; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.06);" onmouseover="this.style.background='#dc2626'; this.style.color='white';" onmouseout="this.style.background='#e2e8f0'; this.style.color='#475569';">?</span>
+                        <div class="info-tooltip-box" style="display: none; position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%); width: 290px; background: #0f172a; color: #f8fafc; padding: 12px 14px; border-radius: 10px; font-size: 0.8rem; line-height: 1.45; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); z-index: 99999; text-align: left; pointer-events: none; border: 1px solid #334155;">
+                            <div style="font-weight: 700; color: #f87171; margin-bottom: 5px; display: flex; align-items: center; gap: 6px;">
+                                <i class="fa-solid fa-circle-question"></i> ¿Para qué sirve este botón?
+                            </div>
+                            Permite acumular múltiples productos para procesar un <strong>retiro o devolución en lote</strong>.<br><br>
+                            Rellena los datos (busca el producto, cantidad, empaque y motivo) y presiona este botón para agregarlo al carrito en pantalla. Luego puedes asociar el proveedor o factura si aplica.
+                            <div style="position: absolute; top: 100%; left: 50%; margin-left: -6px; border-width: 6px; border-style: solid; border-color: #0f172a transparent transparent transparent;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BOTÓN TOGGLE ASOCIAR PROVEEDOR Y FACTURA / DEVOLUCIÓN -->
+                <button type="button" id="btn-toggle-factura" class="btn-toggle-factura">
+                    <i class="fa-solid fa-file-invoice" id="icon-toggle-factura" style="font-size: 1rem;"></i>
+                    <span id="text-toggle-factura">Asociar Proveedor y Factura / Devolución (Opcional)</span>
+                </button>
+            </div>
+
+            <!-- CONTENEDOR PLEGABLE PROVEEDOR, FACTURA Y ACCIÓN CXP -->
+            <div id="seccion-factura-proveedor" class="p-4 bg-gray-50 border border-gray-200 rounded-xl flex flex-col gap-4" style="display: none;">
+                <div class="flex items-center justify-between pb-2 border-b border-gray-200 mb-1">
+                    <span class="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-invoice text-red-600"></i> Datos de Documento / Devolución a Proveedor
+                    </span>
+                    <span class="text-xs text-gray-500">Opcional para devoluciones o garantías</span>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                    <div class="input-group-item">
+                        <label for="cxp-prov-search" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                            <span>Proveedor Destino / Devolución:</span>
+                            <span id="badge-prov-seleccionado" style="display: none; background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; max-width: 65%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></span>
+                        </label>
+                        <div class="autocomplete-container">
+                            <input type="text" id="cxp-prov-search" placeholder="Buscar proveedor (Nombre o RIF)..." autocomplete="off">
+                            <div id="cxp-prov-results" class="autocomplete-results hidden"></div>
+                        </div>
+                    </div>
+
+                    <div class="input-group-item">
+                        <label for="factura-referencia-input">N° Factura / Documento Afectado:</label>
+                        <input type="text" id="factura-referencia-input" placeholder="Ej: 150, FACT-0012, NC-05..." autocomplete="off">
+                    </div>
+                </div>
+
+                <!-- FILA DIVIDIDA 70% / 30%: FACTURAS PENDIENTES (70%) Y OPCIONES DE DESCUENTO (30%) -->
+                <div class="grid grid-cols-1 md:grid-cols-10 gap-4 items-stretch">
+                    <!-- MITAD IZQUIERDA (70%): RECUADRO DE FACTURAS PENDIENTES DEL PROVEEDOR -->
+                    <div id="contenedor-facturas-pendientes" class="md:col-span-7 bg-white p-3 rounded-lg border border-gray-200 flex flex-col justify-between h-full min-h-[175px] overflow-hidden">
+                        <div>
+                            <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-gray-100">
+                                <span class="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-1.5">
+                                    <i class="fa-solid fa-receipt text-red-500"></i> Facturas Pendientes:
+                                </span>
+                                <span class="text-[11px] text-gray-400 italic">Clic para elegir</span>
+                            </div>
+                            <div id="lista-cards-facturas" class="flex gap-2.5 overflow-x-auto pb-2 pt-1 max-w-full" style="scrollbar-width: thin;">
+                                <div class="text-xs text-gray-400 italic py-4 text-center w-full">
+                                    Busca y selecciona un proveedor arriba para listar sus facturas pendientes.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MITAD DERECHA (30%): CHECKBOXES LIBRES (SIN RECUADRO) -->
+                    <div class="md:col-span-3 flex flex-col justify-center gap-3 py-1">
+                        <!-- CHECKBOX 1: Descontar mercancía de la factura -->
+                        <label class="flex items-start gap-2.5 cursor-pointer text-xs select-none">
+                            <input type="checkbox" id="chk-descontar-mercancia-fac" class="mt-0.5 rounded border-gray-300 text-red-600 focus:ring-red-500 w-4 h-4 cursor-pointer">
+                            <div>
+                                <span class="font-bold text-gray-800 text-sm">Descontar mercancía de la factura</span>
+                                <p class="text-[11px] text-gray-500 m-0 mt-0.5">Resta las unidades devueltas directamente de la mercancía de la factura original.</p>
+                            </div>
+                        </label>
+
+                        <!-- CHECKBOX 2: Descontar por el valor de la compra -->
+                        <label id="lbl-chk-descontar-valor-compra" class="flex items-start gap-2.5 text-xs text-gray-400 select-none cursor-not-allowed transition-colors">
+                            <input type="checkbox" id="chk-descontar-valor-compra" disabled class="mt-0.5 rounded border-gray-300 text-red-600 focus:ring-red-500 w-4 h-4">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-gray-800 text-sm" id="txt-chk-descontar-valor-compra">Descontar por el valor de la compra</span>
+                                    <span id="badge-estado-valor-compra" class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-200 text-gray-600">Bloqueado</span>
+                                </div>
+                                <p class="text-[11px] text-gray-500 m-0 mt-0.5" id="desc-chk-descontar-valor-compra">
+                                    Aplica un descuento/abono al saldo adeudado en Cuentas por Pagar usando el costo registrado en contenido_fac.
+                                </p>
+                                <div id="preview-descuento-factura" class="mt-1.5 p-2 bg-emerald-50 border border-emerald-200 rounded text-xs font-bold text-emerald-800" style="display: none;"></div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABLA TEMPORAL DEL LOTE DE SALIDAS A PROCESAR -->
+            <div id="contenedor-lote-temporal" style="display: none; margin-top: 18px; background: white; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.03);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1.5px solid #e2e8f0;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-boxes-stacked" style="color: #dc2626; font-size: 1.15rem;"></i>
+                        <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: #1e293b;">
+                            Productos en esta Salida (<span id="contador-items-lote">0</span>)
+                        </h3>
+                    </div>
+                    <button type="button" id="btn-vaciar-lote" style="background: none; border: none; color: #ef4444; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                        <i class="fa-solid fa-trash-can"></i> Vaciar Lista
+                    </button>
+                </div>
+
+                <div style="overflow-x: auto;">
+                    <table class="tabla-lote-temporal" style="min-width: 650px;">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th style="text-align: left;">Producto</th>
+                                <th style="text-align: center;">Empaque</th>
+                                <th style="text-align: center;">Cant. Salida</th>
+                                <th style="text-align: center;">Stock a Restar</th>
+                                <th style="text-align: center;">Motivo</th>
+                                <th style="text-align: right;">Costo Ref. ($)</th>
+                                <th style="text-align: right;">Total Valor ($)</th>
+                                <th style="text-align: center;">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cuerpo-tabla-lote">
+                        </tbody>
+                        <tfoot>
+                            <tr style="background: #f8fafc; font-weight: 700; border-top: 2px solid #cbd5e1;">
+                                <td colspan="4" style="padding: 12px; text-align: right; color: #334155;">TOTALES DE LA SALIDA:</td>
+                                <td style="padding: 12px; text-align: center; color: #dc2626; font-size: 1rem;" id="total-stock-lote">0.00</td>
+                                <td></td>
+                                <td></td>
+                                <td style="padding: 12px; text-align: right; color: #b91c1c; font-size: 1.05rem;" id="total-monto-lote">$0.00</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
             
             <button type="submit" id="btn-submit-exit" class="btn-submit">
-                Registrar Salida de Inventario
+                <i class="fa-solid fa-arrow-right-from-bracket" id="btn-exit-icon" style="font-size: 1.15rem;"></i>
+                <span id="btn-text-content">Registrar Salida de Inventario</span>
             </button>
         </form>
 
@@ -287,16 +638,27 @@
     let idEmpresa = null;
     let idSucursalSeleccionada = null;
     let idUsuario = null;
-    let listaProductosSucursal = []; 
+    let listaProductosSucursal = [];
+    let mapaCategorias = {}; 
     let catalogoProductosGlobal = []; 
     let historialSalidasCompleto = []; 
     let idProductoSeleccionado = null;
+    let productoSeleccionadoObj = null;
     let factorEmpaque = 1;
     let focoProducto = -1; 
-    let estaProcesandoSalida = false;
     let unidadActual = 'UN';
     let SERVER_URL = null;
     let respaldoActivo = false;
+
+    // Estado del Lote Temporal de Salidas
+    let itemsLoteSalidas = [];
+
+    // Estado de Proveedores (para devoluciones / CXP)
+    let proveedoresList = [];
+    let selectedProveedorRif = null;
+    let selectedProveedorNombre = null;
+    let facturasPendientesProveedor = [];
+    let facturaSeleccionadaObj = null;
 
     // --- 2. REFERENCIAS DOM ---
     const selectSucursal = document.getElementById('storage-location');
@@ -305,10 +667,50 @@
     const selectEmpaque = document.getElementById('packaging-unit-select');
     const inputCantidad = document.getElementById('quantity-input');
     const visorTotal = document.getElementById('final-stock-display');
+    const selectorMotivo = document.getElementById('exit-reason');
+    const inputObservacion = document.getElementById('observation');
     const formulario = document.getElementById('inventory-form');
     const cuerpoHistorial = document.getElementById('transaction-log-body');
     const appContenedor = document.getElementById('app-container');
     const cargandoMensaje = document.getElementById('loading-message');
+
+    // Referencias Valorización
+    const previewValorSalida = document.getElementById('preview-valor-salida');
+    const lblCostoRef = document.getElementById('lbl-costo-ref');
+    const lblStockDisponible = document.getElementById('lbl-stock-disponible');
+    const lblValorEstimado = document.getElementById('lbl-valor-estimado');
+
+    // Referencias Proveedor / Devolución
+    const btnToggleFactura = document.getElementById('btn-toggle-factura');
+    const iconToggleFactura = document.getElementById('icon-toggle-factura');
+    const textToggleFactura = document.getElementById('text-toggle-factura');
+    const seccionFacturaProveedor = document.getElementById('seccion-factura-proveedor');
+    const provSearch = document.getElementById('cxp-prov-search');
+    const provResults = document.getElementById('cxp-prov-results');
+    const badgeProvSeleccionado = document.getElementById('badge-prov-seleccionado');
+    const inputFacturaRef = document.getElementById('factura-referencia-input');
+
+    // Referencias Facturas Pendientes y Checkboxes Descuento CXP
+    const contenedorFacturasPendientes = document.getElementById('contenedor-facturas-pendientes');
+    const listaCardsFacturas = document.getElementById('lista-cards-facturas');
+    const chkDescontarMercancia = document.getElementById('chk-descontar-mercancia-fac');
+    const chkDescontarValorCompra = document.getElementById('chk-descontar-valor-compra');
+    const lblChkDescontarValorCompra = document.getElementById('lbl-chk-descontar-valor-compra');
+    const badgeEstadoValorCompra = document.getElementById('badge-estado-valor-compra');
+    const descChkDescontarValorCompra = document.getElementById('desc-chk-descontar-valor-compra');
+    const previewDescuentoFactura = document.getElementById('preview-descuento-factura');
+
+    // Referencias Lote Temporal
+    const btnAgregarAlLote = document.getElementById('btn-agregar-al-lote');
+    const contenedorLoteTemporal = document.getElementById('contenedor-lote-temporal');
+    const cuerpoTablaLote = document.getElementById('cuerpo-tabla-lote');
+    const contadorItemsLote = document.getElementById('contador-items-lote');
+    const totalStockLote = document.getElementById('total-stock-lote');
+    const totalMontoLote = document.getElementById('total-monto-lote');
+    const btnVaciarLote = document.getElementById('btn-vaciar-lote');
+    const btnSubmit = document.getElementById('btn-submit-exit');
+    const btnExitIcon = document.getElementById('btn-exit-icon');
+    const btnTextContent = document.getElementById('btn-text-content');
 
     // --- 3. INICIALIZACIÓN MAESTRA ---
     async function inicializar() {
@@ -328,14 +730,23 @@
                     }
                 } catch (configError) {}
 
-                // ACTIVAR INTERFAZ: Asegura que el contenedor se vea de inmediato
                 if(cargandoMensaje) cargandoMensaje.style.display = 'none';
                 if(appContenedor) appContenedor.style.display = 'flex';
 
+                try {
+                    if (window.nexusAPI && window.nexusAPI.obtenerCategoriasLocal) {
+                        const cats = await window.nexusAPI.obtenerCategoriasLocal(idEmpresa);
+                        if (Array.isArray(cats)) {
+                            cats.forEach(c => { if (c && c.id) mapaCategorias[c.id] = c.nombre; });
+                        }
+                    }
+                } catch (eCat) {
+                    console.warn("No se pudieron cargar categorías:", eCat);
+                }
                 await cargarSucursales();
                 catalogoProductosGlobal = await window.nexusAPI.obtenerProductosLocal() || [];
+                await cargarProveedoresLocal();
 
-                // Si hay sucursal en la sesión, cargar entorno automáticamente
                 if (sesion.branchId) {
                     selectSucursal.value = sesion.branchId;
                     idSucursalSeleccionada = sesion.branchId;
@@ -357,6 +768,16 @@
                 opt.textContent = s.nombre;
                 selectSucursal.appendChild(opt);
             });
+        }
+    }
+
+    async function cargarProveedoresLocal() {
+        try {
+            if (window.nexusAPI && window.nexusAPI.obtenerProveedoresLocal) {
+                proveedoresList = await window.nexusAPI.obtenerProveedoresLocal() || [];
+            }
+        } catch (e) {
+            console.warn("No se pudieron cargar los proveedores:", e.message);
         }
     }
 
@@ -388,11 +809,9 @@
             const respuesta = await fetch(`${URL_BASE}/api/maestro/stock?${params.toString()}`);
             const stockCentral = await respuesta.json();
 
-            // Cruzamos datos para el buscador y EXTRAEMOS LA UNIDAD REAL
             listaProductosSucursal = productosBase.map(prod => {
                 const servidorData = stockCentral.find(s => s.producto_id === prod.id);
                 
-                // Extraer datos_json de forma segura para obtener la unidad
                 let datosParsed = {};
                 try {
                     datosParsed = typeof prod.datos_json === 'string' ? JSON.parse(prod.datos_json) : (prod.datos_json || {});
@@ -400,15 +819,18 @@
 
                 const unidadReal = datosParsed.unit || datosParsed.unidad || prod.unit || prod.unidad || 'UN';
 
+                const rawCat = prod.categoria || (datosParsed && datosParsed.categoria) || 'General';
                 return {
                     ...prod,
-                    unit: unidadReal, // <-- Guardamos la unidad real aquí (KG, L, UN, etc)
-                    stock_sucursal: servidorData ? servidorData.cantidad_real : 0 
+                    categoria: rawCat,
+                    categoria_nombre: mapaCategorias[rawCat] || rawCat,
+                    codigo: prod.codigo || (datosParsed && datosParsed.codigo) || '',
+                    unit: unidadReal,
+                    stock_sucursal: servidorData ? parseFloat(servidorData.cantidad_real || 0) : 0 
                 };
             });
 
             await cargarHistorialSalidas();
-
             console.log(`✅ [NEXUS] Entorno listo: Stock desde Maestro e Historial desde Local.`);
         } catch (error) {
             console.error("❌ Error al preparar entorno:", error);
@@ -418,16 +840,15 @@
 
     async function seleccionarProducto(p) {
         idProductoSeleccionado = p.id;
+        productoSeleccionadoObj = p;
         inputBusqueda.value = p.nombre;
-        unidadActual = p.unit || 'UN'; // <--- CAPTURAMOS LA UNIDAD DEL PRODUCTO
+        unidadActual = p.unit || 'UN';
         
         contenedorResultados.innerHTML = "";
         contenedorResultados.classList.remove('activo');
         
-        // Obtener empaques del Cerebro
         const empaques = await window.nexusAPI.obtenerEmpaquePorProducto(p.id);
         
-        // Colocamos la unidad dinámica en la opción por defecto
         selectEmpaque.innerHTML = `<option value="1">Unidad Base (x1.00 ${unidadActual})</option>`;
         selectEmpaque.disabled = false;
         
@@ -442,22 +863,577 @@
         
         factorEmpaque = 1;
         recalcular();
+        evaluarHabilitacionValorCompra();
         inputCantidad.focus();
     }
 
     function recalcular() {
         const cant = parseFloat(inputCantidad.value) || 0;
         const total = cant * factorEmpaque;
-        
-        // ¡Adiós al "unidad(es)" quemado en código! Ahora muestra "5.00 KG", "2.00 L", etc.
-        visorTotal.value = `${total.toFixed(2)} ${unidadActual}`; 
+        visorTotal.value = `${total.toFixed(2)} ${unidadActual}`;
+
+        // Previsualización de Valorización
+        if (productoSeleccionadoObj && previewValorSalida) {
+            const costoRef = parseFloat(productoSeleccionadoObj.precio_compra || productoSeleccionadoObj.costo || 0);
+            const stockDisp = parseFloat(productoSeleccionadoObj.stock_sucursal || 0);
+            const valorTotalEst = total * costoRef;
+
+            lblCostoRef.textContent = '$' + costoRef.toFixed(2);
+            lblStockDisponible.textContent = `${stockDisp.toFixed(2)} ${unidadActual}`;
+            lblValorEstimado.textContent = '$' + valorTotalEst.toFixed(2);
+
+            previewValorSalida.style.display = total > 0 ? 'block' : 'none';
+        } else if (previewValorSalida) {
+            previewValorSalida.style.display = 'none';
+        }
+
+        evaluarHabilitacionValorCompra();
     }
 
-    // --- 5. GESTIÓN DE TABLA Y SINCRONIZACIÓN ---
+    // --- 5. LÓGICA DE PROVEEDORES (DEVOLUCIONES / CXP) ---
+    function closeAllProvLists(elmnt) {
+        if (elmnt !== provSearch && provResults) {
+            provResults.innerHTML = "";
+            provResults.classList.add('hidden');
+        }
+    }
 
+    if (provSearch) {
+        provSearch.addEventListener('input', function() {
+            let val = this.value;
+            closeAllProvLists();
+            if (!val) { 
+                selectedProveedorRif = null; 
+                selectedProveedorNombre = null; 
+                facturaSeleccionadaObj = null;
+                if (badgeProvSeleccionado) {
+                    badgeProvSeleccionado.textContent = '';
+                    badgeProvSeleccionado.style.display = 'none';
+                }
+                if (listaCardsFacturas) {
+                    listaCardsFacturas.innerHTML = '<div class="text-xs text-gray-400 italic py-4 text-center w-full">Busca y selecciona un proveedor arriba para listar sus facturas pendientes.</div>';
+                }
+                evaluarHabilitacionValorCompra();
+                return; 
+            }
+            
+            let count = 0;
+            provResults.classList.remove('hidden');
+            
+            for (let i = 0; i < proveedoresList.length; i++) {
+                let p = proveedoresList[i];
+                if (count >= 8) break;
+                
+                if ((p.nombre && p.nombre.toUpperCase().includes(val.toUpperCase())) || 
+                    (p.rif && p.rif.toUpperCase().includes(val.toUpperCase()))) {
+                    let b = document.createElement("div");
+                    b.className = "autocomplete-item text-sm";
+                    b.innerHTML = "<strong>" + p.nombre + "</strong> (" + (p.rif || 'Sin RIF') + ")<br><span class='text-xs text-gray-500'>Saldo: $" + (p.saldo_deuda || 0).toFixed(2) + "</span>";
+                    b.addEventListener("click", function() {
+                        provSearch.value = p.nombre;
+                        selectedProveedorRif = p.rif;
+                        selectedProveedorNombre = p.nombre;
+                        if (badgeProvSeleccionado) {
+                            badgeProvSeleccionado.textContent = '✓ ' + p.nombre + ' (' + (p.rif || 'Sin RIF') + ')';
+                            badgeProvSeleccionado.style.display = 'inline-block';
+                        }
+                        closeAllProvLists();
+                        cargarFacturasPendientesProveedor(p.rif);
+                    });
+                    provResults.appendChild(b);
+                    count++;
+                }
+            }
+
+            if (count === 0) {
+                let b = document.createElement("div");
+                b.className = "autocomplete-item text-sm text-gray-400 italic";
+                b.textContent = "No se encontraron proveedores coincidentes";
+                provResults.appendChild(b);
+            }
+        });
+
+        provSearch.addEventListener("keydown", function(e) {
+            let x = provResults.querySelectorAll('.autocomplete-item:not(.italic)');
+            let currentFocus = Array.from(x).findIndex(item => item.classList.contains('autocomplete-active'));
+            if (e.key === "ArrowDown") {
+                currentFocus++;
+                addActiveProv(x, currentFocus);
+            } else if (e.key === "ArrowUp") {
+                currentFocus--;
+                addActiveProv(x, currentFocus);
+            } else if (e.key === "Enter") {
+                e.preventDefault();
+                if (currentFocus > -1 && x[currentFocus]) {
+                    x[currentFocus].click();
+                }
+            }
+        });
+    }
+
+    async function cargarFacturasPendientesProveedor(rif) {
+        if (!contenedorFacturasPendientes || !listaCardsFacturas) return;
+        listaCardsFacturas.innerHTML = `
+            <div class="text-xs text-gray-500 italic py-2 flex items-center gap-2">
+                <i class="fa-solid fa-spinner fa-spin text-red-500"></i> Buscando facturas pendientes en Cuentas por Pagar...
+            </div>
+        `;
+
+        try {
+            let todosMovs = [];
+            if (window.nexusAPI && window.nexusAPI.obtenerMovimientosCxpLocal) {
+                todosMovs = await window.nexusAPI.obtenerMovimientosCxpLocal() || [];
+            }
+            
+            facturasPendientesProveedor = todosMovs.filter(m => {
+                const rifMatch = String(m.proveedor_rif || '').trim().toUpperCase() === String(rif || '').trim().toUpperCase();
+                const esFactura = (m.motivo || '').toUpperCase() === 'FACTURA' || (m.motivo || '').toUpperCase() === 'COMPRA';
+                const saldo = parseFloat(m.monto || 0) - parseFloat(m.monto_abonado || 0);
+                return rifMatch && esFactura && (m.estado === 'PENDIENTE' || saldo > 0.01);
+            });
+
+            if (facturasPendientesProveedor.length === 0) {
+                listaCardsFacturas.innerHTML = `
+                    <div class="text-xs text-gray-400 italic py-2 px-1">
+                        No hay facturas pendientes registradas para este proveedor. Puedes ingresar el N° de factura manualmente arriba si aplica.
+                    </div>
+                `;
+                facturaSeleccionadaObj = null;
+                evaluarHabilitacionValorCompra();
+                return;
+            }
+
+            let cardsHtml = '';
+            facturasPendientesProveedor.forEach((f, idx) => {
+                let itemsDetalle = [];
+                if (f.contenido_fac) {
+                    try {
+                        itemsDetalle = typeof f.contenido_fac === 'string' ? JSON.parse(f.contenido_fac) : f.contenido_fac;
+                    } catch (_) {}
+                }
+                const tieneContenido = Array.isArray(itemsDetalle) && itemsDetalle.length > 0;
+                const saldo = parseFloat(f.monto || 0) - parseFloat(f.monto_abonado || 0);
+                const fechaStr = f.fecha ? new Date(f.fecha).toLocaleDateString('es-VE') : 'N/A';
+                const compStr = f.comprobante || f.id || `FACT-${idx+1}`;
+
+                cardsHtml += `
+                    <div class="card-factura-cxp p-2.5 rounded-xl border border-gray-200 bg-white shadow-sm hover:border-red-400 hover:shadow-md transition-all cursor-pointer min-w-[210px] max-w-[245px] flex flex-col justify-between shrink-0" 
+                         id="card-fac-${f.id}" 
+                         data-id="${f.id}"
+                         onclick="window.seleccionarFacturaDesdeCard('${f.id}')">
+                        <div>
+                            <div class="flex items-center justify-between gap-1 mb-1">
+                                <span class="text-xs font-bold text-gray-800 flex items-center gap-1 truncate" title="Factura #${compStr}">
+                                    <i class="fa-solid fa-receipt text-red-500 text-[11px]"></i> Fac #${compStr}
+                                </span>
+                                <span class="text-[9px] px-1.5 py-0.5 rounded font-bold ${tieneContenido ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}">
+                                    ${tieneContenido ? `✓ ${itemsDetalle.length} ítem(s)` : 'Sin detalle'}
+                                </span>
+                            </div>
+                            <div class="text-[11px] text-gray-400 mb-1.5">
+                                Emisión: <strong>${fechaStr}</strong>
+                            </div>
+                        </div>
+                        <div class="border-t border-gray-100 pt-1.5 flex items-center justify-between">
+                            <div>
+                                <div class="text-[9px] text-gray-400 font-bold uppercase">Saldo Deuda</div>
+                                <div class="text-xs font-bold text-red-600">$${saldo.toFixed(2)}</div>
+                            </div>
+                            <span class="badge-sel-fac text-[10px] font-bold px-2 py-0.5 rounded bg-red-50 text-red-700 border border-red-200">
+                                Elegir
+                            </span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            listaCardsFacturas.innerHTML = cardsHtml;
+
+            // Si hay exactamente 1 factura pendiente, la seleccionamos automáticamente
+            if (facturasPendientesProveedor.length === 1) {
+                seleccionarFactura(facturasPendientesProveedor[0]);
+            }
+
+        } catch (err) {
+            console.error("Error al cargar facturas pendientes:", err);
+            listaCardsFacturas.innerHTML = `<div class="text-xs text-red-500 py-1">Error leyendo facturas de cuentas por pagar: ${err.message}</div>`;
+        }
+    }
+
+    window.seleccionarFacturaDesdeCard = function(facturaId) {
+        const fac = facturasPendientesProveedor.find(f => String(f.id) === String(facturaId));
+        if (fac) {
+            seleccionarFactura(fac);
+        }
+    };
+
+    function seleccionarFactura(fac) {
+        facturaSeleccionadaObj = fac;
+        if (inputFacturaRef) {
+            inputFacturaRef.value = fac.comprobante || fac.id;
+        }
+
+        // Resaltar tarjeta seleccionada
+        const todasCards = listaCardsFacturas.querySelectorAll('.card-factura-cxp');
+        todasCards.forEach(c => {
+            if (c.getAttribute('data-id') === String(fac.id)) {
+                c.className = "card-factura-cxp p-2.5 rounded-xl border-2 border-red-500 bg-red-50/60 shadow-md transition-all cursor-pointer min-w-[210px] max-w-[245px] flex flex-col justify-between shrink-0";
+                const badge = c.querySelector('.badge-sel-fac');
+                if (badge) {
+                    badge.className = "badge-sel-fac text-[10px] font-bold px-2 py-0.5 rounded bg-red-600 text-white";
+                    badge.innerHTML = "✓ Seleccionada";
+                }
+            } else {
+                c.className = "card-factura-cxp p-2.5 rounded-xl border border-gray-200 bg-white shadow-sm hover:border-red-400 hover:shadow-md transition-all cursor-pointer min-w-[210px] max-w-[245px] flex flex-col justify-between shrink-0";
+                const badge = c.querySelector('.badge-sel-fac');
+                if (badge) {
+                    badge.className = "badge-sel-fac text-[10px] font-bold px-2 py-0.5 rounded bg-red-50 text-red-700 border border-red-200";
+                    badge.innerHTML = "Elegir";
+                }
+            }
+        });
+
+        // Activar automáticamente el checkbox 1 de descontar mercancía de la factura
+        if (chkDescontarMercancia) {
+            chkDescontarMercancia.checked = true;
+        }
+
+        evaluarHabilitacionValorCompra();
+    }
+
+    function extraerProductosFactura(fac) {
+        if (!fac || !fac.contenido_fac) return [];
+        try {
+            return typeof fac.contenido_fac === 'string' ? JSON.parse(fac.contenido_fac) : (fac.contenido_fac || []);
+        } catch (_) {
+            return [];
+        }
+    }
+
+    function buscarProductoEnFactura(productosFac, prodId, prodNombre) {
+        if (!Array.isArray(productosFac) || productosFac.length === 0) return null;
+        const pIdStr = String(prodId || '').trim().toUpperCase();
+        const pNomStr = String(prodNombre || '').trim().toLowerCase();
+
+        return productosFac.find(item => {
+            const itId = String(item.id || item.producto_id || item.productoId || '').trim().toUpperCase();
+            const itNom = String(item.nombre || item.name || '').trim().toLowerCase();
+            return (pIdStr && itId && pIdStr === itId) || (pNomStr && itNom && pNomStr === itNom);
+        });
+    }
+
+    function evaluarHabilitacionValorCompra() {
+        if (!chkDescontarValorCompra) return;
+
+        // Condición 1: Que esté seleccionada la factura
+        if (!facturaSeleccionadaObj) {
+            chkDescontarValorCompra.checked = false;
+            chkDescontarValorCompra.disabled = true;
+            lblChkDescontarValorCompra.classList.add('cursor-not-allowed', 'text-gray-400');
+            lblChkDescontarValorCompra.classList.remove('cursor-pointer', 'text-gray-800');
+            badgeEstadoValorCompra.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-500';
+            badgeEstadoValorCompra.textContent = 'Bloqueado: Falta Factura';
+            descChkDescontarValorCompra.textContent = 'Aplica un descuento a la deuda en Cuentas por Pagar. (Requiere seleccionar una factura con contenido_fac).';
+            if (previewDescuentoFactura) previewDescuentoFactura.style.display = 'none';
+            return;
+        }
+
+        const productosFac = extraerProductosFactura(facturaSeleccionadaObj);
+
+        // Si la factura no tiene contenido guardado
+        if (!productosFac || productosFac.length === 0) {
+            chkDescontarValorCompra.checked = false;
+            chkDescontarValorCompra.disabled = true;
+            lblChkDescontarValorCompra.classList.add('cursor-not-allowed', 'text-gray-400');
+            lblChkDescontarValorCompra.classList.remove('cursor-pointer', 'text-gray-800');
+            badgeEstadoValorCompra.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700';
+            badgeEstadoValorCompra.textContent = 'Sin Detalle en Factura';
+            descChkDescontarValorCompra.textContent = 'Esta factura no tiene productos guardados en contenido_fac (no se puede saber el precio original de compra).';
+            if (previewDescuentoFactura) previewDescuentoFactura.style.display = 'none';
+            return;
+        }
+
+        // Condición 2: Que el producto actual (o los del lote) tenga registrado el valor del precio en contenido_fac
+        let productosAEvaluar = [];
+        if (itemsLoteSalidas && itemsLoteSalidas.length > 0) {
+            productosAEvaluar = itemsLoteSalidas.map(it => ({ id: it.productoId, nombre: it.nombre, cantidad: it.cantidadFinal }));
+        } else if (idProductoSeleccionado) {
+            const cantInput = parseFloat(inputCantidad ? inputCantidad.value : 0) || 0;
+            const totalARestar = cantInput * factorEmpaque;
+            productosAEvaluar = [{
+                id: idProductoSeleccionado,
+                nombre: productoSeleccionadoObj ? productoSeleccionadoObj.nombre : (inputBusqueda ? inputBusqueda.value : ''),
+                cantidad: totalARestar
+            }];
+        }
+
+        if (productosAEvaluar.length === 0) {
+            // No hay producto seleccionado aún, pero la factura sí tiene contenido
+            chkDescontarValorCompra.disabled = false;
+            lblChkDescontarValorCompra.classList.remove('cursor-not-allowed', 'text-gray-400');
+            lblChkDescontarValorCompra.classList.add('cursor-pointer', 'text-gray-800');
+            badgeEstadoValorCompra.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700';
+            badgeEstadoValorCompra.textContent = `✓ Factura con ${productosFac.length} ítem(s)`;
+            descChkDescontarValorCompra.textContent = 'Selecciona o añade un producto que coincida con la factura para calcular el descuento.';
+            if (previewDescuentoFactura) previewDescuentoFactura.style.display = 'none';
+            return;
+        }
+
+        // Verificar si los productos a evaluar coinciden con la factura y tienen precio/costo > 0
+        let totalDescuentoCalculado = 0;
+        let coincidenciasValidas = 0;
+        let detallesMatch = [];
+
+        for (const p of productosAEvaluar) {
+            const matchFac = buscarProductoEnFactura(productosFac, p.id, p.nombre);
+            if (matchFac) {
+                const costoUnit = parseFloat(matchFac.costo || matchFac.precio || 0);
+                if (costoUnit > 0) {
+                    coincidenciasValidas++;
+                    const subtotalDesc = p.cantidad * costoUnit;
+                    totalDescuentoCalculado += subtotalDesc;
+                    detallesMatch.push(`${p.nombre}: $${costoUnit.toFixed(2)} c/u x ${p.cantidad} = $${subtotalDesc.toFixed(2)}`);
+                }
+            }
+        }
+
+        if (coincidenciasValidas > 0) {
+            // HABILITAR
+            chkDescontarValorCompra.disabled = false;
+            lblChkDescontarValorCompra.classList.remove('cursor-not-allowed', 'text-gray-400');
+            lblChkDescontarValorCompra.classList.add('cursor-pointer', 'text-gray-800');
+            badgeEstadoValorCompra.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700';
+            badgeEstadoValorCompra.textContent = `✓ Costo encontrado (${coincidenciasValidas}/${productosAEvaluar.length})`;
+            descChkDescontarValorCompra.innerHTML = `Precio de compra encontrado en Factura #${facturaSeleccionadaObj.comprobante}.`;
+
+            if (previewDescuentoFactura) {
+                if (chkDescontarValorCompra.checked && totalDescuentoCalculado > 0) {
+                    previewDescuentoFactura.style.display = 'block';
+                    previewDescuentoFactura.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <span>💰 Descuento a Factura #${facturaSeleccionadaObj.comprobante}:</span>
+                            <span class="text-sm font-extrabold text-emerald-700">-$${totalDescuentoCalculado.toFixed(2)}</span>
+                        </div>
+                        <div class="text-[10px] text-emerald-600 font-normal mt-0.5">${detallesMatch.join(' • ')}</div>
+                    `;
+                } else {
+                    previewDescuentoFactura.style.display = 'none';
+                }
+            }
+        } else {
+            // El producto no está en la factura o no tiene costo
+            chkDescontarValorCompra.checked = false;
+            chkDescontarValorCompra.disabled = true;
+            lblChkDescontarValorCompra.classList.add('cursor-not-allowed', 'text-gray-400');
+            lblChkDescontarValorCompra.classList.remove('cursor-pointer', 'text-gray-800');
+            badgeEstadoValorCompra.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700';
+            badgeEstadoValorCompra.textContent = 'Producto no está en la Factura';
+            descChkDescontarValorCompra.textContent = `El producto no fue encontrado en el contenido_fac de la Factura #${facturaSeleccionadaObj.comprobante}.`;
+            if (previewDescuentoFactura) previewDescuentoFactura.style.display = 'none';
+        }
+    }
+
+    if (chkDescontarValorCompra) {
+        chkDescontarValorCompra.addEventListener('change', () => {
+            evaluarHabilitacionValorCompra();
+        });
+    }
+
+    function addActiveProv(x, currentFocus) {
+        if (!x || x.length === 0) return;
+        removeActiveProv(x);
+        if (currentFocus >= x.length) currentFocus = 0;
+        if (currentFocus < 0) currentFocus = (x.length - 1);
+        x[currentFocus].classList.add("autocomplete-active");
+    }
+
+    function removeActiveProv(x) {
+        for (let i = 0; i < x.length; i++) {
+            x[i].classList.remove("autocomplete-active");
+        }
+    }
+
+    document.addEventListener("click", function(e) {
+        closeAllProvLists(e.target);
+    });
+
+    if (btnToggleFactura && seccionFacturaProveedor) {
+        btnToggleFactura.addEventListener('click', () => {
+            const estaOculto = seccionFacturaProveedor.style.display === 'none';
+            if (estaOculto) {
+                seccionFacturaProveedor.style.display = 'flex';
+                if (iconToggleFactura) iconToggleFactura.className = 'fa-solid fa-chevron-up';
+                textToggleFactura.textContent = 'Ocultar datos de Factura / Devolución';
+                btnToggleFactura.style.background = '#f1f5f9';
+                btnToggleFactura.style.color = '#475569';
+                btnToggleFactura.style.borderColor = '#cbd5e1';
+            } else {
+                seccionFacturaProveedor.style.display = 'none';
+                if (iconToggleFactura) iconToggleFactura.className = 'fa-solid fa-file-invoice';
+                textToggleFactura.textContent = 'Asociar Proveedor y Factura / Devolución (Opcional)';
+                btnToggleFactura.style.background = '#fef2f2';
+                btnToggleFactura.style.color = '#b91c1c';
+                btnToggleFactura.style.borderColor = '#fecaca';
+            }
+        });
+    }
+
+    // Si el usuario selecciona "Devolución" en Motivo de Salida, desplegar automáticamente
+    if (selectorMotivo) {
+        selectorMotivo.addEventListener('change', (e) => {
+            if (e.target.value === 'Devolución' && seccionFacturaProveedor && seccionFacturaProveedor.style.display === 'none') {
+                btnToggleFactura.click();
+            }
+        });
+    }
+
+    // --- 6. GESTIÓN DEL LOTE TEMPORAL DE SALIDAS ---
+    window.agregarProductoAlLoteSalida = function() {
+        if (!idProductoSeleccionado) {
+            return mostrarToast("Selecciona un producto primero.", "warning");
+        }
+
+        const cantInput = parseFloat(inputCantidad.value);
+        if (isNaN(cantInput) || cantInput <= 0) {
+            return mostrarToast("Ingresa una cantidad válida mayor a 0.", "warning");
+        }
+
+        const totalARestar = cantInput * factorEmpaque;
+        const motivoActual = selectorMotivo.value;
+        if (!motivoActual) {
+            return mostrarToast("Selecciona el motivo de la salida antes de agregar.", "warning");
+        }
+
+        const costoRef = parseFloat(productoSeleccionadoObj ? (productoSeleccionadoObj.precio_compra || productoSeleccionadoObj.costo || 0) : 0);
+        const valorTotalEst = totalARestar * costoRef;
+
+        const optEmpaque = selectEmpaque && selectEmpaque.options[selectEmpaque.selectedIndex];
+        const nombreEmpaque = optEmpaque ? optEmpaque.textContent : `Unidad (x1.00 ${unidadActual})`;
+
+        itemsLoteSalidas.push({
+            productoId: idProductoSeleccionado,
+            nombre: productoSeleccionadoObj ? productoSeleccionadoObj.nombre : inputBusqueda.value,
+            codigo: productoSeleccionadoObj ? (productoSeleccionadoObj.codigo || '') : '',
+            unidad: unidadActual,
+            nombreEmpaque: nombreEmpaque,
+            factorEmpaque: factorEmpaque,
+            cantidadInput: cantInput,
+            cantidadFinal: totalARestar,
+            costoRef: costoRef,
+            valorTotal: valorTotalEst,
+            motivo: motivoActual,
+            observacion: inputObservacion ? inputObservacion.value.trim() : ''
+        });
+
+        // Limpiar inputs del producto
+        inputBusqueda.value = '';
+        inputCantidad.value = '';
+        visorTotal.value = `0.00 ${unidadActual}`;
+        idProductoSeleccionado = null;
+        productoSeleccionadoObj = null;
+        if (previewValorSalida) previewValorSalida.style.display = 'none';
+
+        renderizarTablaLoteSalidas();
+        inputBusqueda.focus();
+    };
+
+    if (btnAgregarAlLote) {
+        btnAgregarAlLote.addEventListener('click', window.agregarProductoAlLoteSalida);
+    }
+
+    if (inputCantidad) {
+        inputCantidad.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                window.agregarProductoAlLoteSalida();
+            }
+        });
+    }
+
+    if (btnVaciarLote) {
+        btnVaciarLote.addEventListener('click', () => {
+            if (itemsLoteSalidas.length === 0) return;
+            itemsLoteSalidas = [];
+            renderizarTablaLoteSalidas();
+            mostrarToast("Lista de salidas vaciada.", "warning");
+        });
+    }
+
+    window.quitarItemDelLoteSalida = function(index) {
+        if (index >= 0 && index < itemsLoteSalidas.length) {
+            itemsLoteSalidas.splice(index, 1);
+            renderizarTablaLoteSalidas();
+        }
+    };
+
+    function renderizarTablaLoteSalidas() {
+        if (!contenedorLoteTemporal || !cuerpoTablaLote) return;
+
+        if (itemsLoteSalidas.length === 0) {
+            contenedorLoteTemporal.style.display = 'none';
+            if (contadorItemsLote) contadorItemsLote.textContent = '0';
+            if (btnTextContent) btnTextContent.textContent = "Registrar Salida de Inventario";
+            if (btnExitIcon) btnExitIcon.className = "fa-solid fa-arrow-right-from-bracket";
+            btnSubmit.style.background = "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)";
+            return;
+        }
+
+        contenedorLoteTemporal.style.display = 'block';
+        if (contadorItemsLote) contadorItemsLote.textContent = itemsLoteSalidas.length.toString();
+
+        let html = '';
+        let sumaStock = 0;
+        let sumaMonto = 0;
+
+        itemsLoteSalidas.forEach((it, index) => {
+            sumaStock += it.cantidadFinal;
+            sumaMonto += (it.valorTotal || 0);
+
+            const costoStr = it.costoRef > 0 
+                ? '$' + Number(it.costoRef).toFixed(2) 
+                : '<span style="color:#94a3b8;">$0.00</span>';
+            const valorTotalStr = it.valorTotal > 0 
+                ? '$' + Number(it.valorTotal).toFixed(2) 
+                : '<span style="color:#94a3b8;">$0.00</span>';
+
+            html += `
+                <tr>
+                    <td style="text-align:center; font-weight:600; color:#64748b;">${index + 1}</td>
+                    <td style="font-weight:700; color:#1e293b;">
+                        ${it.nombre.toUpperCase()}
+                        <div style="font-size:0.75rem; color:#64748b; font-weight:normal;">${it.codigo || 'Sin código'}</div>
+                    </td>
+                    <td style="text-align:center; color:#475569;">${it.nombreEmpaque}</td>
+                    <td style="text-align:center; font-weight:600; color:#0f172a;">${it.cantidadInput}</td>
+                    <td style="text-align:center; font-weight:700; color:#dc2626;">-${it.cantidadFinal.toFixed(2)} ${it.unidad}</td>
+                    <td style="text-align:center;"><span style="background:#fee2e2; color:#991b1b; padding:2px 8px; border-radius:6px; font-weight:600; font-size:0.8rem;">${it.motivo}</span></td>
+                    <td style="text-align:right; font-weight:600;">${costoStr}</td>
+                    <td style="text-align:right; font-weight:700; color:#b91c1c;">${valorTotalStr}</td>
+                    <td style="text-align:center;">
+                        <button type="button" class="btn-quitar-item" onclick="quitarItemDelLoteSalida(${index})" title="Quitar de la lista">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        cuerpoTablaLote.innerHTML = html;
+        if (totalStockLote) totalStockLote.textContent = sumaStock.toFixed(2);
+        if (totalMontoLote) totalMontoLote.textContent = '$' + sumaMonto.toFixed(2);
+
+        if (btnTextContent) {
+            btnTextContent.textContent = `Registrar Salida del Lote (${itemsLoteSalidas.length} productos) • $${sumaMonto.toFixed(2)}`;
+        }
+        if (btnExitIcon) btnExitIcon.className = "fa-solid fa-circle-check";
+        btnSubmit.style.background = "linear-gradient(135deg, #b91c1c 0%, #991b1b 100%)";
+
+        evaluarHabilitacionValorCompra();
+    }
+
+    // --- 7. HISTORIAL Y SINCRONIZACIÓN ---
     async function cargarHistorialSalidas() {
         try {
-            // Carga local inmediata
             let historialLocal = await window.nexusAPI.obtenerSalidasLocal({
                 companyId: idEmpresa,
                 branchId: idSucursalSeleccionada
@@ -517,55 +1493,65 @@
         cuerpoHistorial.innerHTML = htmlBuffer;
     }
 
-    // --- 6. EVENT LISTENERS ---
+    // Helper fecha ISO compatible SQLite
+    function obtenerFechaActualFormato() {
+        let d = new Date();
+        let c = new Date(d.getTime() + (d.getTimezoneOffset() * 60000) - (4 * 3600000));
+        let p = (n) => String(n).padStart(2, '0');
+        return c.getFullYear() + '-' + p(c.getMonth() + 1) + '-' + p(c.getDate()) + ' ' + p(c.getHours()) + ':' + p(c.getMinutes()) + ':' + p(c.getSeconds());
+    }
 
-    // Cambio de Sucursal
+    // --- 8. EVENT LISTENERS GENERALES ---
     selectSucursal.onchange = async (e) => {
         idSucursalSeleccionada = e.target.value;
         await prepararEntornoSucursal();
     };
 
-    // Buscador: Escritura
     inputBusqueda.oninput = (e) => {
-        const termino = e.target.value.toLowerCase().trim();
+        const query = e.target.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
         focoProducto = -1;
         contenedorResultados.innerHTML = "";
 
-        // Cambiado de < 2 a < 1 para que busque con una sola letra/número
-        if (termino.length < 1) {
+        if (query.length < 2) {
             contenedorResultados.classList.remove('activo');
             return;
         }
 
-        const filtrados = listaProductosSucursal.filter(p => 
-            p.nombre.toLowerCase().includes(termino) || (p.codigo && p.codigo.includes(termino))
-        );
+        const filtered = listaProductosSucursal.filter(p => {
+            const nombreNorm = (p.nombre || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const codigoNorm = (p.codigo || "").toLowerCase();
+            return nombreNorm.includes(query) || codigoNorm.includes(query);
+        }).slice(0, 10);
 
-        if (filtrados.length > 0) {
+        if (filtered.length > 0) {
             contenedorResultados.classList.add('activo');
-            
-            // Limitamos los resultados a un máximo de 6 opciones
-            const resultadosLimitados = filtrados.slice(0, 6);
-            
-            resultadosLimitados.forEach((p, index) => {
+            filtered.forEach((p) => {
                 const item = document.createElement('div');
                 item.className = "result-item";
+                const catNombre = mapaCategorias[p.categoria] || p.categoria_nombre || p.categoria || 'General';
                 item.innerHTML = `
-                    <div class="flex justify-between">
-                        <strong>${p.nombre}</strong>
-                        <span class="text-red-600 font-bold">Stock: ${p.stock_sucursal} ${p.unit || 'UN'}</span>
+                    <div class="flex justify-between items-center w-full">
+                        <div>
+                            <b>${p.nombre}</b><br>
+                            <small class="text-gray-500">${catNombre} | ${p.codigo || ''}</small>
+                        </div>
+                        <span class="text-red-600 font-bold ml-3 text-sm whitespace-nowrap">Stock: ${p.stock_sucursal !== undefined ? p.stock_sucursal : 0} ${p.unit || 'UN'}</span>
                     </div>
                 `;
                 item.onclick = () => seleccionarProducto(p);
                 contenedorResultados.appendChild(item);
             });
         } else {
-            contenedorResultados.classList.add('activo');
-            contenedorResultados.innerHTML = `<div class="no-results-msg px-4 py-3 italic text-gray-500">Producto sin stock en esta sucursal</div>`;
+            contenedorResultados.classList.remove('activo');
         }
     };
 
-    // Buscador: Teclado (Navegación Flechas y Enter)
+    document.addEventListener('click', (e) => {
+        if (inputBusqueda && contenedorResultados && !inputBusqueda.contains(e.target) && !contenedorResultados.contains(e.target)) {
+            contenedorResultados.classList.remove('activo');
+        }
+    });
+
     inputBusqueda.addEventListener('keydown', (e) => {
         const items = contenedorResultados.querySelectorAll('.result-item');
         if (items.length === 0) return;
@@ -598,139 +1584,236 @@
     }
 
     inputCantidad.oninput = recalcular;
-   selectEmpaque.onchange = (e) => {
+    selectEmpaque.onchange = (e) => {
         factorEmpaque = parseFloat(e.target.value) || 1;
         recalcular();
     };
 
-    // ... [Tu código anterior permanece igual hasta llegar a selectEmpaque.onchange] ...
-    
+    // --- 9. SUBMIT MAESTRO (LOTE O MODO UNITARIO DIRECTO) ---
     formulario.onsubmit = async (e) => {
         e.preventDefault();
         e.stopImmediatePropagation(); 
 
-        // 🛡️ CERROJO GLOBAL ANTI-DUPLICADOS
         if (window.bloqueoSalidaEnProceso) {
-            console.warn("⚠️ [NEXUS] Intento de envío duplicado bloqueado por el cerrojo global.");
+            console.warn("⚠️ [NEXUS] Intento de salida duplicada bloqueado por cerrojo.");
             return;
         }
 
-        if (!idProductoSeleccionado) return mostrarToast("Selecciona un producto.", "error");
+        // Determinar si procesamos el lote o el ítem individual del formulario
+        let itemsAProcesar = [];
 
-        // Calculamos el total en positivo
-        const totalARestar = (parseFloat(inputCantidad.value) || 0) * factorEmpaque;
-        
-        const btnSubmit = document.getElementById('btn-submit-exit');
+        if (itemsLoteSalidas.length > 0) {
+            itemsAProcesar = [...itemsLoteSalidas];
+        } else {
+            if (!idProductoSeleccionado) {
+                return mostrarToast("Selecciona un producto o añade productos a la lista.", "error");
+            }
+            const cantInput = parseFloat(inputCantidad.value) || 0;
+            if (cantInput <= 0) {
+                return mostrarToast("Ingresa una cantidad válida a retirar.", "error");
+            }
+            const motivoVal = selectorMotivo.value;
+            if (!motivoVal) {
+                return mostrarToast("Selecciona el motivo de salida.", "error");
+            }
 
-        const datosSalidaHistorial = {
-            id: `OUT-${Date.now()}`,
-            companyId: idEmpresa, // Para main.js
-            company_id: idEmpresa,
-            branchId: idSucursalSeleccionada, // Para main.js
-            branch_id: idSucursalSeleccionada,
-            productId: idProductoSeleccionado, // Para main.js
-            product_id: idProductoSeleccionado,
-            nombre_producto: inputBusqueda.value,
-            cantidad: totalARestar,
-            unidad: selectEmpaque.options[selectEmpaque.selectedIndex].text,
-            motivo: document.getElementById('exit-reason').value,
-            observacion: document.getElementById('observation').value,
-            usuarioId: idUsuario, // Para main.js
-            usuario_id: idUsuario,
-            fecha_modificacion: (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})()
-        };
+            const totalARestar = cantInput * factorEmpaque;
+            const optEmpaque = selectEmpaque && selectEmpaque.options[selectEmpaque.selectedIndex];
+            const nombreEmpaque = optEmpaque ? optEmpaque.textContent : `Unidad (x1.00 ${unidadActual})`;
+
+            itemsAProcesar.push({
+                productoId: idProductoSeleccionado,
+                nombre: productoSeleccionadoObj ? productoSeleccionadoObj.nombre : inputBusqueda.value,
+                cantidadFinal: totalARestar,
+                unidad: nombreEmpaque,
+                motivo: motivoVal,
+                observacion: inputObservacion ? inputObservacion.value.trim() : ''
+            });
+        }
+
+        const proveedorRifVal = selectedProveedorRif || (provSearch ? provSearch.value.trim() : '');
+        const facturaRefVal = inputFacturaRef ? inputFacturaRef.value.trim() : '';
 
         try {
-            window.bloqueoSalidaEnProceso = true; // ACTIVAMOS EL CERROJO
+            window.bloqueoSalidaEnProceso = true;
             btnSubmit.disabled = true;
-            btnSubmit.textContent = "Guardando...";
+            if (btnTextContent) btnTextContent.textContent = `Guardando ${itemsAProcesar.length} salida(s)...`;
 
-            // 🔥 1. GUARDADO OFFLINE-FIRST: Historial en BD Local
-            const resultado = await window.nexusAPI.guardarSalidaLocal(datosSalidaHistorial);
-            let exitoLocal = resultado && resultado.success;
+            let procesadosLocal = 0;
 
-            // 🔥 2. GUARDADO OFFLINE-FIRST: Descuento en el Stock Maestro Local (SQLite)
-            const payloadStockLocal = {
-                productoId: idProductoSeleccionado,
-                sucursalId: idSucursalSeleccionada,
-                companyId: idEmpresa,
-                cantidad: totalARestar,
-                operacion: 'RESTAR'
-            };
-            const resultadoStock = await window.nexusAPI.guardarStockSucursal(payloadStockLocal);
-            if (!resultadoStock || !resultadoStock.success) {
-                console.error("Fallo al descontar stock local.");
-                exitoLocal = false;
-            }
+            for (const item of itemsAProcesar) {
+                // Formar observación enriquecida si se asoció proveedor o documento
+                let observacionFinal = item.observacion || '';
+                if (facturaRefVal) observacionFinal += ` [Doc: ${facturaRefVal}]`;
+                if (selectedProveedorNombre) observacionFinal += ` [Prov: ${selectedProveedorNombre} (${proveedorRifVal})]`;
+                if (chkDescontarMercancia && chkDescontarMercancia.checked && facturaRefVal) {
+                    observacionFinal += ` [Mercancía descontada de Fac: ${facturaRefVal}]`;
+                }
 
-            if (!exitoLocal) {
-                throw new Error(resultado.error || "Error crítico al registrar la salida en disco local.");
-            }
+                const datosSalidaHistorial = {
+                    id: `OUT-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                    companyId: idEmpresa,
+                    company_id: idEmpresa,
+                    branchId: idSucursalSeleccionada,
+                    branch_id: idSucursalSeleccionada,
+                    productId: item.productoId,
+                    product_id: item.productoId,
+                    nombre_producto: item.nombre,
+                    cantidad: item.cantidadFinal,
+                    unidad: item.unidad,
+                    motivo: item.motivo,
+                    observacion: observacionFinal,
+                    usuarioId: idUsuario,
+                    usuario_id: idUsuario,
+                    fecha_modificacion: obtenerFechaActualFormato()
+                };
 
-            // 🔥 3. INTENTO DE SINCRONIZACIÓN CON EL VPS EN SEGUNDO PLANO
-            let exitoVPS = false;
-            const payloadVPS = {
-                company_id: idEmpresa,
-                sucursal_id: idSucursalSeleccionada,
-                producto_id: idProductoSeleccionado,
-                operacion: 'restar',
-                cantidad: totalARestar
-            };
+                // 1. Guardar en historial local
+                const resHistorial = await window.nexusAPI.guardarSalidaLocal(datosSalidaHistorial);
+                
+                // 2. Descontar en stock local
+                const payloadStockLocal = {
+                    productoId: item.productoId,
+                    sucursalId: idSucursalSeleccionada,
+                    companyId: idEmpresa,
+                    cantidad: item.cantidadFinal,
+                    operacion: 'RESTAR'
+                };
+                const resStock = await window.nexusAPI.guardarStockSucursal(payloadStockLocal);
 
-            if (navigator.onLine && respaldoActivo && SERVER_URL) {
-                btnSubmit.textContent = "Sincronizando con VPS...";
-                try {
-                    const resVPS = await fetch(`${SERVER_URL}/api/maestro/stock/actualizar`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payloadVPS)
-                    });
-                    
-                    if (resVPS.ok) {
-                        const jsonVPS = await resVPS.json();
-                        if (jsonVPS.exito || jsonVPS.success) {
-                            exitoVPS = true;
+                if (resHistorial && resHistorial.success && resStock && resStock.success) {
+                    procesadosLocal++;
+                }
+
+                // 3. Sincronización VPS por ítem
+                const payloadVPS = {
+                    company_id: idEmpresa,
+                    companyId: idEmpresa,
+                    sucursal_id: idSucursalSeleccionada,
+                    sucursalId: idSucursalSeleccionada,
+                    producto_id: item.productoId,
+                    id: item.productoId,
+                    operacion: 'restar',
+                    cantidad: item.cantidadFinal,
+                    items: [{
+                        id: item.productoId,
+                        producto_id: item.productoId,
+                        cantidad: item.cantidadFinal,
+                        operacion: 'RESTAR'
+                    }]
+                };
+
+                let exitoVPSItem = false;
+                if (navigator.onLine && respaldoActivo && SERVER_URL) {
+                    try {
+                        const resVPS = await fetch(`${SERVER_URL}/api/maestro/stock/actualizar`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payloadVPS)
+                        });
+                        if (resVPS.ok) {
+                            const jsonVPS = await resVPS.json();
+                            if (jsonVPS.exito || jsonVPS.success) exitoVPSItem = true;
                         }
-                    }
-                } catch (vpsError) {
-                    console.error("⚠️ Error VPS (se ignorará para mantener flujo local):", vpsError.message);
+                    } catch(errVPS) {}
+                }
+
+                if (!exitoVPSItem && respaldoActivo && SERVER_URL && window.nexusAPI.encolarSincronizacion) {
+                    await window.nexusAPI.encolarSincronizacion({ 
+                        operacion: 'UPSERT', 
+                        tabla: 'movimientos_stock', 
+                        datos: payloadVPS 
+                    });
                 }
             }
 
-            // 🔥 3.1 SI EL VPS FALLÓ O ESTÁ OFFLINE, ENCOLAR EN SYNC_QUEUE
-            if (!exitoVPS && respaldoActivo && SERVER_URL && window.nexusAPI.encolarSincronizacion) {
-                await window.nexusAPI.encolarSincronizacion({ 
-                    operacion: 'UPSERT', 
-                    tabla: 'movimientos_stock', 
-                    datos: payloadVPS 
-                });
+            // 4. Procesar Descuento de Cuentas por Pagar por el Valor de Compra (si está habilitado y marcado)
+            let descuentoAplicadoCxp = 0;
+            if (chkDescontarValorCompra && chkDescontarValorCompra.checked && facturaSeleccionadaObj) {
+                const productosFac = extraerProductosFactura(facturaSeleccionadaObj);
+                let totalDescuento = 0;
+                for (const item of itemsAProcesar) {
+                    const matchFac = buscarProductoEnFactura(productosFac, item.productoId, item.nombre);
+                    if (matchFac) {
+                        const costoUnit = parseFloat(matchFac.costo || matchFac.precio || 0);
+                        totalDescuento += (item.cantidadFinal * costoUnit);
+                    }
+                }
+
+                if (totalDescuento > 0) {
+                    const saldoActual = Math.max(0, parseFloat(facturaSeleccionadaObj.monto || 0) - parseFloat(facturaSeleccionadaObj.monto_abonado || 0));
+                    const montoAbono = Math.min(totalDescuento, saldoActual > 0 ? saldoActual : totalDescuento);
+                    descuentoAplicadoCxp = montoAbono;
+
+                    const datosAbono = {
+                        factura_id: facturaSeleccionadaObj.id,
+                        company_id: idEmpresa,
+                        monto: parseFloat(montoAbono.toFixed(2)),
+                        nota: `Devolución de mercancía (${itemsAProcesar.length} ítem(s)) por salida de inventario [Fac #${facturaSeleccionadaObj.comprobante}]`,
+                        metodo_pago: 'DEVOLUCION',
+                        referencia: `DEV-${Date.now()}`
+                    };
+
+                    try {
+                        const resAbono = await window.nexusAPI.registrarAbonoCxpLocal(datosAbono);
+                        if (resAbono && resAbono.exito) {
+                            console.log(`✅ [DEV CXP] Descuento de $${montoAbono} aplicado a Factura #${facturaSeleccionadaObj.comprobante}`);
+                            if (window.nexusAPI.sincronizarCuentasPagar) {
+                                window.nexusAPI.sincronizarCuentasPagar(idEmpresa).catch(() => {});
+                            }
+                        }
+                    } catch (errAbono) {
+                        console.warn("⚠️ No se pudo registrar el abono/descuento en CXP:", errAbono);
+                    }
+                }
             }
 
-            // 🔥 4. CONFIRMACIÓN FINAL AL USUARIO Y RECARGA
-            if (exitoVPS) {
-                mostrarToast("✅ ÉXITO: Salida registrada y stock sincronizado en la nube.", "success");
-            } else if (respaldoActivo && SERVER_URL) {
-                mostrarToast("⚠️ GUARDADO LOCAL: Añadido a la cola de sincronización (Sin conexión/VPS falló).", "warning");
-            } else {
-                mostrarToast("✅ ÉXITO: Salida registrada (Modo 100% Local).", "success");
+            let msgExito = `✅ ÉXITO: ${procesadosLocal} salida(s) registradas y descontadas del inventario.`;
+            if (descuentoAplicadoCxp > 0) {
+                msgExito += ` Se descontaron $${descuentoAplicadoCxp.toFixed(2)} de la Factura #${facturaSeleccionadaObj.comprobante} en Cuentas por Pagar.`;
             }
-            
+            mostrarToast(msgExito, "success");
+
+            // Limpiar Lote y Formulario
+            itemsLoteSalidas = [];
+            renderizarTablaLoteSalidas();
+
             formulario.reset();
             idProductoSeleccionado = null;
+            productoSeleccionadoObj = null;
             unidadActual = 'UN';
             visorTotal.value = "0.00 UN";
-            
-            // ACTUALIZAR ENTORNO VISUAL
-            await prepararEntornoSucursal(); // Trae stock fresco de SQLite
-            await cargarHistorialSalidas();  // Trae historial fresco de SQLite
-            
+            if (previewValorSalida) previewValorSalida.style.display = 'none';
+
+            if (provSearch) provSearch.value = '';
+            selectedProveedorRif = null;
+            selectedProveedorNombre = null;
+            facturaSeleccionadaObj = null;
+            if (badgeProvSeleccionado) {
+                badgeProvSeleccionado.textContent = '';
+                badgeProvSeleccionado.style.display = 'none';
+            }
+            if (inputFacturaRef) inputFacturaRef.value = '';
+            if (listaCardsFacturas) {
+                listaCardsFacturas.innerHTML = '<div class="text-xs text-gray-400 italic py-4 text-center w-full">Busca y selecciona un proveedor arriba para listar sus facturas pendientes.</div>';
+            }
+            if (chkDescontarMercancia) chkDescontarMercancia.checked = false;
+            if (chkDescontarValorCompra) {
+                chkDescontarValorCompra.checked = false;
+                chkDescontarValorCompra.disabled = true;
+            }
+            evaluarHabilitacionValorCompra();
+
+            await prepararEntornoSucursal();
+            await cargarHistorialSalidas();
+
         } catch (error) {
             console.error("❌ Error en salida:", error);
             mostrarToast("Error: " + error.message, "error");
         } finally {
-            window.bloqueoSalidaEnProceso = false; // LIBERAMOS EL CERROJO
+            window.bloqueoSalidaEnProceso = false;
             btnSubmit.disabled = false;
-            btnSubmit.textContent = "Registrar Salida de Inventario";
+            renderizarTablaLoteSalidas();
         }
     };
 
@@ -738,13 +1821,13 @@
         const contenedor = document.getElementById('toast-container');
         if(!contenedor) return;
         const toast = document.createElement('div');
-        let colorBase = "bg-green-500";
+        let colorBase = "bg-green-600";
         let icono = "✅";
         if (tipo === "error") {
-            colorBase = "bg-red-500";
+            colorBase = "bg-red-600";
             icono = "❌";
         } else if (tipo === "warning") {
-            colorBase = "bg-amber-500";
+            colorBase = "bg-amber-600";
             icono = "⚠️";
         }
         toast.className = `${colorBase} text-white px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-300 translate-x-full opacity-0 flex items-center gap-3 font-bold`;
@@ -757,12 +1840,11 @@
         }, 4000);
     }
 
-    // Eventos Filtros
+    // Eventos Filtros Historial
     document.getElementById('filtro-desde').addEventListener('change', renderizarHistorial);
     document.getElementById('filtro-hasta').addEventListener('change', renderizarHistorial);
     document.getElementById('filtro-limite').addEventListener('change', renderizarHistorial);
 
-    // Listener reactivo en tiempo real para cambios de stock desde cualquier ventana
     let timerRefresco = null;
     function refrescarEntornoDebounced() {
         clearTimeout(timerRefresco);
@@ -778,7 +1860,6 @@
     }
     window.addEventListener('stock-actualizado-vps', refrescarEntornoDebounced);
 
-    // Arrancar el sistema
     inicializar();
 </script>
 </body>

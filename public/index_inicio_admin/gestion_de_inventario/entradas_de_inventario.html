@@ -1,1023 +1,3869 @@
 <!DOCTYPE html>
+
 <html lang="es">
+
 <head>
+
     <meta charset="UTF-8">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Entrada de Inventario Móvil</title>
+
     <link href="../node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+
     <script src="tailwindcss.js"></script>
+
 <style>
+
     body {
+
         font-family: 'Roboto', sans-serif;
+
         background-color: #f3f4f6;
+
         margin: 0;
+
         padding: 0;
+
         min-height: 100vh;
+
     }
+
+
 
     .container {
+
         background-color: transparent;
+
         padding: 20px;
+
         border-radius: 0;
+
         box-shadow: none;
+
         width: 100% !important;
+
         max-width: 100% !important;
+
         box-sizing: border-box;
+
         text-align: center;
+
         margin: 0;
+
     }
+
+
 
     @media (min-width: 768px) {
+
         .container {
+
             padding: 20px 40px;
+
             width: 100%;
+
         }
+
     }
+
+
 
     h1 {
+
         color: #333;
+
         margin-bottom: 25px;
+
         font-size: 2.2em; /* Aproximadamente 35px */
+
         font-weight: 700;
+
         letter-spacing: -1px;
+
     }
+
+
 
     h2 {
+
         color: #333;
+
         margin-bottom: 20px;
+
         /* Reducido para que sea ~11px más pequeño que el H1 */
+
         font-size: 1.5em; 
+
         font-weight: 700;
+
         letter-spacing: -1px;
+
         text-align: center; /* Mantiene la simetría con el contenedor */
+
     }
+
+
 
     .form-section {
+
         display: flex;
+
         flex-direction: column;
+
         gap: 15px;
+
         margin-bottom: 25px;
+
         text-align: left;
+
     }
+
+
 
     .input-group-item {
+
         display: flex;
+
         flex-direction: column;
+
         position: relative;
+
         flex: 1;
+
     }
+
+
 
     .form-section label {
+
         font-weight: bold;
+
         color: #4a5568;
+
         margin-bottom: 6px;
+
         font-size: 0.95em;
+
     }
+
+
 
     .form-section input[type="text"],
+
     .form-section input[type="number"],
+
     .form-section select {
+
         width: 100%;
+
         padding: 14px;
+
         border: 1px solid #cbd5e0;
+
         border-radius: 8px;
+
         box-sizing: border-box;
+
         font-size: 1em;
+
         appearance: none;
+
         background-color: white;
+
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%234a5568'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+
         background-repeat: no-repeat;
+
         background-position: right 1rem center;
+
         background-size: 1.5em;
+
     }
+
+
 
     .form-section input:focus,
+
     .form-section select:focus {
+
         border-color: #2563eb;
+
         box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+
         outline: none;
+
     }
+
+
 
     #final-stock-display {
+
         background-color: #edf2f7;
+
         cursor: default;
+
         font-weight: 800;
+
         color: #2d3748;
+
         border: 1px solid #cbd5e0;
+
     }
+
+
 
     .btn-submit {
-        background-color: #007bff;
+
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+
         color: white;
-        padding: 18px 30px;
+
+        padding: 16px 28px;
+
         border: none;
-        border-radius: 8px;
+
+        border-radius: 12px;
+
         font-size: 1.1em;
-        font-weight: 600;
+
+        font-weight: 700;
+
         cursor: pointer;
-        transition: background-color 0.3s, transform 0.1s;
-        margin-top: 10px;
+
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+        margin-top: 14px;
+
         width: 100%;
+
+        display: flex;
+
+        align-items: center;
+
+        justify-content: center;
+
+        gap: 10px;
+
+        box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3);
+
+        letter-spacing: 0.3px;
+
     }
+
+
 
     .btn-submit:hover {
-        background-color: #0056b3;
+
+        background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+
+        box-shadow: 0 6px 20px rgba(2, 132, 199, 0.45);
+
+        transform: translateY(-2px);
+
     }
+
+
 
     .btn-submit:active {
-        transform: scale(0.99);
+
+        transform: translateY(0);
+
+        box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
+
     }
+
+
+
+    .btn-toggle-factura {
+
+        display: inline-flex;
+
+        align-items: center;
+
+        gap: 9px;
+
+        background: #f0fdf4;
+
+        color: #15803d;
+
+        border: 1.5px solid #bbf7d0;
+
+        padding: 10px 18px;
+
+        border-radius: 10px;
+
+        font-weight: 600;
+
+        font-size: 0.92rem;
+
+        cursor: pointer;
+
+        transition: all 0.2s ease;
+
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+
+    }
+
+
+
+    .btn-toggle-factura:hover {
+
+        background: #dcfce7;
+
+        border-color: #86efac;
+
+        color: #166534;
+
+        transform: translateY(-1px);
+
+        box-shadow: 0 3px 8px rgba(22, 163, 74, 0.15);
+
+    }
+
+
+
+    .btn-add-lote {
+
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+
+        color: white;
+
+        padding: 12px 22px;
+
+        border: none;
+
+        border-radius: 10px;
+
+        font-weight: 700;
+
+        font-size: 0.95rem;
+
+        cursor: pointer;
+
+        transition: all 0.2s ease;
+
+        display: inline-flex;
+
+        align-items: center;
+
+        gap: 8px;
+
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.28);
+
+    }
+
+
+
+    .btn-add-lote:hover {
+
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+
+        transform: translateY(-1px);
+
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.38);
+
+    }
+
+
+
+    .btn-add-lote:active {
+
+        transform: translateY(0);
+
+    }
+
+
+
+    .tabla-lote-temporal {
+
+        width: 100%;
+
+        border-collapse: separate;
+
+        border-spacing: 0;
+
+        font-size: 0.88rem;
+
+    }
+
+
+
+    .tabla-lote-temporal th {
+
+        background: #f8fafc !important;
+
+        color: #475569 !important;
+
+        padding: 10px 12px;
+
+        font-weight: 700;
+
+        text-transform: uppercase;
+
+        font-size: 0.75rem;
+
+        letter-spacing: 0.5px;
+
+        border-bottom: 2px solid #e2e8f0;
+
+    }
+
+
+
+    .tabla-lote-temporal td {
+
+        padding: 10px 12px;
+
+        border-bottom: 1px solid #f1f5f9;
+
+        vertical-align: middle;
+
+    }
+
+
+
+    .btn-quitar-item {
+
+        background: #fee2e2;
+
+        color: #ef4444;
+
+        border: 1px solid #fecaca;
+
+        border-radius: 6px;
+
+        padding: 4px 8px;
+
+        font-size: 0.8rem;
+
+        font-weight: 600;
+
+        cursor: pointer;
+
+        transition: all 0.15s ease;
+
+        display: inline-flex;
+
+        align-items: center;
+
+        gap: 4px;
+
+    }
+
+
+
+    .btn-quitar-item:hover {
+
+        background: #ef4444;
+
+        color: white;
+
+    }
+
+
+
+    /* --- AUTOCOMPLETE PROVEEDOR (ESTILO CUENTAS POR PAGAR) --- */
+
+    .autocomplete-container { position: relative; width: 100%; }
+
+    .autocomplete-results { 
+
+        position: absolute; 
+
+        border: 1px solid #d4d4d4; 
+
+        border-top: none; 
+
+        z-index: 99999; 
+
+        top: 100%; 
+
+        left: 0; 
+
+        right: 0; 
+
+        max-height: 220px; 
+
+        overflow-y: auto; 
+
+        background-color: #fff; 
+
+        box-shadow: 0px 4px 10px rgba(0,0,0,0.12); 
+
+        border-radius: 0 0 8px 8px; 
+
+    }
+
+    .autocomplete-item { 
+
+        padding: 10px 12px; 
+
+        cursor: pointer; 
+
+        border-bottom: 1px solid #f1f5f9; 
+
+        text-align: left; 
+
+        transition: background 0.15s ease;
+
+    }
+
+    .autocomplete-item:hover, .autocomplete-active { 
+
+        background-color: #f1f5f9; 
+
+        color: #0284c7;
+
+    }
+
+
+
+    /* Tooltip informativo flotante */
+
+    .info-tooltip-container {
+
+        position: relative;
+
+        display: inline-flex;
+
+        align-items: center;
+
+    }
+
+    .info-tooltip-container:hover .info-tooltip-box {
+
+        display: block !important;
+
+        animation: fadeInTooltip 0.2s ease;
+
+    }
+
+    @keyframes fadeInTooltip {
+
+        from { opacity: 0; transform: translate(-50%, 6px); }
+
+        to { opacity: 1; transform: translate(-50%, 0); }
+
+    }
+
+
 
     .table-container {
+
         margin-top: 30px;
+
         overflow-x: auto;
+
     }
+
+
 
     table {
+
         width: 100%;
+
         min-width: 700px;
+
         border-collapse: collapse;
+
         background-color: white;
+
         border-radius: 10px;
+
         overflow: hidden;
+
     }
+
+
 
     th, td {
+
         border: 1px solid #e2e8f0;
+
         padding: 14px;
+
         text-align: left;
+
         font-size: 0.9em;
+
     }
+
+
 
     th {
+
         background-color: #007bff;
+
         color: white;
+
         font-weight: 700;
+
         text-transform: uppercase;
+
         letter-spacing: 0.5px;
+
     }
+
+
 
     tr:nth-child(even) {
+
         background-color: #f7fafc;
+
     }
+
+
 
     tr:hover {
+
         background-color: #edf2f7;
+
     }
+
+
 
     #product-results {
+
         position: absolute;
+
         top: 100%;
+
         left: 0;
+
         right: 0;
+
         background-color: white;
+
         border-radius: 0 0 8px 8px; /* Redondeado solo abajo */
+
         max-height: 250px;
+
         overflow-y: auto;
+
         z-index: 9999; /* Prioridad máxima sobre otros inputs */
+
         display: none; 
+
         border: 1px solid #cbd5e0;
+
         border-top: none;
+
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+
     }
+
+
 
     #product-results.activo {
+
         display: block !important;
+
     }
+
+
 
     .result-item {
+
         padding: 12px 15px;
+
         cursor: pointer;
+
         border-bottom: 1px solid #edf2f7;
+
         transition: background-color 0.2s;
+
         text-align: left; /* Asegura alineación a la izquierda */
+
     }
+
+
 
     .result-item.autocomplete-active {
+
         background-color: #bfdbfe !important; /* Azul intenso */
+
         border-left: 4px solid #2563eb !important; /* Franja azul oscuro */
+
         outline: none !important;
+
         color: #1e3a8a;
+
     }
+
+
 
     .result-item:hover {
+
         background-color: #ebf8ff; /* Azul Nexus */
+
     }
+
+
 
     .placeholder-message {
+
         text-align: center;
+
         padding: 30px;
+
         color: #a0aec0;
+
         font-style: italic;
+
     }
+
+
 
     .action-buttons {
+
         display: flex;
+
         gap: 8px;
+
     }
+
+
 
     .edit-stock-btn, .delete-stock-btn {
+
         padding: 8px 14px;
+
         border: none;
+
         border-radius: 6px;
+
         font-size: 0.85em;
+
         font-weight: 600;
+
         cursor: pointer;
+
         transition: 0.2s;
+
     }
+
+
 
     .edit-stock-btn {
+
         background-color: #ecc94b;
+
         color: #744210;
+
     }
+
+
 
     .edit-stock-btn:hover {
+
         background-color: #d69e2e;
+
     }
+
+
 
     .delete-stock-btn {
+
         background-color: #f56565;
+
         color: white;
+
     }
+
+
 
     .delete-stock-btn:hover {
+
         background-color: #c53030;
+
     }
+
+
 
     .table-responsive-wrapper {
+
         overflow-x: auto;
+
         -webkit-overflow-scrolling: touch;
+
         border-radius: 10px;
+
         width: 100%;
+
         max-width: 100%;
+
         display: block;
+
         border: 1px solid #e2e8f0;
+
         box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+
     }
+
+
 
     #entrada-inventory-search-input {
+
         padding: 14px;
+
         border-radius: 8px;
+
         border: 1px solid #cbd5e0;
+
         width: 100%;
+
         margin-bottom: 15px;
+
         box-sizing: border-box;
+
     }
+
+
 
     .modal-backdrop {
+
         position: fixed;
+
         top: 0;
+
         left: 0;
+
         width: 100%;
+
         height: 100%;
+
         background-color: rgba(0, 0, 0, 0.6);
+
         display: flex;
+
         justify-content: center;
+
         align-items: center;
+
         z-index: 9999;
+
         opacity: 0;
+
         visibility: hidden;
+
         transition: all 0.3s ease;
+
     }
+
+
 
     .modal-backdrop.active {
+
         opacity: 1;
+
         visibility: visible;
+
     }
+
+
 
     .modal-content {
+
         background-color: #fff;
+
         padding: 30px;
+
         border-radius: 12px;
+
         width: 90%;
+
         max-width: 480px;
+
         box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+
         transform: translateY(-20px);
+
         transition: transform 0.3s ease;
+
     }
+
+
 
     .modal-backdrop.active .modal-content {
+
         transform: translateY(0);
+
     }
+
+
 
     .modal-header {
+
         display: flex;
+
         align-items: center;
+
         margin-bottom: 20px;
+
         border-bottom: 1px solid #edf2f7;
+
         padding-bottom: 15px;
+
     }
+
+
 
     .warning-icon {
+
         color: #ed8936;
+
         font-size: 2.2em;
+
         margin-right: 15px;
+
     }
+
+
 
     .warning-icon::before {
+
         content: "\26A0";
+
     }
+
+
 
     .modal-header h3 {
+
         margin: 0;
+
         font-size: 1.3em;
+
         font-weight: 800;
+
         color: #2d3748;
+
     }
+
+
 
     .modal-body p {
+
         font-size: 1.05em;
+
         color: #4a5568;
+
         line-height: 1.6;
+
         margin-bottom: 25px;
+
         text-align: left;
+
     }
+
+
 
     .modal-footer {
+
         display: flex;
+
         justify-content: flex-end;
+
         gap: 12px;
+
     }
+
+
 
     .modal-btn {
+
         padding: 12px 24px;
+
         border: none;
+
         border-radius: 8px;
+
         cursor: pointer;
+
         font-weight: 700;
+
         transition: filter 0.2s;
+
     }
+
+
 
     .modal-btn:hover {
+
         filter: brightness(0.9);
+
     }
+
+
 
     #modal-btn-cancel {
+
         background-color: #edf2f7;
+
         color: #4a5568;
+
     }
+
+
 
     #modal-btn-confirm {
+
         background-color: #e53e3e;
+
         color: white;
+
     }
+
 </style>
+
 </head>
+
 <body>
+
     <div class="container">
+
         <h1>Entrada de Inventario</h1>
+
         
+
         <div class="form-section">
+
             <div class="input-group-item">
+
                 <label for="branch-select">Sucursal de Destino:</label>
+
                 <select id="branch-select" class="w-full text-left">
+
                     <option value="" disabled selected>Cargando sucursales...</option>
+
                 </select>
+
             </div>
+
             
+
             <div class="flex flex-col md:flex-row gap-4">
+
                 
+
                 <div class="input-group-item md:w-1/2">
+
                     <label for="entrada-product-search">Producto a Añadir:</label>
+
                     <input type="text" id="entrada-product-search" placeholder="Escribe para buscar el producto..." autocomplete="off">
+
                     <div id="product-results"></div>
+
                 </div>
 
+
+
                 <div class="input-group-item md:w-1/2">
+
                     <label for="packaging-unit-select">Unidad de Empaque (Conversión):</label>
+
                     <select id="packaging-unit-select" class="w-full text-left" disabled>
+
                         <option value="" selected>Selecciona un producto primero...</option> 
+
                     </select>
+
                 </div>
+
             </div>
+
+
 
             <div class="flex flex-col md:flex-row gap-4">
+
                 <div class="input-group-item md:w-1/2">
+
                     <label for="quantity-input">Cantidad de Paquetes/Unidades:</label>
+
                     <input type="number" id="quantity-input" placeholder="Ej: 10 (solo números)" required min="1" inputmode="numeric">
+
                 </div>
+
                 
+
                 <div class="input-group-item md:w-1/2">
+
                     <label>Stock Total a Sumar:</label>
+
                     <input type="text" id="final-stock-display" placeholder="0" readonly>
+
                 </div>
+
             </div>
+
+
+
+            <!-- FILA COSTO UNITARIO Y PREVIEW COSTO PONDERADO (Aparece únicamente si presionan Asociar Proveedor y Factura) -->
+
+            <div id="contenedor-costo-unitario" class="flex flex-col md:flex-row gap-4 pt-2" style="display: none;">
+
+                <div class="input-group-item md:w-1/2">
+
+                    <label for="costo-unitario-input" style="display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap;">
+                        <span>Costo Unitario de Entrada ($):</span>
+                        <span id="msg-error-costo-unitario" style="display: none; color: #ef4444; font-size: 0.72rem; font-weight: 700;">Por favor coloque el precio de compra del producto</span>
+                    </label>
+
+                    <input type="number" id="costo-unitario-input" placeholder="Ej: 2.50" step="0.0001" min="0">
+
+                </div>
+
+
+
+                <div class="input-group-item md:w-1/2 flex justify-center flex-col">
+
+                    <div id="preview-costo-ponderado" class="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900" style="display: none;">
+
+                        <div class="flex justify-between items-center mb-1">
+
+                            <span>Costo actual: <strong id="lbl-costo-actual">$0.00</strong></span>
+
+                            <span>Stock actual: <strong id="lbl-stock-actual">0</strong></span>
+
+                        </div>
+
+                        <div class="pt-1 border-t border-blue-200 flex justify-between items-center">
+
+                            <span class="font-semibold">Nuevo Costo Ponderado:</span>
+
+                            <span id="lbl-costo-nuevo" class="text-sm font-bold text-blue-700">$0.00</span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- BOTONES DE ACCIÓN: AÑADIR AL CARRITO Y ASOCIAR PROVEEDOR/FACTURA -->
+
+            <div class="pt-3 flex flex-wrap items-center gap-3">
+
+                <!-- BOTÓN AÑADIR PRODUCTO AL CARRITO DE LA FACTURA CON BOTÓN DE DUDA / GUÍA -->
+
+                <div class="flex items-center gap-2">
+
+                    <button type="button" id="btn-agregar-al-lote" class="btn-add-lote">
+
+                        <i class="fa-solid fa-cart-plus"></i>
+
+                        <span>Añadir producto al carrito de la factura</span>
+
+                    </button>
+
+
+
+                    <!-- BOTÓN DE DUDA DE GUÍA (TOOLTIP AL PASAR EL MOUSE) -->
+
+                    <div class="info-tooltip-container">
+
+                        <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: #e2e8f0; color: #475569; font-weight: 700; font-size: 12px; cursor: help; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.06);" onmouseover="this.style.background='#059669'; this.style.color='white';" onmouseout="this.style.background='#e2e8f0'; this.style.color='#475569';">?</span>
+
+                        <div class="info-tooltip-box" style="display: none; position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%); width: 290px; background: #0f172a; color: #f8fafc; padding: 12px 14px; border-radius: 10px; font-size: 0.8rem; line-height: 1.45; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); z-index: 99999; text-align: left; pointer-events: none; border: 1px solid #334155;">
+
+                            <div style="font-weight: 700; color: #34d399; margin-bottom: 5px; display: flex; align-items: center; gap: 6px;">
+
+                                <i class="fa-solid fa-circle-question"></i> ¿Para qué sirve este botón?
+
+                            </div>
+
+                            Rellena los datos en las barras (busca el producto, define la cantidad y el costo si aplica) y haz clic en este botón para añadirlo al carrito en pantalla. Permite cargar múltiples productos a la misma factura de un proveedor o lote antes de registrar el ingreso.<br><br>
+
+                            <span style="color: #94a3b8; font-style: italic;">Puedes ir agregando productos libremente antes o después de asociar un proveedor.</span>
+
+                            <div style="position: absolute; top: 100%; left: 50%; margin-left: -6px; border-width: 6px; border-style: solid; border-color: #0f172a transparent transparent transparent;"></div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- BOTÓN TOGGLE ASOCIAR PROVEEDOR Y FACTURA (OPCIONAL) CON TOOLTIP -->
+
+                <div class="flex items-center gap-2">
+
+                    <button type="button" id="btn-toggle-factura" class="btn-toggle-factura">
+
+                        <i class="fa-solid fa-file-invoice" id="icon-toggle-factura" style="font-size: 1rem;"></i>
+
+                        <span id="text-toggle-factura">Asociar Proveedor y Factura / Documento (Opcional)</span>
+
+                    </button>
+
+
+
+                    <div class="info-tooltip-container">
+
+                        <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: #e2e8f0; color: #475569; font-weight: 700; font-size: 12px; cursor: help; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.06);" onmouseover="this.style.background='#0284c7'; this.style.color='white';" onmouseout="this.style.background='#e2e8f0'; this.style.color='#475569';">?</span>
+
+                        <div class="info-tooltip-box" style="display: none; position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%); width: 290px; background: #0f172a; color: #f8fafc; padding: 12px 14px; border-radius: 10px; font-size: 0.8rem; line-height: 1.45; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); z-index: 99999; text-align: left; pointer-events: none; border: 1px solid #334155;">
+
+                            <div style="font-weight: 700; color: #38bdf8; margin-bottom: 5px; display: flex; align-items: center; gap: 6px;">
+
+                                <i class="fa-solid fa-circle-question"></i> ¿Qué hace esta sección?
+
+                            </div>
+
+                            Permite registrar el ingreso con respaldo de <strong>Factura o Nota de Entrega</strong> y asignar el proveedor correspondiente. Si compras a crédito, generará la deuda en <em>Cuentas por Pagar</em> y habilitará el campo de <strong>costo unitario</strong> para el <strong>Costo Promedio Ponderado</strong>.<br><br>
+
+                            <span style="color: #94a3b8; font-style: italic;">Si compraste de forma informal o sin factura, puedes omitir esta opción y registrar la entrada libremente.</span>
+
+                            <div style="position: absolute; top: 100%; left: 50%; margin-left: -6px; border-width: 6px; border-style: solid; border-color: #0f172a transparent transparent transparent;"></div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- CONTENEDOR PLEGABLE PROVEEDOR Y FACTURA -->
+
+            <div id="seccion-factura-proveedor" class="p-4 bg-gray-50 border border-gray-200 rounded-xl flex flex-col gap-4 mt-3" style="display: none;">
+
+                <div class="flex items-center justify-between pb-2 border-b border-gray-200 mb-1">
+
+                    <span class="text-xs font-bold text-gray-600 uppercase tracking-wide">📦 Datos de Documento / Factura de Proveedor</span>
+
+                    <span class="text-xs text-gray-500">Puedes dejarlo en blanco si es compra informal</span>
+
+                </div>
+
+                
+
+                <!-- Fila Proveedor, Factura, Condición de pago -->
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                    <div class="input-group-item">
+
+                        <label for="cxp-prov-search" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+
+                            <span>Proveedor:</span>
+
+                            <span id="badge-prov-seleccionado" style="display: none; background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; max-width: 65%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></span>
+
+                        </label>
+
+                        <div class="autocomplete-container">
+
+                            <input type="text" id="cxp-prov-search" placeholder="Buscar proveedor (Nombre o RIF)..." autocomplete="off">
+
+                            <div id="cxp-prov-results" class="autocomplete-results hidden"></div>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <div class="input-group-item">
+
+                        <label for="factura-referencia-input">N° Factura / Nota Entrega:</label>
+
+                        <input type="text" id="factura-referencia-input" placeholder="Ej: F-0012, NE-45..." autocomplete="off">
+
+                    </div>
+
+
+
+                    <div class="input-group-item">
+
+                        <label for="condicion-pago-select">Condición de Pago:</label>
+
+                        <select id="condicion-pago-select" class="w-full text-left">
+
+                            <option value="CONTADO">Contado (Pagado)</option>
+
+                            <option value="CREDITO">A Crédito (Cuentas por Pagar)</option>
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- TABLA TEMPORAL DEL LOTE A PROCESAR -->
+
+            <div id="contenedor-lote-temporal" style="display: none; margin-top: 18px; background: white; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.03);">
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1.5px solid #e2e8f0;">
+
+                    <div style="display: flex; align-items: center; gap: 8px;">
+
+                        <i class="fa-solid fa-boxes-packing" style="color: #0284c7; font-size: 1.15rem;"></i>
+
+                        <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: #1e293b;">
+
+                            Productos en esta Entrada (<span id="contador-items-lote">0</span>)
+
+                        </h3>
+
+                    </div>
+
+                    <button type="button" id="btn-vaciar-lote" style="background: none; border: none; color: #ef4444; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+
+                        <i class="fa-solid fa-trash-can"></i> Vaciar Lista
+
+                    </button>
+
+                </div>
+
+
+
+                <div style="overflow-x: auto;">
+
+                    <table class="tabla-lote-temporal" style="min-width: 650px;">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>#</th>
+
+                                <th style="text-align: left;">Producto</th>
+
+                                <th style="text-align: center;">Empaque</th>
+
+                                <th style="text-align: center;">Cant. Ingresada</th>
+
+                                <th style="text-align: center;">Stock Base</th>
+
+                                <th style="text-align: right;">Costo Unit. ($)</th>
+
+                                <th style="text-align: right;">Subtotal ($)</th>
+
+                                <th style="text-align: center;">Acción</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody id="cuerpo-tabla-lote">
+
+                        </tbody>
+
+                        <tfoot>
+
+                            <tr style="background: #f8fafc; font-weight: 700; border-top: 2px solid #cbd5e1;">
+
+                                <td colspan="4" style="padding: 12px; text-align: right; color: #334155;">TOTALES DEL LOTE:</td>
+
+                                <td style="padding: 12px; text-align: center; color: #0284c7; font-size: 1rem;" id="total-stock-lote">0</td>
+
+                                <td></td>
+
+                                <td style="padding: 12px; text-align: right; color: #059669; font-size: 1.05rem;" id="total-monto-lote">$0.00</td>
+
+                                <td></td>
+
+                            </tr>
+
+                        </tfoot>
+
+                    </table>
+
+                </div>
+
+            </div>
+
             
+
             <button id="add-stock-btn" class="btn-submit">
-                Registrar Entrada de Inventario
+
+                <i class="fa-solid fa-boxes-stacked" id="btn-stock-icon" style="font-size: 1.15rem;"></i>
+
+                <span id="btn-text-content">Registrar Entrada de Inventario</span>
+
             </button>
+
         </div>
+
         <hr>
+
         <div class="table-container">
+
             <h2>Inventario Actual (Sucursal)</h2>
+
             
+
             <!-- A-Z FILTER CONTAINER -->
+
             <div id="az-filter-container" style="display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 15px; justify-content: flex-start;"></div>
 
+
+
             <div id="entrada-inventory-search-group" class="mb-4 text-left">
+
                 <label for="entrada-inventory-search-input" class="font-bold text-sm block mb-1">Buscar Producto en Inventario:</label>
+
                 <input type="text" id="entrada-inventory-search-input" placeholder="Escribe el nombre del producto..." class="w-full p-2 border border-gray-300 rounded-md">
+
             </div>
+
+
 
             <div class="table-responsive-wrapper"> 
+
                 <table id="entrada-inventory-table">
+
                     <thead>
+
                         <tr>
+
                             <th>Producto</th>
+
                             <th>Categoría</th>
+
                             <th>Unidad Base</th>
+
                             <th>Stock (Unidad/Empaque)</th>
+
                             <th>Acción</th> 
+
                         </tr>
+
                     </thead>
+
                     <tbody id="entrada-inventory-table-body">
+
                         <tr><td colspan="5" class="placeholder-message">Selecciona una sucursal para ver el inventario.</td></tr>
+
                     </tbody>
+
                 </table>
+
             </div>
+
+
 
             <!-- PAGINATION CONTAINER -->
+
             <div id="pagination-container" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
+
                 <!-- Javascript will populate this -->
+
             </div>
+
         </div>
+
     </div>
 
+
+
     <div id="custom-delete-modal" class="modal-backdrop">
+
         <div class="modal-content">
+
             <div class="modal-header">
+
                 <span class="warning-icon"></span>
+
                 <h3>Advertencia de Eliminación</h3>
+
             </div>
+
             <div class="modal-body">
+
                 <p id="modal-text-message"></p>
+
             </div>
+
             <div class="modal-footer">
+
                 <button id="modal-btn-cancel" class="modal-btn">Cancelar</button>
+
                 <button id="modal-btn-confirm" class="modal-btn">Sí, Eliminar</button>
+
             </div>
+
         </div>
+
     </div>
+
+
+
+    <!-- MODAL DE CONFIRMACIÓN Y GUÍA DE ENTRADA -->
+
+    <div id="modal-confirmar-entrada" class="modal-backdrop">
+
+        <div class="modal-content" style="max-width: 520px; border-radius: 16px; padding: 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+
+            <div class="modal-header" style="margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 12px;">
+
+                <div style="width: 42px; height: 42px; border-radius: 10px; background: #e0f2fe; display: flex; align-items: center; justify-content: center; color: #0284c7; font-size: 1.3rem;">
+
+                    <i class="fa-solid fa-boxes-packing"></i>
+
+                </div>
+
+                <div>
+
+                    <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #0f172a;">Confirmar Entrada de Inventario</h3>
+
+                    <p id="subtitulo-modal-entrada" style="margin: 0; font-size: 0.8rem; color: #64748b;">Verifica las opciones antes de procesar el ingreso</p>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="modal-body" style="padding: 0; margin-bottom: 20px;">
+
+                <!-- Tip 1: Carga Múltiple por Carrito -->
+
+                <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 10px; padding: 12px; margin-bottom: 10px; display: flex; align-items: flex-start; gap: 10px;">
+
+                    <i class="fa-solid fa-cart-plus" style="color: #16a34a; font-size: 1.1rem; margin-top: 2px;"></i>
+
+                    <div style="font-size: 0.86rem; color: #166534; line-height: 1.45;">
+
+                        <strong>¿Múltiples productos?</strong> Recuerda que puedes ingresar varios productos a la vez usando el botón verde <strong>"Añadir producto al carrito de la factura"</strong>.
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- Tip 2: Asociar Proveedor y Factura -->
+
+                <div style="background: #f0f9ff; border: 1.5px solid #bae6fd; border-radius: 10px; padding: 12px; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 10px;">
+
+                    <i class="fa-solid fa-file-invoice-dollar" style="color: #0284c7; font-size: 1.1rem; margin-top: 2px;"></i>
+
+                    <div style="font-size: 0.86rem; color: #075985; line-height: 1.45;">
+
+                        <strong>¿Deseas registrar la factura o el proveedor?</strong> Para registrar número de factura, costo de compra y adjudicar como contado o crédito, presiona primero <strong>"Asociar Proveedor y Factura"</strong> y completa esos datos.
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- Aviso de Proceder Directo -->
+
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; text-align: center;">
+
+                    <p style="margin: 0; font-size: 0.83rem; color: #475569; line-height: 1.4;">
+
+                        Si no quieres hacer ninguna de estas cosas y quieres hacerlo de forma directa, puedes presionar el botón de <strong>Proceder</strong>.
+
+                    </p>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 0;">
+
+                <button type="button" id="btn-modal-entrada-cancelar" class="modal-btn" style="background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; font-size: 0.9rem;">
+
+                    <i class="fa-solid fa-arrow-left"></i> Retroceder
+
+                </button>
+
+                <button type="button" id="btn-modal-entrada-proceder" class="modal-btn" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: white; display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; font-size: 0.9rem; box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);">
+
+                    <i class="fa-solid fa-check"></i> Proceder
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
 
 
 <script type="module">
+
     // --- 1. Variables de Estado Global ---
+
     let idEmpresa = null;
+
     let idSucursalSeleccionada = null;
+
     let idUsuario = null;
+
     let rolUsuario = null;
+
     let focoProducto = -1;
+
     let listaProductos = [];
+
     let idProductoSeleccionado = null;
+
     let factorEmpaqueSeleccionado = 1;
+
     let datosInventarioActual = [];
+
     let mapaCategorias = {};
+
     let modoEdicion = false;
+
     let currentLetterFilter = '';
+
     const ITEMS_PER_PAGE = 250;
+
     let currentPage = 1;
+
     let totalItems = 0;
+
     
+
     // Variables para el servidor VPS (Xeon)
+
     let SERVER_URL = null;
+
     let respaldoActivo = false;
 
+
+
     // --- 2. Referencias al DOM ---
+
     const selectorSucursal = document.getElementById('branch-select');
+
     const entradaBusquedaProducto = document.getElementById('entrada-product-search');
+
     const selectorEmpaque = document.getElementById('packaging-unit-select');
+
     const visorStockFinal = document.getElementById('final-stock-display');
+
     const contenedorResultadosBusqueda = document.getElementById('product-results');
+
     const entradaCantidad = document.getElementById('quantity-input');
+
     const botonRegistrar = document.getElementById('add-stock-btn');
+
     const cuerpoTablaInventario = document.getElementById('entrada-inventory-table-body');
+
     const entradaBusquedaInventario = document.getElementById('entrada-inventory-search-input');
 
+    
+
+    // Nuevas referencias Front para Costo Ponderado y Factura/Proveedor
+
+    const entradaCostoUnitario = document.getElementById('costo-unitario-input');
+
+    const previewCostoPonderado = document.getElementById('preview-costo-ponderado');
+
+    const lblCostoActual = document.getElementById('lbl-costo-actual');
+
+    const lblStockActual = document.getElementById('lbl-stock-actual');
+
+    const lblCostoNuevo = document.getElementById('lbl-costo-nuevo');
+
+    const btnToggleFactura = document.getElementById('btn-toggle-factura');
+
+    const iconToggleFactura = document.getElementById('icon-toggle-factura');
+
+    const textToggleFactura = document.getElementById('text-toggle-factura');
+
+    const seccionFacturaProveedor = document.getElementById('seccion-factura-proveedor');
+
+    const provSearch = document.getElementById('cxp-prov-search');
+
+    const provResults = document.getElementById('cxp-prov-results');
+
+    let proveedoresList = [];
+
+    let selectedProveedorRif = null;
+
+    let selectedProveedorNombre = null;
+
+    const badgeProvSeleccionado = document.getElementById('badge-prov-seleccionado');
+
+    const entradaFacturaRef = document.getElementById('factura-referencia-input');
+
+    const selectorCondicionPago = document.getElementById('condicion-pago-select');
+
+        let productoSeleccionadoObj = null;
+
+    let itemsLote = [];
+
+    const btnAgregarAlLote = document.getElementById('btn-agregar-al-lote');
+
+    const contenedorBtnAgregarLote = document.getElementById('contenedor-btn-agregar-lote');
+
+    const contenedorLoteTemporal = document.getElementById('contenedor-lote-temporal');
+
+    const cuerpoTablaLote = document.getElementById('cuerpo-tabla-lote');
+
+    const contadorItemsLote = document.getElementById('contador-items-lote');
+
+    const totalStockLote = document.getElementById('total-stock-lote');
+
+    const totalMontoLote = document.getElementById('total-monto-lote');
+
+    const btnVaciarLote = document.getElementById('btn-vaciar-lote');
+
+    const btnStockIcon = document.getElementById('btn-stock-icon');
+
+    
+
+    // Referencias Modal Confirmación y Guía
+
+    const modalConfirmarEntrada = document.getElementById('modal-confirmar-entrada');
+
+    const btnModalEntradaCancelar = document.getElementById('btn-modal-entrada-cancelar');
+
+    const btnModalEntradaProceder = document.getElementById('btn-modal-entrada-proceder');
+
+    const subtituloModalEntrada = document.getElementById('subtitulo-modal-entrada');
+
+    let payloadPendienteConfirmacion = null;
+
+
+
     // --- 3. Inicialización ---
+
     async function inicializarModulo() {
+
         console.log("🚀 [NEXUS] Inicializando Entradas de Inventario...");
+
         try {
+
             drawAZFilter();
+
             const api = window.nexusAPI;
+
             const sesion = await api.obtenerSesionLocal();
+
             if (sesion && sesion.companyId) {
+
                 idEmpresa = sesion.companyId;
+
                 idUsuario = sesion.uid || sesion.id;
+
                 rolUsuario = sesion.role;
 
+
+
                 // --- Extraer configuración del servidor en la nube (.env) ---
+
                 try {
+
                     if (api.obtenerConfigServer) {
+
                         const config = await api.obtenerConfigServer();
+
                         respaldoActivo = config.respaldo_datos === 'true' || config.respaldo_datos === true;
 
+
+
                         if (respaldoActivo) {
+
                             SERVER_URL = `http://${config.serverIp || config.SERVER_IP}:${config.serverPort || config.SERVER_PORT}`;
+
                             console.log("🧠 Servidor VPS (PostgreSQL/Xeon) detectado en:", SERVER_URL);
+
                         } else {
+
                             SERVER_URL = null;
+
                             console.log("🔒 Respaldo en la nube inactivo.");
+
                         }
+
                     }
+
                 } catch (configError) {
+
                     console.error("❌ Error al obtener configuración externa:", configError);
+
                 }
+
+
 
                 const categorias = await api.obtenerCategoriasLocal();
-                categorias.forEach(cat => { mapaCategorias[cat.id] = cat.nombre; });
+
+                if (Array.isArray(categorias)) categorias.forEach(cat => { mapaCategorias[cat.id] = cat.nombre; });
+
+
 
                 await cargarSucursalesLocal();
+
                 await cargarCatalogoProductos();
+
+                await cargarProveedoresLocal();
+
             } else {
+
                 mostrarAlerta("Sesión no válida.", "error");
+
             }
+
         } catch (error) {
+
             console.error("❌ Error inicialización:", error);
+
         }
+
     }
+
+
 
     // --- FILTROS A-Z Y PAGINACIÓN ---
+
     function drawAZFilter() {
+
         const container = document.getElementById('az-filter-container');
+
         if (!container) return;
+
         
+
         const letters = ['Todos', 'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z', '#'];
+
         
+
         if (container.children.length === letters.length) {
+
             Array.from(container.children).forEach((btn, i) => {
+
                 const letter = letters[i];
+
                 const isSelected = (letter === 'Todos' && currentLetterFilter === '') || (letter === currentLetterFilter);
+
                 btn.style.backgroundColor = isSelected ? '#007bff' : '#f8f9fa';
+
                 btn.style.color = isSelected ? 'white' : '#333';
+
                 btn.style.borderColor = isSelected ? '#007bff' : '#ccc';
+
             });
+
             return;
+
         }
+
         
+
         container.innerHTML = '';
+
         letters.forEach(letter => {
+
             const btn = document.createElement('button');
+
             btn.type = 'button';
+
             btn.textContent = letter;
+
             btn.style.padding = '5px 10px';
+
             btn.style.border = '1px solid #ccc';
+
             btn.style.borderRadius = '5px';
+
             btn.style.cursor = 'pointer';
+
             btn.style.fontWeight = 'bold';
+
             btn.style.fontSize = '12px';
+
             btn.style.transition = 'all 0.2s';
+
             
+
             const isSelected = (letter === 'Todos' && currentLetterFilter === '') || (letter === currentLetterFilter);
+
             btn.style.backgroundColor = isSelected ? '#007bff' : '#f8f9fa';
+
             btn.style.color = isSelected ? 'white' : '#333';
+
             btn.style.borderColor = isSelected ? '#007bff' : '#ccc';
+
             
+
             btn.addEventListener('click', () => {
+
                 currentLetterFilter = (letter === 'Todos') ? '' : letter;
+
                 currentPage = 1;
+
                 aplicarFiltrosInventario(true);
+
             });
+
             
+
             container.appendChild(btn);
+
         });
+
     }
+
+
 
     function drawPagination() {
+
         const container = document.getElementById('pagination-container');
+
         if (!container) return;
+
         container.innerHTML = '';
+
         
+
         const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+
         if (totalPages <= 1 || currentLetterFilter) return; // No se requiere paginación si se filtra por A-Z o es 1 página
+
         
+
         // Botón Anterior
+
         const btnPrev = document.createElement('button');
+
         btnPrev.type = 'button';
+
         btnPrev.textContent = 'Anterior';
+
         btnPrev.disabled = currentPage === 1;
+
         btnPrev.style.padding = '8px 12px';
+
         btnPrev.style.cursor = btnPrev.disabled ? 'not-allowed' : 'pointer';
+
         btnPrev.style.opacity = btnPrev.disabled ? '0.5' : '1';
+
         btnPrev.style.borderRadius = '5px';
+
         btnPrev.style.border = '1px solid #ccc';
+
         btnPrev.style.backgroundColor = '#f8f9fa';
+
         btnPrev.style.fontWeight = 'bold';
+
         btnPrev.addEventListener('click', () => {
+
             if (currentPage > 1) {
+
                 currentPage--;
+
                 aplicarFiltrosInventario(false);
+
             }
+
         });
+
         container.appendChild(btnPrev);
+
         
+
         // Indicador de página
+
         const indicator = document.createElement('span');
+
         indicator.textContent = `Página ${currentPage} de ${totalPages} (${totalItems} items)`;
+
         indicator.style.fontWeight = 'bold';
+
         indicator.style.color = '#555';
+
         container.appendChild(indicator);
+
         
+
         // Botón Siguiente
+
         const btnNext = document.createElement('button');
+
         btnNext.type = 'button';
+
         btnNext.textContent = 'Siguiente';
+
         btnNext.disabled = currentPage >= totalPages;
+
         btnNext.style.padding = '8px 12px';
+
         btnNext.style.cursor = btnNext.disabled ? 'not-allowed' : 'pointer';
+
         btnNext.style.opacity = btnNext.disabled ? '0.5' : '1';
+
         btnNext.style.borderRadius = '5px';
+
         btnNext.style.border = '1px solid #ccc';
+
         btnNext.style.backgroundColor = '#f8f9fa';
+
         btnNext.style.fontWeight = 'bold';
+
         btnNext.addEventListener('click', () => {
+
             if (currentPage < totalPages) {
+
                 currentPage++;
+
                 aplicarFiltrosInventario(false);
+
             }
+
         });
+
         container.appendChild(btnNext);
+
     }
+
+
 
     function matchLetterFilter(nombre, filter) {
+
         if (!filter || filter === 'Todos') return true;
+
         if (!nombre) return false;
+
         const cleanNombre = nombre.trim();
+
         if (!cleanNombre) return false;
+
         
+
         const firstChar = cleanNombre.charAt(0).toUpperCase();
+
         const normalizedFirst = firstChar.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
         
+
         if (filter === '#') {
+
             return !/[A-Z]/.test(normalizedFirst);
+
         }
+
         return normalizedFirst === filter.toUpperCase();
+
     }
+
+
 
     function aplicarFiltrosInventario(resetPage = true) {
+
         if (resetPage) {
+
             currentPage = 1;
+
         }
+
         drawAZFilter();
+
         if (!datosInventarioActual || datosInventarioActual.length === 0) {
+
             if (!idSucursalSeleccionada) {
+
                 if (cuerpoTablaInventario) cuerpoTablaInventario.innerHTML = '<tr><td colspan="5" class="placeholder-message">Selecciona una sucursal para ver el inventario.</td></tr>';
+
             } else {
+
                 if (cuerpoTablaInventario) cuerpoTablaInventario.innerHTML = '<tr><td colspan="5" class="placeholder-message">Sin productos vinculados.</td></tr>';
+
             }
+
             totalItems = 0;
+
             drawPagination();
+
             return;
+
         }
+
+
 
         const term = (entradaBusquedaInventario ? entradaBusquedaInventario.value : '').trim().toLowerCase();
+
         
+
         const filtrados = datosInventarioActual.filter(item => {
+
             const matchLetter = matchLetterFilter(item.nombre, currentLetterFilter);
+
             
+
             let matchSearch = true;
+
             if (term) {
+
                 const nombre = (item.nombre || '').toLowerCase();
+
                 const cat = (mapaCategorias[item.categoria] || item.categoria || '').toLowerCase();
+
                 const cod = (item.codigo || '').toLowerCase();
+
                 matchSearch = nombre.includes(term) || cat.includes(term) || cod.includes(term);
+
             }
+
             
+
             return matchLetter && matchSearch;
+
         });
+
+
 
         totalItems = filtrados.length;
+
         const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+
         if (currentPage > totalPages && totalPages > 0) {
+
             currentPage = totalPages;
+
         }
+
+
 
         let itemsAMostrar;
+
         if (currentLetterFilter || term) {
+
             itemsAMostrar = filtrados;
+
         } else {
+
             const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+
             itemsAMostrar = filtrados.slice(offset, offset + ITEMS_PER_PAGE);
+
         }
+
+
 
         window.renderizarTablaEntradas(itemsAMostrar);
+
         drawPagination();
+
     }
+
+
 
     // --- 4. Gestión de Datos ---
+
     async function cargarSucursalesLocal() {
+
         const sucursales = await window.nexusAPI.obtenerSucursalesLocal(idEmpresa);
+
         selectorSucursal.innerHTML = '';
 
+
+
         if (!sucursales || sucursales.length === 0) {
+
             selectorSucursal.innerHTML = '<option value="" disabled selected>No hay sucursales registradas</option>';
+
             return;
+
         }
+
+
 
         if (sucursales.length === 1) {
+
             // Regla: Si hay una sola sucursal, seleccionarla automáticamente y cargar su información
+
             const s = sucursales[0];
+
             const opt = document.createElement('option');
+
             opt.value = s.id;
+
             opt.textContent = s.nombre;
+
             opt.selected = true;
+
             selectorSucursal.appendChild(opt);
+
             
+
             idSucursalSeleccionada = s.id;
+
             await window.cargarInventarioEntradas();
+
         } else {
+
             // Si hay más de una sucursal, solicitar la selección primero
+
             selectorSucursal.innerHTML = '<option value="" disabled selected>Seleccione sucursal</option>';
+
             sucursales.forEach(s => {
+
                 const opt = document.createElement('option');
+
                 opt.value = s.id;
+
                 opt.textContent = s.nombre;
+
                 selectorSucursal.appendChild(opt);
+
             });
+
         }
+
     }
+
+
 
     async function cargarCatalogoProductos() {
+
         const brutos = await window.nexusAPI.obtenerProductosLocal(idEmpresa);
+
         listaProductos = (brutos || []).map(p => {
+
             let info = typeof p.datos_json === 'string' ? JSON.parse(p.datos_json) : (p.datos_json || {});
+
             return {
+
                 id: p.id || p.producto_ID,
+
                 nombre: info.nombre || p.nombre || "Sin nombre",
+
                 categoria: info.categoria || p.categoria || "General",
+                categoria_nombre: mapaCategorias[info.categoria || p.categoria] || info.categoria || p.categoria || "General",
+
                 unidad: info.unit || p.unit || "UN",
-                codigo: info.codigo || p.codigo || ""
+
+                codigo: info.codigo || p.codigo || "",
+
+                precio_compra: parseFloat(p.precio_compra || info.precio_compra || 0),
+
+                precio: parseFloat(p.precio || info.precio || 0),
+
+                porcentaje_ganancia: parseFloat(p.porcentaje_ganancia || info.porcentaje_ganancia || 0)
+
             };
+
         });
+
     }
+
+
 
     let cargandoInventario = false;
-    window.cargarInventarioEntradas = async function() {
-        if (!idSucursalSeleccionada || cargandoInventario) return;
-        cargandoInventario = true;
+
+
+
+    window.pintarTablaDesdeLocal = async function() {
+
+        if (!idSucursalSeleccionada) return;
+
         try {
+
             const todos = await window.nexusAPI.obtenerProductosLocal(idEmpresa);
+
             const productosBase = (todos || []).filter(p => p.company_id === idEmpresa);
+
             
-            // 🛡️ Utilizamos el puente IPC puro para evitar la colisión de puertos
+
             const stockCentral = await window.nexusAPI.obtenerInventarioSucursal({
+
                 companyId: idEmpresa,
+
                 sucursalId: idSucursalSeleccionada
+
             });
+
+
 
             const inventarioFinal = productosBase.map(prod => {
+
                 const servidorData = (stockCentral || []).find(s => s.producto_id === prod.id);
+
                 return { ...prod, stock_sucursal: servidorData ? servidorData.cantidad_real : 0 };
+
             });
+
+
 
             inventarioFinal.sort((a, b) => {
+
                 return (a.nombre || "").localeCompare((b.nombre || ""), undefined, { numeric: true, sensitivity: 'base' });
+
             });
 
+
+
             datosInventarioActual = inventarioFinal;
+
             aplicarFiltrosInventario();
-        } catch (e) { 
-            console.error("❌ Error carga stock:", e); 
-        } finally {
-            cargandoInventario = false;
+
+        } catch (eLocal) {
+
+            console.error("❌ Error pintando inventario local:", eLocal);
+
         }
+
     };
 
-    window.renderizarTablaEntradas = function(lista) {
-        if (!cuerpoTablaInventario) return;
-        if (lista.length === 0) {
-            cuerpoTablaInventario.innerHTML = '<tr><td colspan="5" class="placeholder-message">Sin productos vinculados.</td></tr>';
-            return;
-        }
 
-        let htmlBuffer = '';
-        lista.forEach(item => {
-            const stock = item.stock_sucursal || 0;
-            const cat = mapaCategorias[item.categoria] || item.categoria || "General";
-            const nombreMayuscula = (item.nombre || '').toUpperCase();
 
-            htmlBuffer += `<tr>
-                <td style="font-weight: bold; color: #2c3e50;">${nombreMayuscula}</td>
-                <td class="text-gray-600">${cat}</td> 
-                <td class="text-center">${item.unit || 'UN'}</td>
-                <td class="text-center font-bold text-blue-600">${stock}</td>
-                <td>
-                    <div class="action-buttons">
-                        <button class="edit-stock-btn" onclick="prepararEdicionStockEntrada('${item.id}')">EDITAR</button>
-                    </div>
-                </td>
-            </tr>`;
-        });
-        cuerpoTablaInventario.innerHTML = htmlBuffer;
-    }
+    async function descargarStockServidor(empresa, sucursal) {
 
-    // --- 6. Registro de Entrada (USANDO IPC LOCAL Y FETCH AL VPS) ---
-    window.registrarEntradaStock = async function() {
-        const cantInput = parseFloat(entradaCantidad.value);
-        if (!idProductoSeleccionado || isNaN(cantInput)) return mostrarAlerta("Datos incompletos.", "warning");
-
-        const cantFinal = modoEdicion ? cantInput : (cantInput * factorEmpaqueSeleccionado);
-
-        // 📦 Payload estructurado para DB Local
-        const payloadLocal = {
-            productoId: idProductoSeleccionado,
-            sucursalId: idSucursalSeleccionada,
-            companyId: idEmpresa,
-            cantidad: cantFinal,
-            operacion: modoEdicion ? 'FIJAR' : 'SUMAR'
-        };
-
-        // 📦 Payload estructurado para Servidor VPS (Nuevo estándar)
-        const payloadVPS = {
-            company_id: idEmpresa,
-            sucursal_id: idSucursalSeleccionada,
-            producto_id: idProductoSeleccionado,
-            operacion: modoEdicion ? 'fijar' : 'sumar',
-            cantidad: cantFinal
-        };
+        if (!empresa || !sucursal || !SERVER_URL || !respaldoActivo || !navigator.onLine) return;
 
         try {
-            botonRegistrar.disabled = true;
-            botonRegistrar.textContent = 'Guardando...';
 
-            let exitoVPS = false;
-            
-            if (respaldoActivo && SERVER_URL && navigator.onLine) {
-                botonRegistrar.textContent = 'Sincronizando con VPS...';
-                try {
-                    const resVPS = await fetch(`${SERVER_URL}/api/maestro/stock/actualizar`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payloadVPS)
-                    });
-                    if (resVPS.ok) {
-                        const jsonVPS = await resVPS.json();
-                        if (jsonVPS.exito || jsonVPS.success) exitoVPS = true;
+            const resp = await fetch(`${SERVER_URL}/api/maestro/inventario/stock?companyId=${encodeURIComponent(empresa)}&sucursalId=${encodeURIComponent(sucursal)}`, {
+
+                signal: AbortSignal.timeout(15000)
+
+            });
+
+            if (resp.ok) {
+
+                const stockServidor = await resp.json();
+
+                if (Array.isArray(stockServidor) && stockServidor.length > 0) {
+
+                    for (const item of stockServidor) {
+
+                        const prodId = item.producto_id || item.id;
+
+                        const cant = parseFloat(item.cantidad_real !== undefined ? item.cantidad_real : item.stock || 0);
+
+                        await window.nexusAPI.guardarStockSucursal({
+
+                            productoId: prodId,
+
+                            sucursalId: sucursal,
+
+                            companyId: empresa,
+
+                            cantidad: cant,
+
+                            operacion: 'FIJAR',
+
+                            datosStock: { estado_sync: 1 }
+
+                        });
+
                     }
-                } catch (vpsError) {
-                    console.error('VPS Sincro fallida (se ignorará para mantener flujo local):', vpsError.message);
+
+                    await window.pintarTablaDesdeLocal();
+
                 }
+
             }
 
-            payloadLocal.datosStock = { estado_sync: exitoVPS ? 1 : 0 };
-            const resLocal = await window.nexusAPI.guardarStockSucursal(payloadLocal);
-            let exitoLocal = resLocal && resLocal.success;
+        } catch (e) {
 
-            if (!exitoLocal) throw new Error(resLocal.error || 'Error crítico al registrar la entrada en disco local.');
+            console.warn("⚠️ No se pudo descargar stock de sucursal desde el VPS:", e.message);
 
-            if (!exitoVPS && respaldoActivo && SERVER_URL && window.nexusAPI.encolarSincronizacion) {
-                await window.nexusAPI.encolarSincronizacion({ 
-                    operacion: 'UPSERT', 
-                    tabla: 'movimientos_stock', 
-                    datos: payloadVPS 
-                });
+        }
+
+    }
+
+    window.cargarInventarioEntradas = async function() {
+
+        if (!idSucursalSeleccionada || cargandoInventario) return;
+
+        cargandoInventario = true;
+
+        try {
+
+            // 1. Mostrar de inmediato datos de SQLite local (0 ms de espera)
+
+            await window.pintarTablaDesdeLocal();
+
+
+
+            // 2. Descargar stock fresco desde el servidor si hay conexión
+
+            if (respaldoActivo && SERVER_URL && navigator.onLine) {
+
+                await descargarStockServidor(idEmpresa, idSucursalSeleccionada);
+
             }
-
-            if (exitoVPS) {
-                mostrarAlerta('✅ ÉXITO: Stock registrado y sincronizado en la nube.', 'success');
-            } else if (respaldoActivo && SERVER_URL) {
-                mostrarAlerta('⚠️ GUARDADO LOCAL: Añadido a la cola de sincronización (Sin conexión/VPS falló).', 'warning');
-            } else {
-                mostrarAlerta('✅ ÉXITO: Stock registrado (Modo 100% Local).', 'success');
-            }
-
-            limpiarFormulario();
-            await window.cargarInventarioEntradas();
 
         } catch (e) { 
-            mostrarAlerta("Error general en el registro.", "error"); 
+
+            console.error("❌ Error carga stock:", e); 
+
         } finally {
-            botonRegistrar.disabled = false;
-            modoEdicion = false;
-            botonRegistrar.textContent = "Registrar Entrada de Inventario";
-            botonRegistrar.classList.replace('bg-amber-500', 'bg-blue-600');
+
+            cargandoInventario = false;
+
         }
+
     };
+
+
+
+    window.renderizarTablaEntradas = function(lista) {
+
+        if (!cuerpoTablaInventario) return;
+
+        if (lista.length === 0) {
+
+            cuerpoTablaInventario.innerHTML = '<tr><td colspan="5" class="placeholder-message">Sin productos vinculados.</td></tr>';
+
+            return;
+
+        }
+
+
+
+        let htmlBuffer = '';
+
+        lista.forEach(item => {
+
+            const stock = item.stock_sucursal || 0;
+
+            const cat = mapaCategorias[item.categoria] || item.categoria || "General";
+
+            const nombreMayuscula = (item.nombre || '').toUpperCase();
+
+
+
+            htmlBuffer += `<tr>
+
+                <td style="font-weight: bold; color: #2c3e50;">${nombreMayuscula}</td>
+
+                <td class="text-gray-600">${cat}</td> 
+
+                <td class="text-center">${item.unit || 'UN'}</td>
+
+                <td class="text-center font-bold text-blue-600">${stock}</td>
+
+                <td>
+
+                    <div class="action-buttons">
+
+                        <button class="edit-stock-btn" onclick="prepararEdicionStockEntrada('${item.id}')">EDITAR</button>
+
+                    </div>
+
+                </td>
+
+            </tr>`;
+
+        });
+
+        cuerpoTablaInventario.innerHTML = htmlBuffer;
+
+    }
+
+
+
+    // --- 6. Registro de Entrada: Validación, Ventana Emergente Guía y Ejecución ---
+
+    window.registrarEntradaStock = function() {
+
+        if (!idSucursalSeleccionada) {
+
+            return mostrarAlerta("Debes seleccionar una sucursal de destino.", "warning");
+
+        }
+
+
+
+        // Determinar ítems a procesar: si hay en el lote se procesa el lote completo; si no, el ítem del formulario directo
+
+        let itemsAProcesar = [];
+
+
+
+        if (itemsLote.length > 0) {
+
+            itemsAProcesar = [...itemsLote];
+
+        } else {
+
+            // Modo directo (1 solo ítem)
+
+            const cantInput = parseFloat(entradaCantidad.value);
+
+            if (!idProductoSeleccionado || isNaN(cantInput) || cantInput <= 0) {
+
+                return mostrarAlerta("Añade al menos un producto a la lista o completa los datos del formulario.", "warning");
+
+            }
+
+
+
+            const cantFinal = modoEdicion ? cantInput : (cantInput * factorEmpaqueSeleccionado);
+
+            const costoEntradaVal = entradaCostoUnitario && !isNaN(parseFloat(entradaCostoUnitario.value)) 
+
+                ? parseFloat(entradaCostoUnitario.value) 
+
+                : null;
+
+
+
+            itemsAProcesar.push({
+
+                productoId: idProductoSeleccionado,
+
+                nombre: productoSeleccionadoObj ? productoSeleccionadoObj.nombre : (entradaBusquedaProducto.value || 'Producto'),
+
+                cantidadFinal: cantFinal,
+
+                costoUnitario: costoEntradaVal,
+
+                subtotal: (costoEntradaVal || 0) * cantFinal,
+
+                operacion: modoEdicion ? 'FIJAR' : 'SUMAR'
+
+            });
+
+        }
+
+
+
+        const proveedorRifVal = selectedProveedorRif || (provSearch ? provSearch.value.trim() : '');
+
+        const facturaRefVal = entradaFacturaRef ? entradaFacturaRef.value.trim() : '';
+
+        const condicionPagoVal = selectorCondicionPago ? selectorCondicionPago.value : 'CONTADO';
+
+
+
+        // Guardar payload pendiente para la confirmación
+
+        payloadPendienteConfirmacion = {
+
+            itemsAProcesar,
+
+            proveedorRifVal,
+
+            facturaRefVal,
+
+            condicionPagoVal
+
+        };
+
+
+
+        // Actualizar subtítulo descriptivo del modal
+
+        if (subtituloModalEntrada) {
+
+            if (itemsAProcesar.length > 1) {
+
+                subtituloModalEntrada.textContent = `Se registrarán ${itemsAProcesar.length} productos en esta entrada.`;
+
+            } else {
+
+                const nombreItem = itemsAProcesar[0].nombre || 'Producto';
+
+                subtituloModalEntrada.textContent = `Se registrará "${nombreItem}" (${itemsAProcesar[0].cantidadFinal} unidades).`;
+
+            }
+
+        }
+
+
+
+        // Mostrar la ventana emergente de confirmación y guía
+
+        if (modalConfirmarEntrada) {
+
+            modalConfirmarEntrada.classList.add('active');
+
+        } else {
+
+            // Si el modal no estuviese en el DOM por alguna razón, proceder directamente
+
+            ejecutarGuardadoEntradaStock(payloadPendienteConfirmacion);
+
+        }
+
+    };
+
+
+
+    // Listeners de la ventana emergente de confirmación
+
+    if (btnModalEntradaCancelar && modalConfirmarEntrada) {
+
+        btnModalEntradaCancelar.addEventListener('click', () => {
+
+            modalConfirmarEntrada.classList.remove('active');
+
+            payloadPendienteConfirmacion = null;
+
+        });
+
+    }
+
+
+
+    if (btnModalEntradaProceder && modalConfirmarEntrada) {
+
+        btnModalEntradaProceder.addEventListener('click', () => {
+
+            modalConfirmarEntrada.classList.remove('active');
+
+            if (payloadPendienteConfirmacion) {
+
+                ejecutarGuardadoEntradaStock(payloadPendienteConfirmacion);
+
+                payloadPendienteConfirmacion = null;
+
+            }
+
+        });
+
+    }
+
+
+
+    if (modalConfirmarEntrada) {
+
+        modalConfirmarEntrada.addEventListener('click', (e) => {
+
+            if (e.target === modalConfirmarEntrada) {
+
+                modalConfirmarEntrada.classList.remove('active');
+
+                payloadPendienteConfirmacion = null;
+
+            }
+
+        });
+
+    }
+
+
+
+    // Ejecución real del guardado y sincronización tras confirmar en el modal
+
+    async function ejecutarGuardadoEntradaStock(payload) {
+
+        const { itemsAProcesar, proveedorRifVal, facturaRefVal, condicionPagoVal } = payload;
+
+        try {
+
+            botonRegistrar.disabled = true;
+
+            const bText = document.getElementById('btn-text-content');
+
+            if (bText) bText.textContent = `Procesando ${itemsAProcesar.length} producto(s)...`;
+
+
+
+            let procesadosLocal = 0;
+
+
+
+            // 1. Guardar cada ítem del lote en la base de datos local
+
+            for (const item of itemsAProcesar) {
+
+                const payloadLocal = {
+
+                    productoId: item.productoId,
+
+                    sucursalId: idSucursalSeleccionada,
+
+                    companyId: idEmpresa,
+
+                    cantidad: item.cantidadFinal,
+
+                    operacion: item.operacion || 'SUMAR',
+
+                    costoUnitario: item.costoUnitario,
+
+                    proveedorRif: proveedorRifVal,
+
+                    facturaReferencia: facturaRefVal,
+
+                    condicionPago: condicionPagoVal,
+
+                    datosStock: { manual: true }
+
+                };
+
+
+
+                const resLocal = await window.nexusAPI.guardarStockSucursal(payloadLocal);
+
+                if (resLocal && resLocal.success) {
+
+                    procesadosLocal++;
+
+                }
+
+            }
+
+
+
+            // 2. Sincronizar el lote agrupado con el Servidor VPS si hay conexión
+
+            let exitoVPS = false;
+
+            const payloadVPS = {
+
+                companyId: idEmpresa,
+
+                company_id: idEmpresa,
+
+                sucursalId: idSucursalSeleccionada,
+
+                sucursal_id: idSucursalSeleccionada,
+
+                proveedorRif: proveedorRifVal,
+
+                facturaReferencia: facturaRefVal,
+
+                items: itemsAProcesar.map(it => ({
+
+                    id: it.productoId,
+
+                    producto_id: it.productoId,
+
+                    cantidad: it.cantidadFinal,
+
+                    operacion: it.operacion || 'SUMAR',
+
+                    costoUnitario: it.costoUnitario
+
+                }))
+
+            };
+
+
+
+            if (respaldoActivo && SERVER_URL && navigator.onLine) {
+
+                if (bText) bText.textContent = 'Sincronizando lote con VPS...';
+
+                try {
+
+                    const resVPS = await fetch(`${SERVER_URL}/api/maestro/inventario/registrar-entrada`, {
+
+                        method: 'POST',
+
+                        headers: { 'Content-Type': 'application/json' },
+
+                        body: JSON.stringify(payloadVPS)
+
+                    });
+
+                    if (resVPS.ok) {
+
+                        const jsonVPS = await resVPS.json();
+
+                        if (jsonVPS.exito || jsonVPS.success) exitoVPS = true;
+
+                    }
+
+                } catch (vpsError) {
+
+                    console.error('VPS Sincro fallida (se mantendrá en cola local):', vpsError.message);
+
+                }
+
+            }
+
+
+
+            if (!exitoVPS && respaldoActivo && SERVER_URL && window.nexusAPI.encolarSincronizacion) {
+
+                await window.nexusAPI.encolarSincronizacion({ 
+
+                    operacion: 'UPSERT', 
+
+                    tabla: 'movimientos_stock', 
+
+                    datos: payloadVPS 
+
+                });
+
+            }
+
+
+
+            // 3. Registrar documento en Cuentas por Pagar con su contenido_fac si se asoció proveedor
+
+            if (proveedorRifVal && window.nexusAPI && window.nexusAPI.guardarMovimientoCxpLocal) {
+
+                const totalMontoFactura = itemsAProcesar.reduce((acc, it) => acc + (parseFloat(it.subtotal) || 0), 0);
+
+                
+
+                // Formatear contenido_fac en JSON con id, nombre, cantidad, precio/costo y subtotal
+
+                const contenidoFactura = itemsAProcesar.map(it => ({
+
+                    id: it.productoId || it.id,
+
+                    nombre: it.nombre || 'Producto',
+
+                    cantidad: parseFloat(it.cantidadFinal || it.cantidadInput || 0),
+
+                    precio: parseFloat(it.costoUnitario || it.precio_compra_actual || 0),
+
+                    costo: parseFloat(it.costoUnitario || it.precio_compra_actual || 0),
+
+                    subtotal: parseFloat(it.subtotal || 0),
+
+                    unidad: it.unidad || 'UN',
+
+                    empaque: it.nombreEmpaque || 'Unidad'
+
+                }));
+
+
+
+                const idMovCxp = `CXP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+                const comprobanteDoc = facturaRefVal || `FAC-${Date.now()}`;
+
+                const esCredito = (condicionPagoVal === 'CREDITO');
+
+                const estadoDoc = esCredito ? 'PENDIENTE' : 'PAGADO';
+
+                const montoAbonadoDoc = esCredito ? 0 : totalMontoFactura;
+
+
+
+                const payloadCxp = {
+
+                    id: idMovCxp,
+
+                    company_id: idEmpresa,
+
+                    proveedor_rif: proveedorRifVal,
+
+                    motivo: 'FACTURA',
+
+                    comprobante: comprobanteDoc,
+
+                    nota: `Entrada de inventario (${itemsAProcesar.length} producto(s)) - ${condicionPagoVal}`,
+
+                    monto: totalMontoFactura,
+
+                    estado: estadoDoc,
+
+                    monto_abonado: montoAbonadoDoc,
+
+                    condicionPago: condicionPagoVal,
+
+                    contenido_fac: JSON.stringify(contenidoFactura)
+
+                };
+
+
+
+                try {
+
+                    const resCxp = await window.nexusAPI.guardarMovimientoCxpLocal(payloadCxp);
+
+                    console.log("📄 [CXP ENTRADA] Movimiento de cuenta por pagar guardado con contenido_fac:", resCxp);
+
+                } catch (errCxp) {
+
+                    console.error("❌ [CXP ENTRADA] Error registrando cuenta por pagar:", errCxp);
+
+                }
+
+            }
+
+
+
+            // Notificación final
+
+            if (exitoVPS) {
+
+                mostrarAlerta(`✅ ÉXITO: ${procesadosLocal} producto(s) registrados y sincronizados con VPS.${proveedorRifVal ? ' Factura y contenido registrados.' : ''}`, 'success');
+
+            } else {
+
+                mostrarAlerta(`✅ ÉXITO: ${procesadosLocal} producto(s) registrados en el inventario local.${proveedorRifVal ? ' Factura y contenido registrados.' : ''}`, 'success');
+
+            }
+
+
+
+            // Limpiar lote temporal y formulario
+
+            itemsLote = [];
+
+            renderizarTablaLote();
+
+            limpiarFormulario();
+
+            await window.pintarTablaDesdeLocal();
+
+
+
+        } catch (e) {
+
+            mostrarAlerta("Error al procesar la entrada: " + e.message, "error");
+
+        } finally {
+
+            botonRegistrar.disabled = false;
+
+            modoEdicion = false;
+
+            renderizarTablaLote();
+
+        }
+
+    }
+
+
 
     window.prepararEdicionStockEntrada = (id) => {
+
         const item = (datosInventarioActual || []).find(p => p.id === id) || (listaProductos || []).find(p => p.id === id);
+
         if (!item) {
+
             console.warn("No se encontró el producto para editar:", id);
+
             return;
+
         }
+
         idProductoSeleccionado = id;
+
         modoEdicion = true;
+
         entradaBusquedaProducto.value = item.nombre || '';
+
         const stock = parseFloat(item.stock_sucursal !== undefined ? item.stock_sucursal : 0);
+
         entradaCantidad.value = stock;
+
         visorStockFinal.value = stock.toFixed(2);
+
         factorEmpaqueSeleccionado = 1;
+
         actualizarSelectEmpaques(id, item.unit || item.unidad || 'UN');
-        botonRegistrar.textContent = "Actualizar Stock Total (Fijar)";
+
+        const bText4 = document.getElementById('btn-text-content'); if(bText4) bText4.textContent = "Actualizar Stock Total (Fijar)"; else botonRegistrar.textContent = "Actualizar Stock Total (Fijar)"; botonRegistrar.style.background = "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)";
+
         if (botonRegistrar.classList.contains('bg-blue-600')) {
+
             botonRegistrar.classList.replace('bg-blue-600', 'bg-amber-500');
+
         }
+
         window.scrollTo({ top: 0, behavior: 'smooth' });
+
     };
 
+
+
     // --- 7. Event Listeners ---
+
     entradaBusquedaProducto.addEventListener('input', (e) => {
+
         const query = e.target.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
         if (query.length < 2) return contenedorResultadosBusqueda.classList.remove('activo');
+
         
-        const filtered = listaProductos.filter(p => p.nombre.toLowerCase().includes(query) || p.codigo.includes(query)).slice(0, 10);
+
+        const filtered = listaProductos.filter(p => {
+            const nom = (p.nombre || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const cod = (p.codigo || '').toLowerCase();
+            const cat = (mapaCategorias[p.categoria] || p.categoria_nombre || p.categoria || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            return nom.includes(query) || cod.includes(query) || cat.includes(query);
+        }).slice(0, 10);
+
         contenedorResultadosBusqueda.innerHTML = '';
+
         if (filtered.length > 0) {
             contenedorResultadosBusqueda.classList.add('activo');
             filtered.forEach(p => {
                 const div = document.createElement('div');
                 div.className = "result-item";
-                div.innerHTML = `<b>${p.nombre}</b> <br> <small>${p.categoria} | ${p.codigo}</small>`;
+                const catNombre = mapaCategorias[p.categoria] || p.categoria_nombre || p.categoria || 'General';
+                const itemInventario = (datosInventarioActual || []).find(it => it.id === p.id);
+                const stockActual = itemInventario && itemInventario.stock_sucursal !== undefined ? parseFloat(itemInventario.stock_sucursal || 0) : (p.stock_sucursal !== undefined ? parseFloat(p.stock_sucursal || 0) : 0);
+                const unidadActual = p.unidad || p.unit || 'UN';
+
+                div.innerHTML = `
+                    <div class="flex justify-between items-center w-full">
+                        <div>
+                            <b>${p.nombre}</b><br>
+                            <small class="text-gray-500">${catNombre} | ${p.codigo || ''}</small>
+                        </div>
+                        <span class="text-red-600 font-bold ml-3 text-sm whitespace-nowrap">Stock: ${stockActual} ${unidadActual}</span>
+                    </div>
+                `;
+
                 div.onclick = () => {
                     idProductoSeleccionado = p.id;
+                    productoSeleccionadoObj = p;
+                    productoSeleccionadoObj.stock_sucursal = stockActual;
                     entradaBusquedaProducto.value = p.nombre;
                     contenedorResultadosBusqueda.classList.remove('activo');
                     actualizarSelectEmpaques(p.id, p.unidad);
+                    calcularYPrevisualizarCostoPonderado();
                 };
+
                 contenedorResultadosBusqueda.appendChild(div);
             });
         }
+
+
     });
 
+
+
     selectorSucursal.addEventListener('change', (e) => {
+
         idSucursalSeleccionada = e.target.value;
+
         currentLetterFilter = '';
+
         if (entradaBusquedaInventario) entradaBusquedaInventario.value = '';
+
         window.cargarInventarioEntradas();
+
     });
+
+
 
     botonRegistrar.addEventListener('click', window.registrarEntradaStock);
 
+
+
     entradaBusquedaInventario.addEventListener('input', () => {
+
         aplicarFiltrosInventario();
+
     });
 
-    // --- 8. Helpers ---
-    async function actualizarSelectEmpaques(id, unidad) {
-        const empaques = await window.nexusAPI.obtenerEmpaquePorProducto(id);
-        selectorEmpaque.innerHTML = `<option value="1">Unidad (1.00 ${unidad})</option>`;
-        selectorEmpaque.disabled = false;
-        (empaques || []).forEach(e => {
-            const opt = document.createElement('option');
-            opt.value = e.factor_cantidad;
-            opt.textContent = `${e.nombre_unidad} (x${e.factor_cantidad})`;
-            selectorEmpaque.appendChild(opt);
+
+
+    // --- 7.0 Lógica del Carrito / Lote Temporal de Productos ---
+
+    function renderizarTablaLote() {
+
+        if (!cuerpoTablaLote || !contenedorLoteTemporal) return;
+
+
+
+        if (itemsLote.length === 0) {
+
+            contenedorLoteTemporal.style.display = 'none';
+
+            if (contadorItemsLote) contadorItemsLote.textContent = '0';
+
+            const bText = document.getElementById('btn-text-content');
+
+            if (bText) bText.textContent = "Registrar Entrada de Inventario";
+
+            if (btnStockIcon) btnStockIcon.className = "fa-solid fa-boxes-stacked";
+
+            botonRegistrar.style.background = "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)";
+
+            return;
+
+        }
+
+
+
+        contenedorLoteTemporal.style.display = 'block';
+
+        if (contadorItemsLote) contadorItemsLote.textContent = itemsLote.length.toString();
+
+
+
+        let html = '';
+
+        let sumaStock = 0;
+
+        let sumaMonto = 0;
+
+
+
+        itemsLote.forEach((it, index) => {
+
+            sumaStock += it.cantidadFinal;
+
+            sumaMonto += (it.subtotal || 0);
+
+
+
+            const costoStr = it.costoUnitario !== null && it.costoUnitario !== undefined 
+
+                ? '$' + Number(it.costoUnitario).toFixed(2) 
+
+                : '<span style="color:#94a3b8;">N/A</span>';
+
+            const subtotalStr = it.subtotal > 0 
+
+                ? '$' + Number(it.subtotal).toFixed(2) 
+
+                : '<span style="color:#94a3b8;">$0.00</span>';
+
+
+
+            html += `
+
+                <tr>
+
+                    <td style="text-align:center; font-weight:600; color:#64748b;">${index + 1}</td>
+
+                    <td style="font-weight:700; color:#1e293b;">
+
+                        ${it.nombre.toUpperCase()}
+
+                        <div style="font-size:0.75rem; color:#64748b; font-weight:normal;">${it.categoria} | ${it.codigo || 'Sin código'}</div>
+
+                    </td>
+
+                    <td style="text-align:center; color:#475569;">${it.nombreEmpaque}</td>
+
+                    <td style="text-align:center; font-weight:600; color:#0f172a;">${it.cantidadInput}</td>
+
+                    <td style="text-align:center; font-weight:700; color:#0284c7;">${it.cantidadFinal} ${it.unidad}</td>
+
+                    <td style="text-align:right; font-weight:600;">${costoStr}</td>
+
+                    <td style="text-align:right; font-weight:700; color:#059669;">${subtotalStr}</td>
+
+                    <td style="text-align:center;">
+
+                        <button type="button" class="btn-quitar-item" onclick="quitarItemDelLote(${index})" title="Quitar de la lista">
+
+                            <i class="fa-solid fa-trash-can"></i>
+
+                        </button>
+
+                    </td>
+
+                </tr>
+
+            `;
+
         });
-        factorEmpaqueSeleccionado = 1;
-        recalcular();
+
+
+
+        cuerpoTablaLote.innerHTML = html;
+
+        if (totalStockLote) totalStockLote.textContent = sumaStock.toFixed(2);
+
+        if (totalMontoLote) totalMontoLote.textContent = '$' + sumaMonto.toFixed(2);
+
+
+
+        const bText = document.getElementById('btn-text-content');
+
+        if (bText) {
+
+            bText.textContent = `Registrar Entrada del Lote (${itemsLote.length} productos) • $${sumaMonto.toFixed(2)}`;
+
+        }
+
+        if (btnStockIcon) btnStockIcon.className = "fa-solid fa-circle-check";
+
+        botonRegistrar.style.background = "linear-gradient(135deg, #059669 0%, #047857 100%)";
+
     }
+
+
+
+    window.quitarItemDelLote = function(index) {
+
+        if (index >= 0 && index < itemsLote.length) {
+
+            itemsLote.splice(index, 1);
+
+            renderizarTablaLote();
+
+        }
+
+    };
+
+
+
+    if (btnVaciarLote) {
+
+        btnVaciarLote.addEventListener('click', () => {
+
+            if (itemsLote.length === 0) return;
+
+            itemsLote = [];
+
+            renderizarTablaLote();
+
+            mostrarAlerta("Lista de entrada vaciada.", "warning");
+
+        });
+
+    }
+
+
+
+    window.agregarProductoAlLote = function() {
+
+        if (!idProductoSeleccionado) {
+
+            return mostrarAlerta("Debes seleccionar un producto primero.", "warning");
+
+        }
+
+
+
+        const cantInput = parseFloat(entradaCantidad.value);
+
+        if (isNaN(cantInput) || cantInput <= 0) {
+
+            return mostrarAlerta("Ingresa una cantidad válida mayor a 0.", "warning");
+
+        }
+
+
+
+        const cantFinal = cantInput * factorEmpaqueSeleccionado;
+
+        const costoEntradaVal = entradaCostoUnitario && !isNaN(parseFloat(entradaCostoUnitario.value)) 
+
+            ? parseFloat(entradaCostoUnitario.value) 
+
+            : null;
+
+        const msgErrorCosto = document.getElementById('msg-error-costo-unitario');
+        const facturaHabilitada = seccionFacturaProveedor && seccionFacturaProveedor.style.display !== 'none';
+        if (facturaHabilitada && (costoEntradaVal === null || costoEntradaVal <= 0)) {
+            if (msgErrorCosto) msgErrorCosto.style.display = 'inline';
+            if (entradaCostoUnitario) {
+                entradaCostoUnitario.style.borderColor = '#ef4444';
+                entradaCostoUnitario.style.borderBottom = '3px solid #dc2626';
+                entradaCostoUnitario.style.backgroundColor = '#fef2f2';
+                entradaCostoUnitario.focus();
+            }
+            return;
+        }
+        if (msgErrorCosto) msgErrorCosto.style.display = 'none';
+        if (entradaCostoUnitario) {
+            entradaCostoUnitario.style.borderColor = '';
+            entradaCostoUnitario.style.borderBottom = '';
+            entradaCostoUnitario.style.backgroundColor = '';
+        }
+
+
+
+        const subtotal = (costoEntradaVal || 0) * cantFinal;
+
+
+
+        const optEmpaque = selectorEmpaque && selectorEmpaque.options[selectorEmpaque.selectedIndex];
+
+        const nombreEmpaque = optEmpaque ? optEmpaque.textContent : 'Unidad';
+
+
+
+        itemsLote.push({
+
+            productoId: idProductoSeleccionado,
+
+            nombre: productoSeleccionadoObj ? productoSeleccionadoObj.nombre : (entradaBusquedaProducto.value || 'Producto'),
+
+            categoria: productoSeleccionadoObj ? productoSeleccionadoObj.categoria : 'General',
+
+            unidad: productoSeleccionadoObj ? (productoSeleccionadoObj.unidad || 'UN') : 'UN',
+
+            codigo: productoSeleccionadoObj ? (productoSeleccionadoObj.codigo || '') : '',
+
+            precio_compra_actual: productoSeleccionadoObj ? productoSeleccionadoObj.precio_compra : 0,
+
+            nombreEmpaque: nombreEmpaque,
+
+            factorEmpaque: factorEmpaqueSeleccionado,
+
+            cantidadInput: cantInput,
+
+            cantidadFinal: cantFinal,
+
+            costoUnitario: costoEntradaVal,
+
+            subtotal: subtotal
+
+        });
+
+
+
+        // Limpiar solo los campos de producto para seguir añadiendo el siguiente
+
+        entradaBusquedaProducto.value = '';
+
+        entradaCantidad.value = '';
+
+        if (entradaCostoUnitario) entradaCostoUnitario.value = '';
+
+        visorStockFinal.value = '0';
+
+        idProductoSeleccionado = null;
+
+        productoSeleccionadoObj = null;
+
+        if (previewCostoPonderado) previewCostoPonderado.style.display = 'none';
+
+
+
+        renderizarTablaLote();
+
+
+
+        // Regresar el foco al buscador para el siguiente producto
+
+        if (entradaBusquedaProducto) entradaBusquedaProducto.focus();
+
+    };
+
+
+
+    if (btnAgregarAlLote) {
+
+        btnAgregarAlLote.addEventListener('click', window.agregarProductoAlLote);
+
+    }
+
+
+
+    // Atajo con tecla Enter en inputs de cantidad y costo para añadir al lote
+
+    [entradaCantidad, entradaCostoUnitario].forEach(inp => {
+
+        if (inp) {
+
+            inp.addEventListener('keydown', (e) => {
+
+                if (e.key === 'Enter') {
+
+                    e.preventDefault();
+
+                    window.agregarProductoAlLote();
+
+                }
+
+            });
+
+        }
+
+    });
+
+
+
+    // --- 7.1 Lógica de Proveedores y Previsualización Costo Ponderado ---
+
+    async function cargarProveedoresLocal() {
+
+        try {
+
+            if (window.nexusAPI && window.nexusAPI.obtenerProveedoresLocal) {
+
+                proveedoresList = await window.nexusAPI.obtenerProveedoresLocal() || [];
+
+            }
+
+        } catch (e) {
+
+            console.warn("No se pudieron cargar los proveedores:", e.message);
+
+        }
+
+    }
+
+
+
+    function closeAllProvLists(elmnt) {
+
+        if (elmnt !== provSearch && provResults) {
+
+            provResults.innerHTML = "";
+
+            provResults.classList.add('hidden');
+
+        }
+
+    }
+
+
+
+    if (provSearch) {
+
+        provSearch.addEventListener('input', function(e) {
+
+            let val = this.value;
+
+            closeAllProvLists();
+
+            if (!val) { 
+
+                selectedProveedorRif = null; 
+
+                selectedProveedorNombre = null; 
+
+                if (badgeProvSeleccionado) {
+
+                    badgeProvSeleccionado.textContent = '';
+
+                    badgeProvSeleccionado.style.display = 'none';
+
+                }
+
+                return; 
+
+            }
+
+            
+
+            let count = 0;
+
+            provResults.classList.remove('hidden');
+
+            
+
+            for (let i = 0; i < proveedoresList.length; i++) {
+
+                let p = proveedoresList[i];
+
+                if (count >= 8) break;
+
+                
+
+                if ((p.nombre && p.nombre.toUpperCase().includes(val.toUpperCase())) || 
+
+                    (p.rif && p.rif.toUpperCase().includes(val.toUpperCase()))) {
+
+                    let b = document.createElement("div");
+
+                    b.className = "autocomplete-item text-sm";
+
+                    b.innerHTML = "<strong>" + p.nombre + "</strong> (" + (p.rif || 'Sin RIF') + ")<br><span class='text-xs text-gray-500'>Deuda: $" + (p.saldo_deuda || 0).toFixed(2) + "</span>";
+
+                    b.addEventListener("click", function() {
+
+                        provSearch.value = p.nombre;
+
+                        selectedProveedorRif = p.rif;
+
+                        selectedProveedorNombre = p.nombre;
+
+                        if (badgeProvSeleccionado) {
+
+                            badgeProvSeleccionado.textContent = '✓ ' + p.nombre + ' (' + (p.rif || 'Sin RIF') + ')';
+
+                            badgeProvSeleccionado.style.display = 'inline-block';
+
+                        }
+
+                        closeAllProvLists();
+
+                    });
+
+                    provResults.appendChild(b);
+
+                    count++;
+
+                }
+
+            }
+
+
+
+            if (count === 0) {
+
+                let b = document.createElement("div");
+
+                b.className = "autocomplete-item text-sm text-gray-400 italic";
+
+                b.textContent = "No se encontraron proveedores coincidentes";
+
+                provResults.appendChild(b);
+
+            }
+
+        });
+
+
+
+        provSearch.addEventListener("keydown", function(e) {
+
+            let x = provResults.querySelectorAll('.autocomplete-item:not(.italic)');
+
+            let currentFocus = Array.from(x).findIndex(item => item.classList.contains('autocomplete-active'));
+
+            if (e.key === "ArrowDown") {
+
+                currentFocus++;
+
+                addActiveProv(x, currentFocus);
+
+            } else if (e.key === "ArrowUp") {
+
+                currentFocus--;
+
+                addActiveProv(x, currentFocus);
+
+            } else if (e.key === "Enter") {
+
+                e.preventDefault();
+
+                if (currentFocus > -1 && x[currentFocus]) {
+
+                    x[currentFocus].click();
+
+                }
+
+            }
+
+        });
+
+    }
+
+
+
+    function addActiveProv(x, currentFocus) {
+
+        if (!x || x.length === 0) return;
+
+        removeActiveProv(x);
+
+        if (currentFocus >= x.length) currentFocus = 0;
+
+        if (currentFocus < 0) currentFocus = (x.length - 1);
+
+        x[currentFocus].classList.add("autocomplete-active");
+
+    }
+
+
+
+    function removeActiveProv(x) {
+
+        for (let i = 0; i < x.length; i++) {
+
+            x[i].classList.remove("autocomplete-active");
+
+        }
+
+    }
+
+
+
+    document.addEventListener("click", function(e) {
+
+        closeAllProvLists(e.target);
+
+    });
+
+
+
+    const contenedorCostoUnitario = document.getElementById('contenedor-costo-unitario');
+
+
+
+    if (btnToggleFactura && seccionFacturaProveedor) {
+
+        btnToggleFactura.addEventListener('click', () => {
+
+            const estaOculto = seccionFacturaProveedor.style.display === 'none';
+
+            if (estaOculto) {
+
+                seccionFacturaProveedor.style.display = 'flex';
+
+                if (contenedorCostoUnitario) contenedorCostoUnitario.style.display = 'flex';
+
+                if (iconToggleFactura) iconToggleFactura.className = 'fa-solid fa-chevron-up';
+
+                textToggleFactura.textContent = 'Ocultar datos de Factura / Proveedor';
+
+                btnToggleFactura.style.background = '#f1f5f9';
+
+                btnToggleFactura.style.color = '#475569';
+
+                btnToggleFactura.style.borderColor = '#cbd5e1';
+
+            } else {
+
+                seccionFacturaProveedor.style.display = 'none';
+
+                if (contenedorCostoUnitario) contenedorCostoUnitario.style.display = 'none';
+
+                if (iconToggleFactura) iconToggleFactura.className = 'fa-solid fa-file-invoice';
+
+                textToggleFactura.textContent = 'Asociar Proveedor y Factura / Documento (Opcional)';
+
+                btnToggleFactura.style.background = '#f0fdf4';
+
+                btnToggleFactura.style.color = '#15803d';
+
+                btnToggleFactura.style.borderColor = '#bbf7d0';
+
+            }
+
+        });
+
+    }
+
+
+
+    function calcularYPrevisualizarCostoPonderado() {
+
+        if (!productoSeleccionadoObj || !previewCostoPonderado) return;
+
+        
+
+        const costoEntrada = parseFloat(entradaCostoUnitario.value);
+
+        const cantEntrada = (parseFloat(entradaCantidad.value) || 0) * factorEmpaqueSeleccionado;
+
+        
+
+        if (isNaN(costoEntrada) || costoEntrada <= 0 || cantEntrada <= 0) {
+
+            previewCostoPonderado.style.display = 'none';
+
+            return;
+
+        }
+
+
+
+        const stockActual = parseFloat(productoSeleccionadoObj.stock_sucursal || 0);
+
+        const costoActual = parseFloat(productoSeleccionadoObj.precio_compra || 0);
+
+
+
+        lblStockActual.textContent = stockActual.toFixed(2);
+
+        lblCostoActual.textContent = '$' + costoActual.toFixed(2);
+
+
+
+        // Fórmula de Costo Promedio Ponderado (CPP)
+
+        let nuevoCostoPonderado = costoEntrada;
+
+        if (stockActual > 0) {
+
+            nuevoCostoPonderado = ((stockActual * costoActual) + (cantEntrada * costoEntrada)) / (stockActual + cantEntrada);
+
+        }
+
+
+
+        lblCostoNuevo.textContent = '$' + nuevoCostoPonderado.toFixed(2);
+
+        previewCostoPonderado.style.display = 'block';
+
+    }
+
+
+
+    if (entradaCostoUnitario) {
+
+        entradaCostoUnitario.addEventListener('input', () => {
+            const val = parseFloat(entradaCostoUnitario.value);
+            if (!isNaN(val) && val > 0) {
+                const msgErrorCosto = document.getElementById('msg-error-costo-unitario');
+                if (msgErrorCosto) msgErrorCosto.style.display = 'none';
+                entradaCostoUnitario.style.borderColor = '';
+                entradaCostoUnitario.style.borderBottom = '';
+                entradaCostoUnitario.style.backgroundColor = '';
+            }
+            calcularYPrevisualizarCostoPonderado();
+        });
+
+    }
+
+
+
+    // --- 8. Helpers ---
+
+    async function actualizarSelectEmpaques(id, unidad) {
+
+        const empaques = await window.nexusAPI.obtenerEmpaquePorProducto(id);
+
+        selectorEmpaque.innerHTML = `<option value="1">Unidad (1.00 ${unidad})</option>`;
+
+        selectorEmpaque.disabled = false;
+
+        (empaques || []).forEach(e => {
+
+            const opt = document.createElement('option');
+
+            opt.value = e.factor_cantidad;
+
+            opt.textContent = `${e.nombre_unidad} (x${e.factor_cantidad})`;
+
+            selectorEmpaque.appendChild(opt);
+
+        });
+
+        factorEmpaqueSeleccionado = 1;
+
+        recalcular();
+
+    }
+
+
 
     function recalcular() {
+
         const cant = parseFloat(entradaCantidad.value) || 0;
+
         if (modoEdicion) {
+
             visorStockFinal.value = cant.toFixed(2);
+
         } else {
+
             const total = cant * factorEmpaqueSeleccionado;
+
             visorStockFinal.value = total.toFixed(2);
+
         }
+
+        calcularYPrevisualizarCostoPonderado();
+
     }
+
+
 
     selectorEmpaque.addEventListener('change', (e) => { factorEmpaqueSeleccionado = parseFloat(e.target.value); recalcular(); });
+
     entradaCantidad.addEventListener('input', recalcular);
 
+
+
     function limpiarFormulario() {
+
         entradaBusquedaProducto.value = '';
+
         entradaCantidad.value = '';
+
         visorStockFinal.value = '0';
+
         idProductoSeleccionado = null;
-        modoEdicion = false;
-        botonRegistrar.textContent = "Registrar Entrada de Inventario";
-        if (botonRegistrar.classList.contains('bg-amber-500')) {
-            botonRegistrar.classList.replace('bg-amber-500', 'bg-blue-600');
+
+        productoSeleccionadoObj = null;
+
+        if (entradaCostoUnitario) entradaCostoUnitario.value = '';
+
+        if (entradaFacturaRef) entradaFacturaRef.value = '';
+
+        if (provSearch) provSearch.value = '';
+
+        selectedProveedorRif = null;
+
+        selectedProveedorNombre = null;
+
+        if (badgeProvSeleccionado) {
+
+            badgeProvSeleccionado.textContent = '';
+
+            badgeProvSeleccionado.style.display = 'none';
+
         }
+
+        closeAllProvLists();
+
+        if (previewCostoPonderado) previewCostoPonderado.style.display = 'none';
+
+        modoEdicion = false;
+
+        botonRegistrar.textContent = "Registrar Entrada de Inventario";
+
+        if (botonRegistrar.classList.contains('bg-amber-500')) {
+
+            botonRegistrar.classList.replace('bg-amber-500', 'bg-blue-600');
+
+        }
+
     }
+
+
 
     function mostrarAlerta(m, t) {
+
         const a = document.createElement('div');
+
         a.textContent = m;
+
         a.style.cssText = `position:fixed; top:20px; right:20px; background:${t==='error'?'#EF4444':t==='warning'?'#F59E0B':'#10B981'}; color:white; padding:15px; border-radius:8px; z-index:10000; font-weight:bold;`;
+
         document.body.appendChild(a);
+
         setTimeout(() => a.remove(), 3000);
+
     }
+
+
 
     // 🔄 Auto-refresco reactivo con Debounce
+
     let timerRefrescoStock = null;
+
     function refrescarTablaDebounced() {
+
         if (timerRefrescoStock) clearTimeout(timerRefrescoStock);
-        timerRefrescoStock = setTimeout(() => {
-            if (typeof window.cargarInventarioEntradas === 'function' && idSucursalSeleccionada) {
-                window.cargarInventarioEntradas();
+
+        timerRefrescoStock = setTimeout(async () => {
+
+            if (typeof window.pintarTablaDesdeLocal === 'function' && idSucursalSeleccionada) {
+
+                await window.pintarTablaDesdeLocal();
+
             }
+
         }, 300);
+
     }
 
+
+
     const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+
     if (api && api.onStockCambiado) {
+
         api.onStockCambiado(refrescarTablaDebounced);
+
     }
+
+
 
     window.addEventListener('stock-actualizado-vps', refrescarTablaDebounced);
 
+
+
     inicializarModulo();
+
 </script>
+
 </body>
+
 </html>
+

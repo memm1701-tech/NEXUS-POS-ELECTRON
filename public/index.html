@@ -95,6 +95,21 @@
         .modal-overlay.open .modal-content {
             transform: translateY(0);
         }
+
+        /* Scrollbar elegante para el contenedor de formularios */
+        #auth-forms-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        #auth-forms-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #auth-forms-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        #auth-forms-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
     </style>
 </head>
 <body class="app-bg flex min-h-screen font-sans m-0 p-0 overflow-hidden">
@@ -174,9 +189,9 @@
                 </div>
             </div>
 
-            <div id="auth-forms-container" class="w-7/12 relative flex flex-col justify-start items-center px-12 pt-10 pb-6 bg-gray-50 h-full">
+            <div id="auth-forms-container" class="w-7/12 relative flex flex-col justify-start items-center px-6 sm:px-12 pt-6 pb-8 bg-gray-50 h-screen max-h-screen overflow-y-auto">
                 
-                <img src="logo_nexus_sin_fondo.png" alt="NEXUS POS Logo" class="w-36 h-36 object-contain mb-2 drop-shadow-sm">
+                <img src="logo_nexus_sin_fondo.png" alt="NEXUS POS Logo" class="w-28 h-28 object-contain mb-1 drop-shadow-sm flex-shrink-0">
                 
                 <div id="login-container" class="w-full max-w-md flex-grow flex flex-col justify-center">
                     <div class="text-center mb-5">
@@ -224,8 +239,8 @@
                     </div>
                 </div>
 
-                <div id="register-company-container" class="hidden w-full max-w-md flex-grow flex flex-col justify-center">
-                    <h1 class="text-2xl font-bold text-center text-gray-800 mb-5">Registrar mi Empresa</h1>
+                <div id="register-company-container" class="hidden w-full max-w-md my-auto py-3 flex flex-col justify-center">
+                    <h1 class="text-2xl font-bold text-center text-gray-800 mb-4">Registrar mi Empresa</h1>
                     <form id="register-company-form" class="w-full">
                         <div class="mb-3">
                             <label for="company-name" class="block text-gray-700 text-sm font-bold mb-1 ml-1 text-left">Nombre de la Empresa</label>
@@ -248,7 +263,7 @@
                                 <input type="email" id="company-admin-email" name="adminEmail" class="w-full pl-10 pr-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition text-sm" placeholder="correo@miempresa.com" required>
                             </div>
                         </div>
-                        <div class="mb-5">
+                        <div class="mb-3">
                             <label for="company-admin-password" class="block text-gray-700 text-sm font-bold mb-1 ml-1 text-left">Contraseña (Admin)</label>
                             <div class="relative">
                                 <span class="absolute inset-y-0 left-0 flex items-center pl-3">
@@ -274,6 +289,18 @@
                                         <i class="material-icons text-[14px]">close</i> Al menos 1 carácter especial
                                     </li>
                                 </ul>
+                            </div>
+                        </div>
+                        <div class="mb-5">
+                            <label for="company-admin-password-confirm" class="block text-gray-700 text-sm font-bold mb-1 ml-1 text-left">Confirmar Contraseña</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                                    <i class="material-icons text-gray-400 text-lg">lock_outline</i>
+                                </span>
+                                <input type="password" id="company-admin-password-confirm" name="adminPasswordConfirm" class="w-full pl-10 pr-10 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition text-sm" placeholder="Repite tu contraseña" required>
+                                <button type="button" class="absolute inset-y-0 right-0 flex items-center pr-3 focus:outline-none" onclick="togglePasswordVisibility('company-admin-password-confirm', this)">
+                                    <i class="material-icons text-gray-400 text-lg hover:text-gray-600 transition">visibility_off</i>
+                                </button>
                             </div>
                         </div>
                         <button type="submit" id="register-company-btn" class="w-full bg-green-600 text-white py-2.5 px-4 rounded-xl hover:bg-green-700 transition-all font-bold shadow-lg shadow-green-200 active:scale-[0.98] text-sm">Registrar Empresa</button>
@@ -436,6 +463,54 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+    
+    <div id="confirm-register-modal" class="modal-overlay hidden">
+        <div class="modal-content w-11/12 max-w-sm sm:max-w-md rounded-2xl p-6">
+            <h2 class="text-xl font-bold mb-2 text-gray-800">Confirmación de Datos</h2>
+            <p class="text-gray-500 mb-4 text-xs">Por favor, confirme que sus datos sean los siguientes:</p>
+            
+            <div class="bg-gray-50 rounded-xl p-4 mb-4 border border-gray-200 text-left space-y-3 text-xs">
+                <div>
+                    <span class="text-gray-400 block font-semibold text-[11px] mb-0.5">Nombre de la Empresa:</span>
+                    <span id="confirm-company-name-val" class="text-gray-800 font-bold text-sm block"></span>
+                </div>
+                <div>
+                    <span class="text-gray-400 block font-semibold text-[11px] mb-0.5">Correo Electrónico (Admin):</span>
+                    <span id="confirm-admin-email-val" class="text-blue-600 font-bold text-sm block break-all"></span>
+                </div>
+                <div>
+                    <span class="text-gray-400 block font-semibold text-[11px] mb-0.5">Contraseña (Admin):</span>
+                    <div class="flex items-center justify-between">
+                        <span id="confirm-admin-password-val" class="text-gray-800 font-mono text-sm tracking-widest font-bold">••••••••</span>
+                        <button type="button" id="toggle-confirm-password-btn" class="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 focus:outline-none ml-2">
+                            <i class="material-icons text-sm" id="toggle-confirm-password-icon">visibility</i>
+                            <span id="toggle-confirm-password-label">Ver</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alerta por si el dominio del correo no coincide o tiene advertencia -->
+            <div id="confirm-email-domain-alert" class="hidden mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-left">
+                <div class="flex items-start gap-2.5">
+                    <i class="material-icons text-amber-500 text-lg flex-shrink-0 mt-0.5">warning_amber</i>
+                    <div class="text-xs text-amber-900">
+                        <p class="font-bold mb-0.5" id="confirm-email-alert-title">Verificación de Correo</p>
+                        <p id="confirm-email-alert-text" class="text-[11px] text-amber-800 leading-relaxed"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-col-reverse sm:flex-row justify-end space-y-2 space-y-reverse sm:space-y-0 sm:space-x-2">
+                <button type="button" id="close-confirm-register-modal" class="px-5 py-2 text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition font-semibold w-full sm:w-auto text-sm">Cancelar</button>
+                <button type="button" id="ignore-email-warning-btn" class="hidden px-4 py-2 text-amber-800 bg-amber-100 border border-amber-300 rounded-xl hover:bg-amber-200 transition font-bold w-full sm:w-auto text-sm">Ignorar</button>
+                <button type="button" id="submit-confirm-register-btn" class="px-5 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition font-bold w-full sm:w-auto shadow-md text-sm flex items-center justify-center">
+                    <span id="confirm-register-text">Confirmo, registrar empresa</span>
+                    <span id="confirm-register-spinner" class="spinner w-4 h-4 border-white border-l-green-400 ml-2 hidden"></span>
+                </button>
+            </div>
         </div>
     </div>
     
@@ -629,8 +704,9 @@
     // 3. LÓGICA DE INTERFAZ Y EVENTOS (AQUÍ EMPIEZA EL DOMContentLoaded)
     // =========================================================================
     document.addEventListener('DOMContentLoaded', async () => {
-        // Inicializamos Firebase de forma segura sin bloquear el módulo
-        await ensureFirebaseInit();
+        const inicioCargaApp = Date.now();
+        // Inicializamos Firebase de forma segura sin bloquear el módulo (timeout rápido para respetar la carga de 2s)
+        await ensureFirebaseInit(1500);
 
         // --- Referencias del DOM ---
         const loadingContainer = document.getElementById('app-loading');
@@ -640,6 +716,7 @@
         const registerCompanyForm = document.getElementById('register-company-form');
         const forgotPasswordForm = document.getElementById('forgot-password-form');
         const forgotPasswordModal = document.getElementById('forgot-password-modal');
+        const confirmRegisterModal = document.getElementById('confirm-register-modal');
         const messageBox = document.getElementById('message-box');
 
         // --- EVENTOS DEL MENÚ INTERACTIVO (TOUR) ---
@@ -666,8 +743,9 @@
         // Leemos si el usuario cerró sesión a propósito previamente
         const explicitLogout = localStorage.getItem('explicit_logout') === 'true';
         
-        // MAGIA: Si viene de cerrar sesión, el tiempo de espera es 0. Si es inicio de app, 7.5s.
-        const tiempoEspera = explicitLogout ? 0 : 7500;
+        // MAGIA: Si viene de cerrar sesión, el tiempo de espera es 0. Si es inicio de app, modulamos para que la carga total sea de 2s.
+        const tiempoTranscurrido = Date.now() - inicioCargaApp;
+        const tiempoEspera = explicitLogout ? 0 : Math.max(0, 1900 - tiempoTranscurrido);
 
         if (auth) {
             onAuthStateChanged(auth, async (user) => {
@@ -990,24 +1068,281 @@
             });
         }
 
+        // =========================================================================
+        // LISTA Y VALIDACIÓN DE EXTENSIONES DE CORREO ELECTRÓNICO
+        // =========================================================================
+        const KNOWN_EMAIL_DOMAINS = [
+            // Google
+            'gmail.com', 'googlemail.com',
+            // Microsoft
+            'hotmail.com', 'hotmail.es', 'hotmail.fr', 'hotmail.co.uk', 'hotmail.it', 'hotmail.de', 'hotmail.com.ar', 'hotmail.com.mx',
+            'outlook.com', 'outlook.es', 'outlook.fr', 'outlook.de', 'outlook.co.uk',
+            'live.com', 'live.es', 'msn.com', 'windowslive.com',
+            // Yahoo
+            'yahoo.com', 'yahoo.es', 'yahoo.fr', 'yahoo.co.uk', 'yahoo.com.ar', 'yahoo.com.mx', 'yahoo.com.ve', 'ymail.com', 'rocketmail.com',
+            // Apple
+            'icloud.com', 'me.com', 'mac.com',
+            // Proveedores populares globales
+            'proton.me', 'protonmail.com', 'zoho.com', 'zohomail.com', 'aol.com',
+            'mail.com', 'gmx.com', 'gmx.es', 'gmx.net', 'fastmail.com', 'tutanota.com', 'tutamail.com',
+            'yandex.com', 'duck.com',
+            // Proveedores de conectividad en Venezuela
+            'cantv.net', 'intercable.net.ve', 'netuno.net'
+        ];
+
+        // Mapeo exhaustivo de errores ortográficos comunes (typos) en el dominio
+        const TYPO_EMAIL_MAP = {
+            // Gmail typos
+            'gmai.com': 'gmail.com',
+            'gamil.com': 'gmail.com',
+            'gmial.com': 'gmail.com',
+            'gmaill.com': 'gmail.com',
+            'gmal.com': 'gmail.com',
+            'gmaik.com': 'gmail.com',
+            'gmaild.com': 'gmail.com',
+            'gmeil.com': 'gmail.com',
+            'gmil.com': 'gmail.com',
+            'gmail.co': 'gmail.com',
+            'gmail.con': 'gmail.com',
+            'gmail.cmo': 'gmail.com',
+            'gmail.cm': 'gmail.com',
+            'gmail.om': 'gmail.com',
+            'gmail.comm': 'gmail.com',
+            'gmail.cl': 'gmail.com',
+            'gma.com': 'gmail.com',
+            'gmai.co': 'gmail.com',
+            'googlemial.com': 'googlemail.com',
+
+            // Hotmail typos
+            'hotmial.com': 'hotmail.com',
+            'hotmai.com': 'hotmail.com',
+            'hotmaill.com': 'hotmail.com',
+            'hotmal.com': 'hotmail.com',
+            'homail.com': 'hotmail.com',
+            'hotamil.com': 'hotmail.com',
+            'hotmeil.com': 'hotmail.com',
+            'hotmaik.com': 'hotmail.com',
+            'hotmail.co': 'hotmail.com',
+            'hotmail.con': 'hotmail.com',
+            'hotmail.cmo': 'hotmail.com',
+            'hotmial.es': 'hotmail.es',
+            'hotmai.es': 'hotmail.es',
+
+            // Outlook typos
+            'outlok.com': 'outlook.com',
+            'outloo.com': 'outlook.com',
+            'otlook.com': 'outlook.com',
+            'outllok.com': 'outlook.com',
+            'outlock.com': 'outlook.com',
+            'autlook.com': 'outlook.com',
+            'outlook.co': 'outlook.com',
+            'outlook.con': 'outlook.com',
+            'outlook.cmo': 'outlook.com',
+
+            // Yahoo typos
+            'yaho.com': 'yahoo.com',
+            'yahooo.com': 'yahoo.com',
+            'yahou.com': 'yahoo.com',
+            'yahoo.co': 'yahoo.com',
+            'yahoo.con': 'yahoo.com',
+            'yahoo.cmo': 'yahoo.com',
+            'yaho.es': 'yahoo.es',
+
+            // iCloud typos
+            'icluod.com': 'icloud.com',
+            'iclud.com': 'icloud.com',
+            'icoud.com': 'icloud.com'
+        };
+
+        function validateEmailDomain(email) {
+            if (!email || !email.includes('@')) {
+                return { isValidFormat: false, isSuspicious: true, message: 'El correo electrónico no tiene un formato válido.' };
+            }
+            const parts = email.split('@');
+            if (parts.length !== 2) {
+                return { isValidFormat: false, isSuspicious: true, message: 'El correo debe tener una sola arroba (@).' };
+            }
+            const user = parts[0].trim();
+            const domain = parts[1].toLowerCase().trim();
+
+            if (!user || !domain || !domain.includes('.')) {
+                return { isValidFormat: false, isSuspicious: true, message: 'El dominio del correo electrónico no parece válido.' };
+            }
+
+            // 1. Detección de typo directo conocido
+            if (TYPO_EMAIL_MAP[domain]) {
+                const suggestion = TYPO_EMAIL_MAP[domain];
+                return {
+                    isValidFormat: true,
+                    isSuspicious: true,
+                    domain,
+                    suggestion,
+                    message: `Detectamos un posible error en el correo: ¿Quiso escribir "@${suggestion}" en lugar de "@${domain}"?`
+                };
+            }
+
+            // 2. Detección de terminaciones erróneas (.con, .cmo, .comm, etc.)
+            if (domain.endsWith('.con') || domain.endsWith('.cmo') || domain.endsWith('.comm') || domain.endsWith('.coom')) {
+                const fixedDomain = domain.replace(/\.(con|cmo|comm|coom)$/, '.com');
+                return {
+                    isValidFormat: true,
+                    isSuspicious: true,
+                    domain,
+                    suggestion: fixedDomain,
+                    message: `La extensión del correo parece tener un error ortográfico. ¿Quiso escribir "@${fixedDomain}"?`
+                };
+            }
+
+            // 3. Dominio conocido y verificado
+            if (KNOWN_EMAIL_DOMAINS.includes(domain)) {
+                return {
+                    isValidFormat: true,
+                    isSuspicious: false,
+                    domain,
+                    suggestion: null,
+                    message: 'Dominio verificado correctamente.'
+                };
+            }
+
+            // 4. Dominio no encontrado en la lista de proveedores conocidos (corporativo o personalizado)
+            return {
+                isValidFormat: true,
+                isSuspicious: true,
+                domain,
+                suggestion: null,
+                message: `El dominio "@${domain}" no coincide con la lista de proveedores habituales (Gmail, Hotmail, Outlook...). Si se trata de un dominio corporativo propio, puede presionar Ignorar.`
+            };
+        }
+
         // Formulario Registro Empresa
         if (registerCompanyForm) {
-            registerCompanyForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const companyName = registerCompanyForm['company-name'].value;
-                const adminEmail = registerCompanyForm['company-admin-email'].value.trim();
-                const adminPassword = registerCompanyForm['company-admin-password'].value.trim();
+            let registrationPendingData = null;
 
-                const registerBtn = document.getElementById('register-company-btn');
-                if (registerBtn) {
-                    registerBtn.disabled = true;
-                    registerBtn.textContent = 'Registrando...';
+            registerCompanyForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const companyName = registerCompanyForm['company-name'].value.trim();
+                const adminEmail = registerCompanyForm['company-admin-email'].value.trim();
+                const adminPassword = registerCompanyForm['company-admin-password'].value;
+                const adminPasswordConfirm = registerCompanyForm['company-admin-password-confirm'].value;
+
+                if (!companyName) {
+                    showMessage("Por favor, ingresa el nombre de la empresa.", "error");
+                    registerCompanyForm['company-name'].focus();
+                    return;
                 }
 
+                if (!adminEmail) {
+                    showMessage("Por favor, ingresa el correo corporativo.", "error");
+                    registerCompanyForm['company-admin-email'].focus();
+                    return;
+                }
+
+                // 1. Validación de contraseña
+                const hasLength = adminPassword.length >= 8;
+                const hasUpper = /[A-Z]/.test(adminPassword);
+                const hasSpecial = /[^A-Za-z0-9]/.test(adminPassword);
+                if (!hasLength || !hasUpper || !hasSpecial) {
+                    showMessage("La contraseña no cumple con los requisitos de seguridad (mínimo 8 caracteres, 1 mayúscula y 1 carácter especial).", "error");
+                    registerCompanyForm['company-admin-password'].focus();
+                    return;
+                }
+
+                // 2. Confirmación de contraseña
+                if (adminPassword !== adminPasswordConfirm) {
+                    showMessage("Las contraseñas no coinciden. Por favor verifíquelas.", "error");
+                    registerCompanyForm['company-admin-password-confirm'].focus();
+                    return;
+                }
+
+                // 3. Validación de dominio de correo
+                const domainCheck = validateEmailDomain(adminEmail);
+                if (!domainCheck.isValidFormat) {
+                    showMessage(domainCheck.message, "error");
+                    registerCompanyForm['company-admin-email'].focus();
+                    return;
+                }
+
+                // Guardamos los datos para procesar tras confirmación
+                registrationPendingData = { companyName, adminEmail, adminPassword };
+
+                // Poblar los datos en el modal de confirmación
+                const companyValEl = document.getElementById('confirm-company-name-val');
+                const emailValEl = document.getElementById('confirm-admin-email-val');
+                const passwordValEl = document.getElementById('confirm-admin-password-val');
+                const togglePassBtn = document.getElementById('toggle-confirm-password-btn');
+                const togglePassIcon = document.getElementById('toggle-confirm-password-icon');
+                const togglePassLabel = document.getElementById('toggle-confirm-password-label');
+
+                if (companyValEl) companyValEl.textContent = companyName;
+                if (emailValEl) emailValEl.textContent = adminEmail;
+
+                // Restablecer vista de contraseña enmascarada
+                let isPasswordRevealed = false;
+                if (passwordValEl) {
+                    passwordValEl.textContent = '••••••••';
+                    passwordValEl.classList.add('tracking-widest');
+                }
+                if (togglePassIcon) togglePassIcon.textContent = 'visibility';
+                if (togglePassLabel) togglePassLabel.textContent = 'Ver';
+
+                if (togglePassBtn) {
+                    togglePassBtn.onclick = () => {
+                        isPasswordRevealed = !isPasswordRevealed;
+                        if (isPasswordRevealed) {
+                            passwordValEl.textContent = adminPassword;
+                            passwordValEl.classList.remove('tracking-widest');
+                            togglePassIcon.textContent = 'visibility_off';
+                            togglePassLabel.textContent = 'Ocultar';
+                        } else {
+                            passwordValEl.textContent = '••••••••';
+                            passwordValEl.classList.add('tracking-widest');
+                            togglePassIcon.textContent = 'visibility';
+                            togglePassLabel.textContent = 'Ver';
+                        }
+                    };
+                }
+
+                // Manejo de advertencia de dominio y botón Ignorar
+                const alertBox = document.getElementById('confirm-email-domain-alert');
+                const alertTitle = document.getElementById('confirm-email-alert-title');
+                const alertText = document.getElementById('confirm-email-alert-text');
+                const ignoreBtn = document.getElementById('ignore-email-warning-btn');
+
+                if (domainCheck.isSuspicious) {
+                    if (alertBox) alertBox.classList.remove('hidden');
+                    if (alertTitle) alertTitle.textContent = domainCheck.suggestion ? "Posible error en el correo" : "Verificación de extensión de correo";
+                    if (alertText) alertText.textContent = domainCheck.message;
+                    if (ignoreBtn) ignoreBtn.classList.remove('hidden');
+                } else {
+                    if (alertBox) alertBox.classList.add('hidden');
+                    if (ignoreBtn) ignoreBtn.classList.add('hidden');
+                }
+
+                // Mostrar el modal de confirmación
+                if (confirmRegisterModal) confirmRegisterModal.classList.remove('hidden');
+            });
+
+            async function procesarRegistroConfirmado() {
+                if (!registrationPendingData) return;
+                const { companyName, adminEmail, adminPassword } = registrationPendingData;
+
+                const submitBtn = document.getElementById('submit-confirm-register-btn');
+                const submitText = document.getElementById('confirm-register-text');
+                const submitSpinner = document.getElementById('confirm-register-spinner');
+                const closeBtn = document.getElementById('close-confirm-register-modal');
+                const ignoreBtn = document.getElementById('ignore-email-warning-btn');
+
+                if (submitBtn) submitBtn.disabled = true;
+                if (closeBtn) closeBtn.disabled = true;
+                if (ignoreBtn) ignoreBtn.disabled = true;
+                if (submitSpinner) submitSpinner.classList.remove('hidden');
+                if (submitText) submitText.textContent = 'Registrando...';
+
                 try {
-                    showMessage("Registrando empresa...", "info"); 
+                    showMessage("Registrando empresa...", "info");
                     const result = await registerCompanyAndAdmin(companyName, adminEmail, adminPassword);
-                    if (result && (result.success || result.message)) { 
+                    if (result && (result.success || result.message)) {
+                        closeModal();
                         esLoginManual = true; // Evitar redirección automática
                         const userCred = await signIn(adminEmail, adminPassword);
                         
@@ -1021,6 +1356,12 @@
                         await signOut(auth);
                         esLoginManual = false;
 
+                        // Limpiar formulario y barra de fuerza
+                        registerCompanyForm.reset();
+                        const strengthContainer = document.getElementById('password-strength-container');
+                        if (strengthContainer) strengthContainer.classList.add('hidden');
+                        registrationPendingData = null;
+
                         // Mostrar modal de verificación
                         const emailSpan = document.getElementById('verify-email-address');
                         if (emailSpan) emailSpan.textContent = adminEmail;
@@ -1030,12 +1371,22 @@
                 } catch (error) {
                     showMessage(error.message, "error");
                 } finally {
-                    const registerBtn = document.getElementById('register-company-btn');
-                    if (registerBtn) {
-                        registerBtn.disabled = false;
-                        registerBtn.textContent = 'Registrar Empresa';
-                    }
+                    if (submitBtn) submitBtn.disabled = false;
+                    if (closeBtn) closeBtn.disabled = false;
+                    if (ignoreBtn) ignoreBtn.disabled = false;
+                    if (submitSpinner) submitSpinner.classList.add('hidden');
+                    if (submitText) submitText.textContent = 'Confirmo, registrar empresa';
                 }
+            }
+
+            document.getElementById('submit-confirm-register-btn')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                procesarRegistroConfirmado();
+            });
+
+            document.getElementById('ignore-email-warning-btn')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                procesarRegistroConfirmado();
             });
         }
 
@@ -1171,6 +1522,7 @@
             if (forgotPasswordModal) forgotPasswordModal.classList.add('hidden');
             const verifyModal = document.getElementById('verify-email-modal');
             if (verifyModal) verifyModal.classList.add('hidden');
+            if (confirmRegisterModal) confirmRegisterModal.classList.add('hidden');
         }
 
         document.getElementById('show-register-company')?.addEventListener('click', (e) => { e.preventDefault(); toggleForms('register-company'); });
@@ -1180,6 +1532,7 @@
         document.getElementById('show-login-from-cashier-login')?.addEventListener('click', (e) => { e.preventDefault(); toggleForms('login'); });
         document.getElementById('show-forgot-password-modal')?.addEventListener('click', (e) => { e.preventDefault(); if (forgotPasswordModal) forgotPasswordModal.classList.remove('hidden'); });
         document.getElementById('close-forgot-password-modal')?.addEventListener('click', (e) => { e.preventDefault(); closeModal(); });
+        document.getElementById('close-confirm-register-modal')?.addEventListener('click', (e) => { e.preventDefault(); closeModal(); });
         document.getElementById('close-verify-email-modal')?.addEventListener('click', (e) => { e.preventDefault(); closeModal(); toggleForms('login'); });
 
     }); 

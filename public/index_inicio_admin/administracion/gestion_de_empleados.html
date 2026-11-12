@@ -409,6 +409,13 @@
                     userCompanyId = sesion.companyId;
                     await cargarSucursales();
                     await cargarEmpleados();
+
+                    // Sincronización silenciosa en segundo plano con VPS
+                    if (window.nexusAPI && window.nexusAPI.sincronizarEmpleados) {
+                        window.nexusAPI.sincronizarEmpleados(userCompanyId).then(() => {
+                            cargarEmpleados();
+                        }).catch(() => {});
+                    }
                 } else {
                     tableBody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 whitespace-nowrap text-sm text-red-500 text-center">No se detectó sesión activa.</td></tr>';
                 }
@@ -483,10 +490,11 @@
             const empId = "EMP-" + Date.now().toString() + Math.floor(Math.random()*1000);
             const nuevoEmpleado = {
                 ID_empleado: empId,
+                company_id: userCompanyId,
                 nombre: document.getElementById('emp-name').value,
                 cedula: document.getElementById('emp-ci').value,
                 cargo: document.getElementById('emp-role').value,
-                sueldo_base: document.getElementById('emp-salary').value,
+                sueldo_base: parseLocalToFloat(document.getElementById('emp-salary').value),
                 telefono: document.getElementById('emp-phone').value,
                 sucursal: bId
             };
@@ -504,10 +512,11 @@
             if (!bId) { showMessage("Debe seleccionar una sucursal.", "error"); return; }
             const empleadoEditado = {
                 ID_empleado: currentEditingId,
+                company_id: userCompanyId,
                 nombre: document.getElementById('emp-name').value,
                 cedula: document.getElementById('emp-ci').value,
                 cargo: document.getElementById('emp-role').value,
-                sueldo_base: document.getElementById('emp-salary').value,
+                sueldo_base: parseLocalToFloat(document.getElementById('emp-salary').value),
                 telefono: document.getElementById('emp-phone').value,
                 sucursal: bId
             };
@@ -529,7 +538,7 @@
             document.getElementById('emp-ci').value = ci;
             document.getElementById('emp-phone').value = telefono === 'null' || telefono === 'undefined' ? '' : telefono;
             document.getElementById('emp-role').value = cargo === 'null' || cargo === 'undefined' ? '' : cargo;
-            document.getElementById('emp-salary').value = sueldo === 'null' || sueldo === 'undefined' ? '' : sueldo;
+            document.getElementById('emp-salary').value = sueldo === 'null' || sueldo === 'undefined' ? '' : formatFloatToLocal(parseFloat(sueldo) || 0);
             
             document.getElementById('add-btn').classList.add('hidden');
             document.getElementById('save-btn').classList.remove('hidden');

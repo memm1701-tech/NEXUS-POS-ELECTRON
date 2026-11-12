@@ -95,6 +95,25 @@
     </div>
 
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex-1 flex flex-col w-full">
+        <!-- ENCABEZADO SUPERIOR CON TOGGLE DE FACTURAS PAGADAS -->
+        <div class="px-5 py-3 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-3 bg-white">
+            <div class="flex items-center gap-3">
+                <h3 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                    <span class="material-icons text-blue-600 text-lg">receipt_long</span>
+                    Asientos y Facturas por Cobrar
+                </h3>
+                <span id="cxc-contador-registros" class="text-xs text-gray-600 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-full font-semibold">
+                    Mostrando 0 registros
+                </span>
+            </div>
+            <div>
+                <button id="btn-toggle-pagadas" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-all shadow-xs cursor-pointer">
+                    <span class="material-icons text-base text-red-600" id="icon-toggle-pagadas">visibility</span>
+                    <span id="txt-toggle-pagadas">Mostrar facturas pagadas</span>
+                </button>
+            </div>
+        </div>
+
         <div class="flex-1 overflow-auto">
             <table class="w-full text-sm text-left relative">
                 <thead class="text-xs text-gray-600 uppercase bg-gray-100 sticky top-0 z-10 shadow-sm">
@@ -259,6 +278,26 @@
     var selectEstado = document.getElementById('filtro-estado');
     var inputFechaInicio = document.getElementById('filtro-fecha-inicio');
     var inputFechaFin = document.getElementById('filtro-fecha-fin');
+    var mostrarFacturasPagadas = false;
+
+    function actualizarBotonTogglePagadas() {
+        const btn = document.getElementById('btn-toggle-pagadas');
+        const icon = document.getElementById('icon-toggle-pagadas');
+        const txt = document.getElementById('txt-toggle-pagadas');
+        if (!btn || !icon || !txt) return;
+
+        if (mostrarFacturasPagadas) {
+            btn.className = "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-gray-300 bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all shadow-xs cursor-pointer";
+            icon.className = "material-icons text-base text-gray-600";
+            icon.textContent = "visibility_off";
+            txt.textContent = "Ocultar facturas pagadas";
+        } else {
+            btn.className = "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-all shadow-xs cursor-pointer";
+            icon.className = "material-icons text-base text-red-600";
+            icon.textContent = "visibility";
+            txt.textContent = "Mostrar facturas pagadas";
+        }
+    }
 
     async function initCuentasCobrar() {
         try {
@@ -279,6 +318,13 @@
 
         await cargarDatosCuentasCobrar();
         configurarEventosFiltros();
+
+        // Sincronización silenciosa en segundo plano con VPS
+        if (window.nexusAPI && window.nexusAPI.sincronizarCuentasCobrar) {
+            window.nexusAPI.sincronizarCuentasCobrar(userCompanyId).then(() => {
+                cargarDatosCuentasCobrar();
+            }).catch(() => {});
+        }
     }
 
    async function cargarDatosCuentasCobrar() {
@@ -298,22 +344,57 @@
             
             var rawData = await response.json();
             
-            cuentasData = rawData.map(item => ({
-                id: item.id,
-                documento: item.cliente_rif || item.cliente_id, 
-                cliente: item.cliente_nombre || item.cliente,
-                monto_bs: item.monto_bs || item.monto_deuda || 0,
-                monto_usd: item.monto_usd || 0,
-                comprobante: item.numero_factura || item.factura_nro || item.comprobante,
-                abono: item.monto_pagado || item.abono || 0,
-                fecha: item.fecha_emision || item.fecha || item.createdAt,
-                estado: item.estado
-            }));
+            cuentasData = rawData.map(item => {
+                var mUsd = parseFloat(item.monto_usd || 0);
+                var mBs = parseFloat(item.monto_bs || item.monto_deuda || item.monto || 0);
+                if (mUsd <= 0 && mBs > 0 && tasaCambioActiva > 0) {
+                    mUsd = parseFloat((mBs / tasaCambioActiva).toFixed(2));
+                }
+                return {
+                    id: item.id,
+                    documento: item.cliente_rif || item.cliente_id || item.rif_cliente || 'S/N', 
+                    cliente: item.cliente_nombre || item.cliente || 'Desconocido',
+                    monto_bs: mBs,
+                    monto_usd: mUsd,
+                    comprobante: item.numero_factura || item.factura_nro || item.comprobante || item.referencia || item.concepto || `CXC-${item.id}`,
+                    abono: parseFloat(item.monto_pagado || item.abono || 0),
+                    fecha: item.fecha_emision || item.fecha || item.createdAt || new Date().toISOString(),
+                    estado: item.estado || 'PENDIENTE'
+                };
+            });
             
-            renderizarTabla(cuentasData);
+            aplicarFiltros();
             
         } catch (error) {
             console.error("Error al cargar cuentas por cobrar:", error);
+            var api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+            if (api && typeof api.obtenerCuentasCobrarLocal === 'function') {
+                try {
+                    var fallbackData = await api.obtenerCuentasCobrarLocal();
+                    if (Array.isArray(fallbackData) && fallbackData.length > 0) {
+                        cuentasData = fallbackData.map(item => {
+                            var mUsd = parseFloat(item.monto_usd || 0);
+                            var mBs = parseFloat(item.monto_bs || item.monto_deuda || item.monto || 0);
+                            if (mUsd <= 0 && mBs > 0 && tasaCambioActiva > 0) {
+                                mUsd = parseFloat((mBs / tasaCambioActiva).toFixed(2));
+                            }
+                            return {
+                                id: item.id,
+                                documento: item.cliente_rif || item.cliente_id || item.rif_cliente || 'S/N', 
+                                cliente: item.cliente_nombre || item.cliente || 'Desconocido',
+                                monto_bs: mBs,
+                                monto_usd: mUsd,
+                                comprobante: item.numero_factura || item.factura_nro || item.comprobante || item.referencia || item.concepto || `CXC-${item.id}`,
+                                abono: parseFloat(item.monto_pagado || item.abono || 0),
+                                fecha: item.fecha_emision || item.fecha || item.createdAt || new Date().toISOString(),
+                                estado: item.estado || 'PENDIENTE'
+                            };
+                        });
+                        aplicarFiltros();
+                        return;
+                    }
+                } catch(eFb) {}
+            }
             tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-8 text-center text-red-500"><i class="material-icons block text-4xl mb-2">error_outline</i>Error de conexión con el Cerebro Maestro Local.</td></tr>`;
         }
     }
@@ -326,9 +407,12 @@
         var totalAbonado = 0;
 
         if (datos.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">No se encontraron registros.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">${mostrarFacturasPagadas ? 'No se encontraron registros.' : 'No hay facturas pendientes por cobrar.'}</td></tr>`;
             actualizarTarjetas(0,0,0);
-            document.getElementById('contador-registros').textContent = `Mostrando 0 registros`;
+            const msgVacio = `Mostrando 0 registros`;
+            document.getElementById('contador-registros').textContent = msgVacio;
+            const topContador = document.getElementById('cxc-contador-registros');
+            if (topContador) topContador.textContent = msgVacio;
             return;
         }
 
@@ -336,10 +420,11 @@
             var montoUsd = parseFloat(item.monto_usd || 0);
             var abonado = parseFloat(item.abono || 0);
             var restante = Math.max(0, montoUsd - abonado);
+            var isPagada = (item.estado === 'PAGADA' || item.estado === 'PAGADO' || restante <= 0.01);
             
             totalGeneral += montoUsd;
             totalAbonado += abonado;
-            if (item.estado === 'PENDIENTE') {
+            if (!isPagada && restante > 0.01) {
                 totalPendiente += restante;
             }
 
@@ -347,10 +432,11 @@
             var fechaFormateada = fechaObj.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
             var horaFormateada = fechaObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 
+            var estadoTexto = isPagada ? 'PAGADA' : (abonado > 0 ? 'ABONADO' : 'PENDIENTE');
             var badgeClass = '';
-            if (item.estado === 'PAGADA') badgeClass = 'bg-green-100 text-green-800 border-green-200';
-            else if (item.estado === 'PENDIENTE') badgeClass = 'bg-yellow-100 text-yellow-800 border-yellow-200';
-            else badgeClass = 'bg-gray-100 text-gray-800 border-gray-200';
+            if (isPagada) badgeClass = 'bg-green-100 text-green-800 border-green-200';
+            else if (abonado > 0) badgeClass = 'bg-blue-100 text-blue-800 border-blue-200';
+            else badgeClass = 'bg-yellow-100 text-yellow-800 border-yellow-200';
 
             var tr = document.createElement('tr');
             tr.className = "hover:bg-blue-50 transition-colors group";
@@ -372,19 +458,19 @@
                 <td class="px-4 py-3 text-right font-medium text-green-600">
                     $${abonado.toFixed(2)}
                 </td>
-                <td class="px-4 py-3 text-right font-bold ${restante > 0 ? 'text-red-500' : 'text-gray-500'}">
+                <td class="px-4 py-3 text-right font-bold ${!isPagada && restante > 0 ? 'text-red-500' : 'text-gray-500'}">
                     $${restante.toFixed(2)}
                 </td>
                 <td class="px-4 py-3 text-center">
                     <span class="px-2.5 py-1 text-xs font-semibold rounded-full border ${badgeClass}">
-                        ${item.estado}
+                        ${estadoTexto}
                     </span>
                 </td>
                 <td class="px-4 py-3 text-center">
                     <button onclick="abrirModalDetalles('${item.comprobante}', '${(item.cliente || '').replace(/'/g, "\\'")}')" class="text-gray-400 hover:text-blue-600 transition-colors p-1" title="Ver Detalles">
                         <i class="material-icons text-xl">visibility</i>
                     </button>
-                    ${item.estado === 'PENDIENTE' ? `
+                    ${!isPagada && restante > 0.01 ? `
                     <button onclick="abrirModalPago('${item.documento}', '${(item.cliente || '').replace(/'/g, "\\'")}')" class="text-gray-400 hover:text-green-600 transition-colors p-1 ml-1" title="Registrar Pago">
                         <i class="material-icons text-xl">payments</i>
                     </button>
@@ -395,7 +481,10 @@
         });
 
         actualizarTarjetas(totalGeneral, totalPendiente, totalAbonado);
-        document.getElementById('contador-registros').textContent = `Mostrando ${datos.length} registros`;
+        const textoContador = mostrarFacturasPagadas ? `Mostrando ${datos.length} registros (Pendientes + Pagadas)` : `Mostrando ${datos.length} pendientes`;
+        document.getElementById('contador-registros').textContent = textoContador;
+        const topContador = document.getElementById('cxc-contador-registros');
+        if (topContador) topContador.textContent = textoContador;
     }
 
     function actualizarTarjetas(total, pendiente, abonado) {
@@ -405,12 +494,23 @@
     }
 
     function aplicarFiltros() {
+        actualizarBotonTogglePagadas();
         var busqueda = inputBuscador.value.toLowerCase().trim();
         var estado = selectEstado.value;
         var fechaInicio = inputFechaInicio.value ? new Date(inputFechaInicio.value + 'T00:00:00') : null;
         var fechaFin = inputFechaFin.value ? new Date(inputFechaFin.value + 'T23:59:59') : null;
 
         var datosFiltrados = cuentasData.filter(item => {
+            var montoUsd = parseFloat(item.monto_usd || 0);
+            var abonado = parseFloat(item.abono || 0);
+            var restante = Math.max(0, montoUsd - abonado);
+            var isPagada = (item.estado === 'PAGADA' || item.estado === 'PAGADO' || restante <= 0.01);
+
+            // Si mostrarFacturasPagadas es false (por defecto), ocultar las pagadas
+            if (!mostrarFacturasPagadas && isPagada) {
+                return false;
+            }
+
             var coincideTexto = !busqueda || 
                 (item.cliente && item.cliente.toLowerCase().includes(busqueda)) || 
                 (item.documento && item.documento.toLowerCase().includes(busqueda)) || 
@@ -430,9 +530,27 @@
 
     function configurarEventosFiltros() {
         inputBuscador.addEventListener('input', aplicarFiltros);
-        selectEstado.addEventListener('change', aplicarFiltros);
+        selectEstado.addEventListener('change', () => {
+            if (selectEstado.value === 'PAGADA') {
+                mostrarFacturasPagadas = true;
+            } else if (selectEstado.value === 'PENDIENTE') {
+                mostrarFacturasPagadas = false;
+            }
+            aplicarFiltros();
+        });
         inputFechaInicio.addEventListener('change', aplicarFiltros);
         inputFechaFin.addEventListener('change', aplicarFiltros);
+
+        const btnToggle = document.getElementById('btn-toggle-pagadas');
+        if (btnToggle) {
+            btnToggle.addEventListener('click', () => {
+                mostrarFacturasPagadas = !mostrarFacturasPagadas;
+                if (!mostrarFacturasPagadas && selectEstado.value === 'PAGADA') {
+                    selectEstado.value = 'TODOS';
+                }
+                aplicarFiltros();
+            });
+        }
     }
 
    // --- NUEVO SISTEMA DINÁMICO DE DISTRIBUCIÓN DE ABONOS ---
@@ -457,7 +575,11 @@
                 return;
             }
 
-            const facturasPendientes = (response.detalles || []).filter(f => f.estado !== 'PAGADA');
+            const facturasPendientes = (response.detalles || []).filter(f => {
+                const est = String(f.estado || '').toUpperCase().trim();
+                const r = (parseFloat(f.monto_usd) || 0) - (parseFloat(f.monto_pagado) || 0);
+                return est !== 'PAGADA' && est !== 'PAGADO' && r > 0.01;
+            });
 
             if (facturasPendientes.length === 0) {
                 alert("No hay facturas pendientes para abonar.");
@@ -606,16 +728,24 @@
                 btn.disabled = true;
                 btn.innerText = "PROCESANDO...";
 
+                const indexSel = parseInt(select.value);
+                const facSel = facturasPendientes[indexSel];
+
                 try {
                     const responseAbono = await window.nexusAPI.registrarAbonoMaestro({
                         cliente_id: rif,
+                        factura_nro: facSel ? facSel.factura_nro : null,
                         monto_bs: montoFinalBs,
+                        company_id: userCompanyId || null,
                         tasa: tasa
                     });
 
                     if (responseAbono && responseAbono.exito) {
                         document.getElementById('modal-prompt-pago').remove();
-                        await cargarDatosCuentasCobrar(); // Recarga la tabla de atrás
+                        await cargarDatosCuentasCobrar(); // Recarga la tabla de atrás primero
+                        if (window.nexusAPI.sincronizarCuentasCobrar) {
+                            window.nexusAPI.sincronizarCuentasCobrar(userCompanyId).catch(() => {});
+                        }
                     } else {
                         alert("Error del Maestro: " + (responseAbono.mensaje || "Rechazado por el núcleo de base de datos."));
                         btn.disabled = false;
@@ -668,13 +798,17 @@
                 var response = await window.nexusAPI.registrarAbonoMaestro({
                     cliente_id: rif,
                     monto_bs: montoBs,
+                    company_id: userCompanyId || null,
                     tasa: tasaCambioActiva
                 });
 
                 if (response && response.exito) {
                     alert("¡Abono liquidado y aplicado con éxito en tiempo real!");
                     cerrarModalPago();
-                    await cargarDatosCuentasCobrar(); // Recarga síncrona
+                    await cargarDatosCuentasCobrar(); // Recarga inmediata
+                    if (window.nexusAPI.sincronizarCuentasCobrar) {
+                        window.nexusAPI.sincronizarCuentasCobrar(userCompanyId).catch(() => {});
+                    }
                 } else {
                     alert("Error del Maestro: " + (response.mensaje || "Rechazado por el núcleo de base de datos."));
                 }

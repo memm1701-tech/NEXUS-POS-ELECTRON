@@ -529,7 +529,7 @@
             try {
                 const planLocal = await window.nexusAPI.obtenerPlanLocal(userCompanyId);
                 const nombrePlan = planLocal?.nombre_plan || 'SIN PLAN';
-                const maxBranches = parseInt(planLocal?.MULTI_BRANCH_MAX) || 1;
+                const maxBranches = parseInt(planLocal?.max_multi_branch ?? planLocal?.MULTI_BRANCH_MAX) || 1;
                 
                 const sucursalesLocales = await window.nexusAPI.obtenerSucursalesLocal(userCompanyId);
                 const listaLocalesSegura = Array.isArray(sucursalesLocales) ? sucursalesLocales : [];

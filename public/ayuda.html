@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guía de Ayuda - NEXUS POS</title>
+    <!-- Fuentes Google: Plus Jakarta Sans y Instrument Serif / Playfair Display -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Playfair+Display:ital,wght@1,400;1,500;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --background: 0 0% 100%;
+            --foreground: 240 10% 3.9%;
+            --border: 240 5.9% 90%;
+            --radius: 0.5rem;
+        }
+
+        .font-sans-bold {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-weight: 800;
+            letter-spacing: -0.035em;
+        }
+
+        .font-serif-italic {
+            font-family: 'Instrument Serif', 'Playfair Display', Georgia, serif;
+            font-style: italic;
+            font-weight: 400;
+            letter-spacing: -0.015em;
+        }
+
+        /* Fondo suave: colores muy tenues fundiéndose con el blanco absoluto en todos los bordes */
+        .hero-glow-bg {
+            background-color: #ffffff;
+            background-image: 
+                radial-gradient(ellipse 48% 55% at 20% 50%, rgba(219, 234, 254, 0.45) 0%, rgba(239, 246, 255, 0.2) 50%, rgba(255, 255, 255, 0) 80%),
+                radial-gradient(ellipse 48% 55% at 80% 50%, rgba(254, 249, 195, 0.45) 0%, rgba(254, 252, 232, 0.2) 50%, rgba(255, 255, 255, 0) 80%);
+            background-repeat: no-repeat;
+        }
+
+        /* Ripple Keyframes */
+        @keyframes ripple {
+            0% {
+                opacity: 0;
+                background-size: 0 0;
+                transform: scale(0.1);
+                -webkit-mask-image: radial-gradient(circle at center, black 0%, black 0%, transparent 2%, transparent 100%);
+                mask-image: radial-gradient(circle at center, black 0%, black 0%, transparent 2%, transparent 100%);
+            }
+            10% {
+                opacity: 1;
+                background-size: 16px 16px;
+                transform: scale(0.2);
+                -webkit-mask-image: radial-gradient(circle at center, black 0%, black 8%, transparent 12%, transparent 100%);
+                mask-image: radial-gradient(circle at center, black 0%, black 8%, transparent 12%, transparent 100%);
+            }
+            20% {
+                transform: scale(0.3);
+                -webkit-mask-image: radial-gradient(circle at center, black 0%, black 18%, transparent 22%, transparent 100%);
+                mask-image: radial-gradient(circle at center, black 0%, black 18%, transparent 22%, transparent 100%);
+            }
+            30% {
+                transform: scale(0.4);
+                -webkit-mask-image: radial-gradient(circle at center, black 0%, black 28%, transparent 32%, transparent 100%);
+                mask-image: radial-gradient(circle at center, black 0%, black 28%, transparent 32%, transparent 100%);
+            }
+            40% {
+                transform: scale(0.5);
+                -webkit-mask-image: radial-gradient(circle at center, transparent 0%, black 38%, transparent 42%, transparent 100%);
+                mask-image: radial-gradient(circle at center, transparent 0%, black 38%, transparent 42%, transparent 100%);
+            }
+            50% {
+                transform: scale(0.6);
+                -webkit-mask-image: radial-gradient(circle at center, transparent 0%, black 48%, transparent 52%, transparent 100%);
+                mask-image: radial-gradient(circle at center, transparent 0%, black 48%, transparent 52%, transparent 100%);
+            }
+            60% {
+                transform: scale(0.7);
+                -webkit-mask-image: radial-gradient(circle at center, transparent 0%, black 58%, transparent 62%, transparent 100%);
+                mask-image: radial-gradient(circle at center, transparent 0%, black 58%, transparent 62%, transparent 100%);
+            }
+            70% {
+                transform: scale(0.8);
+                -webkit-mask-image: radial-gradient(circle at center, transparent 0%, black 68%, transparent 72%, transparent 100%);
+                mask-image: radial-gradient(circle at center, transparent 0%, black 68%, transparent 72%, transparent 100%);
+            }
+            80% {
+                transform: scale(0.9);
+                -webkit-mask-image: radial-gradient(circle at center, transparent 0%, black 78%, transparent 82%, transparent 100%);
+                mask-image: radial-gradient(circle at center, transparent 0%, black 78%, transparent 82%, transparent 100%);
+            }
+            90% {
+                transform: scale(0.95);
+                -webkit-mask-image: radial-gradient(circle at center, transparent 0%, black 88%, transparent 92%, transparent 100%);
+                mask-image: radial-gradient(circle at center, transparent 0%, black 88%, transparent 92%, transparent 100%);
+            }
+            100% {
+                opacity: 0;
+                background-size: 0 0;
+                transform: scale(1);
+                -webkit-mask-image: radial-gradient(circle at center, transparent 0%, transparent 100%);
+                mask-image: radial-gradient(circle at center, transparent 0%, transparent 100%);
+            }
+        }
+
+        .lab-bg {
+            --mask-offset: 40px;
+            -webkit-mask: linear-gradient(to bottom, transparent, #fff var(--mask-offset) calc(100% - var(--mask-offset)), transparent), linear-gradient(to right, transparent, #fff var(--mask-offset) calc(100% - var(--mask-offset)), transparent);
+            mask: linear-gradient(to bottom, transparent, #fff var(--mask-offset) calc(100% - var(--mask-offset)), transparent), linear-gradient(to right, transparent, #fff var(--mask-offset) calc(100% - var(--mask-offset)), transparent);
+            -webkit-mask-composite: source-in, xor;
+            mask-composite: intersect;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            perspective: 1000;
+        }
+
+        .lab-bg::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(#ffffff40 1px, transparent 1px);
+            -webkit-mask-image: radial-gradient(circle at center, transparent 0%, transparent 100%);
+            mask-image: radial-gradient(circle at center, transparent 0%, transparent 100%);
+            animation: ripple 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            will-change: transform, mask-image, -webkit-mask-image, background-size, opacity;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            perspective: 1000;
+        }
+
+        /* Botón animado interactivo */
+        .btn-ripple-wrapper {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1px;
+            border-radius: 9999px;
+            background: linear-gradient(135deg, rgba(203, 213, 225, 0.7), rgba(241, 245, 249, 0.3), rgba(203, 213, 225, 0.7));
+            box-shadow: 0 4px 15px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -2px rgba(0, 0, 0, 0.03);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-ripple-wrapper:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.08), 0 4px 10px -2px rgba(0, 0, 0, 0.04);
+            background: linear-gradient(135deg, rgba(148, 163, 184, 0.9), rgba(241, 245, 249, 0.6), rgba(148, 163, 184, 0.9));
+        }
+
+        .btn-ripple-inner {
+            position: relative;
+            overflow: hidden;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.65rem;
+            padding: 0.9rem 2.25rem;
+            border-radius: 9999px;
+            background-color: #0f172a;
+            color: #ffffff;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+
+        .btn-ripple-wrapper:hover .btn-ripple-inner {
+            background-color: #020617;
+        }
+
+        /* Onda expansiva suave al hacer clic */
+        .click-wave {
+            position: absolute;
+            border-radius: 50%;
+            transform: scale(0);
+            animation: wave 0.75s ease-out;
+            background: rgba(255, 255, 255, 0.35);
+            pointer-events: none;
+        }
+
+        @keyframes wave {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        /* Animaciones para transiciones fluidas */
+        .fade-out {
+            opacity: 0 !important;
+            transform: scale(0.97) translateY(-8px);
+            pointer-events: none;
+            transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .fade-in-tutorial {
+            opacity: 1 !important;
+            transform: translateY(0) !important;
+            pointer-events: auto !important;
+            transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* Transición entre bloques de pasos */
+        .step-block {
+            display: none;
+            opacity: 0;
+            transform: translateY(12px);
+            transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .step-block.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Imagen estática sin recuadros envolventes y sin zoom */
+        .static-img-container {
+            position: relative;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            display: inline-block;
+            max-width: 100%;
+        }
+        .static-img-container img {
+            display: block;
+            width: auto;
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+            transform: none !important;
+            transition: none !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.03);
+            border: 1px solid #e2e8f0;
+        }
+
+        /* Enlaces del menú lateral derecho (TOC) */
+        .toc-link {
+            position: relative;
+            display: block;
+            padding: 0.35rem 0.75rem 0.35rem 1rem;
+            font-size: 0.85rem;
+            color: #64748b;
+            text-decoration: none;
+            border-left: 2px solid #e2e8f0;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            line-height: 1.35;
+        }
+        .toc-link:hover {
+            color: #1e293b;
+            border-left-color: #94a3b8;
+            background-color: rgba(241, 245, 249, 0.5);
+        }
+        .toc-link.active {
+            color: #2563eb;
+            font-weight: 700;
+            border-left-color: #2563eb;
+            background-color: rgba(239, 246, 255, 0.7);
+        }
+        .toc-sublink {
+            padding-left: 1.75rem;
+            font-size: 0.8rem;
+        }
+
+        /* Scroll suave */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Offset para que el scroll no tape los encabezados por debajo del header sticky */
+        .scroll-mt-fixed {
+            scroll-margin-top: 140px;
+        }
+
+        /* Estilos y transiciones suaves para el acordeón de FAQ */
+        .faq-accordion-item {
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .faq-accordion-item.open {
+            box-shadow: 0 4px 12px -2px rgba(37, 99, 235, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.03);
+            border-color: #cbd5e1;
+            background-color: #ffffff;
+        }
+        .faq-content-wrapper {
+            display: grid;
+            grid-template-rows: 0fr;
+            transition: grid-template-rows 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+            opacity: 0;
+        }
+        .faq-accordion-item.open .faq-content-wrapper {
+            grid-template-rows: 1fr;
+            opacity: 1;
+        }
+        .faq-content-inner {
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="bg-white text-gray-900 antialiased selection:bg-amber-100 selection:text-amber-900 min-h-screen">
+
+    <div class="hero-glow-bg w-full min-h-screen flex flex-col items-center justify-start relative select-none">
+        
+        <!-- VISTA INICIAL (HERO): ¿No sabes cómo empezar? Bienvenido a la guía de comienzo -->
+        <div id="vista-hero" class="w-full min-h-[90vh] flex flex-col items-center justify-center px-6 py-12 transition-all duration-500">
+            <div class="max-w-4xl w-full mx-auto text-center flex flex-col items-center justify-center">
+                
+                <!-- Texto simple sin recuadro ni punto azul -->
+                <p class="text-sm sm:text-base font-semibold text-gray-500 tracking-wide mb-5">
+                    ¿No sabes cómo empezar?
+                </p>
+
+                <!-- Título Principal con estilo tipográfico exacto -->
+                <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-sans-bold text-gray-900 leading-[1.08] tracking-tight mb-8">
+                    Bienvenido a la guía de<br>
+                    <span class="font-serif-italic text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-normal text-gray-900">
+                        comienzo
+                    </span>
+                </h1>
+
+                <!-- Botones de Acción: Comenzar tutorial y Explorar módulos centrados -->
+                <div class="mt-2 flex items-center justify-center gap-3.5 flex-wrap">
+                    <!-- Botón Comenzar tutorial -->
+                    <div class="btn-ripple-wrapper">
+                        <button id="btnEmpezar" class="btn-ripple-inner group" onclick="comenzarTutorial(event)">
+                            <!-- Capa animada lab-bg con efecto ripple -->
+                            <div class="lab-bg absolute inset-0 pointer-events-none opacity-40 group-hover:opacity-75 transition-opacity duration-500"></div>
+
+                            <!-- Texto del botón -->
+                            <span class="relative z-10 font-semibold tracking-tight">
+                                Comenzar tutorial
+                            </span>
+
+                            <!-- Flecha interactiva -->
+                            <svg class="relative z-10 w-4 h-4 text-gray-300 group-hover:text-white group-hover:translate-x-1 transition-all duration-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Botón Explorar módulos -->
+                    <button id="btnExplorarModulos" type="button" class="group relative inline-flex items-center gap-2.5 px-6 py-3.5 rounded-full bg-white/95 hover:bg-white text-gray-800 hover:text-gray-900 border border-gray-300/80 hover:border-gray-400 font-semibold text-sm sm:text-base tracking-tight shadow-2xs hover:shadow-sm transition-all duration-200 cursor-pointer select-none" onclick="cargarModulosSistema(event)">
+                        <svg class="w-4 h-4 text-blue-600 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"></path>
+                        </svg>
+                        <span class="relative z-10">Explorar módulos</span>
+                    </button>
+                </div>
+
+                <!-- SECCIÓN DE PREGUNTAS FRECUENTES (FAQ) -->
+                <div class="w-full max-w-3xl mt-16 text-left">
+                    <div class="text-center mb-8">
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-600 border border-blue-100">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"></path></svg>
+                            Dudas iniciales
+                        </span>
+                        <h2 class="text-2xl sm:text-3xl font-normal text-gray-800 tracking-tight mt-2">
+                            Preguntas Frecuentes
+                        </h2>
+                        <p class="text-sm text-gray-500 mt-1 max-w-md mx-auto">
+                            Respuestas rápidas a las consultas más habituales sobre la operación del sistema.
+                        </p>
+                    </div>
+
+                    <!-- Acordeón de FAQs -->
+                    <div class="space-y-2.5">
+                        <!-- FAQ 1: Módulo de Facturación (Principal requerimiento) -->
+                        <div class="faq-accordion-item border border-gray-200/90 rounded-xl bg-white/90 backdrop-blur-sm overflow-hidden shadow-2xs hover:border-gray-300">
+                            <button type="button" class="w-full px-4 py-2.5 text-left flex items-center justify-between gap-3 text-sm font-normal text-gray-800 hover:text-blue-600 transition-colors cursor-pointer select-none" onclick="toggleFaq(this)">
+                                <span class="truncate">¿Cómo entro al módulo de facturación?</span>
+                                <svg class="faq-chevron w-4 h-4 text-gray-400 transition-transform duration-300 transform flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"></path>
+                                </svg>
+                            </button>
+                            <div class="faq-content-wrapper">
+                                <div class="faq-content-inner px-4 pb-3.5 pt-1 text-xs sm:text-sm text-gray-600 border-t border-gray-100 space-y-2.5 leading-relaxed">
+                                    <p>
+                                        El módulo de facturación está diseñado para funcionar exclusivamente desde el perfil de <strong class="text-gray-900">Cajera</strong> por motivos de seguridad y arqueo de caja. Si actualmente estás en la cuenta de Administrador, debes realizar el siguiente proceso:
+                                    </p>
+                                    <ol class="list-decimal list-inside space-y-1.5 pl-1 bg-slate-50/80 p-2.5 rounded-lg border border-slate-100 text-gray-700">
+                                        <li><strong class="text-gray-900">Crear la cajera:</strong> Dirígete al menú lateral izquierdo &rarr; <em>Datos Básicos</em> &rarr; <em>Gestión de Cajeras</em>. Registra un nombre, correo y contraseña.</li>
+                                        <li><strong class="text-gray-900">Asignar sucursal:</strong> Asegúrate de asignarle la sucursal activa en la que facturará.</li>
+                                        <li><strong class="text-gray-900">Cerrar sesión de Administrador:</strong> Ve a la esquina inferior izquierda o perfil y haz clic en <em>Cerrar Sesión</em>.</li>
+                                        <li><strong class="text-gray-900">Iniciar sesión como Cajera:</strong> En la pantalla de login, selecciona ingresar como cajera e introduce las credenciales que creaste.</li>
+                                        <li><strong class="text-gray-900">Facturar:</strong> Una vez dentro del panel de cajera, verás directamente el módulo de <em>Punto de Venta / Facturación</em> listo para procesar ventas.</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- FAQ 2: Caja Hija / Terminales Secundarias -->
+                        <div class="faq-accordion-item border border-gray-200/90 rounded-xl bg-white/90 backdrop-blur-sm overflow-hidden shadow-2xs hover:border-gray-300">
+                            <button type="button" class="w-full px-4 py-2.5 text-left flex items-center justify-between gap-3 text-sm font-normal text-gray-800 hover:text-blue-600 transition-colors cursor-pointer select-none" onclick="toggleFaq(this)">
+                                <span class="truncate">¿Cómo conecto una computadora como Caja Hija?</span>
+                                <svg class="faq-chevron w-4 h-4 text-gray-400 transition-transform duration-300 transform flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"></path>
+                                </svg>
+                            </button>
+                            <div class="faq-content-wrapper">
+                                <div class="faq-content-inner px-4 pb-3.5 pt-1 text-xs sm:text-sm text-gray-600 border-t border-gray-100 leading-relaxed">
+                                    <p>
+                                        En la computadora secundaria que funcionará como terminal de cobro: dirígete a <em>Configuración &rarr; Configuración del Sistema &rarr; Red Local</em>. Asegúrate de <strong class="text-gray-900">desactivar</strong> la casilla <em>"Esta PC es el Servidor (Main)"</em>, escribe la dirección IP local de tu computadora principal (servidor), guarda los cambios y reinicia la aplicación.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- FAQ 3: Tasa de cambio del día -->
+                        <div class="faq-accordion-item border border-gray-200/90 rounded-xl bg-white/90 backdrop-blur-sm overflow-hidden shadow-2xs hover:border-gray-300">
+                            <button type="button" class="w-full px-4 py-2.5 text-left flex items-center justify-between gap-3 text-sm font-normal text-gray-800 hover:text-blue-600 transition-colors cursor-pointer select-none" onclick="toggleFaq(this)">
+                                <span class="truncate">¿Dónde configuro o actualizo la Tasa del Día?</span>
+                                <svg class="faq-chevron w-4 h-4 text-gray-400 transition-transform duration-300 transform flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"></path>
+                                </svg>
+                            </button>
+                            <div class="faq-content-wrapper">
+                                <div class="faq-content-inner px-4 pb-3.5 pt-1 text-xs sm:text-sm text-gray-600 border-t border-gray-100 leading-relaxed">
+                                    <p>
+                                        El sistema actualiza automáticamente la tasa del Banco Central si cuentas con conexión a internet. Si necesitas fijarla manualmente, ve a la sección <em>Tasa de Cambio</em> en el panel principal o en <em>Configuración del Sistema</em> para establecer el valor global en bolívares por dólar.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- FAQ 4: Venta sin inventario -->
+                        <div class="faq-accordion-item border border-gray-200/90 rounded-xl bg-white/90 backdrop-blur-sm overflow-hidden shadow-2xs hover:border-gray-300">
+                            <button type="button" class="w-full px-4 py-2.5 text-left flex items-center justify-between gap-3 text-sm font-normal text-gray-800 hover:text-blue-600 transition-colors cursor-pointer select-none" onclick="toggleFaq(this)">
+                                <span class="truncate">¿Puedo facturar productos si aún no he cargado inventario?</span>
+                                <svg class="faq-chevron w-4 h-4 text-gray-400 transition-transform duration-300 transform flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"></path>
+                                </svg>
+                            </button>
+                            <div class="faq-content-wrapper">
+                                <div class="faq-content-inner px-4 pb-3.5 pt-1 text-xs sm:text-sm text-gray-600 border-t border-gray-100 leading-relaxed">
+                                    <p>
+                                        Sí, pero debes habilitar la opción en <em>Configuración &rarr; Configuración del Sistema &rarr; Facturación</em> marcando <em>"Permitir facturación sin existencia (stock negativo)"</em>. De lo contrario, el sistema te solicitará realizar una carga inicial o compra en el módulo de Inventario antes de despachar el producto.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- VISTA DEL TUTORIAL: Se muestra al hacer clic en "Comenzar tutorial" -->
+        <div id="vista-tutorial" class="w-full opacity-0 transform translate-y-6 pointer-events-none hidden transition-all duration-500">
+            
+            <!-- ENCABEZADO SUPERIOR FIJO (STICKY HEADER): Permanece visible al hacer scroll -->
+            <div class="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-xs transition-all">
+                <div class="w-full px-6 sm:px-10 py-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <!-- Título a la izquierda -->
+                    <div class="text-left flex-shrink-0">
+                        <p class="text-xs sm:text-sm font-semibold tracking-wider uppercase text-blue-600 mb-0.5">
+                            Tutorial de Configuración Inicial
+                        </p>
+                        <h2 class="text-2xl sm:text-3xl lg:text-4xl font-sans-bold text-gray-900 leading-tight">
+                            Bienvenido a la guía de 
+                            <span class="font-serif-italic text-3xl sm:text-4xl lg:text-5xl font-normal text-gray-900 ml-1">comienzo</span>
+                        </h2>
+                    </div>
+
+                    <!-- Barra de Búsqueda Moderna con Atajo de Teclado (Ctrl+K) y Autocomplete -->
+                    <div class="relative w-full md:w-80 lg:w-96 flex-shrink-0">
+                        <div class="relative flex items-center">
+                            <!-- Icono de lupa -->
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"></path>
+                                </svg>
+                            </div>
+
+                            <!-- Input de búsqueda -->
+                            <input 
+                                type="text" 
+                                id="inputBusquedaGuia" 
+                                placeholder="Buscar en la guía... (ej. servidor, cajera, tasa)" 
+                                autocomplete="off"
+                                oninput="filtrarBusquedaGuia(this.value)"
+                                onfocus="mostrarResultadosBusqueda()"
+                                onkeydown="manejarTeclasBusqueda(event)"
+                                class="w-full pl-10 pr-20 py-2.5 bg-slate-50/90 hover:bg-white focus:bg-white text-sm text-gray-900 placeholder-gray-400 rounded-xl border border-gray-200/90 shadow-xs focus:outline-none focus:border-blue-500 focus:ring-3 focus:ring-blue-500/15 transition-all duration-200"
+                            />
+
+                            <!-- Badge de atajo Ctrl + K -->
+                            <div class="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none">
+                                <kbd class="hidden sm:inline-flex items-center gap-0.5 px-2 py-0.5 text-[11px] font-semibold text-gray-400 bg-white border border-gray-200 rounded-md shadow-2xs">
+                                    <span class="text-xs">⌘</span>K
+                                </kbd>
+                            </div>
+                        </div>
+
+                        <!-- Dropdown flotante de resultados -->
+                        <div id="dropdownResultadosBusqueda" class="hidden absolute left-0 right-0 top-full mt-2 bg-white/95 backdrop-blur-md rounded-2xl border border-gray-200 shadow-xl overflow-hidden z-50 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150">
+                            <div id="listaResultadosBusqueda" class="p-2 space-y-1">
+                                <!-- Resultados dinámicos generados por JS -->
+                            </div>
+                            <div id="sinResultadosBusqueda" class="hidden p-6 text-center text-sm text-gray-500">
+                                <svg class="w-8 h-8 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"></path></svg>
+                                No se encontraron pasos ni contenidos que coincidan con tu búsqueda.
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Botón Volver al Menú de Inicio de la Guía -->
+                    <button type="button" 
+                            onclick="window.volverAlInicioGuia()" 
+                            class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:text-blue-600 bg-gray-100 hover:bg-blue-50 border border-gray-200/80 hover:border-blue-200 rounded-lg transition-all cursor-pointer">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"></path></svg>
+                        <span>Volver al inicio</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- CONTENEDOR PRINCIPAL DEL CONTENIDO -->
+            <div class="w-full px-6 sm:px-10 py-8">
+                <div class="flex flex-col lg:flex-row items-start justify-between gap-10 relative">
+
+                    <!-- COLUMNA IZQUIERDA: Bloque del paso activo únicamente -->
+                    <div class="w-full lg:max-w-4xl xl:max-w-5xl text-left">
+
+                        <!-- ============================================================== -->
+                        <!-- BLOQUE PASO 1 (Incluye Punto de Partida y Subpasos 1.1 a 1.4) -->
+                        <!-- ============================================================== -->
+                        <div id="bloque-paso-1" class="step-block active space-y-16">
+                            
+                            <!-- SECCIÓN INICIAL: Punto de partida (1.png) -->
+                            <div id="seccion-inicio" class="scroll-mt-fixed">
+                                <div class="mb-3">
+                                    <h3 class="text-2xl sm:text-3xl font-extrabold text-gray-900 font-sans-bold tracking-tight">Punto de Partida</h3>
+                                    <p class="text-sm sm:text-base text-gray-500 mt-1">Esta es la pantalla inicial que verás al abrir NEXUS POS por primera vez.</p>
+                                </div>
+
+                                <p class="text-sm sm:text-base text-gray-700 leading-relaxed mb-6 font-medium">
+                                    Para comenzar a trabajar con el sistema de forma sincronizada y segura, lo primero que debemos hacer es definir si esta computadora será el <span class="font-bold text-blue-700">Servidor Principal (Main)</span> o una <span class="font-bold text-indigo-700">Caja Hija</span>. A continuación, te guiamos en el <span class="font-bold text-gray-900">Paso 1</span> para activar la PC Maestra.
+                                </p>
+
+                                <div class="static-img-container">
+                                    <img src="index_inicio_admin/ayuda/1.png" onerror="this.src='1.png'" alt="Pantalla inicial de NEXUS POS" class="max-h-[520px]">
+                                </div>
+                            </div>
+
+                            <!-- ENCABEZADO PASO 1 -->
+                            <div id="paso-1" class="pt-6 border-t border-gray-200/80 scroll-mt-fixed">
+                                <h3 class="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-gray-900 font-sans-bold tracking-tight">
+                                    Paso 1: Configurar la PC como Servidor Principal (Main)
+                                </h3>
+                                <p class="text-sm sm:text-base text-gray-600 mt-1.5">
+                                    Sigue estas 4 indicaciones secuenciales acompañadas con sus capturas oficiales.
+                                </p>
+                            </div>
+
+                            <!-- SUB-PASO 1.1: Menú Configuración (2.png) -->
+                            <div id="paso-1-1" class="scroll-mt-fixed">
+                                <div class="mb-3">
+                                    <h4 class="text-xl sm:text-2xl font-bold text-gray-900 font-sans-bold">
+                                        1.1 Dirígete al Menú Lateral Izquierdo &gt; Configuración
+                                    </h4>
+                                    <p class="text-sm sm:text-base text-gray-600 mt-1.5 leading-relaxed">
+                                        En el panel lateral izquierdo del sistema, ubica y haz clic sobre la opción <span class="font-semibold text-gray-900"><i class="fa-solid fa-gear text-blue-600 mr-1"></i>Configuración</span> para desplegar los submódulos del sistema.
+                                    </p>
+                                </div>
+
+                                <div class="static-img-container mt-4">
+                                    <img src="index_inicio_admin/ayuda/2.png" onerror="this.src='2.png'" alt="Paso 1.1: Seleccionar Configuración" class="max-h-[500px]">
+                                </div>
+                            </div>
+
+                            <!-- SUB-PASO 1.2: Configuración del Sistema (3.png) -->
+                            <div id="paso-1-2" class="scroll-mt-fixed">
+                                <div class="mb-3">
+                                    <h4 class="text-xl sm:text-2xl font-bold text-gray-900 font-sans-bold">
+                                        1.2 Selecciona "Configuración del Sistema"
+                                    </h4>
+                                    <p class="text-sm sm:text-base text-gray-600 mt-1.5 leading-relaxed">
+                                        En el menú desplegable que acaba de abrirse, pulsa sobre la opción <span class="font-semibold text-gray-900"><i class="fa-solid fa-sliders text-blue-600 mr-1"></i>Configuración del Sistema</span> para acceder a los ajustes generales y de red local.
+                                    </p>
+                                </div>
+
+                                <div class="static-img-container mt-4">
+                                    <img src="index_inicio_admin/ayuda/3.png" onerror="this.src='3.png'" alt="Paso 1.2: Seleccionar Configuración del Sistema" class="max-h-[280px]">
+                                </div>
+                            </div>
+
+                            <!-- SUB-PASO 1.3: Checkpoint Servidor Main (4.png) -->
+                            <div id="paso-1-3" class="scroll-mt-fixed">
+                                <div class="mb-3">
+                                    <h4 class="text-xl sm:text-2xl font-bold text-gray-900 font-sans-bold">
+                                        1.3 Activar el Checkpoint: "¿Esta PC es el Servidor (Main)?"
+                                    </h4>
+                                    <p class="text-sm sm:text-base text-gray-600 mt-1.5 leading-relaxed">
+                                        Desplázate hacia la última sección inferior titulada <span class="font-bold text-gray-900">"Configuración de Red Local"</span> y marca la casilla de verificación (chulito / checkpoint) de <span class="font-bold text-blue-700">"¿Esta PC es el Servidor (Main)?"</span> resaltada en el recuadro rojo.
+                                    </p>
+                                </div>
+
+                                <div class="static-img-container mt-4">
+                                    <img src="index_inicio_admin/ayuda/4.png" onerror="this.src='4.png'" alt="Paso 1.3: Checkpoint Servidor Main" class="max-h-[320px]">
+                                </div>
+                            </div>
+
+                            <!-- SUB-PASO 1.4: Guardar y Reiniciar (5.png) -->
+                            <div id="paso-1-4" class="scroll-mt-fixed">
+                                <div class="mb-3">
+                                    <h4 class="text-xl sm:text-2xl font-bold text-gray-900 font-sans-bold">
+                                        1.4 Guardar la Configuración y Reiniciar el Sistema
+                                    </h4>
+                                    <p class="text-sm sm:text-base text-gray-600 mt-1.5 leading-relaxed">
+                                        Presiona el botón <span class="font-bold text-emerald-700">"Guardar Configuración"</span> para almacenar los cambios. Por último, cierra el sistema y vuelve a abrirlo (reinicia NEXUS POS) para que los servicios del servidor local comiencen a operar de inmediato.
+                                    </p>
+                                </div>
+
+                                <div class="static-img-container mt-4">
+                                    <img src="index_inicio_admin/ayuda/5.png" onerror="this.src='5.png'" alt="Paso 1.4: Guardar Configuración" class="max-h-[380px]">
+                                </div>
+                            </div>
+
+                            <!-- RESUMEN FINAL DE PASO 1 + BOTÓN SIGUIENTE -->
+                            <div class="pt-6 border-t border-gray-200/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                <div class="flex items-center gap-3">
+                                    <i class="fa-solid fa-circle-check text-2xl text-emerald-600 shrink-0"></i>
+                                    <div>
+                                        <h5 class="text-base font-bold text-gray-900">Paso 1 completado con éxito</h5>
+                                        <p class="text-sm text-gray-600 mt-0.5">Tu computadora ahora está configurada como Servidor Maestro.</p>
+                                    </div>
+                                </div>
+
+                                <button onclick="cambiarPaso(2)" class="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 group">
+                                    <span>Siguiente: Paso 2</span>
+                                    <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                                </button>
+                            </div>
+
+                        </div>
+
+                        <!-- ============================================================== -->
+                        <!-- BLOQUE PASO 2: CREAR LA SUCURSAL (Subpasos 2.1 a 2.4)          -->
+                        <!-- ============================================================== -->
+                        <div id="bloque-paso-2" class="step-block space-y-16">
+                            
+                            <!-- ENCABEZADO PASO 2 -->
+                            <div id="paso-2" class="scroll-mt-fixed">
+                                <h3 class="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-gray-900 font-sans-bold tracking-tight">
+                                    Paso 2: Crear la Sucursal
+                                </h3>
+                                <p class="text-sm sm:text-base text-gray-600 mt-1.5">
+                                    Aprende a registrar tu primera sucursal física en el sistema para vincular inventarios y ventas.
+                                </p>
+                            </div>
+
+                            <!-- SUB-PASO 2.1: Menú Datos Básicos (6.png) -->
+                            <div id="paso-2-1" class="scroll-mt-fixed">
+                                <div class="mb-3">
+                                    <h4 class="text-xl sm:text-2xl font-bold text-gray-900 font-sans-bold">
+                                        2.1 Dirígete a "Datos Básicos"
+                                    </h4>
+                                    <p class="text-sm sm:text-base text-gray-600 mt-1.5 leading-relaxed">
+                                        En el menú lateral izquierdo, haz clic sobre la sección <span class="font-semibold text-gray-900"><i class="fa-solid fa-database text-blue-600 mr-1"></i>Datos Básicos</span> para desplegar las opciones maestras de la empresa.
+                                    </p>
+                                </div>
+
+                                <div class="static-img-container mt-4">
+                                    <img src="index_inicio_admin/ayuda/6.png" onerror="this.src='6.png'" alt="Paso 2.1: Menú Datos Básicos" class="max-h-[500px]">
+                                </div>
+                            </div>
+
+                            <!-- SUB-PASO 2.2: Submenú Sucursales (7.png) -->
+                            <div id="paso-2-2" class="scroll-mt-fixed">
+                                <div class="mb-3">
+                                    <h4 class="text-xl sm:text-2xl font-bold text-gray-900 font-sans-bold">
+                                        2.2 Selecciona la opción "Sucursales"
+                                    </h4>
+                                    <p class="text-sm sm:text-base text-gray-600 mt-1.5 leading-relaxed">
+                                        Dentro de las opciones que se desplegaron en el submenú de Datos Básicos, selecciona la opción <span class="font-semibold text-gray-900"><i class="fa-solid fa-store text-blue-600 mr-1"></i>Sucursales</span> para entrar al módulo de gestión de sedes.
+                                    </p>
+                                </div>
+
+                                <div class="static-img-container mt-4">
+                                    <img src="index_inicio_admin/ayuda/7.png" onerror="this.src='7.png'" alt="Paso 2.2: Submenú Sucursales" class="max-h-[350px]">
+                                </div>
+                            </div>
+
+                            <!-- SUB-PASO 2.3: Formulario Nombre, Dirección y Teléfono (8.png) -->
+                            <div id="paso-2-3" class="scroll-mt-fixed">
+                                <div class="mb-3">
+                                    <h4 class="text-xl sm:text-2xl font-bold text-gray-900 font-sans-bold">
+                                        2.3 Rellena los tres campos: Nombre de Sucursal, Dirección y Teléfono
+                                    </h4>
+                                    <p class="text-sm sm:text-base text-gray-600 mt-1.5 leading-relaxed">
+                                        En el formulario superior debes rellenar las tres barras obligatorias: el <span class="font-semibold text-gray-900">Nombre de la Sucursal</span> (ejemplo: Sede Principal), su <span class="font-semibold text-gray-900">Dirección</span> y su <span class="font-semibold text-gray-900">Número de Teléfono</span> de contacto. Luego presiona el botón para registrar la sucursal.
+                                    </p>
+                                </div>
+
+                                <div class="static-img-container mt-4">
+                                    <img src="index_inicio_admin/ayuda/8.png" onerror="this.src='8.png'" alt="Paso 2.3: Formulario de Sucursales" class="max-h-[350px]">
+                                </div>
+                            </div>
+
+                            <!-- SUB-PASO 2.4: Botones Editar y Eliminar (9.png) -->
+                            <div id="paso-2-4" class="scroll-mt-fixed">
+                                <div class="mb-3">
+                                    <h4 class="text-xl sm:text-2xl font-bold text-gray-900 font-sans-bold">
+                                        2.4 Gestión de Sucursal: Botones de Editar y Eliminar
+                                    </h4>
+                                    <p class="text-sm sm:text-base text-gray-600 mt-1.5 leading-relaxed">
+                                        Una vez creada la sucursal, se enlistará en la tabla inferior donde tendrás a disposición un botón de <span class="font-semibold text-amber-600">Editar</span> para modificar cualquier dato y un botón de <span class="font-semibold text-red-600">Eliminar</span> para borrarla si es necesario.
+                                    </p>
+                                </div>
+
+                                <div class="static-img-container mt-4">
+                                    <img src="index_inicio_admin/ayuda/9.png" onerror="this.src='9.png'" alt="Paso 2.4: Botones Editar y Eliminar" class="max-h-[480px]">
+                                </div>
+                            </div>
+
+                            <!-- BOTONES DE NAVEGACIÓN PASO 2 -->
+                            <div class="pt-6 border-t border-gray-200/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                <button onclick="cambiarPaso(1)" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm rounded-xl transition-all">
+                                    <i class="fa-solid fa-arrow-left"></i>
+                                    <span>Volver a Paso 1</span>
+                                </button>
+
+                                <div class="flex items-center gap-3">
+                                    <div class="hidden sm:block text-right">
+                                        <h5 class="text-base font-bold text-gray-900">Paso 2 completado con éxito</h5>
+                                        <p class="text-xs text-gray-600">Sucursal registrada correctamente.</p>
+                                    </div>
+                                    <button onclick="cambiarPaso(3)" class="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 group">
+                                        <span>Siguiente: Paso 3</span>
+                                        <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- ============================================================== -->
+                        <!-- BLOQUE PASO 3: CATEGORÍAS (Subpasos 3.1 a 3.3)                 -->
+                        <!-- ============================================================== -->
+                        <div id="bloque-paso-3" class="step-block space-y-16">
+                            
+                            <!-- ENCABEZADO PASO 3 -->
+                            <div id="paso-3" class="scroll-mt-fixed">
+                                <h3 class="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-gray-900 font-sans-bold tracking-tight">
+                                    Paso 3: Crear Categorías de Productos
+                                </h3>
+                                <p class="text-sm sm:text-base text-gray-600 mt-1.5">
+                                    Organiza tu inventario por departamentos o familias de productos registrando sus categorías.
+                                </p>
+                            </div>
+
+                            <!-- SUB-PASO 3.1: Menú Categoría de Productos (9-10.png) -->
+                            <div id="paso-3-1" class="scroll-mt-fixed">
+                                <div class="mb-3">
+                                    <h4 class="text-xl sm:text-2xl font-bold text-gray-900 font-sans-bold">
+                                        3.1 Dirígete a Datos Básicos &gt; Categoría de Productos
+                                    </h4>
+                                    <p class="text-sm sm:text-base text-gray-600 mt-1.5 leading-relaxed">
+                                        En el menú lateral izquierdo, bajo la sección de <span class="font-semibold text-gray-900">Datos Básicos</span>, haz clic sobre la opción <span class="font-semibold text-gray-900"><i class="fa-solid fa-tags text-blue-600 mr-1"></i>Categoría de Productos</span> para abrir la gestión de categorías.
+                                    </p>
+                                </div>
+
+                                <div class="static-img-container mt-4">
+                                    <img src="index_inicio_admin/ayuda/9-10.png" onerror="this.src='9-10.png'" alt="Paso 3.1: Submenú Categoría de Productos" class="max-h-[350px]">
+                                </div>
+                            </div>
+
+                            <!-- SUB-PASO 3.2: Barra Nombre y Añadir Categoría (10.png) -->
+                            <div id="paso-3-2" class="scroll-mt-fixed">
+                                <div class="mb-3">
+                                    <h4 class="text-xl sm:text-2xl font-bold text-gray-900 font-sans-bold">
+                                        3.2 Escribe el Nombre de la Categoría y pulsa "Añadir Categoría"
+                                    </h4>
+                                    <p class="text-sm sm:text-base text-gray-600 mt-1.5 leading-relaxed">
+                                        En la barra de <span class="font-semibold text-gray-900">Nombre de la Categoría</span> escribe el nombre deseado (por ejemplo: Bebidas, Víveres, Charcutería, etc.) y a continuación presiona el botón azul <span class="font-semibold text-blue-700">"Añadir Categoría"</span> para guardarla en el sistema.
+                                    </p>
+                                </div>
+
+                                <div class="static-img-container mt-4">
+                                    <img src="index_inicio_admin/ayuda/10.png" onerror="this.src='10.png'" alt="Paso 3.2: Añadir Categoría" class="max-h-[400px]">
+                                </div>
+                            </div>
+
+                            <!-- SUB-PASO 3.3: Acciones Editar y Eliminar Categorías (11.png) -->
+                            <div id="paso-3-3" class="scroll-mt-fixed">
+                                <div class="mb-3">
+                                    <h4 class="text-xl sm:text-2xl font-bold text-gray-900 font-sans-bold">
+                                        3.3 Tabla de Categorías: Acciones de Editar y Eliminar
+                                    </h4>
+                                    <p class="text-sm sm:text-base text-gray-600 mt-1.5 leading-relaxed">
+                                        En la tabla inferior se visualizarán las categorías registradas. En la columna de acciones encontrarás los dos botones destacados: el botón de <span class="font-semibold text-amber-600">Editar</span> para cambiar el nombre de cualquier categoría y el botón de <span class="font-semibold text-red-600">Eliminar</span> para borrarla si ya no la necesitas.
+                                    </p>
+                                </div>
+
+                                <div class="static-img-container mt-4">
+                                    <img src="index_inicio_admin/ayuda/11.png" onerror="this.src='11.png'" alt="Paso 3.3: Acciones Editar y Eliminar Categorías" class="max-h-[500px]">
+                                </div>
+                            </div>
+
+                            <!-- BOTONES DE NAVEGACIÓN PASO 3 -->
+                            <div class="pt-6 border-t border-gray-200/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                <button onclick="cambiarPaso(2)" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm rounded-xl transition-all">
+                                    <i class="fa-solid fa-arrow-left"></i>
+                                    <span>Volver a Paso 2</span>
+                                </button>
+
+                                <div class="flex items-center gap-3">
+                                    <div class="hidden sm:block text-right">
+                                        <h5 class="text-base font-bold text-gray-900">Paso 3 completado con éxito</h5>
+                                        <p class="text-xs text-gray-600">Categorías configuradas para inventario.</p>
+                                    </div>
+                                    <button onclick="cambiarPaso(4)" class="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 group">
+                                        <span>Siguiente: Paso 4</span>
+                                        <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- ============================================================== -->
+                        <!-- BLOQUE PASO 4: GESTIÓN DE CAJERAS (Subpasos 4.1 a 4.3)         -->
+                        <!-- ============================================================== -->
+                        <div id="bloque-paso-4" class="step-block space-y-16">
+                            
+                            <!-- ENCABEZADO PASO 4 -->
+                            <div id="paso-4" class="scroll-mt-fixed">
+                                <h3 class="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-gray-900 font-sans-bold tracking-tight">
+                                    Paso 4: Gestión de Cajeras
+                                </h3>
+                                <p class="text-sm sm:text-base text-gray-600 mt-1.5">
+                                    Crea los usuarios cajeros que tendrán acceso al punto de venta y asígnales su sucursal de trabajo.
+                                </p>
+                            </div>
+
+                            <!-- SUB-PASO 4.1: Menú Gestión de Cajeras (11-12.png) -->
+                            <div id="paso-4-1" class="scroll-mt-fixed">
+                                <div class="mb-3">
+                                    <h4 class="text-xl sm:text-2xl font-bold text-gray-900 font-sans-bold">
+                                        4.1 Dirígete a Datos Básicos &gt; Gestión de Cajeras
+                                    </h4>
+                                    <p class="text-sm sm:text-base text-gray-600 mt-1.5 leading-relaxed">
+                                        En el mismo menú lateral izquierdo de <span class="font-semibold text-gray-900">Datos Básicos</span>, selecciona la opción subrayada <span class="font-semibold text-gray-900"><i class="fa-solid fa-users text-blue-600 mr-1"></i>Gestión de Cajeras</span> para abrir el panel de operadores.
+                                    </p>
+                                </div>
+
+                                <div class="static-img-container mt-4">
+                                    <img src="index_inicio_admin/ayuda/11-12.png" onerror="this.src='11-12.png'" alt="Paso 4.1: Submenú Gestión de Cajeras" class="max-h-[350px]">
+                                </div>
+                            </div>
+
+                            <!-- SUB-PASO 4.2: Formulario Nombre, Correo, Contraseña y Sucursal (12.png) -->
+                            <div id="paso-4-2" class="scroll-mt-fixed">
+                                <div class="mb-3">
+                                    <h4 class="text-xl sm:text-2xl font-bold text-gray-900 font-sans-bold">
+                                        4.2 Ingresa Nombre, Correo, Contraseña, Asigna la Sucursal y pulsa "Registrar Cajera"
+                                    </h4>
+                                    <p class="text-sm sm:text-base text-gray-600 mt-1.5 leading-relaxed">
+                                        En las barras correspondientes debes ingresar el <span class="font-semibold text-gray-900">Nombre de la Cajera</span>, su <span class="font-semibold text-gray-900">Correo Electrónico</span> y su <span class="font-semibold text-gray-900">Contraseña</span> de acceso. Es indispensable <span class="font-bold text-blue-700">asignar la Sucursal</span> (resaltada en color azul) a la cual pertenecerá la cajera y finalmente presionar el botón de <span class="font-bold text-blue-700">"Registrar Cajera"</span>.
+                                    </p>
+                                </div>
+
+                                <div class="static-img-container mt-4">
+                                    <img src="index_inicio_admin/ayuda/12.png" onerror="this.src='12.png'" alt="Paso 4.2: Formulario Registrar Cajera" class="max-h-[480px]">
+                                </div>
+                            </div>
+
+                            <!-- SUB-PASO 4.3: Cajeras Registradas y Botón Eliminar (13.png) -->
+                            <div id="paso-4-3" class="scroll-mt-fixed">
+                                <div class="mb-3">
+                                    <h4 class="text-xl sm:text-2xl font-bold text-gray-900 font-sans-bold">
+                                        4.3 Cajeras Registradas: Botón de Eliminar
+                                    </h4>
+                                    <p class="text-sm sm:text-base text-gray-600 mt-1.5 leading-relaxed">
+                                        En la tabla inferior se listarán todas las cajeras activas con sus datos y sucursal vinculada. Observa que en este caso dispones del botón de <span class="font-semibold text-red-600">Eliminar</span> para dar de baja la cuenta (en este módulo las cajeras no se pueden editar, únicamente registrar y eliminar).
+                                    </p>
+                                </div>
+
+                                <div class="static-img-container mt-4">
+                                    <img src="index_inicio_admin/ayuda/13.png" onerror="this.src='13.png'" alt="Paso 4.3: Tabla de Cajeras y Botón Eliminar" class="max-h-[500px]">
+                                </div>
+                            </div>
+
+                            <!-- BOTONES DE NAVEGACIÓN PASO 4 -->
+                            <div class="pt-6 border-t border-gray-200/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                <button onclick="cambiarPaso(3)" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm rounded-xl transition-all">
+                                    <i class="fa-solid fa-arrow-left"></i>
+                                    <span>Volver a Paso 3</span>
+                                </button>
+
+                                <div class="flex items-center gap-3">
+                                    <i class="fa-solid fa-circle-check text-2xl text-emerald-600 shrink-0"></i>
+                                    <div>
+                                        <h5 class="text-base font-bold text-gray-900">Paso 4 completado con éxito</h5>
+                                        <p class="text-sm text-gray-600 mt-0.5">Las cajeras están registradas y vinculadas a su respectiva sucursal.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- COLUMNA DERECHA: MENÚ ÍNDICE FIJO (STICKY TOC) -->
+                    <div class="hidden lg:block w-[260px] shrink-0 sticky top-[100px] self-start z-30">
+                        <div class="bg-white/95 backdrop-blur-sm border border-gray-200 rounded-xl p-4 shadow-sm max-h-[calc(85vh-100px)] overflow-y-auto">
+                            <div class="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-list-ol text-blue-600 text-xs"></i>
+                                    <span class="text-xs font-bold uppercase tracking-wider text-gray-700">Índice de la Guía</span>
+                                </div>
+                                <span id="badge-paso-actual" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                                    Paso 1
+                                </span>
+                            </div>
+
+                            <nav id="toc-nav" class="flex flex-col space-y-1">
+                                <!-- Se actualiza dinámicamente -->
+                            </nav>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Script de interactividad: Header Sticky, Paginación y ScrollSpy -->
+    <script>
+        // Función interactiva para abrir/cerrar acordeón de FAQ con scroll automático hacia el contenido
+        window.toggleFaq = function(btn) {
+            const item = btn.closest('.faq-accordion-item');
+            const chevron = btn.querySelector('.faq-chevron');
+            if (!item) return;
+
+            const isAlreadyOpen = item.classList.contains('open');
+
+            // Cerrar otros acordeones si se desea comportamiento exclusivo
+            document.querySelectorAll('.faq-accordion-item').forEach(other => {
+                if (other !== item && other.classList.contains('open')) {
+                    other.classList.remove('open');
+                    const otherChevron = other.querySelector('.faq-chevron');
+                    if (otherChevron) otherChevron.classList.remove('rotate-180');
+                }
+            });
+
+            if (isAlreadyOpen) {
+                item.classList.remove('open');
+                if (chevron) chevron.classList.remove('rotate-180');
+            } else {
+                item.classList.add('open');
+                if (chevron) chevron.classList.add('rotate-180');
+
+                // Desplazamiento automático suave para que el contenido sea completamente visible
+                setTimeout(() => {
+                    scrollHaciaElemento(item, 85);
+                }, 100);
+            }
+        };
+
+        var pasoActual = 1;
+
+        var tocConfig = {
+            1: {
+                paso: 1,
+                header: { id: 'paso-1', label: 'Paso 1: Servidor Main' },
+                items: [
+                    { id: 'seccion-inicio', label: 'Punto de Partida', isSub: false },
+                    { id: 'paso-1-1', label: '1.1 Configuración', isSub: true },
+                    { id: 'paso-1-2', label: '1.2 Config. del Sistema', isSub: true },
+                    { id: 'paso-1-3', label: '1.3 Checkpoint Servidor', isSub: true },
+                    { id: 'paso-1-4', label: '1.4 Guardar y Reiniciar', isSub: true }
+                ]
+            },
+            2: {
+                paso: 2,
+                header: { id: 'paso-2', label: 'Paso 2: Crear Sucursal' },
+                items: [
+                    { id: 'paso-2-1', label: '2.1 Datos Básicos', isSub: true },
+                    { id: 'paso-2-2', label: '2.2 Sucursales', isSub: true },
+                    { id: 'paso-2-3', label: '2.3 Campos Obligatorios', isSub: true },
+                    { id: 'paso-2-4', label: '2.4 Editar y Eliminar', isSub: true }
+                ]
+            },
+            3: {
+                paso: 3,
+                header: { id: 'paso-3', label: 'Paso 3: Categorías' },
+                items: [
+                    { id: 'paso-3-1', label: '3.1 Categoría Productos', isSub: true },
+                    { id: 'paso-3-2', label: '3.2 Añadir Categoría', isSub: true },
+                    { id: 'paso-3-3', label: '3.3 Editar y Eliminar', isSub: true }
+                ]
+            },
+            4: {
+                paso: 4,
+                header: { id: 'paso-4', label: 'Paso 4: Cajeras' },
+                items: [
+                    { id: 'paso-4-1', label: '4.1 Gestión de Cajeras', isSub: true },
+                    { id: 'paso-4-2', label: '4.2 Registro y Sucursal', isSub: true },
+                    { id: 'paso-4-3', label: '4.3 Botón Eliminar', isSub: true }
+                ]
+            }
+        };
+
+        window.comenzarTutorial = function(e) {
+            if (e && e.currentTarget) {
+                const btn = e.currentTarget;
+                const rect = btn.getBoundingClientRect();
+                
+                const circle = document.createElement('span');
+                const diameter = Math.max(rect.width, rect.height);
+                const radius = diameter / 2;
+                
+                circle.style.width = circle.style.height = `${diameter}px`;
+                circle.style.left = `${e.clientX - rect.left - radius}px`;
+                circle.style.top = `${e.clientY - rect.top - radius}px`;
+                circle.classList.add('click-wave');
+                
+                const existing = btn.getElementsByClassName('click-wave')[0];
+                if (existing) existing.remove();
+                btn.appendChild(circle);
+            }
+
+            const hero = document.getElementById('vista-hero');
+            const tutorial = document.getElementById('vista-tutorial');
+
+            hero.classList.add('fade-out');
+
+            // Leer último paso guardado de localStorage
+            const pasoGuardado = parseInt(localStorage.getItem('nexus_pos_ayuda_paso') || '1', 10);
+            const pasoAIniciar = (pasoGuardado >= 1 && pasoGuardado <= 4) ? pasoGuardado : 1;
+
+            setTimeout(() => {
+                hero.style.display = 'none';
+                tutorial.classList.remove('hidden');
+                void tutorial.offsetWidth;
+                tutorial.classList.add('fade-in-tutorial');
+                
+                cambiarPaso(pasoAIniciar, false);
+            }, 450);
+        };
+        var comenzarTutorial = window.comenzarTutorial;
+
+        window.cargarModulosSistema = function(e) {
+            if (typeof window.loadPageContent === 'function') {
+                window.loadPageContent('index_inicio_admin/ayuda/modulos_sistema.html');
+            } else if (typeof loadPageContent === 'function') {
+                loadPageContent('index_inicio_admin/ayuda/modulos_sistema.html');
+            } else {
+                window.location.href = 'modulos_sistema.html';
+            }
+        };
+        var cargarModulosSistema = window.cargarModulosSistema;
+
+        window.volverAlInicioGuia = function() {
+            // Indicar que el usuario regresó intencionalmente a la portada
+            localStorage.setItem('nexus_pos_ayuda_estado', 'hero');
+
+            const hero = document.getElementById('vista-hero');
+            const tutorial = document.getElementById('vista-tutorial');
+
+            if (tutorial) {
+                tutorial.classList.remove('fade-in-tutorial');
+                tutorial.classList.add('fade-out');
+            }
+
+            setTimeout(() => {
+                if (tutorial) {
+                    tutorial.classList.add('hidden');
+                    tutorial.classList.remove('fade-out');
+                }
+                
+                if (hero) {
+                    hero.style.display = 'flex';
+                    void hero.offsetWidth;
+                    hero.classList.remove('fade-out');
+                }
+            }, 350);
+        };
+        var volverAlInicioGuia = window.volverAlInicioGuia;
+
+        window.restaurarEstadoPrevioGuia = function() {
+            const estado = localStorage.getItem('nexus_pos_ayuda_estado');
+            const pasoGuardado = parseInt(localStorage.getItem('nexus_pos_ayuda_paso') || '1', 10);
+            const pasoValido = (pasoGuardado >= 1 && pasoGuardado <= 4) ? pasoGuardado : 1;
+
+            // Si el usuario estaba activamente dentro del tutorial (no en 'hero'), restaurar inmediatamente
+            if (estado === 'tutorial') {
+                const hero = document.getElementById('vista-hero');
+                const tutorial = document.getElementById('vista-tutorial');
+
+                if (hero && tutorial) {
+                    hero.style.display = 'none';
+                    tutorial.classList.remove('hidden');
+                    tutorial.classList.remove('opacity-0');
+                    tutorial.classList.remove('pointer-events-none');
+                    tutorial.classList.add('fade-in-tutorial');
+
+                    window.cambiarPaso(pasoValido, false);
+                }
+            }
+        };
+        var restaurarEstadoPrevioGuia = window.restaurarEstadoPrevioGuia;
+
+        window.cambiarPaso = function(numeroPaso, smoothScroll = true, targetElementId = null) {
+            pasoActual = numeroPaso;
+
+            // Guardar progreso y marcar que estamos en el tutorial
+            try {
+                localStorage.setItem('nexus_pos_ayuda_paso', numeroPaso.toString());
+                localStorage.setItem('nexus_pos_ayuda_estado', 'tutorial');
+            } catch (err) {
+                console.warn('No se pudo guardar en localStorage:', err);
+            }
+
+            for (let i = 1; i <= 4; i++) {
+                const bloque = document.getElementById(`bloque-paso-${i}`);
+                if (bloque) bloque.classList.remove('active');
+            }
+
+            const bloqueActivo = document.getElementById(`bloque-paso-${numeroPaso}`);
+            if (bloqueActivo) bloqueActivo.classList.add('active');
+
+            const badge = document.getElementById('badge-paso-actual');
+            if (badge) badge.textContent = `Paso ${numeroPaso}`;
+
+            renderizarTOCAcumulativo(numeroPaso);
+
+            if (smoothScroll) {
+                if (targetElementId) {
+                    const el = document.getElementById(targetElementId);
+                    if (el) {
+                        scrollHaciaElemento(el);
+                        return;
+                    }
+                }
+                const tutorial = document.getElementById('vista-tutorial');
+                scrollHaciaElemento(tutorial);
+            }
+        };
+        var cambiarPaso = window.cambiarPaso;
+
+        window.renderizarTOCAcumulativo = function(maxPaso) {
+            const tocNav = document.getElementById('toc-nav');
+            if (!tocNav) return;
+
+            let html = '';
+
+            for (let p = 1; p <= maxPaso; p++) {
+                const config = tocConfig[p];
+                if (!config) continue;
+
+                const esPasoActual = (p === pasoActual);
+                const separadorClass = p > 1 ? 'pt-2 border-t border-gray-100 mt-2' : 'pt-1';
+
+                html += `<div class="${separadorClass}">`;
+                
+                html += `
+                    <a href="#${config.header.id}" class="toc-link font-semibold text-gray-800 ${esPasoActual ? '' : 'text-gray-500'}" onclick="navegarAPasoYElemento(event, ${p}, '${config.header.id}')">
+                        ${config.header.label}
+                    </a>
+                `;
+
+                html += `<div class="space-y-1 mt-1">`;
+                config.items.forEach(item => {
+                    const subClass = item.isSub ? 'toc-sublink' : '';
+                    html += `
+                        <a href="#${item.id}" class="toc-link ${subClass}" onclick="navegarAPasoYElemento(event, ${p}, '${item.id}')">
+                            ${item.label}
+                        </a>
+                    `;
+                });
+                html += `</div>`;
+
+                html += `</div>`;
+            }
+
+            tocNav.innerHTML = html;
+            actualizarScrollSpy();
+        };
+        var renderizarTOCAcumulativo = window.renderizarTOCAcumulativo;
+
+        window.navegarAPasoYElemento = function(e, pasoDestino, targetId) {
+            if (e) e.preventDefault();
+            if (pasoActual !== pasoDestino) {
+                cambiarPaso(pasoDestino, true, targetId);
+            } else {
+                const el = document.getElementById(targetId);
+                if (el) scrollHaciaElemento(el);
+            }
+        };
+        var navegarAPasoYElemento = window.navegarAPasoYElemento;
+
+        window.scrollHaciaElemento = function(el, customOffset = null) {
+            const scrollContainer = document.querySelector('.main-content') || 
+                                    document.getElementById('dynamic-content-area') || 
+                                    document.documentElement;
+
+            const headerOffset = customOffset !== null ? customOffset : 110;
+
+            if (scrollContainer && scrollContainer !== document.documentElement && scrollContainer.scrollHeight > scrollContainer.clientHeight) {
+                const elRect = el.getBoundingClientRect();
+                const containerRect = scrollContainer.getBoundingClientRect();
+                const targetScrollTop = scrollContainer.scrollTop + (elRect.top - containerRect.top) - headerOffset;
+                scrollContainer.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
+            } else {
+                const y = el.getBoundingClientRect().top + window.pageYOffset - headerOffset;
+                window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+            }
+        };
+        var scrollHaciaElemento = window.scrollHaciaElemento;
+
+        window.actualizarScrollSpy = function() {
+            const currentConfig = tocConfig[pasoActual];
+            if (!currentConfig) return;
+
+            const items = [{ id: currentConfig.header.id }, ...currentConfig.items];
+            let currentId = items[0].id;
+            const triggerPoint = window.innerHeight * 0.35 + 100;
+
+            items.forEach(item => {
+                const el = document.getElementById(item.id);
+                if (el) {
+                    const rect = el.getBoundingClientRect();
+                    if (rect.top <= triggerPoint) {
+                        currentId = item.id;
+                    }
+                }
+            });
+
+            const links = document.querySelectorAll('#toc-nav .toc-link');
+            links.forEach(link => {
+                const href = link.getAttribute('href');
+                if (href === '#' + currentId) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+        };
+        var actualizarScrollSpy = window.actualizarScrollSpy;
+
+        // --- MOTOR DE BÚSQUEDA DE LA GUÍA (SEARCH BAR) ---
+        var elementosIndiceBusqueda = [
+            { paso: 1, id: 'seccion-inicio', titulo: 'Punto de Partida', texto: 'Pantalla inicial de inicio de NEXUS POS, definir servidor principal main o caja hija' },
+            { paso: 1, id: 'paso-1-1', titulo: '1.1 Acceso al Menú de Configuración', texto: 'Menú lateral izquierdo, configuración del sistema, engranaje' },
+            { paso: 1, id: 'paso-1-2', titulo: '1.2 Selección de Configuración del Sistema', texto: 'Submenú configuración del sistema, parámetros globales' },
+            { paso: 1, id: 'paso-1-3', titulo: '1.3 Activar Servidor Main (Checkpoint)', texto: 'Red local, casilla check esta pc es el servidor main, pc maestra' },
+            { paso: 1, id: 'paso-1-4', titulo: '1.4 Guardar Configuración y Reiniciar', texto: 'Botón guardar configuración, reiniciar aplicación para aplicar cambios' },
+            { paso: 2, id: 'paso-2-1', titulo: '2.1 Módulo Datos Básicos', texto: 'Menú datos básicos, administración sucursales categorías cajeras' },
+            { paso: 2, id: 'paso-2-2', titulo: '2.2 Opción Sucursales', texto: 'Submenú sucursales, registro y sedes del negocio' },
+            { paso: 2, id: 'paso-2-3', titulo: '2.3 Formulario de Registro de Sucursal', texto: 'Nombre de la sucursal, dirección fiscal, teléfono de contacto' },
+            { paso: 2, id: 'paso-2-4', titulo: '2.4 Sucursales Creadas: Acciones Editar y Eliminar', texto: 'Tabla de sucursales creadas, botones de editar y eliminar sucursal' },
+            { paso: 3, id: 'paso-3-1', titulo: '3.1 Categoría de Productos', texto: 'Datos básicos categoría de productos, clasificar inventario' },
+            { paso: 3, id: 'paso-3-2', titulo: '3.2 Añadir Nueva Categoría', texto: 'Nombre de categoría, botón añadir categoría productos' },
+            { paso: 3, id: 'paso-3-3', titulo: '3.3 Categorías Registradas: Editar y Eliminar', texto: 'Tabla de categorías, botones de acción para editar y eliminar' },
+            { paso: 4, id: 'paso-4-1', titulo: '4.1 Menú Datos Básicos: Gestión de Cajeras', texto: 'Datos básicos, gestión de cajeras, crear usuarios para facturación' },
+            { paso: 4, id: 'paso-4-2', titulo: '4.2 Formulario de Registro y Asignación de Sucursal', texto: 'Nombre cajera, correo, contraseña, asignar sucursal, registrar cajera' },
+            { paso: 4, id: 'paso-4-3', titulo: '4.3 Cajeras Registradas: Botón de Eliminar', texto: 'Tabla cajeras registradas, botón eliminar cuenta de cajera' }
+        ];
+
+        function filtrarBusquedaGuia(query) {
+            const dropdown = document.getElementById('dropdownResultadosBusqueda');
+            const lista = document.getElementById('listaResultadosBusqueda');
+            const sinResultados = document.getElementById('sinResultadosBusqueda');
+            if (!dropdown || !lista) return;
+
+            const q = query.trim().toLowerCase();
+            if (q.length === 0) {
+                dropdown.classList.add('hidden');
+                return;
+            }
+
+            const resultados = elementosIndiceBusqueda.filter(item => 
+                item.titulo.toLowerCase().includes(q) || 
+                item.texto.toLowerCase().includes(q)
+            );
+
+            lista.innerHTML = '';
+
+            if (resultados.length === 0) {
+                sinResultados.classList.remove('hidden');
+            } else {
+                sinResultados.classList.add('hidden');
+                resultados.forEach(item => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-blue-50/80 transition-colors flex items-start gap-3 group';
+                    btn.onclick = () => seleccionarResultadoBusqueda(item.paso, item.id);
+                    btn.innerHTML = `
+                        <span class="flex-shrink-0 w-6 h-6 rounded-lg bg-blue-100/70 text-blue-700 text-xs font-bold flex items-center justify-center mt-0.5 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                            ${item.paso}
+                        </span>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors truncate">
+                                ${item.titulo}
+                            </p>
+                            <p class="text-xs text-gray-500 truncate mt-0.5">
+                                ${item.texto}
+                            </p>
+                        </div>
+                        <svg class="w-4 h-4 text-gray-300 group-hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 self-center" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"></path>
+                        </svg>
+                    `;
+                    lista.appendChild(btn);
+                });
+            }
+
+            dropdown.classList.remove('hidden');
+        }
+
+        function mostrarResultadosBusqueda() {
+            const input = document.getElementById('inputBusquedaGuia');
+            if (input && input.value.trim().length > 0) {
+                filtrarBusquedaGuia(input.value);
+            }
+        }
+
+        function seleccionarResultadoBusqueda(paso, elementId) {
+            const dropdown = document.getElementById('dropdownResultadosBusqueda');
+            if (dropdown) dropdown.classList.add('hidden');
+            
+            const input = document.getElementById('inputBusquedaGuia');
+            if (input) input.blur();
+
+            navegarAPasoYElemento(null, paso, elementId);
+        }
+
+        function manejarTeclasBusqueda(e) {
+            if (e.key === 'Escape') {
+                const dropdown = document.getElementById('dropdownResultadosBusqueda');
+                if (dropdown) dropdown.classList.add('hidden');
+                e.target.blur();
+            }
+        }
+
+        // Atajo de teclado global Ctrl+K / Cmd+K para enfocar la búsqueda
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                const input = document.getElementById('inputBusquedaGuia');
+                const tutorial = document.getElementById('vista-tutorial');
+                if (input && tutorial && !tutorial.classList.contains('hidden')) {
+                    e.preventDefault();
+                    input.focus();
+                    input.select();
+                }
+            }
+        });
+
+        // Cerrar dropdown al hacer clic fuera
+        document.addEventListener('click', (e) => {
+            const container = document.getElementById('inputBusquedaGuia')?.closest('.relative');
+            const dropdown = document.getElementById('dropdownResultadosBusqueda');
+            if (dropdown && container && !container.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        window.addEventListener('scroll', actualizarScrollSpy, { passive: true });
+        
+        var contenedorScrollArea = document.querySelector('.main-content') || document.getElementById('dynamic-content-area');
+        if (contenedorScrollArea) {
+            contenedorScrollArea.addEventListener('scroll', actualizarScrollSpy, { passive: true });
+        }
+
+        // Al cargar la vista, restaurar automáticamente la vista y el paso si estaba dentro del tutorial
+        setTimeout(() => {
+            if (typeof window.restaurarEstadoPrevioGuia === 'function') {
+                window.restaurarEstadoPrevioGuia();
+            }
+        }, 30);
+    </script>
+</body>
+</html>

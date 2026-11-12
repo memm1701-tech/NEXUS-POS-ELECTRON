@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configuración de Inventario Avanzada</title>
+    <title>Actualización Masiva de Precios</title>
 
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="../../node_modules/@fortawesome/fontawesome-free/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
 
     <style>
@@ -14,56 +16,56 @@
             background-color: transparent;
             padding: 16px;
             width: 100%;
-            height: calc(100vh - 40px); /* Se adapta a la pantalla sin generar doble scroll global */
+            height: calc(100vh - 40px);
             margin: 0;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
         }
 
-        /* Contenedor del diseño 30/70 (Elástico hacia abajo) */
+        /* Contenedor del diseño (Elástico hacia abajo) */
         .content-layout {
             display: flex;
             flex-direction: column-reverse; 
             gap: 16px;
-            flex: 1; /* Absorbe todo el alto sobrante de la pantalla */
+            flex: 1;
             overflow: hidden;
         }
         
-        /* Contenedor 30% (Configuración) */
+        /* Contenedor Configuración */
         .config-panel {
             background-color: #ffffff;
-            padding: 24px;
+            padding: 20px;
             border-radius: 16px;
             border: 1px solid #e5e7eb;
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
             display: flex;
             flex-direction: column;
             overflow-y: auto;
         }
         
-        /* Contenedor 70% (Tabla) */
+        /* Contenedor Tabla */
         .table-panel {
             background-color: #ffffff;
-            padding: 24px;
+            padding: 20px;
             border-radius: 16px;
             border: 1px solid #e5e7eb;
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
 
-        /* Desktop: Aplicar 30%/70% y orden correcto */
+        /* Desktop: 380px fijo y el resto tabla */
         @media (min-width: 1024px) {
             .content-layout {
                 flex-direction: row; 
             }
             .config-panel {
-                flex: 0 0 350px; /* Ancho fijo para el panel de configuración */
+                flex: 0 0 380px;
             }
             .table-panel {
-                flex: 1; /* La tabla absorbe el resto del ancho */
+                flex: 1;
             }
         }
         
@@ -74,25 +76,25 @@
             overflow-x: auto;
             border-radius: 8px; 
             border: 1px solid #e5e7eb;
-            margin-top: 10px;
+            margin-top: 8px;
         }
         
         .table-section {
             width: 100%;
-            min-width: 600px; 
+            min-width: 650px; 
             border-collapse: collapse;
             table-layout: fixed; 
         }
 
         .table-section th, .table-section td {
             border-bottom: 1px solid #e5e7eb;
-            padding: 12px 16px; 
+            padding: 10px 14px; 
             text-align: left;
             font-size: 0.875rem; 
             word-break: break-word; 
         }
 
-        /* Estilo Azul Premium para Títulos de Tabla */
+        /* Encabezado Azul Nexus */
         .table-section th {
             background-color: #eff6ff; 
             color: #1e40af; 
@@ -109,18 +111,16 @@
         
         .table-section tr:hover td {
             background-color: #f8fafc; 
-            color: #1d4ed8; 
-            font-weight: 500;
         }
 
         /* Ancho fijo para la columna de Seleccionar */
         .table-section th:last-child, .table-section td:last-child { 
-            width: 100px; 
+            width: 90px; 
             text-align: center;
         }
         
         .custom-checkbox input[type="checkbox"] {
-            transform: scale(1.4); 
+            transform: scale(1.3); 
             cursor: pointer;
             accent-color: #2563eb;
         }
@@ -135,54 +135,24 @@
         .table-responsive-wrapper::-webkit-scrollbar-thumb:hover, 
         .config-panel::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-        /* --- ESTILOS DE DEMOSTRACIÓN (ESTILO AZUL CRISTALINO) --- */
+        /* --- DEMOSTRACIÓN DE PRECIOS --- */
         .demo-box {
-            border: 1px dashed #93c5fd;
-            background-color: #eff6ff;
-            padding: 16px;
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 12px;
             border-radius: 12px;
-            margin-top: 20px;
-            margin-bottom: 20px;
+            margin-top: 14px;
+            margin-bottom: 14px;
         }
         .demo-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #bfdbfe;
+            padding: 6px 0;
+            border-bottom: 1px solid #e2e8f0;
         }
         .demo-item:last-child {
             border-bottom: none;
         }
-        .demo-name {
-            font-weight: 600;
-            color: #1e3a8a;
-            flex: 1;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-right: 10px;
-            font-size: 0.85rem;
-        }
-        .demo-price {
-            font-size: 0.8rem;
-            color: #64748b;
-            text-decoration: line-through;
-            margin-right: 10px;
-        }
-        .arrow-icon {
-            color: #3b82f6;
-            margin: 0 5px;
-            font-size: 1rem;
-        }
-        .demo-new-price {
-            font-weight: 800;
-            color: #16a34a; 
-            white-space: nowrap;
-            font-size: 0.9rem;
-        }
 
-        /* --- ESTILOS DEL MODAL DE ÉXITO --- */
+        /* --- MODAL DE ÉXITO --- */
         .modal-overlay {
             display: none; 
             position: fixed;
@@ -196,21 +166,21 @@
             background-color: #ffffff; padding: 24px;
             border-radius: 16px; 
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-            width: 90%; max-width: 400px; 
+            width: 90%; max-width: 440px; 
             text-align: center;
-            animation: fadeIn 0.3s ease-out;
+            animation: fadeIn 0.25s ease-out;
         }
-        .modal-title { color: #16a34a; font-size: 1.5rem; font-weight: 700; margin-bottom: 12px; }
-        .modal-message { color: #374151; font-size: 1rem; line-height: 1.5; margin-bottom: 24px; }
+        .modal-title { color: #16a34a; font-size: 1.4rem; font-weight: 700; margin-bottom: 10px; }
+        .modal-message { color: #374151; font-size: 0.95rem; line-height: 1.5; margin-bottom: 20px; white-space: pre-line; }
         .modal-close-btn {
-            background-color: #16a34a; color: white; padding: 12px 0; width: 100%;
-            border: none; border-radius: 12px; cursor: pointer; font-weight: 700;
+            background-color: #2563eb; color: white; padding: 10px 0; width: 100%;
+            border: none; border-radius: 10px; cursor: pointer; font-weight: 700;
             transition: background-color 0.2s;
         }
-        .modal-close-btn:hover { background-color: #15803d; }
+        .modal-close-btn:hover { background-color: #1d4ed8; }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.9); }
+            from { opacity: 0; transform: scale(0.95); }
             to { opacity: 1; transform: scale(1); }
         }
     </style>
@@ -218,93 +188,205 @@
 <body>
 
     <div class="main-container">
-        <h1 class="text-2xl font-semibold text-center mb-4 text-gray-800">Panel de Configuración de Productos</h1>
-        
-        <hr class="mb-5">
+        <!-- Header Principal de la Sección -->
+        <div class="mb-3">
+            <h1 class="text-2xl font-bold text-gray-800 flex items-center">
+                <span class="material-icons text-blue-600 mr-2 text-3xl">price_change</span>
+                Actualización Masiva de Precios
+            </h1>
+            <p class="text-xs text-gray-500 mt-0.5">Modifica márgenes de ganancia y suma montos fijos a la base imponible según los niveles de precio seleccionados.</p>
+        </div>
 
         <div class="content-layout">
             
+            <!-- PANEL DE CONFIGURACIÓN -->
             <div class="config-panel">
-                <h2 class="text-xl font-bold mb-5 text-center text-gray-700">⚙️ Configuración</h2>
-                
-                <div class="mb-4">
-                    <label for="percentage-input" class="block font-medium mb-2 text-gray-700">Porcentaje a aplicar:</label>
+                <!-- Encabezado con Botón "¿Cómo se usa?" en rojo -->
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-base font-bold text-gray-700 flex items-center">
+                        <span class="material-icons text-blue-600 text-lg mr-1.5">tune</span>
+                        Parámetros de Ajuste
+                    </h2>
+                    
+                    <button type="button" id="how-to-use-btn" class="text-xs font-semibold text-red-600 hover:text-red-700 cursor-pointer flex items-center gap-1 select-none hover:underline focus:outline-none">
+                        <span class="material-icons text-sm">help_outline</span>
+                        ¿Cómo se usa?
+                    </button>
+                </div>
+
+                <!-- Selector de Niveles de Precio (P1, P2, P3) -->
+                <div class="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold text-slate-700 uppercase tracking-wide">Niveles a Modificar</span>
+                        <div class="space-x-2 text-xs">
+                            <button type="button" id="btn-tier-all" class="text-blue-600 hover:text-blue-800 font-semibold cursor-pointer">Todos</button>
+                            <span class="text-gray-300">|</span>
+                            <button type="button" id="btn-tier-p1-only" class="text-blue-600 hover:text-blue-800 font-semibold cursor-pointer">Solo P1</button>
+                        </div>
+                    </div>
+                    <div class="space-y-1.5 text-xs">
+                        <!-- Nivel 1 -->
+                        <label id="tier-p1-label" class="flex items-center space-x-2 cursor-pointer p-1.5 rounded hover:bg-white transition">
+                            <input type="checkbox" id="tier-p1-check" checked class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                            <span id="tier-p1-text" class="font-medium text-gray-800">Nivel 1 (P1 - Detal / Principal)</span>
+                        </label>
+                        <!-- Nivel 2 -->
+                        <label id="tier-p2-label" class="flex items-center space-x-2 cursor-pointer p-1.5 rounded hover:bg-white transition">
+                            <input type="checkbox" id="tier-p2-check" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                            <span id="tier-p2-text" class="font-medium text-gray-800">Nivel 2 (P2 - Mayor)</span>
+                            <span id="tier-p2-badge" class="hidden text-[10px] text-gray-400 italic ml-auto font-normal">No disponible</span>
+                        </label>
+                        <!-- Nivel 3 -->
+                        <label id="tier-p3-label" class="flex items-center space-x-2 cursor-pointer p-1.5 rounded hover:bg-white transition">
+                            <input type="checkbox" id="tier-p3-check" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                            <span id="tier-p3-text" class="font-medium text-gray-800">Nivel 3 (P3 - Especial)</span>
+                            <span id="tier-p3-badge" class="hidden text-[10px] text-gray-400 italic ml-auto font-normal">No disponible</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Porcentaje a Sumar al Margen de Ganancia -->
+                <div class="mb-3.5">
+                    <label for="percentage-input" class="block font-medium mb-1 text-xs text-gray-700">
+                        Porcentaje a sumar al margen actual:
+                    </label>
+                    <div class="text-[11px] text-gray-500 mb-1">
+                        Se sumará directamente al % de ganancia actual (Ej: 30% + 5% = 35% o -5% = 25%)
+                    </div>
                     <div class="flex items-center">
-                        <input type="number" id="percentage-input" value="" placeholder="Ej: 15"
-                            class="flex-1 p-2.5 border border-gray-300 rounded-l-lg focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 text-right"
+                        <input type="number" id="percentage-input" value="" placeholder="Ej: 5 o -5"
+                            class="flex-1 p-2 border border-gray-300 rounded-l-lg focus:border-blue-500 focus:ring focus:ring-blue-200 text-right font-medium text-sm"
                             min="-100" max="1000" step="0.01">
-                        <span class="bg-gray-200 text-gray-600 p-2.5 border border-l-0 border-gray-300 rounded-r-lg font-bold">
+                        <span class="bg-gray-100 text-gray-700 px-3 py-2 border border-l-0 border-gray-300 rounded-r-lg font-bold text-sm">
                             %
                         </span>
                     </div>
                 </div>
                 
-                <div class="mb-4">
-                    <label for="fixed-amount-input" class="block font-medium mb-2 text-gray-700">Monto fijo a sumar:</label>
+                <!-- Monto Fijo a Sumar a la Base Imponible -->
+                <div class="mb-3.5">
+                    <label for="fixed-amount-input" class="block font-medium mb-1 text-xs text-gray-700">
+                        Monto fijo a sumar a la base imponible:
+                    </label>
+                    <div class="text-[11px] text-gray-500 mb-1">
+                        Se suma directo al precio de venta en la moneda del producto ($ / Bs)
+                    </div>
                     <div class="flex items-center">
-                        <input type="number" id="fixed-amount-input" value="" placeholder="Ej: 5.50"
-                            class="flex-1 p-2.5 border border-gray-300 rounded-l-lg focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 text-right"
+                        <input type="number" id="fixed-amount-input" value="" placeholder="Ej: 0.50 o -0.50"
+                            class="flex-1 p-2 border border-gray-300 rounded-l-lg focus:border-blue-500 focus:ring focus:ring-blue-200 text-right font-medium text-sm"
                             min="-10000" max="1000000" step="0.01">
-                        <span class="bg-gray-200 text-gray-600 p-2.5 border border-l-0 border-gray-300 rounded-r-lg font-bold">
-                            Bs
+                        <span class="bg-gray-100 text-gray-700 px-2.5 py-2 border border-l-0 border-gray-300 rounded-r-lg font-semibold text-xs text-center" title="Aplica en la moneda de cada producto ($ o Bs)">
+                            $ / Bs
                         </span>
                     </div>
                 </div>
+
+                <!-- Demostración en vivo de los precios -->
                 <div class="demo-box">
-                    <h3 class="font-bold text-center mb-2 text-sm text-blue-800">DEMOSTRACIÓN DE PRECIOS</h3>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold text-slate-700 uppercase tracking-wide">Demostración de Precios</span>
+                        <span id="demo-selected-badge" class="text-[11px] text-slate-500 font-medium">0 seleccionados</span>
+                    </div>
                     <div id="demo-products-list">
-                        <p class="text-center text-gray-500 text-sm">Cargando demostración...</p>
+                        <p class="text-center text-slate-400 text-xs py-2">Seleccione productos en la tabla para ver la demostración.</p>
                     </div>
                 </div>
                 
-                <button id="apply-percentage-btn" class="w-full bg-green-500 text-white p-2.5 rounded-lg hover:bg-green-600 transition duration-150 font-semibold">
+                <button id="apply-percentage-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-xl transition duration-150 font-bold text-sm shadow-sm flex items-center justify-center">
+                    <span class="material-icons text-white text-base mr-1.5">save</span>
                     Aplicar a Productos Seleccionados
                 </button>
             </div>
 
+            <!-- PANEL DE LA TABLA DE PRODUCTOS -->
             <div class="table-panel">
-                <h2 class="text-xl font-bold mb-3 text-center text-gray-700">📋 Productos en Inventario</h2>
+                <div class="flex flex-wrap gap-2 mb-3 items-center">
+                    <div class="relative flex-1 min-w-[200px]">
+                        <span class="material-icons absolute left-2.5 top-2.5 text-gray-400 text-sm">search</span>
+                        <input type="text" id="table-search-product" placeholder="Buscar por nombre o código..." 
+                            class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-xs focus:border-blue-500 focus:ring focus:ring-blue-200">
+                    </div>
 
-                <div class="flex flex-wrap gap-3 mb-4 items-center">
-                    <input type="text" id="table-search-product" placeholder="Buscar producto en la tabla..." 
-                        class="flex-1 min-w-[200px] p-2.5 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
-                    
-                    <button id="select-all-btn" class="bg-blue-500 text-white p-2.5 rounded-lg hover:bg-blue-600 transition duration-150 whitespace-nowrap">Seleccionar Todo</button>
-                    
-                    <select id="category-select" class="p-2.5 border border-gray-300 rounded-lg focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50 min-w-[150px]">
+                    <select id="currency-filter-select" class="py-2 px-2.5 border border-gray-300 rounded-lg text-xs focus:border-blue-500 min-w-[125px]">
+                        <option value="">Todas las Monedas</option>
+                        <option value="USD">Solo Dólares ($)</option>
+                        <option value="BS">Solo Bolívares (Bs)</option>
+                    </select>
+
+                    <select id="category-select" class="py-2 px-2.5 border border-gray-300 rounded-lg text-xs focus:border-blue-500 min-w-[140px]">
                         <option value="">Todas las Categorías</option>
                     </select>
+
+                    <button id="select-all-btn" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-xs font-semibold transition whitespace-nowrap">
+                        Seleccionar Todo
+                    </button>
                 </div>
+
                 <div class="table-responsive-wrapper">
                     <table class="table-section">
                         <thead>
                             <tr>
-                                <th>Nombre</th>
-                                <th>Categoría</th>
-                                <th>Unidad</th>
-                                <th>P. Venta</th>
+                                <th style="width: 32%;">Nombre</th>
+                                <th style="width: 18%;">Categoría</th>
+                                <th style="width: 12%; text-align: center;">Moneda</th>
+                                <th style="width: 18%;">P. Venta (Actual)</th>
+                                <th style="width: 10%; text-align: center;">Margen P1</th>
                                 <th>Seleccionar</th> 
                             </tr>
                         </thead>
                         <tbody id="inventory-table-body">
-                            <tr><td colspan="5" style="text-align: center;">Cargando productos...</td></tr>
+                            <tr><td colspan="6" style="text-align: center; padding: 24px;" class="text-gray-500 text-xs">Cargando productos del inventario...</td></tr>
                         </tbody>
                     </table>
+                </div>
+
+                <div class="mt-2 text-xs text-gray-500 flex justify-between items-center">
+                    <span id="table-stats-count">0 productos mostrados</span>
+                    <span id="table-selected-count" class="font-medium text-blue-600">0 seleccionados</span>
                 </div>
             </div>
 
         </div>
-    </div> <div id="success-modal-overlay" class="modal-overlay">
+    </div>
+
+    <!-- VENTANA FLOTANTE EXPLICATIVA (FLOTANDO ENCIMA DE TODO - FIXED EN VIEWPORT) -->
+    <div id="how-to-use-popover" class="fixed hidden opacity-0 transition-opacity duration-200 w-[360px] max-w-[calc(100vw-32px)] p-4 bg-white rounded-xl shadow-xl border border-gray-200 text-xs text-gray-700" style="z-index: 999999;">
+        <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-gray-100">
+            <span class="font-bold text-gray-800 text-xs">Instrucciones de Ajuste</span>
+            <button type="button" id="close-popover-btn" class="text-gray-400 hover:text-gray-600 text-sm font-bold leading-none cursor-pointer focus:outline-none">✕</button>
+        </div>
+        <div class="space-y-2 text-xs text-gray-600 leading-relaxed">
+            <p>
+                <strong class="text-gray-800">Porcentaje al margen:</strong> Se suma directamente al porcentaje de ganancia actual (ej. 30% + 5% = 35%).
+            </p>
+            <p>
+                <strong class="text-gray-800">Monto fijo a sumar:</strong> Se suma a la base imponible (precio de venta) en la moneda de cada producto ($ o Bs).
+            </p>
+            <p>
+                <strong class="text-gray-800">Descuentos (signo menos):</strong> Al colocar un signo menos (<span class="font-mono bg-gray-100 text-gray-800 px-1 py-0.5 rounded font-bold">-</span>) al inicio (ej. <code>-5</code> o <code>-1.50</code>) se descontará ese porcentaje o monto.
+            </p>
+            <p>
+                <strong class="text-gray-800">Niveles de precio:</strong> Solo se modifican los niveles marcados (P1, P2 o P3). Si un producto no tiene Nivel 2 o 3, ese nivel se ignora automáticamente.
+            </p>
+            <p>
+                <strong class="text-gray-800">Costo protegido:</strong> El costo de compra registrado del proveedor no se altera.
+            </p>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONFIRMACIÓN / RESULTADO -->
+    <div id="success-modal-overlay" class="modal-overlay">
         <div class="modal-content">
-            <div class="modal-title">¡Éxito! 🎉</div>
+            <div id="modal-title" class="modal-title">¡Precios Actualizados! 🎉</div>
             <p id="modal-message-text" class="modal-message">
-                Aplicado un cambio al Precio de Venta de producto(s) seleccionados.
+                Los cambios se aplicaron exitosamente a los productos seleccionados.
             </p>
             <button id="modal-close-btn" class="modal-close-btn">
                 Entendido
             </button>
         </div>
     </div>
+
    <script type="module">
     // --- ESTADO GLOBAL ---
     let companyId = null;
@@ -315,6 +397,7 @@
     // --- ELEMENTOS DEL DOM ---
     const inventoryTableBody = document.getElementById('inventory-table-body');
     const tableSearchInput = document.getElementById('table-search-product');
+    const currencyFilterSelect = document.getElementById('currency-filter-select');
     const selectAllBtn = document.getElementById('select-all-btn');
     const categorySelect = document.getElementById('category-select');
     
@@ -322,34 +405,274 @@
     const fixedAmountInput = document.getElementById('fixed-amount-input'); 
     const applyPercentageBtn = document.getElementById('apply-percentage-btn');
     const demoProductsList = document.getElementById('demo-products-list'); 
+    const demoSelectedBadge = document.getElementById('demo-selected-badge');
+    const tableStatsCount = document.getElementById('table-stats-count');
+    const tableSelectedCount = document.getElementById('table-selected-count');
+
+    const tierP1Label = document.getElementById('tier-p1-label');
+    const tierP1Check = document.getElementById('tier-p1-check');
+    const tierP2Label = document.getElementById('tier-p2-label');
+    const tierP2Check = document.getElementById('tier-p2-check');
+    const tierP2Badge = document.getElementById('tier-p2-badge');
+    const tierP3Label = document.getElementById('tier-p3-label');
+    const tierP3Check = document.getElementById('tier-p3-check');
+    const tierP3Badge = document.getElementById('tier-p3-badge');
+
+    const btnTierAll = document.getElementById('btn-tier-all');
+    const btnTierP1Only = document.getElementById('btn-tier-p1-only');
+
+    const howToUseBtn = document.getElementById('how-to-use-btn');
+    const howToUsePopover = document.getElementById('how-to-use-popover');
+    const closePopoverBtn = document.getElementById('close-popover-btn');
+    let popoverTimeout = null;
 
     const successModalOverlay = document.getElementById('success-modal-overlay');
+    const modalTitle = document.getElementById('modal-title');
     const modalMessageText = document.getElementById('modal-message-text');
     const modalCloseBtn = document.getElementById('modal-close-btn');
 
-    // --- FUNCIONES DEL MODAL ---
-    function showModal(message) {
-        modalMessageText.textContent = message;
-        successModalOverlay.style.display = 'flex';
+    // --- POSICIONAMIENTO INTELIGENTE DEL POPOVER FLOTANTE (DERECHA / IZQUIERDA) ---
+    function positionHowToUsePopover() {
+        if (!howToUseBtn || !howToUsePopover) return;
+
+        const rect = howToUseBtn.getBoundingClientRect();
+        const popoverWidth = Math.min(360, window.innerWidth - 32);
+        const padding = 16;
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+
+        const spaceRight = screenWidth - rect.right;
+        const spaceLeft = rect.left;
+
+        let left = 0;
+        let top = rect.top;
+
+        // Evaluar dónde hay espacio suficiente (Derecha o Izquierda)
+        if (spaceRight >= popoverWidth + padding) {
+            // Sale flotando limpiamente hacia la derecha sobre la tabla sin tapar los inputs
+            left = rect.right + 12;
+            top = Math.max(padding, rect.top - 8);
+        } else if (spaceLeft >= popoverWidth + padding) {
+            // Sale flotando hacia la izquierda si hay espacio
+            left = rect.left - popoverWidth - 12;
+            top = Math.max(padding, rect.top - 8);
+        } else {
+            // Pantallas estrechas: centrado respecto a la pantalla
+            left = Math.max(padding, (screenWidth - popoverWidth) / 2);
+            top = rect.bottom + 10;
+        }
+
+        // Comprobación de desborde vertical inferior
+        howToUsePopover.style.display = 'block';
+        howToUsePopover.style.width = `${popoverWidth}px`;
+        const popoverHeight = howToUsePopover.offsetHeight || 380;
+        if (top + popoverHeight > screenHeight - padding) {
+            top = Math.max(padding, screenHeight - popoverHeight - padding);
+        }
+
+        howToUsePopover.style.left = `${Math.round(left)}px`;
+        howToUsePopover.style.top = `${Math.round(top)}px`;
+    }
+
+    function showHowToUsePopover() {
+        if (popoverTimeout) clearTimeout(popoverTimeout);
+        positionHowToUsePopover();
+        howToUsePopover.classList.remove('hidden');
+        requestAnimationFrame(() => {
+            howToUsePopover.classList.remove('opacity-0');
+            howToUsePopover.classList.add('opacity-100');
+        });
+    }
+
+    function hideHowToUsePopover() {
+        if (popoverTimeout) clearTimeout(popoverTimeout);
+        popoverTimeout = setTimeout(() => {
+            howToUsePopover.classList.remove('opacity-100');
+            howToUsePopover.classList.add('opacity-0');
+            setTimeout(() => {
+                if (howToUsePopover.classList.contains('opacity-0')) {
+                    howToUsePopover.classList.add('hidden');
+                }
+            }, 200);
+        }, 150);
+    }
+
+    if (howToUseBtn) {
+        howToUseBtn.addEventListener('mouseenter', showHowToUsePopover);
+        howToUseBtn.addEventListener('mouseleave', hideHowToUsePopover);
+        howToUseBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (howToUsePopover.classList.contains('hidden') || howToUsePopover.classList.contains('opacity-0')) {
+                showHowToUsePopover();
+            } else {
+                hideHowToUsePopover();
+            }
+        });
+    }
+
+    if (howToUsePopover) {
+        howToUsePopover.addEventListener('mouseenter', () => {
+            if (popoverTimeout) clearTimeout(popoverTimeout);
+        });
+        howToUsePopover.addEventListener('mouseleave', hideHowToUsePopover);
+    }
+
+    if (closePopoverBtn) {
+        closePopoverBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            howToUsePopover.classList.remove('opacity-100');
+            howToUsePopover.classList.add('opacity-0');
+            setTimeout(() => howToUsePopover.classList.add('hidden'), 200);
+        });
+    }
+
+    window.addEventListener('resize', () => {
+        if (!howToUsePopover.classList.contains('hidden')) {
+            positionHowToUsePopover();
+        }
+    });
+
+    // --- FUNCIONES DEL MODAL DE ÉXITO ---
+    function showModal(message, isError = false) {
+        if (modalTitle) {
+            modalTitle.textContent = isError ? 'Aviso' : '¡Precios Actualizados! 🎉';
+            modalTitle.style.color = isError ? '#dc2626' : '#16a34a';
+        }
+        if (modalMessageText) modalMessageText.textContent = message;
+        if (successModalOverlay) successModalOverlay.style.display = 'flex';
     }
     
     function hideModal() {
-        successModalOverlay.style.display = 'none';
+        if (successModalOverlay) successModalOverlay.style.display = 'none';
     }
 
-    if(modalCloseBtn) modalCloseBtn.addEventListener('click', hideModal);
-    if(successModalOverlay) {
+    if (modalCloseBtn) modalCloseBtn.addEventListener('click', hideModal);
+    if (successModalOverlay) {
         successModalOverlay.addEventListener('click', (e) => {
             if (e.target === successModalOverlay) hideModal();
         });
     }
 
-    // --- 1. INICIALIZACIÓN DIRECTA ---
+    // --- VALIDACIÓN DE NIVELES POR PRODUCTO ---
+    function productHasTier(product, tier) {
+        if (tier === 'p1') return true;
+        return !!(product.precios && product.precios[tier]);
+    }
+
+    // --- GESTIÓN DE DISPONIBILIDAD DE NIVELES (P1, P2, P3) ---
+    function updateTierControlsAvailability() {
+        const selectedIds = Object.keys(selectedProducts).filter(id => selectedProducts[id]);
+        const selectedItems = allProducts.filter(p => selectedIds.includes(p.docId));
+
+        if (!tierP2Check || !tierP3Check) return;
+
+        // Si no hay productos seleccionados: mantener disponibles los controles para configuración previa
+        if (selectedItems.length === 0) {
+            tierP2Check.disabled = false;
+            tierP2Label.classList.remove('opacity-40', 'cursor-not-allowed');
+            if (tierP2Badge) tierP2Badge.classList.add('hidden');
+
+            tierP3Check.disabled = false;
+            tierP3Label.classList.remove('opacity-40', 'cursor-not-allowed');
+            if (tierP3Badge) tierP3Badge.classList.add('hidden');
+            return;
+        }
+
+        // Si se seleccionó exactamente un producto:
+        if (selectedItems.length === 1) {
+            const prod = selectedItems[0].product;
+            const hasP2 = productHasTier(prod, 'p2');
+            const hasP3 = productHasTier(prod, 'p3');
+
+            // Nivel 2
+            if (!hasP2) {
+                tierP2Check.checked = false;
+                tierP2Check.disabled = true;
+                tierP2Label.classList.add('opacity-40', 'cursor-not-allowed');
+                if (tierP2Badge) tierP2Badge.classList.remove('hidden');
+            } else {
+                tierP2Check.disabled = false;
+                tierP2Label.classList.remove('opacity-40', 'cursor-not-allowed');
+                if (tierP2Badge) tierP2Badge.classList.add('hidden');
+            }
+
+            // Nivel 3
+            if (!hasP3) {
+                tierP3Check.checked = false;
+                tierP3Check.disabled = true;
+                tierP3Label.classList.add('opacity-40', 'cursor-not-allowed');
+                if (tierP3Badge) tierP3Badge.classList.remove('hidden');
+            } else {
+                tierP3Check.disabled = false;
+                tierP3Label.classList.remove('opacity-40', 'cursor-not-allowed');
+                if (tierP3Badge) tierP3Badge.classList.add('hidden');
+            }
+        } else {
+            // Si se seleccionaron varios productos:
+            // Se habilita P2 si al menos uno de los productos tiene P2
+            const anyHasP2 = selectedItems.some(p => productHasTier(p.product, 'p2'));
+            // Se habilita P3 si al menos uno de los productos tiene P3
+            const anyHasP3 = selectedItems.some(p => productHasTier(p.product, 'p3'));
+
+            if (!anyHasP2) {
+                tierP2Check.checked = false;
+                tierP2Check.disabled = true;
+                tierP2Label.classList.add('opacity-40', 'cursor-not-allowed');
+                if (tierP2Badge) tierP2Badge.classList.remove('hidden');
+            } else {
+                tierP2Check.disabled = false;
+                tierP2Label.classList.remove('opacity-40', 'cursor-not-allowed');
+                if (tierP2Badge) tierP2Badge.classList.add('hidden');
+            }
+
+            if (!anyHasP3) {
+                tierP3Check.checked = false;
+                tierP3Check.disabled = true;
+                tierP3Label.classList.add('opacity-40', 'cursor-not-allowed');
+                if (tierP3Badge) tierP3Badge.classList.remove('hidden');
+            } else {
+                tierP3Check.disabled = false;
+                tierP3Label.classList.remove('opacity-40', 'cursor-not-allowed');
+                if (tierP3Badge) tierP3Badge.classList.add('hidden');
+            }
+        }
+    }
+
+    function getSelectedTiers() {
+        const tiers = [];
+        if (tierP1Check && tierP1Check.checked) tiers.push('p1');
+        if (tierP2Check && tierP2Check.checked && !tierP2Check.disabled) tiers.push('p2');
+        if (tierP3Check && tierP3Check.checked && !tierP3Check.disabled) tiers.push('p3');
+        return tiers;
+    }
+
+    if (btnTierAll) {
+        btnTierAll.addEventListener('click', () => {
+            if (tierP1Check) tierP1Check.checked = true;
+            if (tierP2Check && !tierP2Check.disabled) tierP2Check.checked = true;
+            if (tierP3Check && !tierP3Check.disabled) tierP3Check.checked = true;
+            renderDemoProducts();
+        });
+    }
+
+    if (btnTierP1Only) {
+        btnTierP1Only.addEventListener('click', () => {
+            if (tierP1Check) tierP1Check.checked = true;
+            if (tierP2Check) tierP2Check.checked = false;
+            if (tierP3Check) tierP3Check.checked = false;
+            renderDemoProducts();
+        });
+    }
+
+    [tierP1Check, tierP2Check, tierP3Check].forEach(chk => {
+        if (chk) chk.addEventListener('change', renderDemoProducts);
+    });
+
+    // --- 1. INICIALIZACIÓN ---
     async function inicializarModulo() {
         try {
             console.log("🚀 Arrancando módulo de Cambio Masivo de Precios...");
             
-            // Buscamos la API de forma segura
             const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
             if (!api) {
                 console.warn("⏳ NexusAPI no detectada. Reintentando en 100ms...");
@@ -363,21 +686,21 @@
 
                 if (companyId) {
                     console.log("✅ Sesión validada. Empresa ID:", companyId);
-                    // Iniciar Listeners de Interacción
-                    if(tableSearchInput) tableSearchInput.addEventListener('input', filterProducts); 
-                    if(categorySelect) categorySelect.addEventListener('change', filterProducts); 
-                    if(selectAllBtn) selectAllBtn.addEventListener('click', handleSelectAll); 
-                    if(applyPercentageBtn) applyPercentageBtn.addEventListener('click', handleApplyPercentage);
-                    if(percentageInput) percentageInput.addEventListener('input', renderDemoProducts); 
-                    if(fixedAmountInput) fixedAmountInput.addEventListener('input', renderDemoProducts); 
                     
-                    // Cargar datos
+                    if (tableSearchInput) tableSearchInput.addEventListener('input', filterProducts); 
+                    if (categorySelect) categorySelect.addEventListener('change', filterProducts); 
+                    if (currencyFilterSelect) currencyFilterSelect.addEventListener('change', filterProducts);
+                    if (selectAllBtn) selectAllBtn.addEventListener('click', handleSelectAll); 
+                    if (applyPercentageBtn) applyPercentageBtn.addEventListener('click', handleApplyPercentage);
+                    if (percentageInput) percentageInput.addEventListener('input', renderDemoProducts); 
+                    if (fixedAmountInput) fixedAmountInput.addEventListener('input', renderDemoProducts); 
+                    
                     await cargarCategorias(api);
                     await cargarProductos(api);
                 }
             } else {
                 console.warn("⚠️ No hay sesión local activa.");
-                if (inventoryTableBody) inventoryTableBody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 p-4">Error: Sin sesión activa</td></tr>';
+                if (inventoryTableBody) inventoryTableBody.innerHTML = '<tr><td colspan="6" class="text-center text-red-500 p-4">Error: Sin sesión activa</td></tr>';
             }
         } catch (error) {
             console.error("❌ Error al iniciar el módulo:", error);
@@ -389,19 +712,19 @@
         try {
             const categorias = await api.obtenerCategoriasLocal();
             categoryMap = {}; 
-            if(categorySelect) categorySelect.innerHTML = '<option value="">Todas las Categorías</option>';
+            if (categorySelect) categorySelect.innerHTML = '<option value="">Todas las Categorías</option>';
 
             if (categorias && categorias.length > 0) {
                 categorias.forEach(cat => {
-                    categoryMap[cat.id] = cat.nombre || cat.name; 
-                    if(categorySelect) {
+                    const nombre = cat.nombre || cat.name || '';
+                    categoryMap[cat.id] = nombre; 
+                    if (categorySelect) {
                         const option = document.createElement('option');
                         option.value = cat.id;
-                        option.textContent = cat.nombre || cat.name;
+                        option.textContent = nombre;
                         categorySelect.appendChild(option);
                     }
                 });
-                console.log(`📂 ${categorias.length} Categorías cargadas.`);
             }
         } catch (error) {
             console.error("Error cargando categorías:", error);
@@ -424,29 +747,65 @@
                         d = {}; 
                     }
 
-                    // Rescatamos P1 como inventario.html
-                    const p1 = (d.precios && d.precios.p1) ? d.precios.p1 : null;
+                    // Moneda real del producto (USD o BS)
+                    const rawCurrency = (d.currency || p.currency || 'USD').toUpperCase();
+                    const currency = rawCurrency === 'BS' || rawCurrency === 'VEF' || rawCurrency === 'VES' ? 'BS' : 'USD';
+                    const symbol = currency === 'USD' ? '$' : 'Bs';
+
+                    // Extraer los niveles de precios correctamente
+                    const precios = d.precios || {};
+                    const fallbackCosto = parseFloat(p.precio_compra || d.precio_compra || d.costo || 0);
+                    const fallbackVenta = parseFloat(p.precio || d.precio_venta || d.precio || 0);
+                    const fallbackMargen = parseFloat(p.porcentaje_ganancia || d.porcentaje_ganancia || 0);
+
+                    // P1 siempre existe como nivel principal
+                    const p1 = precios.p1 ? {
+                        compra: parseFloat(precios.p1.compra !== undefined ? precios.p1.compra : fallbackCosto) || 0,
+                        porcentaje: parseFloat(precios.p1.porcentaje !== undefined ? precios.p1.porcentaje : fallbackMargen) || 0,
+                        venta: parseFloat(precios.p1.venta !== undefined ? precios.p1.venta : fallbackVenta) || 0
+                    } : { compra: fallbackCosto, porcentaje: fallbackMargen, venta: fallbackVenta };
+
+                    // P2 y P3 existen si tienen porcentaje > 0 o venta > 0
+                    const hasP2 = !!(precios.p2 && (parseFloat(precios.p2.venta) > 0 || parseFloat(precios.p2.porcentaje) > 0));
+                    const p2 = hasP2 ? {
+                        compra: parseFloat(precios.p2.compra !== undefined ? precios.p2.compra : p1.compra) || 0,
+                        porcentaje: parseFloat(precios.p2.porcentaje) || 0,
+                        venta: parseFloat(precios.p2.venta) || 0
+                    } : null;
+
+                    const hasP3 = !!(precios.p3 && (parseFloat(precios.p3.venta) > 0 || parseFloat(precios.p3.porcentaje) > 0));
+                    const p3 = hasP3 ? {
+                        compra: parseFloat(precios.p3.compra !== undefined ? precios.p3.compra : p1.compra) || 0,
+                        porcentaje: parseFloat(precios.p3.porcentaje) || 0,
+                        venta: parseFloat(precios.p3.venta) || 0
+                    } : null;
 
                     return { 
-                        docId: p.id || p.producto_ID || d.id,
+                        docId: String(p.id || p.producto_ID || d.id),
                         rawProduct: p, 
                         fullJsonData: d, 
                         product: {
                             nombre: d.nombre || p.nombre || 'Desconocido',
                             codigo: d.codigo || p.codigo || 'Sin código',
                             categoria: d.categoria || p.categoria || '',
-                            precio_compra: p1 ? parseFloat(p1.compra) : parseFloat(p.precio_compra || d.precio_compra || d.costo || 0),
+                            currency: currency,
+                            symbol: symbol,
+                            precio_compra: p1.compra,
+                            precio_venta: p1.venta,
+                            porcentaje_ganancia: p1.porcentaje,
+                            precios: { p1, p2, p3 },
                             unit: d.unit || d.unidad_empaque || p.unit || 'UN'
                         }
                     };
                 }).filter(item => item !== null);
                 
-                console.log(`📦 ${allProducts.length} Productos cargados.`);
+                console.log(`📦 ${allProducts.length} Productos procesados con sus niveles de precio.`);
             } else {
                 console.warn("⚠️ No se encontraron productos en la base de datos.");
             }
             
             filterProducts(); 
+            updateTierControlsAvailability();
             renderDemoProducts(); 
         } catch (error) {
             console.error("Error cargando productos:", error);
@@ -456,34 +815,39 @@
     // --- 3. LÓGICA DE SELECCIÓN Y FILTRADO ---
     function handleCheckboxChange(docId, isChecked) {
         selectedProducts[docId] = isChecked;
+        updateSelectedCounter();
+        updateTierControlsAvailability();
         renderDemoProducts(); 
+    }
+
+    function updateSelectedCounter() {
+        const count = Object.values(selectedProducts).filter(Boolean).length;
+        if (tableSelectedCount) tableSelectedCount.textContent = `${count} seleccionados`;
+        if (demoSelectedBadge) demoSelectedBadge.textContent = `${count} seleccionados`;
     }
     
     function filterVisibleProducts() {
-        if (!tableSearchInput || !categorySelect) return allProducts;
+        if (!tableSearchInput) return allProducts;
         
-        const searchTerm = tableSearchInput.value.toLowerCase().trim();
-        const categoryFilter = categorySelect.value;
+        const searchTerm = (tableSearchInput.value || '').toLowerCase().trim();
+        const categoryFilter = categorySelect ? categorySelect.value : '';
+        const currencyFilter = currencyFilterSelect ? currencyFilterSelect.value : '';
         
-        let products = allProducts;
-
-        if (categoryFilter && categoryFilter !== '') {
-             products = products.filter(({ product }) => product.categoria === categoryFilter);
-        }
-
-        if (searchTerm.length > 0) {
-            products = products.filter(({ product }) => {
+        return allProducts.filter(({ product }) => {
+            if (categoryFilter && product.categoria !== categoryFilter) return false;
+            if (currencyFilter && product.currency !== currencyFilter) return false;
+            if (searchTerm.length > 0) {
                 const nameMatch = (product.nombre || '').toLowerCase().includes(searchTerm);
                 const codeMatch = (product.codigo || '').toLowerCase().includes(searchTerm);
-                return nameMatch || codeMatch;
-            });
-        }
-        return products;
+                if (!nameMatch && !codeMatch) return false;
+            }
+            return true;
+        });
     }
     
     function handleSelectAll() {
         const productsToToggle = filterVisibleProducts(); 
-        const allCurrentlySelected = productsToToggle.every(({ docId }) => selectedProducts[docId]);
+        const allCurrentlySelected = productsToToggle.length > 0 && productsToToggle.every(({ docId }) => selectedProducts[docId]);
         const shouldSelect = !allCurrentlySelected; 
 
         productsToToggle.forEach(({ docId }) => {
@@ -491,6 +855,8 @@
         });
         
         filterProducts(); 
+        updateSelectedCounter();
+        updateTierControlsAvailability();
         renderDemoProducts(); 
     }
 
@@ -503,25 +869,62 @@
         if (!inventoryTableBody) return;
         inventoryTableBody.innerHTML = '';
         
+        if (tableStatsCount) {
+            tableStatsCount.textContent = `${productsToDisplay.length} de ${allProducts.length} productos`;
+        }
+
         if (productsToDisplay.length === 0) {
-            inventoryTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #6b7280; font-style: italic;">No se encontraron productos.</td></tr>';
+            inventoryTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #6b7280; font-style: italic;">No se encontraron productos coincidentes.</td></tr>';
             return;
         }
+
+        const fragment = document.createDocumentFragment();
 
         productsToDisplay.forEach(({ docId, product }) => {
             const row = document.createElement('tr');
             const categoryId = product.categoria; 
             const categoryName = categoryMap[categoryId] || categoryId || 'Sin Categoría'; 
-            const isSelected = selectedProducts[docId] || false;
+            const isSelected = !!selectedProducts[docId];
             
             const nombreProd = product.nombre || 'Desconocido';
-            const precioBase = parseFloat(product.precio_compra || 0);
-            
+            const symbol = product.symbol || '$';
+            const isUSD = product.currency === 'USD';
+
+            const p1 = product.precios?.p1 || { venta: product.precio_venta || 0, porcentaje: product.porcentaje_ganancia || 0 };
+            const p2 = product.precios?.p2;
+            const p3 = product.precios?.p3;
+
+            const currencyBadge = isUSD 
+                ? `<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">USD ($)</span>`
+                : `<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">BS (Bs)</span>`;
+
+            // Niveles adicionales si existen
+            let tiersInfo = '';
+            if (p2 || p3) {
+                const p2Html = p2 ? `<span title="Nivel 2 (Mayor)">P2: ${symbol}${parseFloat(p2.venta || 0).toFixed(2)}</span>` : '';
+                const p3Html = p3 ? `<span title="Nivel 3 (Especial)">P3: ${symbol}${parseFloat(p3.venta || 0).toFixed(2)}</span>` : '';
+                tiersInfo = `<div class="text-[10px] text-gray-400 flex gap-2 mt-0.5">${p2Html} ${p3Html}</div>`;
+            }
+
+            // Nombre en negrita, precio de venta real con moneda y niveles
             row.innerHTML = `
-                <td>${nombreProd}</td>
-                <td>${categoryName}</td> 
-                <td style="text-align: center;">${product.unit || 'UN'}</td>
-                <td class="font-bold text-gray-700">Bs ${precioBase.toFixed(2)}</td>
+                <td class="font-bold text-gray-900 leading-snug">
+                    <div class="truncate" title="${nombreProd}">${nombreProd}</div>
+                    <div class="text-[11px] text-gray-400 font-normal">Cód: ${product.codigo || '---'}</div>
+                </td>
+                <td class="text-gray-600 text-xs">${categoryName}</td> 
+                <td style="text-align: center;">${currencyBadge}</td>
+                <td>
+                    <div class="font-bold ${isUSD ? 'text-emerald-700' : 'text-blue-700'} text-sm">
+                        ${symbol} ${parseFloat(p1.venta || 0).toFixed(2)}
+                    </div>
+                    ${tiersInfo}
+                </td>
+                <td style="text-align: center;">
+                    <span class="inline-block px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 font-bold text-xs">
+                        ${parseFloat(p1.porcentaje || 0).toFixed(1)}%
+                    </span>
+                </td>
                 <td style="text-align: center;">
                     <div class="custom-checkbox">
                         <input type="checkbox" id="table-select-${docId}" ${isSelected ? 'checked' : ''} data-doc-id="${docId}">
@@ -530,23 +933,88 @@
             `; 
             
             const checkbox = row.querySelector(`#table-select-${docId}`);
-            if(checkbox) {
+            if (checkbox) {
                 checkbox.addEventListener('change', (e) => handleCheckboxChange(docId, e.target.checked));
             }
 
-            inventoryTableBody.appendChild(row);
+            fragment.appendChild(row);
         });
+
+        inventoryTableBody.appendChild(fragment);
+        updateSelectedCounter();
     }
     
-    // --- 4. LÓGICA DE DEMOSTRACIÓN ---
-    function calculateNewPrice(currentPrice, percentageValue, fixedAmountValue) {
-        let newPrice = currentPrice;
-        const percentageMultiplier = 1 + (percentageValue / 100);
-        newPrice *= percentageMultiplier;
-        newPrice += fixedAmountValue;
-        return Math.max(0, newPrice);
-    }
+    // --- 4. MOTOR DE CÁLCULO DE PRECIOS Y NIVELES ---
+    // Regla de Negocio:
+    // 1. percentageToAdd se le suma al porcentaje de ganancia actual: nuevoMargen = margenActual + percentageToAdd
+    //    Si percentageToAdd es negativo, descuenta del margen.
+    // 2. fixedAmountToAdd se le suma directo a la base imponible (precio de venta): nuevaVenta = nuevaVenta + fixedAmountToAdd
+    //    Si fixedAmountToAdd es negativo, descuenta del precio de venta.
+    // 3. El costo (compra) se preserva intacto
     
+    // 🛡️ CONFIGURACIÓN DE TIPO DE CÁLCULO DE MARGEN
+    window.tipoCalculoMargen = 'SOBRE_COSTO';
+    window.calcularVentaSegunMargen = function(costo, porcentaje) {
+        const c = parseFloat(costo) || 0;
+        const p = parseFloat(porcentaje) || 0;
+        if (c <= 0) return 0;
+        if (window.tipoCalculoMargen === 'SOBRE_VENTA') {
+            if (p >= 100) return c;
+            return parseFloat((c / (1 - (p / 100))).toFixed(2));
+        }
+        return parseFloat((c * (1 + (p / 100))).toFixed(2));
+    };
+
+    async function cargarConfiguracionMargenMasivo() {
+        try {
+            const api = window.nexusAPI || (window.parent && window.parent.nexusAPI ? window.parent.nexusAPI : null);
+            if (api && typeof api.obtenerConfiguracion === 'function') {
+                const cfg = await api.obtenerConfiguracion('tipo_calculo_margen');
+                if (cfg) window.tipoCalculoMargen = String(cfg).toUpperCase();
+            }
+        } catch(e) {}
+    }
+    cargarConfiguracionMargenMasivo();
+
+    function calculateTierAdjustment(tierData, fallbackCosto, percentageToAdd, fixedAmountToAdd) {
+        const compra = parseFloat(tierData?.compra !== undefined ? tierData.compra : fallbackCosto) || 0;
+        const margenActual = parseFloat(tierData?.porcentaje !== undefined ? tierData.porcentaje : 0) || 0;
+        const ventaActual = parseFloat(tierData?.venta !== undefined ? tierData.venta : (compra * (1 + margenActual / 100))) || 0;
+
+        let nuevoMargen = margenActual;
+        let nuevaVenta = ventaActual;
+
+        // Si se especificó porcentaje a sumar o descontar
+        if (percentageToAdd !== 0) {
+            nuevoMargen = margenActual + percentageToAdd;
+            nuevaVenta = window.calcularVentaSegunMargen(compra, nuevoMargen);
+        }
+
+        // Si se especificó monto fijo a sumar o descontar a la base imponible
+        if (fixedAmountToAdd !== 0) {
+            nuevaVenta = nuevaVenta + fixedAmountToAdd;
+            if (compra > 0) {
+                if (window.tipoCalculoMargen === 'SOBRE_VENTA' && nuevaVenta > 0) {
+                    nuevoMargen = ((nuevaVenta - compra) / nuevaVenta) * 100;
+                } else {
+                    nuevoMargen = ((nuevaVenta - compra) / compra) * 100;
+                }
+            }
+        }
+
+        nuevaVenta = Math.max(0, parseFloat(nuevaVenta.toFixed(2)));
+        nuevoMargen = parseFloat(nuevoMargen.toFixed(2));
+
+        return {
+            compra,
+            porcentajeAnterior: margenActual,
+            ventaAnterior: ventaActual,
+            porcentajeNuevo: nuevoMargen,
+            ventaNueva: nuevaVenta
+        };
+    }
+
+    // --- 5. LÓGICA DE DEMOSTRACIÓN ---
     function renderDemoProducts() {
         if (!demoProductsList) return;
         demoProductsList.innerHTML = '';
@@ -554,57 +1022,105 @@
         const selectedProductIds = Object.keys(selectedProducts).filter(id => selectedProducts[id]);
         const percentageValue = percentageInput ? (parseFloat(percentageInput.value) || 0) : 0;
         const fixedAmountValue = fixedAmountInput ? (parseFloat(fixedAmountInput.value) || 0) : 0; 
+        const selectedTiers = getSelectedTiers();
 
         if (selectedProductIds.length === 0) {
-            demoProductsList.innerHTML = '<p class="text-center font-semibold text-red-600 text-sm py-4">⚠️ Seleccione un producto primero</p>';
+            demoProductsList.innerHTML = '<p class="text-center font-normal text-slate-400 text-xs py-2">Seleccione productos en la tabla para ver la demostración.</p>';
+            return;
+        }
+
+        if (selectedTiers.length === 0) {
+            demoProductsList.innerHTML = '<p class="text-center font-normal text-amber-600 text-xs py-2">Seleccione al menos un nivel de precio (P1, P2 o P3).</p>';
+            return;
+        }
+
+        if (percentageValue === 0 && fixedAmountValue === 0) {
+            demoProductsList.innerHTML = '<p class="text-center text-slate-400 text-xs py-2">Ingrese un porcentaje o un monto fijo arriba para calcular los nuevos precios.</p>';
             return;
         }
         
         const selectedProductsObjects = allProducts.filter(({ docId }) => selectedProductIds.includes(docId));
+        const demoSamples = selectedProductsObjects.slice(0, 3);
         
-        const getRandomItems = (arr, num) => {
-            const shuffled = [...arr].sort(() => 0.5 - Math.random());
-            return shuffled.slice(0, num);
-        };
-
-        let demoProducts = selectedProductsObjects.length <= 3 ? selectedProductsObjects : getRandomItems(selectedProductsObjects, 3);
-        
-        demoProducts.forEach(({ docId, product }) => {
-            const currentCost = parseFloat(product.precio_compra || 0);
+        demoSamples.forEach(({ docId, product }) => {
             const nombreProd = product.nombre || 'Producto';
-            const newCost = calculateNewPrice(currentCost, percentageValue, fixedAmountValue);
-            
+            const symbol = product.symbol || '$';
+            const fallbackCosto = parseFloat(product.precio_compra) || 0;
+
             const itemDiv = document.createElement('div');
-            itemDiv.classList.add('demo-item', 'flex', 'justify-between', 'items-center', 'p-3', 'border-b', 'border-gray-200');
+            itemDiv.classList.add('demo-item');
+
+            let tiersHtml = '';
+            selectedTiers.forEach(tier => {
+                // Si el producto no tiene este nivel (P2 o P3), se ignora
+                if (tier !== 'p1' && !productHasTier(product, tier)) {
+                    return;
+                }
+
+                const tierName = tier.toUpperCase();
+                const tierData = product.precios?.[tier] || { compra: fallbackCosto, porcentaje: product.porcentaje_ganancia || 0, venta: product.precio_venta || 0 };
+                const calc = calculateTierAdjustment(tierData, fallbackCosto, percentageValue, fixedAmountValue);
+
+                tiersHtml += `
+                    <div class="flex items-center justify-between text-xs py-0.5">
+                        <span class="font-medium text-slate-600">${tierName}:</span>
+                        <div class="flex items-center space-x-1.5">
+                            <span class="text-slate-400 line-through">${symbol}${calc.ventaAnterior.toFixed(2)} (${calc.porcentajeAnterior.toFixed(0)}%)</span>
+                            <span class="text-slate-400 font-bold">➔</span>
+                            <span class="font-bold text-emerald-600">${symbol}${calc.ventaNueva.toFixed(2)} (${calc.porcentajeNuevo.toFixed(1)}%)</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            if (tiersHtml === '') {
+                tiersHtml = `<div class="text-[11px] text-slate-400 italic py-0.5">Nivel seleccionado no configurado para este producto.</div>`;
+            }
+
             itemDiv.innerHTML = `
-                <span class="demo-name text-sm font-semibold truncate w-1/3" title="${nombreProd}">${nombreProd}</span>
-                <span class="demo-price text-sm text-gray-500">Costo: Bs ${currentCost.toFixed(2)}</span>
-                <span class="arrow-icon text-blue-500 mx-2"><i class="fas fa-arrow-right"></i></span>
-                <span class="demo-new-price text-sm font-bold text-green-600">Costo: Bs ${newCost.toFixed(2)}</span>
+                <div class="font-bold text-xs text-slate-800 truncate mb-1" title="${nombreProd}">
+                    ${nombreProd}
+                    <span class="text-[10px] font-normal text-slate-400">(${product.currency})</span>
+                </div>
+                ${tiersHtml}
             `;
             demoProductsList.appendChild(itemDiv);
         });
+
+        if (selectedProductsObjects.length > 3) {
+            const extra = selectedProductsObjects.length - 3;
+            const extraNote = document.createElement('div');
+            extraNote.className = 'text-[11px] text-center text-slate-500 font-medium pt-1';
+            extraNote.textContent = `+ ${extra} producto(s) más seleccionados`;
+            demoProductsList.appendChild(extraNote);
+        }
     }
     
-    // --- 5. APLICACIÓN DE CAMBIOS MASIVOS ---
+    // --- 6. APLICACIÓN DE CAMBIOS MASIVOS ---
     async function handleApplyPercentage() {
-        const percentageValue = parseFloat(percentageInput.value) || 0;
-        const fixedAmountValue = parseFloat(fixedAmountInput.value) || 0; 
+        const percentageValue = percentageInput ? (parseFloat(percentageInput.value) || 0) : 0;
+        const fixedAmountValue = fixedAmountInput ? (parseFloat(fixedAmountInput.value) || 0) : 0; 
+        const selectedTiers = getSelectedTiers();
+
+        if (selectedTiers.length === 0) {
+            showModal('⚠️ Por favor, selecciona al menos un Nivel de Precio a modificar (P1, P2 o P3).', true);
+            return;
+        }
 
         if (percentageValue === 0 && fixedAmountValue === 0) {
-            showModal('⚠️ Por favor, ingresa un Porcentaje a aplicar o un Monto fijo a sumar.');
+            showModal('⚠️ Por favor, ingresa un Porcentaje a sumar al margen o un Monto fijo a sumar a la base imponible.', true);
             return;
         }
         
         const selectedIds = Object.keys(selectedProducts).filter(id => selectedProducts[id]);
         
         if (selectedIds.length === 0) {
-            showModal('⚠️ Por favor, selecciona al menos un producto en la tabla para aplicar los cambios.');
+            showModal('⚠️ Por favor, selecciona al menos un producto en la tabla para aplicar los cambios.', true);
             return;
         }
 
         applyPercentageBtn.disabled = true;
-        applyPercentageBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Aplicando...';
+        applyPercentageBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Guardando cambios...';
 
         let productsUpdatedCount = 0;
 
@@ -615,87 +1131,114 @@
                 const productEntry = allProducts.find(p => p.docId === docId);
                 
                 if (productEntry && productEntry.product) {
-                    const currentCost = parseFloat(productEntry.product.precio_compra || 0);
-                    const newCost = calculateNewPrice(currentCost, percentageValue, fixedAmountValue);
-                    const finalCost = parseFloat(newCost.toFixed(2)); 
-
-                    if (currentCost.toFixed(2) !== finalCost.toFixed(2)) {
-                        
-                        let updatedJsonData = { ...productEntry.fullJsonData };
-                        
-                        if (!updatedJsonData.precios) {
-                            updatedJsonData.precios = {
-                                p1: { compra: finalCost, porcentaje: 0, venta: finalCost },
-                                p2: { compra: finalCost, porcentaje: 0, venta: finalCost },
-                                p3: { compra: finalCost, porcentaje: 0, venta: finalCost }
-                            };
-                        }
-
-                        const tiers = ['p1', 'p2', 'p3'];
-                        tiers.forEach(tier => {
-                            if (updatedJsonData.precios[tier]) {
-                                updatedJsonData.precios[tier].compra = finalCost;
-                                const margen = parseFloat(updatedJsonData.precios[tier].porcentaje) || 0;
-                                updatedJsonData.precios[tier].venta = parseFloat((finalCost * (1 + (margen / 100))).toFixed(2));
-                            }
-                        });
-
-                        updatedJsonData.precio_compra = finalCost;
-                        updatedJsonData.precio_venta = updatedJsonData.precios.p1.venta;
-                        updatedJsonData.fecha_modificacion = (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})();
-
-                        const productoListoParaSQLite = {
-                            ...productEntry.rawProduct, 
-                            precio_compra: finalCost,
-                            precio: updatedJsonData.precios.p1.venta, 
-                            fecha_modificacion: updatedJsonData.fecha_modificacion,
-                            datos_json: JSON.stringify(updatedJsonData) 
+                    const fallbackCosto = parseFloat(productEntry.product.precio_compra || 0);
+                    let updatedJsonData = { ...productEntry.fullJsonData };
+                    
+                    // Inicializar estructura de precios si no existiese
+                    if (!updatedJsonData.precios) {
+                        const v = parseFloat(productEntry.product.precio_venta) || fallbackCosto;
+                        const m = parseFloat(productEntry.product.porcentaje_ganancia) || 0;
+                        updatedJsonData.precios = {
+                            p1: { compra: fallbackCosto, porcentaje: m, venta: v },
+                            p2: null,
+                            p3: null
                         };
-
-                        await api.sincronizarProductoServidor(productoListoParaSQLite);
-                        
-                        if (api.encolarSincronizacion) {
-                            await api.encolarSincronizacion({
-                                operacion: 'UPDATE',
-                                tabla: 'productos',
-                                datos: productoListoParaSQLite
-                            });
-                        }
-                        
-                        productsUpdatedCount++;
                     }
+
+                    // Modificar únicamente los niveles seleccionados por el usuario
+                    // Si el producto no tiene P2 o P3, ese nivel se ignora automáticamente
+                    selectedTiers.forEach(tier => {
+                        if (tier !== 'p1' && !productHasTier(productEntry.product, tier)) {
+                            return; // Se ignora el cambio en este nivel para este producto
+                        }
+
+                        const currentTierData = updatedJsonData.precios[tier] || {
+                            compra: fallbackCosto,
+                            porcentaje: parseFloat(productEntry.product.porcentaje_ganancia) || 0,
+                            venta: parseFloat(productEntry.product.precio_venta) || fallbackCosto
+                        };
+                        const calc = calculateTierAdjustment(currentTierData, fallbackCosto, percentageValue, fixedAmountValue);
+                        
+                        updatedJsonData.precios[tier] = {
+                            compra: calc.compra,
+                            porcentaje: calc.porcentajeNuevo,
+                            venta: calc.ventaNueva
+                        };
+                    });
+
+                    // P1 es la referencia principal del sistema Nexus POS
+                    const p1Final = updatedJsonData.precios.p1 || {
+                        compra: fallbackCosto,
+                        porcentaje: parseFloat(productEntry.product.porcentaje_ganancia) || 0,
+                        venta: parseFloat(productEntry.product.precio_venta) || fallbackCosto
+                    };
+
+                    updatedJsonData.precio = p1Final.venta;
+                    updatedJsonData.precio_venta = p1Final.venta;
+                    updatedJsonData.porcentaje_ganancia = p1Final.porcentaje;
+                    updatedJsonData.fecha_modificacion = (function() {
+                        let d = new Date();
+                        let c = new Date(d.getTime() + (d.getTimezoneOffset() * 60000) - (4 * 3600000));
+                        let p = (n) => String(n).padStart(2, '0');
+                        return c.getFullYear() + '-' + p(c.getMonth() + 1) + '-' + p(c.getDate()) + ' ' + p(c.getHours()) + ':' + p(c.getMinutes()) + ':' + p(c.getSeconds());
+                    })();
+
+                    // Objeto sincronizado para SQLite
+                    const productoListoParaSQLite = {
+                        ...productEntry.rawProduct, 
+                        precio: p1Final.venta,
+                        precio_compra: p1Final.compra,
+                        porcentaje_ganancia: p1Final.porcentaje,
+                        fecha_modificacion: updatedJsonData.fecha_modificacion,
+                        datos_json: JSON.stringify(updatedJsonData) 
+                    };
+
+                    await api.sincronizarProductoServidor(productoListoParaSQLite);
+                    
+                    if (api.encolarSincronizacion) {
+                        await api.encolarSincronizacion({
+                            operacion: 'UPDATE',
+                            tabla: 'productos',
+                            datos: productoListoParaSQLite
+                        });
+                    }
+                    
+                    productsUpdatedCount++;
                 }
             }
             
             if (productsUpdatedCount === 0) {
-                showModal('No hubo cambios. Los valores aplicados resultan en el mismo costo anterior.');
+                showModal('No hubo cambios aplicados a los productos seleccionados.', true);
             } else {
-                let message = '';
-                if (percentageValue !== 0) message += `${percentageValue}% de cambio`;
-                if (percentageValue !== 0 && fixedAmountValue !== 0) message += ' y ';
-                if (fixedAmountValue !== 0) message += `${fixedAmountValue.toFixed(2)}Bs de monto fijo`;
+                let detalles = [];
+                if (percentageValue !== 0) detalles.push(`${percentageValue > 0 ? '+' : ''}${percentageValue}% al margen de ganancia`);
+                if (fixedAmountValue !== 0) detalles.push(`${fixedAmountValue > 0 ? '+' : ''}${fixedAmountValue.toFixed(2)} a la base imponible`);
                 
-                const successMessage = `✅ Aplicado un ${message} al Costo Base de ${productsUpdatedCount} producto(s). Los precios de venta fueron recalculados automáticamente según sus márgenes.`;
-                showModal(successMessage);
+                const nivelesTexto = selectedTiers.map(t => t.toUpperCase()).join(', ');
+                const successMsg = `Se actualizaron correctamente ${productsUpdatedCount} producto(s).\n\nNiveles modificados: ${nivelesTexto}\nAjuste aplicado: ${detalles.join(' y ')}.`;
+                showModal(successMsg, false);
                 
+                // Limpiar selecciones e inputs
                 Object.keys(selectedProducts).forEach(id => selectedProducts[id] = false);
-                percentageInput.value = '';
-                fixedAmountInput.value = '';
+                if (percentageInput) percentageInput.value = '';
+                if (fixedAmountInput) fixedAmountInput.value = '';
                 
                 await cargarProductos(api);
             }
 
         } catch (error) {
-            console.error("Error al actualizar precios:", error);
-            showModal(`❌ Error interno al modificar precios: ${error.message}`);
+            console.error("Error al actualizar precios masivos:", error);
+            showModal(`❌ Error interno al modificar precios: ${error.message}`, true);
         } finally {
             applyPercentageBtn.disabled = false;
-            applyPercentageBtn.innerHTML = 'Aplicar a Productos Seleccionados';
+            applyPercentageBtn.innerHTML = `
+                <span class="material-icons text-white text-base mr-1.5">save</span>
+                Aplicar a Productos Seleccionados
+            `;
         }
     }
 
-    // 🔥 EL ARRANQUE DIRECTO (Soluciona el problema de inyección HTML)
-    // En lugar de esperar a DOMContentLoaded, lo ejecutamos de inmediato.
+    // Arranque directo
     inicializarModulo();
     
     </script>

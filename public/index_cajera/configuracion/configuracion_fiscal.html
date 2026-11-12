@@ -32,7 +32,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                     <div class="space-y-2">
                         <label for="hkaSucursal" class="block text-sm font-medium text-gray-700">Sucursal HKA (Ej: 0001):</label>
                         <input type="text" id="hkaSucursal" class="mt-1 block w-full border-gray-300 rounded-none shadow-sm p-2.5 border" placeholder="0001">
@@ -48,6 +48,27 @@
                             <option value="USD">USD (Dólares)</option>
                         </select>
                     </div>
+                </div>
+
+                <!-- Panel de Sincronización de Correlativos HKA -->
+                <div class="mt-6 p-4 bg-indigo-50/70 border border-indigo-200">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <h4 class="font-bold text-gray-800 flex items-center gap-1.5 text-sm">
+                                <span class="material-icons text-indigo-600 text-base">cloud_sync</span>
+                                Sincronización de Correlativos en la Nube (The Factory HKA)
+                            </h4>
+                            <p class="text-xs text-gray-600 mt-1">
+                                Consulta directamente en el servidor de HKA el último correlativo emitido para la Serie configurada y actualiza la base de datos local sin realizar ventas manuales.
+                            </p>
+                        </div>
+                        <button type="button" id="btn-sync-correlativo-hka" onclick="window.sincronizarCorrelativoNubeHKA && window.sincronizarCorrelativoNubeHKA()"
+                            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs rounded-none shadow-sm flex items-center justify-center gap-2 whitespace-nowrap transition-colors">
+                            <span class="material-icons text-sm">cloud_download</span>
+                            Consultar y Sincronizar Correlativo
+                        </button>
+                    </div>
+                    <div id="status-sync-hka" style="display:none" class="mt-3 p-3 text-xs border"></div>
                 </div>
 
             </div>
@@ -993,5 +1014,77 @@
             }
         }
     });
+
+
+    // Función para sincronizar correlativos desde la nube de The Factory HKA
+    window.sincronizarCorrelativoNubeHKA = async function() {
+        const btn = document.getElementById('btn-sync-correlativo-hka');
+        const statusDiv = document.getElementById('status-sync-hka');
+        if (!btn || !statusDiv) return;
+
+        const serieInput = document.getElementById('hkaSerie');
+        const serieVal = (serieInput?.value || '').trim().toUpperCase();
+
+        btn.disabled = true;
+        btn.innerHTML = `<span class="material-icons text-sm animate-spin">refresh</span> Consultando nube HKA...`;
+        statusDiv.className = 'mt-3 p-3 text-xs border bg-blue-50 border-blue-200 text-blue-800 flex items-center gap-2';
+        statusDiv.style.display = 'block';
+        statusDiv.innerHTML = `<span>Conectando con el servicio HKA para consultar el último correlativo de la Serie [${serieVal || 'General'}]...</span>`;
+
+        try {
+            if (!window.nexusAPI || !window.nexusAPI.consultarYSincronizarCorrelativoHKA) {
+                throw new Error("El módulo API de sincronización no está disponible en este entorno.");
+            }
+
+            const res = await window.nexusAPI.consultarYSincronizarCorrelativoHKA({
+                tipoDocumento: "01",
+                serie: serieVal
+            });
+
+            console.log("[HKA SYNC RESULTADO]:", res);
+
+            if (res && res.exito) {
+                statusDiv.className = 'mt-3 p-3 text-xs border bg-green-50 border-green-200 text-green-800';
+                statusDiv.innerHTML = `
+                    <div class="space-y-1">
+                        <p class="font-bold flex items-center gap-1">
+                            <span class="material-icons text-green-600 text-sm">check_circle</span>
+                            ¡Sincronización Exitosa con The Factory HKA!
+                        </p>
+                        <p>• <strong>Serie Consultada:</strong> ${res.serie || 'General'}</p>
+                        <p>• <strong>Último Documento Registrado en Nube:</strong> #${res.ultimoNumero}</p>
+                        <p>• <strong>Próximo Documento Local a Emitir:</strong> #${res.proximoNumero}</p>
+                        <p class="text-[11px] text-green-700 font-semibold mt-1">La base de datos local (correlativos) ha sido actualizada satisfactoriamente. La próxima factura electrónica adoptará automáticamente el correlativo legal consecutivo (#${res.proximoNumero}).</p>
+                    </div>
+                `;
+                showMessage("✅ Correlativo sincronizado con la nube HKA (#" + res.ultimoNumero + ").", 'green');
+            } else {
+                const err = res?.error || "Error al consultar la API de TFHKA";
+                statusDiv.className = 'mt-3 p-3 text-xs border bg-red-50 border-red-200 text-red-800';
+                statusDiv.innerHTML = `
+                    <div>
+                        <p class="font-bold flex items-center gap-1">
+                            <span class="material-icons text-red-600 text-sm">error</span>
+                            No se pudo sincronizar el correlativo
+                        </p>
+                        <p class="mt-1">${err}</p>
+                        <p class="text-[11px] text-gray-600 mt-1">Asegúrese de haber guardado las credenciales (Token Usuario y Clave) y de que la Serie ingresada coincida con la que tiene habilitada en el portal de TFHKA.</p>
+                    </div>
+                `;
+                showMessage("❌ Fallo de sincronización con TFHKA", 'red');
+            }
+        } catch (e) {
+            console.error("[HKA SYNC ERROR]:", e);
+            statusDiv.className = 'mt-3 p-3 text-xs border bg-red-50 border-red-200 text-red-800';
+            statusDiv.innerHTML = `<div><strong>Error:</strong> ${e.message}</div>`;
+            showMessage(e.message, 'red');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = `<span class="material-icons text-sm">cloud_download</span> Consultar y Sincronizar Correlativo`;
+        }
+    };
+
+    // Vincular listener directamente por ID
+    document.getElementById('btn-sync-correlativo-hka')?.addEventListener('click', window.sincronizarCorrelativoNubeHKA);
 
 </script>
