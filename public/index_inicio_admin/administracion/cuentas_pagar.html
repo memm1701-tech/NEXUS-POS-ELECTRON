@@ -1,1440 +1,1519 @@
 <style>
-
-    .autocomplete-container { position: relative; }
-
-    .autocomplete-results { position: absolute; border: 1px solid #d4d4d4; border-bottom: none; border-top: none; z-index: 99; top: 100%; left: 0; right: 0; max-height: 200px; overflow-y: auto; background-color: #fff; box-shadow: 0px 4px 6px rgba(0,0,0,0.1); border-radius: 0 0 6px 6px; }
-
-    .autocomplete-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #d4d4d4; }
-
-    .autocomplete-item:hover, .autocomplete-active { background-color: #e9e9e9; }
-
+    .nexus-libro-table {
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    .nexus-libro-table th,
+    .nexus-libro-table td {
+        border-right: 1px solid #e5e7eb;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .nexus-libro-table th {
+        border-top: 1px solid #e5e7eb;
+    }
+    .nexus-libro-table tr th:first-child,
+    .nexus-libro-table tr td:first-child {
+        border-left: 1px solid #e5e7eb;
+    }
+    .cxp-tab-active {
+        background-color: #2563eb;
+        color: #ffffff;
+        border: 1px solid #2563eb;
+    }
+    .cxp-tab-inactive {
+        background-color: #ffffff;
+        color: #4b5563;
+        border: 1px solid #d1d5db;
+    }
+    .cxp-tab-inactive:hover {
+        background-color: #f3f4f6;
+        color: #1f2937;
+    }
+    .cxp-filtro-active {
+        background-color: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #93c5fd;
+        font-weight: 700;
+    }
+    .cxp-filtro-inactive {
+        background-color: #f3f4f6;
+        color: #4b5563;
+        border: 1px solid #e5e7eb;
+        font-weight: 600;
+    }
+    .cxp-filtro-inactive:hover {
+        background-color: #e5e7eb;
+    }
 </style>
 
-<div class="w-full min-h-screen p-4 md:p-6 bg-gray-50 flex flex-col">
-
-
-
-    
-
-        <!-- HEADER -->
-
-        <div class="flex justify-between items-center mb-6">
-
-            <div>
-
-                <h1 class="text-2xl font-bold text-gray-800 flex items-center">
-
-                    <span class="material-icons mr-2 text-red-600">account_balance_wallet</span>
-
-                    Cuentas por Pagar
-
-                </h1>
-
-                <p class="text-sm text-gray-500 mt-1">Gestión y control de deudas a proveedores</p>
-
-            </div>
-
-            <div class="bg-blue-50 border border-blue-200 text-blue-800 text-sm p-3 rounded-lg flex items-center max-w-md shadow-sm">
-
-                <i class="material-icons mr-2 text-blue-600">info</i>
-
-                <p>Para poder utilizar esta sección de cuentas por pagar tienes que dirigirte a <strong>Datos Básicos</strong> y <strong>Gestión de Proveedores</strong> para guardar tus proveedores.</p>
-
-            </div>
-
+<div id="cxp-module-root" class="w-full h-screen max-h-screen p-4 md:p-6 bg-gray-50 flex flex-col gap-4 overflow-hidden">
+    <!-- HEADER -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 flex items-center">
+                <i class="material-icons mr-2 text-blue-600">account_balance_wallet</i>
+                Cuentas por Pagar, Retenciones SENIAT & Tesorería
+            </h1>
+            <p class="text-sm text-gray-500 mt-0.5">
+                Compras, Gastos Operativos, Importación Forma 80, Retenciones IVA (75/100%) / ISLR D. 1808, Órdenes de Pago TXT, OCR IA y N/D en Tránsito
+            </p>
         </div>
-
-
-
-        <!-- SUMMARY CARDS -->
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 w-full">
-
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-
-                <p class="text-sm text-gray-500 font-medium">Deuda Total Global</p>
-
-                <h3 class="text-2xl font-bold text-gray-800" id="total-deuda">$0.00</h3>
-
-            </div>
-
+        <div class="flex flex-wrap items-center gap-2">
+            <span id="cxp-badge-tasa-bcv" class="px-3 py-1.5 rounded-lg bg-white border border-gray-300 text-gray-700 text-xs font-semibold">
+                Tasa BCV: Bs. 0.0000/$
+            </span>
+            <button type="button" onclick="document.getElementById('guia-fiscal-cxp').classList.toggle('hidden')"
+                class="px-3 py-2 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-lg text-xs font-semibold transition">
+                Manual Fiscal CxP
+            </button>
+            <button type="button" onclick="window.cxpAbrirModalNuevoDoc()"
+                class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 shadow-sm transition">
+                <span class="material-icons text-sm">add_circle</span> Nuevo Doc / Gasto / Forma 80
+            </button>
+            <button type="button" onclick="window.cargarDatosCuentasPagar()"
+                class="bg-gray-200 hover:bg-gray-300 text-gray-700 p-2 rounded-full transition-colors flex items-center justify-center shadow-sm cursor-pointer" title="Actualizar datos">
+                <i class="material-icons text-xl">refresh</i>
+            </button>
         </div>
-
-
-
-        <div class="flex-1 flex flex-col gap-6">
-
-            
-
-            <!-- FORMULARIO DE REGISTRO -->
-
-            <div class="w-full">
-
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-
-                    <h2 class="text-lg font-bold mb-6 text-gray-800 border-b pb-2">NUEVA FACTURA DE PROVEEDOR</h2>
-
-                    
-
-                    <form id="cxp-form" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-
-                        
-
-                        <div>
-
-                            <label class="block text-sm font-bold text-gray-700 mb-2">Proveedor</label>
-
-                            
-
-                            <div class="autocomplete-container">
-
-                                <input type="text" id="cxp-prov-search" placeholder="Buscar proveedor (Nombre o RIF)..." autocomplete="off" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm text-gray-700 bg-white" required>
-
-                                <div id="cxp-prov-results" class="autocomplete-results hidden"></div>
-
-                            </div>
-
-                        </div>
-
-
-
-                        <div>
-
-                            <label class="block text-sm font-bold text-gray-700 mb-2">N° Factura / Recibo</label>
-
-                            <input type="text" id="cxp-comprobante" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm text-gray-700 bg-white font-mono" placeholder="Ej. F-0001" required>
-
-                        </div>
-
-
-
-                        <div>
-
-                            <label class="block text-sm font-bold text-gray-700 mb-2">Nota / Razón</label>
-
-                            <input type="text" id="cxp-nota" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm placeholder-gray-400" placeholder="Ej. Factura #1020 o Abono..." required>
-
-                        </div>
-
-
-
-                        <div>
-
-                            <label class="block text-sm font-bold text-gray-700 mb-2">Monto ($)</label>
-
-                            <div class="relative">
-
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-bold">$</span>
-
-                                <input type="text" id="cxp-monto" class="w-full border border-gray-300 rounded-md py-2.5 pl-8 pr-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm text-right font-bold" placeholder="0,00" required>
-
-                            </div>
-
-                        </div>
-
-
-
-                        <div class="pt-0">
-
-                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md shadow-sm transition-colors flex items-center justify-center">
-
-                                <span class="material-icons mr-2">save</span>
-
-                                Aplicar Movimiento
-
-                            </button>
-
-                        </div>
-
-                    </form>
-
-                </div>
-
-            </div>
-
-
-
-            <!-- TABLA DE MOVIMIENTOS -->
-
-            <div class="flex-1 flex flex-col w-full">
-
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex-1 flex flex-col w-full">
-
-                    <!-- ENCABEZADO SUPERIOR CON TOGGLE DE FACTURAS PAGADAS -->
-                    <div class="px-5 py-3 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-3 bg-white">
-                        <div class="flex items-center gap-3">
-                            <h3 class="text-base font-bold text-gray-800 flex items-center gap-2">
-                                <span class="material-icons text-red-600 text-lg">receipt_long</span>
-                                Asientos y Facturas de Proveedores
-                            </h3>
-                            <span id="cxp-contador-registros" class="text-xs text-gray-600 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-full font-semibold">
-                                Mostrando 0 registros
-                            </span>
-                        </div>
-                        <div>
-                            <button id="btn-toggle-pagadas" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-all shadow-xs cursor-pointer">
-                                <span class="material-icons text-base text-red-600" id="icon-toggle-pagadas">visibility</span>
-                                <span id="txt-toggle-pagadas">Mostrar facturas pagadas</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="flex-1 overflow-auto">
-
-                        <table class="w-full text-sm text-left relative">
-
-                            <thead class="text-xs text-gray-600 uppercase bg-gray-100 sticky top-0 z-10 shadow-sm">
-
-                                <tr>
-
-                                    <th class="px-4 py-3">ID / Fecha</th>
-
-                                    <th class="px-4 py-3">Proveedor</th>
-
-                                    <th class="px-4 py-3">Comprobante</th>
-
-                                    <th class="px-4 py-3 text-right">Monto Total</th>
-
-                                    <th class="px-4 py-3 text-right">Abonado</th>
-
-                                    <th class="px-4 py-3 text-right">Restante</th>
-
-                                    <th class="px-4 py-3 text-center">Estado</th>
-
-                                    <th class="px-4 py-3 text-center">Acciones</th>
-
-                                </tr>
-
-                            </thead>
-
-                            <tbody id="cxp-table-body" class="divide-y divide-gray-100">
-
-                                <!-- Filas dinámicas -->
-
-                            </tbody>
-
-                        </table>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-
-
-        </div>
-
     </div>
 
-
-
-    <script type="module">
-
-        let companyId = null;
-
-
-
-        const form = document.getElementById('cxp-form');
-
-        
-
-        const tableBody = document.getElementById('cxp-table-body');
-
-        const totalDeudaEl = document.getElementById('total-deuda');
-
-
-
-        function showCustomAlert(message, type = 'success', duration = 3000) {
-
-            const div = document.createElement('div');
-
-            div.textContent = message;
-
-            div.style.cssText = `position:fixed; top:20px; right:20px; background:${type==='error'?'#f44336': (type==='warning'?'#ff9800':'#4CAF50')}; color:white; padding:15px; border-radius:5px; z-index:1000; box-shadow: 0 4px 6px rgba(0,0,0,0.1); font-family: 'Roboto', sans-serif;`;
-
-            document.body.appendChild(div);
-
-            if (duration > 0) setTimeout(() => {
-
-                div.style.opacity = '0';
-
-                div.style.transition = 'opacity 0.5s';
-
-                setTimeout(() => div.remove(), 500);
-
-            }, duration);
-
-            return div;
-
-        }
-
-
-
-        
-
-        let proveedoresList = [];
-
-        let selectedProveedorRif = null;
-
-
-
-        
-
-        function formatNumberToLocal(value) {
-
-            let val = String(value).replace(/[^0-9]/g, '');
-
-            if (val === '') return '';
-
-            let number = parseInt(val, 10) / 100;
-
-            return number.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-        }
-
-
-
-        function parseLocalNumber(value) {
-
-            if (!value) return 0;
-
-            return parseFloat(String(value).replace(/\./g, '').replace(',', '.'));
-
-        }
-
-
-
-
-
-        const provSearch = document.getElementById('cxp-prov-search');
-
-        const provResults = document.getElementById('cxp-prov-results');
-
-        const montoInput = document.getElementById('cxp-monto');
-
-
-
-        if(montoInput) {
-
-            montoInput.addEventListener('input', (e) => {
-
-                e.target.value = formatNumberToLocal(e.target.value);
-
-            });
-
-        }
-
-
-
-        function closeAllLists(elmnt) {
-
-            if (elmnt !== provSearch) {
-
-                provResults.innerHTML = "";
-
-                provResults.classList.add('hidden');
-
-            }
-
-        }
-
-
-
-        if(provSearch) {
-
-            provSearch.addEventListener('input', function(e) {
-
-                let val = this.value;
-
-                closeAllLists();
-
-                if (!val) { selectedProveedorRif = null; return; }
-
-                
-
-                let count = 0;
-
-                provResults.classList.remove('hidden');
-
-                
-
-                for (let i = 0; i < proveedoresList.length; i++) {
-
-                    let p = proveedoresList[i];
-
-                    if (count >= 5) break;
-
-                    
-
-                    if (p.nombre.toUpperCase().includes(val.toUpperCase()) || p.rif.toUpperCase().includes(val.toUpperCase())) {
-
-                        let b = document.createElement("div");
-
-                        b.className = "autocomplete-item text-sm";
-
-                        b.innerHTML = "<strong>" + p.nombre + "</strong> (" + p.rif + ")<br><span class='text-xs text-gray-500'>Deuda: $" + (p.saldo_deuda||0).toFixed(2) + "</span>";
-
-                        b.innerHTML += "<input type='hidden' value='" + p.rif + "'>";
-
-                        b.addEventListener("click", function(e) {
-
-                            provSearch.value = p.nombre;
-
-                            selectedProveedorRif = p.rif;
-
-                            closeAllLists();
-
-                        });
-
-                        provResults.appendChild(b);
-
-                        count++;
-
-                    }
-
-                }
-
-            });
-
-
-
-            provSearch.addEventListener("keydown", function(e) {
-
-                let x = provResults.querySelectorAll('.autocomplete-item');
-
-                let currentFocus = Array.from(x).findIndex(item => item.classList.contains('autocomplete-active'));
-
-                if (e.key === "ArrowDown") {
-
-                    currentFocus++;
-
-                    addActive(x, currentFocus);
-
-                } else if (e.key === "ArrowUp") {
-
-                    currentFocus--;
-
-                    addActive(x, currentFocus);
-
-                } else if (e.key === "Enter") {
-
-                    e.preventDefault();
-
-                    if (currentFocus > -1) {
-
-                        if (x) x[currentFocus].click();
-
-                    }
-
-                }
-
-            });
-
-        }
-
-
-
-        function addActive(x, currentFocus) {
-
-            if (!x || x.length === 0) return;
-
-            removeActive(x);
-
-            if (currentFocus >= x.length) currentFocus = 0;
-
-            if (currentFocus < 0) currentFocus = (x.length - 1);
-
-            x[currentFocus].classList.add("autocomplete-active");
-
-        }
-
-
-
-        function removeActive(x) {
-
-            for (let i = 0; i < x.length; i++) {
-
-                x[i].classList.remove("autocomplete-active");
-
-            }
-
-        }
-
-
-
-        document.addEventListener("click", function(e) {
-
-            closeAllLists(e.target);
-
-        });
-
-
-
-        function generarIdMovimiento() {
-
-            return 'CXP-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
-
-        }
-
-
-
-        window.init = async function init() {
-
-            try {
-
-                const sesion = await window.nexusAPI.obtenerSesionLocal();
-
-                if (sesion) {
-
-                    companyId = sesion.companyId;
-
-                }
-
-                await fetchProveedores();
-
-                await fetchMovimientos();
-
-                await fetchResumen();
-
-
-
-                // Sincronización silenciosa en segundo plano con VPS
-
-                if (window.nexusAPI && window.nexusAPI.sincronizarCuentasPagar) {
-
-                    window.nexusAPI.sincronizarCuentasPagar(companyId).then(() => {
-
-                        fetchProveedores();
-
-                        fetchMovimientos();
-
-                        fetchResumen();
-
-                    }).catch(() => {});
-
-                }
-
-            } catch(e) {
-
-                console.error("Init Error:", e);
-
-            }
-
-        }
-
-
-
-        
-
-        async function fetchProveedores() {
-
-            try {
-
-                proveedoresList = await window.nexusAPI.obtenerProveedoresLocal();
-
-            } catch (err) {
-
-                console.error("Error obteniendo proveedores:", err);
-
-            }
-
-        }
-
-
-
-        async function fetchResumen() {
-
-            try {
-
-                const resumen = await window.nexusAPI.obtenerResumenCxpLocal();
-
-                totalDeudaEl.textContent = `$${resumen.total_deuda.toFixed(2)}`;
-
-            } catch(e) {
-
-                console.error("Error obteniendo resumen:", e);
-
-            }
-
-        }
-
-
-
-        async function fetchMovimientos() {
-
-            try {
-
-                const movimientos = await window.nexusAPI.obtenerMovimientosCxpLocal();
-
-                window.todosLosMovimientosCxp = movimientos || [];
-
-                renderTable(movimientos);
-
-            } catch (err) {
-
-                console.error("Error obteniendo movimientos:", err);
-
-            }
-
-        }
-
-
-
-        let mostrarFacturasPagadas = false;
-
-        function actualizarBotonTogglePagadas() {
-            const btn = document.getElementById('btn-toggle-pagadas');
-            const icon = document.getElementById('icon-toggle-pagadas');
-            const txt = document.getElementById('txt-toggle-pagadas');
-            if (!btn || !icon || !txt) return;
-
-            if (mostrarFacturasPagadas) {
-                btn.className = "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-gray-300 bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all shadow-xs cursor-pointer";
-                icon.className = "material-icons text-base text-gray-600";
-                icon.textContent = "visibility_off";
-                txt.textContent = "Ocultar facturas pagadas";
-            } else {
-                btn.className = "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-all shadow-xs cursor-pointer";
-                icon.className = "material-icons text-base text-red-600";
-                icon.textContent = "visibility";
-                txt.textContent = "Mostrar facturas pagadas";
-            }
-        }
-
-        function renderTable(movimientos) {
-
-            tableBody.innerHTML = '';
-            actualizarBotonTogglePagadas();
-
-            // Filtrar solo facturas para la vista principal
-            const todasFacturas = (movimientos || []).filter(m => m && m.motivo && (m.motivo.toUpperCase() === 'FACTURA' || m.motivo.toUpperCase() === 'COMPRA'));
-
-            // Si mostrarFacturasPagadas es false, mostrar únicamente facturas pendientes
-            const facturas = mostrarFacturasPagadas ? todasFacturas : todasFacturas.filter(m => {
-                const montoTotal = parseFloat(m.monto || 0);
-                const montoAbonado = parseFloat(m.monto_abonado || 0);
-                const restante = montoTotal - montoAbonado;
-                const estado = (m.estado || '').toUpperCase();
-                return restante > 0.01 && estado !== 'PAGADO';
-            });
-
-            const countSpan = document.getElementById('cxp-contador-registros');
-            if (countSpan) {
-                countSpan.textContent = mostrarFacturasPagadas 
-                    ? `Mostrando ${facturas.length} registros (Pendientes + Pagadas)`
-                    : `Mostrando ${facturas.length} pendientes`;
-            }
-
-            if (!facturas || facturas.length === 0) {
-
-                tableBody.innerHTML = `
-
-                    <tr>
-
-                        <td colspan="8" class="px-6 py-10 text-center text-gray-500">
-
-                            <div class="flex flex-col items-center justify-center">
-
-                                <span class="material-icons text-4xl mb-2 text-gray-300">receipt_long</span>
-
-                                <p>${mostrarFacturasPagadas ? 'No hay facturas registradas.' : 'No hay facturas pendientes por pagar.'}</p>
-
-                            </div>
-
-                        </td>
-
-                    </tr>
-
-                `;
-
-                return;
-
-            }
-
-
-
-            facturas.forEach(m => {
-
-                const tr = document.createElement('tr');
-
-                tr.className = "hover:bg-blue-50 transition-colors group";
-
-                
-
-                const dateObj = new Date(m.fecha);
-
-                const fechaFormat = isNaN(dateObj.getTime()) ? m.fecha : dateObj.toLocaleString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
-
-
-
-                const montoTotal = parseFloat(m.monto || 0);
-
-                const montoAbonado = parseFloat(m.monto_abonado || 0);
-
-                const restante = montoTotal - montoAbonado;
-
-                
-
-                let estado = m.estado || 'PENDIENTE';
-
-                let badgeClass = '';
-
-                if (estado === 'PENDIENTE') badgeClass = 'bg-yellow-100 text-yellow-800 border-yellow-200';
-
-                else if (estado === 'ABONADO') badgeClass = 'bg-blue-100 text-blue-800 border-blue-200';
-
-                else badgeClass = 'bg-green-100 text-green-800 border-green-200';
-
-
-
-                tr.innerHTML = `
-
-                    <td class="px-4 py-3 whitespace-nowrap">
-
-                        <div class="font-semibold text-gray-700 text-xs">#${m.id.split('-')[1] || m.id}</div>
-
-                        <div class="text-xs text-gray-500">${fechaFormat}</div>
-
-                    </td>
-
-                    <td class="px-4 py-3">
-
-                        <div class="font-semibold text-gray-900">${m.proveedor_nombre || m.proveedor_rif}</div>
-
-                    </td>
-
-                    <td class="px-4 py-3">
-
-                        <div class="flex items-center gap-1.5">
-
-                            <span class="font-mono text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded">${m.comprobante || 'S/N'}</span>
-
-                            ${m.contenido_fac ? `
-
-                            <button onclick="verDetalleFactura('${m.id}')" class="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-100 transition-colors flex items-center justify-center shadow-xs" title="Ver detalle de productos de esta factura">
-
-                                <i class="material-icons text-base">visibility</i>
-
-                            </button>
-
-                            ` : ''}
-
-                        </div>
-
-                    </td>
-
-                    <td class="px-4 py-3 text-right font-medium text-gray-800">
-
-                        ${montoTotal.toFixed(2)}
-
-                    </td>
-
-                    <td class="px-4 py-3 text-right font-medium text-green-600">
-
-                        ${montoAbonado.toFixed(2)}
-
-                    </td>
-
-                    <td class="px-4 py-3 text-right font-bold text-red-600">
-
-                        ${restante.toFixed(2)}
-
-                    </td>
-
-                    <td class="px-4 py-3 text-center">
-
-                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-bold rounded-full border ${badgeClass}">
-
-                            ${estado}
-
-                        </span>
-
-                    </td>
-
-                    <td class="px-4 py-3 text-center">
-
-                        ${estado !== 'PAGADO' ? `
-
-                        <button onclick="abrirModalPagoCxp('${m.id}', '${(m.proveedor_nombre || m.proveedor_rif).replace(/'/g, "\\'")}', ${restante}, '${m.comprobante || 'S/N'}')" class="text-gray-400 hover:text-green-600 transition-colors p-1" title="Registrar Pago">
-
-                            <i class="material-icons text-xl">payments</i>
-
-                        </button>
-
-                        ` : ''}
-
-                    </td>
-
-                `;
-
-                tableBody.appendChild(tr);
-
-
-
-                // --- BUSCAR Y RENDERIZAR PAGOS (ABONOS) O DEVOLUCIONES (CARGO/RESTA) ---
-
-                const pagos = movimientos.filter(p => (p.motivo.toUpperCase() === 'PAGO' || p.motivo.toUpperCase() === 'DEVOLUCION') && p.comprobante === m.comprobante && p.proveedor_rif === m.proveedor_rif);
-
-                if (pagos && pagos.length > 0) {
-
-                    pagos.forEach((p, index) => {
-
-                        const trPago = document.createElement('tr');
-
-                        const isLast = index === pagos.length - 1;
-
-                        const esDevolucion = (p.metodo_pago && p.metodo_pago.toUpperCase() === 'DEVOLUCION') || 
-                                             (p.referencia && p.referencia.toUpperCase().startsWith('DEV-')) ||
-                                             (p.nota && (p.nota.toLowerCase().includes('devolución') || p.nota.toLowerCase().includes('devolucion'))) ||
-                                             (p.motivo && p.motivo.toUpperCase() === 'DEVOLUCION');
-
-                        trPago.className = esDevolucion
-                            ? "bg-red-50/40 border-b border-gray-100 hover:bg-red-50/70 transition-colors"
-                            : "bg-green-50/30 border-b border-gray-100 hover:bg-green-50/60 transition-colors";
-
-                        const datePObj = new Date(p.fecha);
-
-                        const fechaPFormat = isNaN(datePObj.getTime()) ? p.fecha : datePObj.toLocaleString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
-
-                        if (esDevolucion) {
-                            trPago.innerHTML = `
-
-                                <td class="px-4 py-2 border-l-4 border-l-red-500 ${isLast ? '' : 'border-b-0'} text-right">
-
-                                    <span class="material-icons text-red-500 text-sm align-middle">subdirectory_arrow_right</span>
-
-                                </td>
-
-                                <td colspan="7" class="px-4 py-2 text-xs text-red-900">
-
-                                    <span class="font-bold text-red-700 bg-red-100/80 px-1.5 py-0.5 rounded mr-1">CARGO / RESTA:</span> 
-
-                                    Se descontó <strong class="text-red-700 bg-red-100 px-1.5 py-0.5 rounded font-bold">-${parseFloat(p.monto).toFixed(2)}</strong> 
-
-                                    el ${fechaPFormat} vía <strong>${(p.metodo_pago || 'DEVOLUCIÓN').replace('_', ' ')}</strong>. 
-
-                                    ${p.referencia ? `<span class="text-red-700 ml-1 font-medium">Ref: ${p.referencia}</span>` : ''} 
-
-                                    ${p.nota && p.nota !== 'Abono a factura ' + p.comprobante ? `<span class="text-red-600 italic ml-1">(${p.nota})</span>` : ''}
-
-                                </td>
-
-                            `;
-                        } else {
-                            trPago.innerHTML = `
-
-                                <td class="px-4 py-2 border-l-4 border-l-green-400 ${isLast ? '' : 'border-b-0'} text-right">
-
-                                    <span class="material-icons text-green-500 text-sm align-middle">subdirectory_arrow_right</span>
-
-                                </td>
-
-                                <td colspan="7" class="px-4 py-2 text-xs text-green-800">
-
-                                    <span class="font-semibold text-green-700">ABONO:</span> 
-
-                                    Se abonó <strong class="text-green-600 bg-green-100 px-1 rounded">${parseFloat(p.monto).toFixed(2)}</strong> 
-
-                                    el ${fechaPFormat} vía <strong>${(p.metodo_pago || 'Desconocido').replace('_', ' ')}</strong>. 
-
-                                    ${p.referencia ? `<span class="text-gray-600 ml-1">Ref: ${p.referencia}</span>` : ''} 
-
-                                    ${p.nota && p.nota !== 'Abono a factura ' + p.comprobante ? `<span class="text-gray-500 italic ml-1">(${p.nota})</span>` : ''}
-
-                                </td>
-
-                            `;
-                        }
-
-                        tableBody.appendChild(trPago);
-
-                    });
-
-                }
-
-            });
-
-
-
-            // Contador ya actualizado
-
-        }
-
-
-
-        const btnTogglePagadasEl = document.getElementById('btn-toggle-pagadas');
-        if (btnTogglePagadasEl) {
-            btnTogglePagadasEl.addEventListener('click', () => {
-                mostrarFacturasPagadas = !mostrarFacturasPagadas;
-                renderTable(window.todosLosMovimientosCxp || []);
-            });
-        }
-
-        form.addEventListener('submit', async (e) => {
-
-            e.preventDefault();
-
-            
-
-            const proveedorRif = selectedProveedorRif;
-
-            if (!proveedorRif) {
-
-                showCustomAlert("Por favor seleccione un proveedor", "warning");
-
-                return;
-
-            }
-
-
-
-            const movData = {
-
-                id: generarIdMovimiento(),
-
-                company_id: companyId,
-
-                proveedor_rif: proveedorRif,
-
-                motivo: 'FACTURA',
-
-                comprobante: document.getElementById('cxp-comprobante').value.trim(),
-
-                nota: document.getElementById('cxp-nota').value.trim(),
-
-                monto: parseLocalNumber(document.getElementById('cxp-monto').value)
-
-            };
-
-
-
-            const res = await window.nexusAPI.guardarMovimientoCxpLocal(movData);
-
-            if (res.success || res.exito) {
-
-                showCustomAlert("Factura registrada exitosamente", "success");
-
-                document.getElementById('cxp-comprobante').value = '';
-
-                document.getElementById('cxp-nota').value = '';
-
-                document.getElementById('cxp-monto').value = '';
-
-                
-
-                await fetchMovimientos();
-
-                await fetchResumen();
-
-            } else {
-
-                showCustomAlert("Error: " + (res.mensaje || res.error), "error");
-
-            }
-
-        });
-
-
-
-        // --- LOGICA MODAL PAGO CXP ---
-
-        let cxpMaxAbono = 0;
-
-
-
-        // Necesario que este en el scope global (window) porque los html se cargan de forma dinamica 
-
-        // O si ya está en el archivo y funciona como onclick, no importa, pero la vista dinámica puede afectar
-
-        window.abrirModalPagoCxp = function(facturaId, proveedorNombre, restante, comprobante) {
-
-            document.getElementById('modal-pago-cxp').classList.remove('hidden');
-
-            document.getElementById('cxp-factura-id').value = facturaId;
-
-            document.getElementById('cxp-modal-subtitle').textContent = `Abonar a Proveedor: ${proveedorNombre}`;
-
-            document.getElementById('cxp-modal-comprobante').textContent = `Factura ${comprobante}`;
-
-            document.getElementById('cxp-modal-deuda-usd').textContent = `$${parseFloat(restante).toFixed(2)}`;
-
-            
-
-            cxpMaxAbono = parseFloat(restante);
-
-            document.getElementById('cxp-abono-monto').value = formatNumberToLocal(cxpMaxAbono.toFixed(2));
-
-            
-
-            // Añadir listener para formatear y limitar el monto
-
-            const inputAbono = document.getElementById('cxp-abono-monto');
-
-            // Remove previous listeners using clone node if necessary, or just a simple input handler 
-
-            // Since it's injected we just use an inline function that's okay because we don't attach multiple
-
-            inputAbono.oninput = function(e) {
-
-                let val = this.value.replace(/[^0-9]/g, '');
-
-                if(val !== '') {
-
-                    let number = parseInt(val, 10) / 100;
-
-                    if(number > cxpMaxAbono) number = cxpMaxAbono;
-
-                    this.value = number.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-                }
-
-            };
-
-        };
-
-
-
-        window.cerrarModalCxp = function() {
-
-            document.getElementById('modal-pago-cxp').classList.add('hidden');
-
-            document.getElementById('cxp-form-abono').reset();
-
-        };
-
-
-
-        // Asignar el listener al botón del modal si existe
-
-        const btnProcesarAbono = document.getElementById('btn-procesar-abono-cxp');
-
-        if (btnProcesarAbono) {
-
-            btnProcesarAbono.addEventListener('click', async () => {
-
-                const facturaId = document.getElementById('cxp-factura-id').value;
-
-                const montoRaw = document.getElementById('cxp-abono-monto').value;
-
-                const metodoPago = document.getElementById('cxp-abono-metodo').value;
-
-                const referencia = document.getElementById('cxp-abono-referencia').value;
-
-
-
-                const monto = parseLocalNumber(montoRaw);
-
-
-
-                if (!monto || monto <= 0 || monto > cxpMaxAbono) {
-
-                    showCustomAlert("Por favor ingrese un monto válido.", "error");
-
-                    return;
-
-                }
-
-
-
-                const originalText = btnProcesarAbono.innerHTML;
-
-                btnProcesarAbono.innerHTML = '<i class="material-icons animate-spin mr-2">sync</i>Procesando...';
-
-                btnProcesarAbono.disabled = true;
-
-
-
-                try {
-
-                    const pago = {
-
-                        factura_id: facturaId,
-
-                        company_id: companyId,
-
-                        monto: monto,
-
-                        metodo_pago: metodoPago,
-
-                        referencia: referencia
-
-                    };
-
-
-
-                    const res = await window.nexusAPI.registrarAbonoCxpLocal(pago);
-
-                    
-
-                    if (res.exito || res.success) {
-
-                        showCustomAlert("Pago registrado con éxito");
-
-                        cerrarModalCxp();
-
-                        fetchMovimientos(); 
-
-                        fetchResumen(); 
-
-                    } else {
-
-                        showCustomAlert("Error: " + (res.mensaje || res.error), "error");
-
-                    }
-
-                } catch(e) {
-
-                    console.error("Error en pago cxp:", e);
-
-                    showCustomAlert("Error de conexión", "error");
-
-                } finally {
-
-                    btnProcesarAbono.innerHTML = originalText;
-
-                    btnProcesarAbono.disabled = false;
-
-                }
-
-            });
-
-        }
-
-
-
-        init();
-
-    </script>
-
-
-
-<!-- MODAL DE PAGO A PROVEEDOR -->
-
-<div id="modal-pago-cxp" class="fixed inset-0 bg-black bg-opacity-50 hidden z-[9999] flex justify-center items-center p-4">
-
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all">
-
-        <!-- Header -->
-
-        <div class="bg-gray-50 border-b border-gray-100 px-6 py-4 flex justify-between items-center">
-
-            <div>
-
-                <h3 class="text-xl font-bold text-gray-800 flex items-center">
-
-                    <i class="material-icons text-green-600 mr-2">payments</i>
-
-                    Registrar Pago a Proveedor
-
-                </h3>
-
-                <p class="text-sm text-gray-500 mt-1" id="cxp-modal-subtitle">Abonar a Factura</p>
-
-            </div>
-
-            <button onclick="cerrarModalCxp()" class="text-gray-400 hover:text-red-500 transition-colors">
-
-                <i class="material-icons">close</i>
-
-            </button>
-
+    <!-- GUÍA CONTABLE Y FISCAL PLEGABLE -->
+    <div id="guia-fiscal-cxp" class="hidden bg-white border border-gray-200 rounded-xl p-4 text-xs text-gray-700 grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0">
+        <div>
+            <p class="font-bold uppercase tracking-wider text-gray-800 mb-1">1. Retenciones IVA & ISLR (SENIAT)</p>
+            <p>Los comprobantes emitidos usan numeración legal de 14 dígitos <strong>AAAAMMSSSSSSSS</strong>. Para ISLR (Decreto 1808, UT Bs. 43), en <strong>Persona Natural Residente (PNR)</strong> se resta automáticamente el sustraendo de <strong>83.3334 UT</strong> cuando el pago supera el mínimo gravable.</p>
+        </div>
+        <div>
+            <p class="font-bold uppercase tracking-wider text-gray-800 mb-1">2. Asimetría Fiscal CxP (Art. 51 Regl. IVA)</p>
+            <p>Si pagas una factura a tasa BCV mayor a la de emisión, no puedes aprovechar crédito fiscal IVA sin la <strong>Nota de Débito física del proveedor</strong>. NEXUS envía la variación a la bandeja <strong>N/D en Tránsito</strong> hasta que cargues el N° ND y Control para pasar al Libro de Compras.</p>
+        </div>
+        <div>
+            <p class="font-bold uppercase tracking-wider text-gray-800 mb-1">3. Semáforo BCV & Dispersión TXT</p>
+            <p>Selecciona facturas pendientes para armar una <strong>Orden de Pago (OP)</strong>, revisar la recomendación financiera del Semáforo BCV y descargar el <strong>archivo TXT bancario</strong> (Banesco, Mercantil, Provincial, BDV, BNC).</p>
+        </div>
+    </div>
+
+    <!-- 4 KPI CARDS (LIMPIOS, SIN BORDES LATERALES NI ÍCONOS) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <p class="text-sm text-gray-500 font-medium">Deuda Neta Por Pagar</p>
+            <h3 class="text-2xl font-bold text-gray-800 mt-0.5 font-mono" id="kpi-cxp-total-usd">$0.00</h3>
+            <p class="text-xs text-gray-500 mt-1" id="kpi-cxp-total-bs">Bs. 0.00 · 0 docs</p>
         </div>
 
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <p class="text-sm text-gray-500 font-medium">Vencida CxP (Aging)</p>
+            <h3 class="text-2xl font-bold text-red-600 mt-0.5 font-mono" id="kpi-cxp-vencida-usd">$0.00</h3>
+            <p class="text-xs text-gray-500 mt-1" id="kpi-cxp-vencida-det">1-30d: $0 · +30d: $0</p>
+        </div>
 
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <p class="text-sm text-gray-500 font-medium">Retenciones Emitidas</p>
+            <h3 class="text-2xl font-bold text-blue-600 mt-0.5 font-mono" id="kpi-cxp-ret-bs">Bs. 0.00</h3>
+            <p class="text-xs text-gray-500 mt-1" id="kpi-cxp-ret-det">IVA: Bs. 0 · ISLR: Bs. 0</p>
+        </div>
 
-        <!-- Body -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <p class="text-sm text-gray-500 font-medium">N/D Tránsito & Saldo Favor</p>
+            <h3 class="text-2xl font-bold text-gray-800 mt-0.5 font-mono" id="kpi-cxp-favor-usd">$0.00</h3>
+            <p class="text-xs text-gray-500 mt-1" id="kpi-cxp-nd-count">0 N/D pendientes por proveedor</p>
+        </div>
+    </div>
 
-        <div class="p-6">
+    <!-- BARRA DE TABS SIN ÍCONOS -->
+    <div class="flex flex-wrap gap-2 shrink-0" role="tablist">
+        <button type="button" role="tab" data-cxp-tab="documentos" class="cxp-tab-btn cxp-tab-active px-4 py-2 rounded-lg text-xs font-semibold transition">
+            Documentos, Gastos & Forma 80
+        </button>
+        <button type="button" role="tab" data-cxp-tab="retenciones" class="cxp-tab-btn cxp-tab-inactive px-4 py-2 rounded-lg text-xs font-semibold transition">
+            Retenciones IVA / ISLR & TXT/XML
+        </button>
+        <button type="button" role="tab" data-cxp-tab="programacion" class="cxp-tab-btn cxp-tab-inactive px-4 py-2 rounded-lg text-xs font-semibold transition">
+            Órdenes de Pago, Semáforo & TXT Bancario
+        </button>
+        <button type="button" role="tab" data-cxp-tab="transito" class="cxp-tab-btn cxp-tab-inactive px-4 py-2 rounded-lg text-xs font-semibold transition">
+            N/D Tránsito, Anticipos & Cierre NIC 21
+        </button>
+        <button type="button" role="tab" data-cxp-tab="tesoreria" class="cxp-tab-btn cxp-tab-inactive px-4 py-2 rounded-lg text-xs font-semibold transition">
+            Tesorería & Edo. Cuenta
+        </button>
+    </div>
 
-            <div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6">
-
-                <div class="flex justify-between items-center mb-2">
-
-                    <span class="text-sm font-semibold text-blue-800">Monto Restante a Pagar</span>
-
-                    <span class="text-sm font-mono text-blue-600 bg-white px-2 py-1 rounded" id="cxp-modal-comprobante"></span>
-
+    <!-- ==================== TAB 1: DOCUMENTOS CXP (FILTROS + BUSCADOR UNIDOS A TABLA AL 100% ALTO) ==================== -->
+    <section id="cxp-panel-documentos" class="cxp-tab-panel flex-1 min-h-0 flex flex-col">
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex-1 min-h-0 flex flex-col w-full">
+            <div class="px-4 py-3 border-b border-gray-200 bg-white flex flex-col lg:flex-row lg:items-center justify-between gap-3 shrink-0">
+                <div class="flex flex-wrap items-center gap-1.5">
+                    <button type="button" data-cxp-filtro="ABIERTAS" class="cxp-filtro-btn cxp-filtro-active px-3 py-1.5 rounded-lg text-xs transition">Pendientes</button>
+                    <button type="button" data-cxp-filtro="FACTURA" class="cxp-filtro-btn cxp-filtro-inactive px-3 py-1.5 rounded-lg text-xs transition">Facturas</button>
+                    <button type="button" data-cxp-filtro="GASTO" class="cxp-filtro-btn cxp-filtro-inactive px-3 py-1.5 rounded-lg text-xs transition">Gastos Operativos</button>
+                    <button type="button" data-cxp-filtro="IMPORTACION" class="cxp-filtro-btn cxp-filtro-inactive px-3 py-1.5 rounded-lg text-xs transition">Importación F.80</button>
+                    <button type="button" data-cxp-filtro="NOTAS" class="cxp-filtro-btn cxp-filtro-inactive px-3 py-1.5 rounded-lg text-xs transition">NC / ND</button>
+                    <button type="button" data-cxp-filtro="PAGADAS" class="cxp-filtro-btn cxp-filtro-inactive px-3 py-1.5 rounded-lg text-xs transition">Todas / Pagadas</button>
                 </div>
-
-                <div class="text-3xl font-black text-blue-700" id="cxp-modal-deuda-usd">$0.00</div>
-
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="relative w-64">
+                        <span class="material-icons text-gray-400 text-base absolute left-3 top-2">search</span>
+                        <input type="text" id="buscador-cxp" placeholder="Buscar proveedor, RIF, factura..."
+                            class="w-full pl-9 pr-3 py-1.5 border border-gray-300 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <button type="button" onclick="window.cxpCrearOrdenDesdeSeleccion()"
+                        class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm transition">
+                        Programar OP (<span id="cxp-sel-count">0</span>)
+                    </button>
+                </div>
             </div>
 
+            <div class="flex-1 min-h-0 overflow-auto w-full">
+                <table class="nexus-libro-table w-full text-xs text-left relative">
+                    <thead class="bg-gray-100 font-bold text-gray-600 uppercase tracking-wider sticky top-0 z-10 shadow-sm">
+                        <tr>
+                            <th class="px-3 py-3 text-center w-8"><input type="checkbox" id="cxp-check-all" class="w-4 h-4 rounded"></th>
+                            <th class="px-3 py-3 text-left whitespace-nowrap">Documento / Tipo / Control</th>
+                            <th class="px-3 py-3 text-left whitespace-nowrap">Proveedor / Banco</th>
+                            <th class="px-3 py-3 text-right whitespace-nowrap">Bruto / Retenciones</th>
+                            <th class="px-3 py-3 text-right whitespace-nowrap">Saldo Neto ($ / Bs)</th>
+                            <th class="px-3 py-3 text-center whitespace-nowrap">Aging / Semáforo</th>
+                            <th class="px-3 py-3 text-right whitespace-nowrap">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-cxp-body" class="bg-white">
+                        <tr><td colspan="7" class="p-8 text-center text-gray-400">Cargando cuentas por pagar...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
 
+    <!-- ==================== TAB 2: RETENCIONES IVA / ISLR & SENIAT ==================== -->
+    <section id="cxp-panel-retenciones" class="cxp-tab-panel hidden flex-1 min-h-0 flex-col">
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex-1 min-h-0 flex flex-col w-full">
+            <div class="px-4 py-3 border-b border-gray-200 bg-white flex flex-col md:flex-row md:items-end justify-between gap-4 shrink-0">
+                <div class="flex flex-wrap items-end gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-600 mb-1">Período Declaración (AAAAMM)</label>
+                        <input type="text" id="cxp-ret-periodo" maxlength="6" class="w-32 px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-mono font-bold" placeholder="202611">
+                    </div>
+                    <button type="button" onclick="window.cxpExportarArchivoSeniat('IVA')"
+                        class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm transition">
+                        TXT IVA 16-Col SENIAT
+                    </button>
+                    <button type="button" onclick="window.cxpExportarArchivoSeniat('ISLR')"
+                        class="px-3.5 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-xs font-semibold shadow-sm transition">
+                        XML ISLR SENIAT (D. 1808)
+                    </button>
+                </div>
+                <div class="text-xs text-gray-500">
+                    Numeración automática oficial 14 dígitos: <strong class="font-mono text-gray-800">AAAAMMSSSSSSSS</strong>
+                </div>
+            </div>
 
-            <form id="cxp-form-abono" class="space-y-4">
+            <div class="flex-1 min-h-0 overflow-auto w-full">
+                <table class="nexus-libro-table w-full text-xs text-left relative">
+                    <thead class="bg-gray-100 text-gray-600 uppercase font-bold sticky top-0 z-10 shadow-sm">
+                        <tr>
+                            <th class="px-3 py-3 text-left whitespace-nowrap">Comprobante (14 díg.)</th>
+                            <th class="px-3 py-3 text-center whitespace-nowrap">Impuesto</th>
+                            <th class="px-3 py-3 text-left whitespace-nowrap">Sujeto Retenido / Persona</th>
+                            <th class="px-3 py-3 text-left whitespace-nowrap">Factura / Control</th>
+                            <th class="px-3 py-3 text-right whitespace-nowrap">Base Imp. Bs</th>
+                            <th class="px-3 py-3 text-right">% / Sustraendo</th>
+                            <th class="px-3 py-3 text-right">Retenido Bs / $</th>
+                            <th class="px-3 py-3 text-right">PDF</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-cxp-retenciones-body" class="divide-y divide-gray-100 bg-white"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
 
-                <input type="hidden" id="cxp-factura-id">
-
-                
-
+    <!-- ==================== TAB 3: ÓRDENES DE PAGO & TXT BANCARIO ==================== -->
+    <section id="cxp-panel-programacion" class="cxp-tab-panel hidden flex-1 min-h-0 flex-col gap-5 overflow-y-auto pr-1">
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+                <h3 class="text-sm font-bold text-gray-800 uppercase">Crear Orden de Pago (OP) & Dispersión Bancaria</h3>
+                <p class="text-xs text-gray-500 mt-0.5">Selecciona facturas en la pestaña Documentos y genera un lote de pago con descarga TXT bancaria.</p>
+            </div>
+            <div class="flex flex-wrap items-end gap-3">
                 <div>
-
-                    <label class="block text-sm font-bold text-gray-700 mb-2">Monto a Pagar ($)</label>
-
-                    <div class="relative">
-
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-bold">$</span>
-
-                        <input type="text" id="cxp-abono-monto" class="w-full border border-gray-300 rounded-lg py-3 pl-8 pr-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-lg font-bold text-right" placeholder="0,00" required>
-
-                    </div>
-
+                    <label class="block text-[11px] font-bold text-gray-600 mb-1">Banco Emisor TXT</label>
+                    <select id="cxp-op-banco" class="px-3 py-1.5 border border-gray-300 rounded-lg text-xs bg-white font-semibold">
+                        <option value="BANESCO">Banesco</option>
+                        <option value="MERCANTIL">Mercantil</option>
+                        <option value="PROVINCIAL">BBVA Provincial</option>
+                        <option value="BDV">Banco de Venezuela</option>
+                        <option value="BNC">BNC</option>
+                        <option value="GENERICO">Genérico CSV/TXT</option>
+                    </select>
                 </div>
-
-
-
-                <div class="grid grid-cols-2 gap-4">
-
-                    <div>
-
-                        <label class="block text-sm font-bold text-gray-700 mb-2">Método de Pago</label>
-
-                        <select id="cxp-abono-metodo" class="w-full border border-gray-300 rounded-lg py-3 px-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm bg-white" required>
-
-                            <option value="EFECTIVO_USD">Efectivo ($)</option>
-
-                            <option value="EFECTIVO_BS">Efectivo (Bs)</option>
-
-                            <option value="ZELLE">Zelle</option>
-
-                            <option value="TRANSFERENCIA_BS">Transferencia (Bs)</option>
-
-                            <option value="PAGO_MOVIL">Pago Móvil</option>
-
-                        </select>
-
-                    </div>
-
-                    <div>
-
-                        <label class="block text-sm font-bold text-gray-700 mb-2">Referencia / Nota</label>
-
-                        <input type="text" id="cxp-abono-referencia" class="w-full border border-gray-300 rounded-lg py-3 px-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm placeholder-gray-400" placeholder="Opcional">
-
-                    </div>
-
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-600 mb-1">Cuenta Origen (TXT)</label>
+                    <input type="text" id="cxp-op-cuenta-origen" maxlength="20" class="w-44 px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs font-mono" placeholder="0134...">
                 </div>
-
-            </form>
-
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-600 mb-1">Fecha Ejecución</label>
+                    <input type="date" id="cxp-op-fecha" class="px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs">
+                </div>
+                <button type="button" onclick="window.cxpCrearOrdenDesdeSeleccion()"
+                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-sm">
+                    Crear OP con Seleccionadas (<span id="cxp-sel-count-2">0</span>)
+                </button>
+            </div>
         </div>
 
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 text-xs">
+                    <thead class="bg-gray-50 text-gray-500 uppercase font-bold">
+                        <tr>
+                            <th class="px-3 py-3 text-left">Código OP / Fecha</th>
+                            <th class="px-3 py-3 text-left">Banco Formato</th>
+                            <th class="px-3 py-3 text-center">Facturas</th>
+                            <th class="px-3 py-3 text-right">Total USD / Bs</th>
+                            <th class="px-3 py-3 text-center">Estado</th>
+                            <th class="px-3 py-3 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-cxp-ordenes-body" class="divide-y divide-gray-100 bg-white"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
 
-
-        <!-- Footer -->
-
-        <div class="bg-gray-50 border-t border-gray-100 px-6 py-4 flex justify-end space-x-3">
-
-            <button type="button" onclick="cerrarModalCxp()" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-100 transition-colors">
-
-                Cancelar
-
-            </button>
-
-            <button type="button" id="btn-procesar-abono-cxp" class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center">
-
-                <i class="material-icons mr-2 text-sm">check_circle</i>
-
-                Procesar Pago
-
-            </button>
-
+    <!-- ==================== TAB 4: N/D EN TRÁNSITO, ANTICIPOS & CIERRE NIC 21 ==================== -->
+    <section id="cxp-panel-transito" class="cxp-tab-panel hidden flex-1 min-h-0 flex-col gap-5 overflow-y-auto pr-1">
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-gray-200 bg-gray-50 flex flex-wrap justify-between items-center gap-2">
+                <div>
+                    <h3 class="text-sm font-bold text-gray-800 uppercase">
+                        Créditos Fiscales en Tránsito Pendientes de N/D del Proveedor
+                    </h3>
+                    <p class="text-xs text-gray-600">Solo cuando recibes la Nota de Débito física/digital del proveedor se carga al Libro de Compras SENIAT.</p>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-xs divide-y divide-gray-200">
+                    <thead class="bg-gray-50 text-gray-500 uppercase font-bold">
+                        <tr>
+                            <th class="px-3 py-2 text-left">Fecha Pago / Proveedor</th>
+                            <th class="px-3 py-2 text-left">Factura Origen</th>
+                            <th class="px-3 py-2 text-right">Tasas (Orig → Pago)</th>
+                            <th class="px-3 py-2 text-right">Diferencial Bruto Bs</th>
+                            <th class="px-3 py-2 text-right">Base / IVA Crédito Bs</th>
+                            <th class="px-3 py-2 text-center">Estado</th>
+                            <th class="px-3 py-2 text-right">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-cxp-nd-transito" class="divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
         </div>
 
-    </div>
-
-</div>
-
-
-
-
-
-<!-- MODAL DE DETALLE DE PRODUCTOS DE LA FACTURA -->
-
-<div id="modal-detalle-factura" class="fixed inset-0 bg-black bg-opacity-50 hidden z-[9999] flex justify-center items-center p-4">
-
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all">
-
-        <div class="bg-gray-50 border-b border-gray-100 px-6 py-4 flex justify-between items-center">
-
-            <div>
-
-                <h3 class="text-xl font-bold text-gray-800 flex items-center">
-
-                    <i class="material-icons text-blue-600 mr-2">receipt_long</i>
-
-                    Contenido de la Factura / Compra
-
-                </h3>
-
-                <p class="text-sm text-gray-500 mt-1" id="cxp-modal-detalle-sub"></p>
-
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex flex-col gap-3">
+                <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-800 uppercase">Anticipos & Saldos a Favor con Proveedores</h3>
+                        <p class="text-xs text-gray-500">Entregados en USD Indexado o Bs Nominal</p>
+                    </div>
+                    <button type="button" onclick="window.cxpAbrirModalAnticipo()"
+                        class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1">
+                        <span class="material-icons text-sm">add</span> Registrar Anticipo
+                    </button>
+                </div>
+                <div class="overflow-x-auto max-h-72 overflow-y-auto">
+                    <table class="min-w-full text-xs divide-y divide-gray-200">
+                        <thead class="bg-gray-50 text-gray-500 uppercase font-bold">
+                            <tr>
+                                <th class="px-3 py-2 text-left">Proveedor / Fecha</th>
+                                <th class="px-3 py-2 text-left">Modalidad</th>
+                                <th class="px-3 py-2 text-right">Disponible</th>
+                                <th class="px-3 py-2 text-center">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-cxp-anticipos-body" class="divide-y divide-gray-100"></tbody>
+                    </table>
+                </div>
             </div>
 
-            <button onclick="cerrarModalDetalleFactura()" class="text-gray-400 hover:text-red-500 transition-colors">
-
-                <i class="material-icons">close</i>
-
-            </button>
-
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex flex-col gap-3">
+                <div class="flex flex-wrap justify-between items-end gap-2 border-b border-gray-100 pb-3">
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-800 uppercase">Cierre Cambiario Mensual CxP (NIC 21)</h3>
+                        <p class="text-xs text-gray-500">Re-expresión pasivos abiertos y Reverso Día 1</p>
+                    </div>
+                    <div class="flex items-end gap-2">
+                        <input type="text" id="cxp-cierre-periodo" maxlength="6" class="w-20 px-2 py-1 border border-gray-300 rounded text-xs font-mono" placeholder="202611">
+                        <input type="number" id="cxp-cierre-tasa" step="0.0001" class="w-24 px-2 py-1 border border-gray-300 rounded text-xs font-mono">
+                        <button type="button" onclick="window.cxpEjecutarCierreMensual()" class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold">Cerrar Mes</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto max-h-72 overflow-y-auto">
+                    <table class="min-w-full text-xs divide-y divide-gray-200">
+                        <thead class="bg-gray-50 text-gray-500 uppercase font-bold">
+                            <tr>
+                                <th class="px-3 py-2 text-left">Período</th>
+                                <th class="px-3 py-2 text-right">Tasa</th>
+                                <th class="px-3 py-2 text-right">No Realizado Bs</th>
+                                <th class="px-3 py-2 text-center">Estado</th>
+                                <th class="px-3 py-2 text-right">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-cxp-cierres-body" class="divide-y divide-gray-100"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
+    </section>
 
-        <div class="p-6 max-h-[60vh] overflow-y-auto">
-
-            <table class="w-full text-left border-collapse">
-
-                <thead>
-
-                    <tr class="border-b border-gray-200 text-xs font-bold text-gray-500 uppercase">
-
-                        <th class="py-2.5">Producto</th>
-
-                        <th class="py-2.5 text-center">Cant.</th>
-
-                        <th class="py-2.5 text-right">Costo Unit. ($)</th>
-
-                        <th class="py-2.5 text-right">Subtotal ($)</th>
-
-                    </tr>
-
-                </thead>
-
-                <tbody id="cxp-tabla-detalle-body" class="text-sm divide-y divide-gray-100">
-
-                </tbody>
-
-            </table>
-
+    <!-- ==================== TAB 5: TESORERÍA & EDO CUENTA ==================== -->
+    <section id="cxp-panel-tesoreria" class="cxp-tab-panel hidden flex-1 min-h-0 flex-col gap-5 overflow-y-auto pr-1">
+        <div class="flex flex-wrap justify-between items-center gap-3 bg-white p-4 rounded-xl border border-gray-200">
+            <div class="flex items-center gap-2">
+                <select id="cxp-edo-cta-prov" class="px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white w-64"></select>
+                <button type="button" onclick="window.cxpDescargarEdoCuentaProveedor()"
+                    class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1">
+                    <span class="material-icons text-sm">picture_as_pdf</span> Estado de Cuenta Proveedor PDF
+                </button>
+            </div>
+            <div class="flex gap-2">
+                <button type="button" onclick="window.cxpAbrirModalCuentaTesoreria()"
+                    class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold">Nueva Cuenta Banco/Caja</button>
+            </div>
         </div>
-
-        <div class="bg-gray-50 border-t border-gray-100 px-6 py-4 flex justify-between items-center">
-
-            <span class="text-sm font-bold text-gray-600" id="cxp-detalle-total-articulos"></span>
-
-            <button type="button" onclick="cerrarModalDetalleFactura()" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold shadow-sm transition-colors">
-
-                Cerrar
-
-            </button>
-
+        <div id="grid-cxp-cuentas-tesoreria" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-xs divide-y divide-gray-200">
+                    <thead class="bg-gray-50 text-gray-500 uppercase font-bold">
+                        <tr>
+                            <th class="px-3 py-2 text-left">Fecha</th>
+                            <th class="px-3 py-2 text-left">Cuenta</th>
+                            <th class="px-3 py-2 text-left">Concepto</th>
+                            <th class="px-3 py-2 text-right">Monto</th>
+                            <th class="px-3 py-2 text-center">Conciliado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-cxp-tesoreria-movs" class="divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
         </div>
-
-    </div>
-
+    </section>
 </div>
 
+<!-- ==================== MODAL NUEVO DOCUMENTO CXP (COMPRA / GASTO / FORMA 80 / OCR IA) ==================== -->
+<div id="modal-nuevo-doc-cxp" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[92vh]">
+        <div class="p-4 border-b border-gray-200 bg-red-600 text-white flex justify-between items-center">
+            <h3 class="font-bold text-base flex items-center gap-2">
+                <span class="material-icons">post_add</span> Registrar Documento CxP / Gasto Operativo / Importación
+            </h3>
+            <div class="flex items-center gap-2">
+                <input type="file" id="cxp-ocr-file" accept="image/*,.pdf" class="hidden">
+                <button type="button" id="btn-cxp-ocr-ia" class="px-3 py-1 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-bold flex items-center gap-1">
+                    <span class="material-icons text-sm">auto_awesome</span> Escanear Factura (IA)
+                </button>
+                <button type="button" onclick="window.cxpCerrarModalNuevoDoc()" class="text-white/80 hover:text-white"><span class="material-icons">close</span></button>
+            </div>
+        </div>
 
+        <form id="form-nuevo-doc-cxp" class="p-5 overflow-y-auto flex-1 space-y-4 text-xs">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="sm:col-span-2">
+                    <label class="block font-bold text-gray-700 mb-1">Proveedor</label>
+                    <select id="ndoc-prov-rif" class="w-full border border-gray-300 rounded-lg px-2.5 py-2 bg-white" required></select>
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Tipo Documento</label>
+                    <select id="ndoc-tipo" class="w-full border border-gray-300 rounded-lg px-2.5 py-2 bg-white font-semibold">
+                        <option value="FACTURA">Factura Compra / Proveedor</option>
+                        <option value="GASTO">Gasto Operativo (Sin Inventario)</option>
+                        <option value="IMPORTACION">Importación (Forma 80 Aduana)</option>
+                        <option value="NOTA_CREDITO">Nota de Crédito del Proveedor</option>
+                        <option value="NOTA_DEBITO">Nota de Débito del Proveedor</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">N° Factura / Doc</label>
+                    <input type="text" id="ndoc-comprobante" required class="w-full border border-gray-300 rounded-lg px-2.5 py-2 font-mono uppercase" placeholder="0001-004521">
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">N° Control Fiscal</label>
+                    <input type="text" id="ndoc-control" class="w-full border border-gray-300 rounded-lg px-2.5 py-2 font-mono uppercase" placeholder="00-0014258">
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Fecha Emisión</label>
+                    <input type="date" id="ndoc-fecha" required class="w-full border border-gray-300 rounded-lg px-2.5 py-2">
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Condición / Días</label>
+                    <div class="flex gap-1">
+                        <select id="ndoc-condicion" class="w-2/3 border border-gray-300 rounded-lg px-2 py-2 bg-white">
+                            <option value="CREDITO">Crédito</option>
+                            <option value="CONTADO">Contado</option>
+                        </select>
+                        <input type="number" id="ndoc-dias" min="0" value="15" class="w-1/3 border border-gray-300 rounded-lg px-2 py-2 font-mono text-center">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gasto Operativo / Factura afectada -->
+            <div id="ndoc-box-gasto" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-indigo-50 border border-indigo-200 rounded-xl">
+                <div>
+                    <label class="block font-bold text-indigo-900 mb-1">Categoría de Gasto Operativo</label>
+                    <select id="ndoc-categoria-gasto" class="w-full border border-indigo-300 rounded-lg px-2.5 py-2 bg-white"></select>
+                </div>
+                <div>
+                    <label class="block font-bold text-indigo-900 mb-1">Descripción del Gasto</label>
+                    <input type="text" id="ndoc-nota" class="w-full border border-indigo-300 rounded-lg px-2.5 py-2" placeholder="Ej. Canon arrendamiento mes Noviembre">
+                </div>
+            </div>
+
+            <div id="ndoc-box-afectada" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                <div>
+                    <label class="block font-bold text-amber-900 mb-1">Factura Afectada (N°)</label>
+                    <input type="text" id="ndoc-factura-afectada" class="w-full border border-amber-300 rounded-lg px-2.5 py-2 font-mono" placeholder="N° Factura origen">
+                </div>
+                <div>
+                    <label class="block font-bold text-amber-900 mb-1">Concepto NC / ND</label>
+                    <input type="text" id="ndoc-motivo-nota" class="w-full border border-amber-300 rounded-lg px-2.5 py-2" placeholder="Devolución / Diferencial cambiario">
+                </div>
+            </div>
+
+            <!-- Forma 80 Importación -->
+            <div id="ndoc-box-forma80" class="hidden p-3 bg-cyan-50 border border-cyan-200 rounded-xl space-y-2">
+                <div class="font-bold text-cyan-900 uppercase text-[11px]">Declaración de Aduana (Forma 80 / SENIAT Importación)</div>
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    <div><label class="block text-gray-600 mb-0.5">FOB ($)</label><input type="number" step="0.01" id="f80-fob" value="0" class="f80-calc w-full border border-cyan-300 rounded-lg px-2 py-1.5 font-mono"></div>
+                    <div><label class="block text-gray-600 mb-0.5">Flete ($)</label><input type="number" step="0.01" id="f80-flete" value="0" class="f80-calc w-full border border-cyan-300 rounded-lg px-2 py-1.5 font-mono"></div>
+                    <div><label class="block text-gray-600 mb-0.5">Seguro ($)</label><input type="number" step="0.01" id="f80-seguro" value="0" class="f80-calc w-full border border-cyan-300 rounded-lg px-2 py-1.5 font-mono"></div>
+                    <div><label class="block text-gray-600 mb-0.5">Arancel (%)</label><input type="number" step="0.01" id="f80-arancel" value="12" class="f80-calc w-full border border-cyan-300 rounded-lg px-2 py-1.5 font-mono"></div>
+                    <div><label class="block text-gray-600 mb-0.5">N° Planilla F.80</label><input type="text" id="f80-expediente" class="w-full border border-cyan-300 rounded-lg px-2 py-1.5 font-mono" placeholder="EXP-..."></div>
+                </div>
+            </div>
+
+            <!-- Montos e IVA -->
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl">
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Tasa BCV</label>
+                    <input type="number" step="0.0001" id="ndoc-tasa" class="ndoc-calc w-full border border-gray-300 rounded-lg px-2 py-1.5 font-mono font-bold" required>
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Total USD ($)</label>
+                    <input type="number" step="0.01" id="ndoc-usd" class="ndoc-calc w-full border border-gray-300 rounded-lg px-2 py-1.5 font-mono font-bold text-red-700" required>
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Alícuota IVA</label>
+                    <select id="ndoc-alicuota" class="ndoc-calc w-full border border-gray-300 rounded-lg px-2 py-1.5 bg-white">
+                        <option value="16" selected>16% General</option>
+                        <option value="8">8% Reducido</option>
+                        <option value="31">31% Suntuario</option>
+                        <option value="0">0% Exento</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Exento Bs</label>
+                    <input type="number" step="0.01" id="ndoc-exento" value="0" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 font-mono">
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Base / IVA Bs</label>
+                    <input type="text" id="ndoc-base-iva-lbl" readonly class="w-full border border-gray-200 bg-gray-100 rounded-lg px-2 py-1.5 font-mono text-[11px]" value="0 / 0">
+                </div>
+            </div>
+
+            <!-- Auto Retenciones -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-purple-50 border border-purple-200 rounded-xl">
+                <div class="space-y-1.5">
+                    <label class="inline-flex items-center gap-2 font-bold text-purple-900 cursor-pointer">
+                        <input type="checkbox" id="ndoc-auto-ret-iva" class="w-4 h-4 text-purple-600 rounded">
+                        <span>Auto-Emitir Comprobante Retención IVA</span>
+                    </label>
+                    <select id="ndoc-pct-ret-iva" class="w-full border border-purple-300 rounded-lg px-2 py-1.5 bg-white">
+                        <option value="75">75% del IVA (Con RIF)</option>
+                        <option value="100">100% del IVA (Especial)</option>
+                    </select>
+                </div>
+                <div class="space-y-1.5">
+                    <label class="inline-flex items-center gap-2 font-bold text-purple-900 cursor-pointer">
+                        <input type="checkbox" id="ndoc-auto-ret-islr" class="w-4 h-4 text-purple-600 rounded">
+                        <span>Auto-Emitir Retención ISLR (Decreto 1808)</span>
+                    </label>
+                    <div class="flex gap-1">
+                        <select id="ndoc-cod-islr" class="w-2/3 border border-purple-300 rounded-lg px-2 py-1.5 bg-white"></select>
+                        <select id="ndoc-tipo-persona" class="w-1/3 border border-purple-300 rounded-lg px-2 py-1.5 bg-white">
+                            <option value="PJD">PJD</option>
+                            <option value="PNR">PNR (Sustraendo)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-2 border-t border-gray-200">
+                <label class="inline-flex items-center gap-1.5 text-gray-600 cursor-pointer">
+                    <input type="checkbox" id="ndoc-permitir-dup" class="w-4 h-4 rounded">
+                    <span>Permitir comprobante duplicado (si aplica)</span>
+                </label>
+                <div class="flex gap-2">
+                    <button type="button" onclick="window.cxpCerrarModalNuevoDoc()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-bold">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold shadow-sm">Guardar Documento CxP</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ==================== MODAL PAGO AVANZADO CXP ==================== -->
+<div id="modal-pago-cxp" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[92vh]">
+        <div class="p-4 border-b border-gray-200 bg-gray-900 text-white flex justify-between items-center">
+            <div>
+                <h3 class="font-bold text-base flex items-center gap-2"><span class="material-icons">payments</span> Registrar Pago a Proveedor</h3>
+                <p id="pago-cxp-subtitulo" class="text-xs text-gray-300">Doc · Proveedor</p>
+            </div>
+            <button type="button" onclick="window.cxpCerrarModalPago()" class="text-gray-300 hover:text-white"><span class="material-icons">close</span></button>
+        </div>
+        <form id="form-pago-cxp" class="p-5 overflow-y-auto space-y-4 text-xs">
+            <input type="hidden" id="pago-cxp-id">
+            <input type="hidden" id="pago-cxp-prov-rif">
+            <input type="hidden" id="pago-cxp-prov-nombre">
+            <input type="hidden" id="pago-cxp-comprobante">
+            <input type="hidden" id="pago-cxp-saldo-usd">
+
+            <div id="pago-cxp-semaforo-banner" class="p-3 rounded-xl border text-xs"></div>
+
+            <div class="grid grid-cols-3 gap-3">
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Fecha Pago</label>
+                    <input type="date" id="pago-cxp-fecha" class="w-full border border-gray-300 rounded-lg px-2 py-2" required>
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Tasa BCV Pago</label>
+                    <input type="number" step="0.0001" id="pago-cxp-tasa" class="w-full border border-gray-300 rounded-lg px-2 py-2 font-mono font-bold" required>
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Moneda Desembolso</label>
+                    <select id="pago-cxp-moneda" class="w-full border border-gray-300 rounded-lg px-2 py-2 bg-white font-semibold">
+                        <option value="BS">Bolívares (Bs)</option>
+                        <option value="USD">Divisas (USD)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1" id="pago-cxp-lbl-monto">Monto Desembolsado</label>
+                    <input type="number" step="0.01" min="0" id="pago-cxp-monto" class="w-full border border-gray-300 rounded-lg px-2.5 py-2 font-mono font-bold text-sm" required>
+                </div>
+                <div>
+                    <label class="block font-bold text-emerald-700 mb-1">Usar Saldo a Favor ($)</label>
+                    <input type="number" step="0.01" min="0" id="pago-cxp-usar-favor" value="0" class="w-full border border-emerald-300 bg-emerald-50 rounded-lg px-2.5 py-2 font-mono">
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Pronto Pago ($)</label>
+                    <input type="number" step="0.01" min="0" id="pago-cxp-pronto" value="0" class="w-full border border-gray-300 rounded-lg px-2.5 py-2 font-mono">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Cuenta Origen Tesorería</label>
+                    <select id="pago-cxp-cuenta" class="w-full border border-gray-300 rounded-lg px-2 py-2 bg-white"></select>
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Método / Banco</label>
+                    <select id="pago-cxp-metodo" class="w-full border border-gray-300 rounded-lg px-2 py-2 bg-white">
+                        <option value="TRANSFERENCIA">Transferencia Bs</option>
+                        <option value="PAGO_MOVIL">Pago Móvil Bs</option>
+                        <option value="EFECTIVO_USD">Efectivo Divisas ($)</option>
+                        <option value="ZELLE">Zelle / Transferencia USD</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Referencia</label>
+                    <input type="text" id="pago-cxp-ref" class="w-full border border-gray-300 rounded-lg px-2.5 py-2 font-mono">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2 border-t border-gray-200">
+                <button type="button" onclick="window.cxpCerrarModalPago()" class="px-4 py-2 bg-gray-200 rounded-lg font-bold">Cancelar</button>
+                <button type="submit" class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold shadow-sm">Aplicar Pago CxP</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ==================== MODAL DETALLE / AUXILIAR ==================== -->
+<div id="modal-detalle-factura" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[88vh]">
+        <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+            <h3 class="font-bold text-gray-800 text-sm uppercase">Detalle de Compra / Ítems</h3>
+            <button type="button" onclick="window.cerrarModalDetalleFactura()" class="text-gray-400 hover:text-gray-700"><span class="material-icons">close</span></button>
+        </div>
+        <div class="p-5 overflow-y-auto flex-1">
+            <table class="min-w-full text-xs divide-y divide-gray-200">
+                <thead class="bg-gray-50 font-bold text-gray-500"><tr><th class="py-2 text-left">Producto</th><th class="py-2 text-right">Cant</th><th class="py-2 text-right">Costo</th><th class="py-2 text-right">Subtotal</th></tr></thead>
+                <tbody id="cxp-detalle-tbody" class="divide-y divide-gray-100"></tbody>
+            </table>
+            <p id="cxp-detalle-total-articulos" class="text-xs font-bold text-gray-700 mt-3 text-right"></p>
+        </div>
+    </div>
+</div>
+
+<div id="modal-cxp-aux" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
+        <div class="p-4 border-b border-gray-200 bg-gray-800 text-white flex justify-between items-center">
+            <h3 id="modal-cxp-aux-titulo" class="font-bold text-sm uppercase">Operación CxP</h3>
+            <button type="button" onclick="document.getElementById('modal-cxp-aux').classList.add('hidden')" class="text-gray-300 hover:text-white"><span class="material-icons">close</span></button>
+        </div>
+        <div id="modal-cxp-aux-body" class="p-5 text-xs space-y-3 max-h-[80vh] overflow-y-auto"></div>
+    </div>
+</div>
 
 <script>
+(function () {
+    const ESTADO = {
+        companyId: null,
+        usuario: 'ADMIN',
+        tasaBcv: 1,
+        data: { movimientos: [], retenciones: [], notas_ajuste: [], anticipos: [], ordenes_pago: [], cierres_cambiarios: [], aging: {}, catalogo_islr: [], categorias_gastos: [] },
+        proveedores: [],
+        tesoreria: { cuentas: [], movimientos: [] },
+        tabActual: 'documentos',
+        filtroActual: 'ABIERTAS',
+        seleccionados: new Set()
+    };
 
-window.verDetalleFactura = function(id) {
+    const $ = (id) => document.getElementById(id);
+    const fmtUsd = (n) => `$${(Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const fmtBs = (n) => `Bs. ${(Number(n) || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const hoyISO = () => new Date(Date.now() - (4 * 3600 * 1000)).toISOString().slice(0, 10);
 
-    const list = window.todosLosMovimientosCxp || [];
-
-    const mov = list.find(m => String(m.id) === String(id));
-
-    if (!mov || !mov.contenido_fac) return;
-
-
-
-    let items = [];
-
-    try {
-
-        items = typeof mov.contenido_fac === 'string' ? JSON.parse(mov.contenido_fac) : mov.contenido_fac;
-
-    } catch(e) {
-
-        console.error("Error parseando contenido_fac:", e);
-
-        return;
-
+    function toast(msg, type = 'success') {
+        const div = document.createElement('div');
+        div.textContent = msg;
+        const bg = type === 'error' ? '#dc2626' : (type === 'warning' ? '#d97706' : '#059669');
+        div.style.cssText = `position:fixed;top:18px;right:18px;z-index:99999;background:${bg};color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,0.18);max-width:440px;`;
+        document.body.appendChild(div);
+        setTimeout(() => { div.style.opacity = '0'; div.style.transition = 'opacity .35s'; setTimeout(() => div.remove(), 350); }, 3600);
     }
 
+    async function cargarDatosCuentasPagar() {
+        try {
+            if (!ESTADO.companyId) {
+                const ses = await window.nexusAPI.obtenerSesionLocal();
+                if (ses) { ESTADO.companyId = ses.companyId; ESTADO.usuario = ses.nombre || ses.usuario || 'ADMIN'; }
+            }
+            const [resDocs, resProvs, resTes] = await Promise.all([
+                window.nexusAPI.obtenerDocumentosCxpAvanzados({ companyId: ESTADO.companyId, incluirPagados: true }),
+                window.nexusAPI.obtenerProveedoresLocal(ESTADO.companyId).catch(() => []),
+                window.nexusAPI.gestionarTesoreriaBimonetaria({ company_id: ESTADO.companyId, accion: 'LISTAR' })
+            ]);
+            if (resDocs && resDocs.exito) {
+                ESTADO.data = resDocs;
+                ESTADO.tasaBcv = Number(resDocs.tasa_bcv || 1) || 1;
+            }
+            ESTADO.proveedores = Array.isArray(resProvs) ? resProvs.filter(p => !ESTADO.companyId || p.company_id === ESTADO.companyId) : [];
+            if (resTes && resTes.exito) ESTADO.tesoreria = resTes;
 
+            poblarSelectsBase();
+            renderKpis();
+            renderDocumentos();
+            renderRetenciones();
+            renderOrdenesPago();
+            renderTransitoYAnticipos();
+            renderTesoreria();
+        } catch (err) {
+            console.error('Error cargando CxP:', err);
+            toast('Error al cargar CxP: ' + err.message, 'error');
+        }
+    }
 
-    const subEl = document.getElementById('cxp-modal-detalle-sub');
+    function poblarSelectsBase() {
+        const cats = ESTADO.data.categorias_gastos || ['ARRENDAMIENTO', 'SERVICIOS_PUBLICOS', 'HONORARIOS_PROFESIONALES', 'MANTENIMIENTO', 'FLETES_Y_TRANSPORTE', 'PUBLICIDAD', 'INSUMOS_OFICINA', 'OTROS_GASTOS'];
+        const selCat = $('ndoc-categoria-gasto');
+        if (selCat) selCat.innerHTML = cats.map(c => `<option value="${esc(c)}">${esc(c.replace(/_/g, ' '))}</option>`).join('');
 
-    if (subEl) subEl.textContent = `Factura: ${mov.comprobante || mov.id} • Proveedor: ${mov.proveedor_nombre || mov.proveedor_rif}`;
+        const islr = ESTADO.data.catalogo_islr || [
+            { codigo: '001', nombre: 'Honorarios Profesionales (3%/5%)' },
+            { codigo: '053', nombre: 'Contratistas / Obras y Servicios (1%/2%)' },
+            { codigo: '011', nombre: 'Fletes y Transporte Nacional (1%/3%)' },
+            { codigo: '015', nombre: 'Arrendamiento de Inmuebles (3%/5%)' }
+        ];
+        const selIslr = $('ndoc-cod-islr');
+        if (selIslr) selIslr.innerHTML = islr.map(c => `<option value="${esc(c.codigo)}">${esc(c.codigo)} - ${esc(c.nombre || c.descripcion || c.concepto || '')}</option>`).join('');
 
+        const provOpts = `<option value="">-- Seleccionar proveedor --</option>` + ESTADO.proveedores.map(p => `<option value="${esc(p.rif)}">${esc(p.nombre)} (${esc(p.rif)})</option>`).join('');
+        if ($('ndoc-prov-rif')) $('ndoc-prov-rif').innerHTML = provOpts;
+        if ($('cxp-edo-cta-prov')) $('cxp-edo-cta-prov').innerHTML = ESTADO.proveedores.map(p => `<option value="${esc(p.rif)}">${esc(p.nombre)} (${esc(p.rif)})</option>`).join('');
 
+        if (!$('cxp-ret-periodo').value) $('cxp-ret-periodo').value = hoyISO().slice(0, 7).replace('-', '');
+        if (!$('cxp-op-fecha').value) $('cxp-op-fecha').value = hoyISO();
+        if (!$('cxp-cierre-periodo').value) $('cxp-cierre-periodo').value = hoyISO().slice(0, 7).replace('-', '');
+        if (!$('cxp-cierre-tasa').value) $('cxp-cierre-tasa').value = ESTADO.tasaBcv.toFixed(4);
+    }
 
-    const tbody = document.getElementById('cxp-tabla-detalle-body');
+    function renderKpis() {
+        const d = ESTADO.data;
+        const tasa = ESTADO.tasaBcv || 1;
+        $('cxp-badge-tasa-bcv').textContent = `Tasa BCV: Bs. ${tasa.toFixed(4)}/$`;
 
-    let html = '';
+        const docsOpen = (d.movimientos || []).filter(m => String(m.motivo || '').toUpperCase() !== 'PAGO' && String(m.motivo || '').toUpperCase() !== 'NOTA_CREDITO' && String(m.estado || '').toUpperCase() !== 'PAGADO');
+        $('kpi-cxp-total-usd').textContent = fmtUsd(d.total_deuda_neta_usd || 0);
+        $('kpi-cxp-total-bs').textContent = `${fmtBs(d.total_deuda_neta_bs || ((d.total_deuda_neta_usd || 0) * tasa))} · ${docsOpen.length} doc(s)`;
 
-    let totalItems = 0;
+        const ag = d.aging || {};
+        const v130 = Number(ag['0_30'] || 0);
+        const vMas = Number(ag['31_60'] || 0) + Number(ag['61_90'] || 0) + Number(ag['MAS_90'] || 0);
+        $('kpi-cxp-vencida-usd').textContent = fmtUsd(v130 + vMas);
+        $('kpi-cxp-vencida-det').textContent = `1-30d: ${fmtUsd(v130)} · +30d: ${fmtUsd(vMas)}`;
 
-    let sumaSubtotal = 0;
+        const rets = (d.retenciones || []).filter(r => r.estatus !== 'ANULADO');
+        const retIva = rets.filter(r => r.tipo_impuesto === 'IVA').reduce((s, r) => s + Number(r.monto_retenido_bs || 0), 0);
+        const retIslr = rets.filter(r => r.tipo_impuesto === 'ISLR').reduce((s, r) => s + Number(r.monto_retenido_bs || 0), 0);
+        $('kpi-cxp-ret-bs').textContent = fmtBs(retIva + retIslr);
+        $('kpi-cxp-ret-det').textContent = `IVA: ${fmtBs(retIva)} · ISLR: ${fmtBs(retIslr)}`;
 
+        const favorUsd = (d.anticipos || []).filter(a => a.estado !== 'AGOTADO' && a.estado !== 'ANULADO').reduce((s, a) => s + Number(a.saldo_disponible_usd || 0), 0);
+        const ndPend = (d.notas_ajuste || []).filter(n => !n.nota_fiscal_cargada).length;
+        $('kpi-cxp-favor-usd').textContent = fmtUsd(favorUsd);
+        $('kpi-cxp-nd-count').textContent = `${ndPend} N/D en tránsito pendientes de proveedor`;
+    }
 
+    function renderDocumentos() {
+        const tbody = $('tabla-cxp-body');
+        const q = ($('buscador-cxp')?.value || '').trim().toLowerCase();
+        const tasa = ESTADO.tasaBcv || 1;
 
-    (items || []).forEach(it => {
+        const docs = (ESTADO.data.movimientos || []).filter(m => {
+            const mot = String(m.motivo || '').toUpperCase();
+            if (mot === 'PAGO') return false;
+            const tipo = String(m.tipo_documento || mot || 'FACTURA').toUpperCase();
+            const saldo = Number(m.saldo_pendiente_usd ?? Math.max(0, (Number(m.neto_a_pagar_usd || m.monto || 0) - Number(m.monto_abonado || 0))));
+            const isPagado = String(m.estado || '').toUpperCase() === 'PAGADO' || saldo <= 0.01;
 
-        const cant = parseFloat(it.cantidad || 0);
+            if (ESTADO.filtroActual === 'ABIERTAS' && isPagado) return false;
+            else if (ESTADO.filtroActual === 'FACTURA' && (isPagado || tipo !== 'FACTURA')) return false;
+            else if (ESTADO.filtroActual === 'GASTO' && (!m.es_gasto_operativo && tipo !== 'GASTO' && mot !== 'GASTO_OPERATIVO')) return false;
+            else if (ESTADO.filtroActual === 'IMPORTACION' && !m.es_importacion && tipo !== 'IMPORTACION') return false;
+            else if (ESTADO.filtroActual === 'NOTAS' && !tipo.includes('NOTA') && !mot.includes('NOTA')) return false;
 
-        const precio = parseFloat(it.precio || it.costo || 0);
+            if (!q) return true;
+            return (
+                String(m.prov_nombre || m.razon || '').toLowerCase().includes(q) ||
+                String(m.proveedor_rif || '').toLowerCase().includes(q) ||
+                String(m.comprobante || '').toLowerCase().includes(q) ||
+                String(m.numero_control || '').toLowerCase().includes(q)
+            );
+        });
 
-        const sub = parseFloat(it.subtotal || (cant * precio));
+        if (docs.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-gray-400">No hay documentos en este filtro.</td></tr>`;
+            return;
+        }
 
-        totalItems += cant;
+        tbody.innerHTML = docs.map(m => {
+            const brutoUsd = Number(m.monto || 0);
+            const netoUsd = Number(m.neto_a_pagar_usd || 0) > 0 ? Number(m.neto_a_pagar_usd) : brutoUsd;
+            const saldoUsd = Number(m.saldo_pendiente_usd ?? Math.max(0, netoUsd - Number(m.monto_abonado || 0)));
+            const isPagado = String(m.estado || '').toUpperCase() === 'PAGADO' || saldoUsd <= 0.01;
+            const diasVenc = Number(m.dias_vencido || 0);
+            const tipoLabel = m.es_importacion ? 'FORMA 80' : (m.es_gasto_operativo ? `GASTO (${m.categoria_gasto || 'OP'})` : (m.tipo_documento || m.motivo || 'FACTURA'));
+            const retIvaBs = Number(m.iva_retenido || 0);
+            const retIslrBs = Number(m.islr_retenido_bs || 0);
+            const checked = ESTADO.seleccionados.has(String(m.id)) ? 'checked' : '';
+            const sem = m.semaforo;
+            const semaforoBadge = isPagado
+                ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">PAGADO</span>`
+                : (sem
+                    ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${sem.color === 'ROJO' ? 'bg-red-100 text-red-700' : (sem.color === 'VERDE' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800')}" title="${esc(sem.recomendacion || '')}">${esc(sem.etiqueta)}</span>`
+                    : (diasVenc > 0
+                        ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">Venc. ${diasVenc}d</span>`
+                        : `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">Al día · Bs</span>`));
 
-        sumaSubtotal += sub;
+            return `
+                <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="px-3 py-2.5 text-center">
+                        ${!isPagado ? `<input type="checkbox" class="cxp-row-check w-4 h-4 rounded" value="${esc(m.id)}" ${checked}>` : ''}
+                    </td>
+                    <td class="px-3 py-2.5">
+                        <div class="font-mono font-bold text-gray-800">${esc(m.comprobante || m.id)}</div>
+                        <div class="text-[11px] text-gray-500"><span class="px-1.5 py-0.5 rounded bg-gray-100 font-bold text-gray-700">${esc(tipoLabel)}</span> · Ctrl: ${esc(m.numero_control || 'S/N')}</div>
+                        <div class="text-[10px] text-gray-400">Emisión: ${esc(String(m.fecha || '').slice(0,10))} · Vence: ${esc(m.fecha_vencimiento || '—')}</div>
+                    </td>
+                    <td class="px-3 py-2.5">
+                        <div class="font-semibold text-gray-800">${esc(m.prov_nombre || m.razon || m.proveedor_rif)}</div>
+                        <div class="text-[11px] text-gray-500 font-mono">${esc(m.proveedor_rif)}</div>
+                        ${m.prov_banco ? `<span class="text-[10px] text-blue-700 font-semibold">${esc(m.prov_banco)} ${m.prov_cuenta_bancaria ? '••••' + esc(String(m.prov_cuenta_bancaria).slice(-4)) : ''}</span>` : ''}
+                    </td>
+                    <td class="px-3 py-2.5 text-right font-mono">
+                        <div class="text-gray-700">${fmtUsd(brutoUsd)}</div>
+                        <div class="text-[10px] text-gray-600">${retIvaBs > 0 ? `Ret.IVA: ${fmtBs(retIvaBs)}` : ''} ${retIslrBs > 0 ? `ISLR: ${fmtBs(retIslrBs)}` : ''}</div>
+                    </td>
+                    <td class="px-3 py-2.5 text-right font-mono">
+                        <div class="font-bold ${isPagado ? 'text-gray-500' : 'text-gray-900'}">${fmtUsd(saldoUsd)}</div>
+                        <div class="text-[11px] text-blue-700 font-semibold">${fmtBs(saldoUsd * tasa)}</div>
+                    </td>
+                    <td class="px-3 py-2.5 text-center">${semaforoBadge}</td>
+                    <td class="px-3 py-2.5 text-right space-x-1 whitespace-nowrap">
+                        ${!isPagado ? `<button type="button" onclick="window.cxpAbrirModalPago('${esc(m.id)}')" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-semibold shadow-sm">Pagar</button>` : ''}
+                        <button type="button" onclick="window.cxpAbrirModalRetencion('${esc(m.id)}')" class="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md font-semibold" title="Emitir Retención IVA/ISLR">Retener</button>
+                        <button type="button" onclick="window.verDetalleFacturaCxp('${esc(m.id)}')" class="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md" title="Ver ítems"><span class="material-icons text-sm align-middle">list_alt</span></button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
 
+        tbody.querySelectorAll('.cxp-row-check').forEach(chk => {
+            chk.onchange = () => {
+                if (chk.checked) ESTADO.seleccionados.add(chk.value);
+                else ESTADO.seleccionados.delete(chk.value);
+                actualizarContadoresSeleccion();
+            };
+        });
+    }
 
+    function actualizarContadoresSeleccion() {
+        const n = ESTADO.seleccionados.size;
+        if ($('cxp-sel-count')) $('cxp-sel-count').textContent = String(n);
+        if ($('cxp-sel-count-2')) $('cxp-sel-count-2').textContent = String(n);
+    }
 
-        html += `
+    function renderRetenciones() {
+        const rets = ESTADO.data.retenciones || [];
+        $('tabla-cxp-retenciones-body').innerHTML = rets.length === 0
+            ? `<tr><td colspan="8" class="p-6 text-center text-gray-400">No se han emitido comprobantes de retención IVA o ISLR.</td></tr>`
+            : rets.map(r => `
+                <tr class="hover:bg-purple-50/30">
+                    <td class="px-3 py-2.5 font-mono font-bold text-purple-800">${esc(r.numero_comprobante)}<div class="text-[10px] text-gray-400 font-normal">${esc(r.fecha_emision)}</div></td>
+                    <td class="px-3 py-2.5 text-center"><span class="px-2 py-0.5 rounded font-bold ${r.tipo_impuesto === 'IVA' ? 'bg-purple-100 text-purple-800' : 'bg-indigo-100 text-indigo-800'}">${esc(r.tipo_impuesto)}</span></td>
+                    <td class="px-3 py-2.5"><div class="font-semibold">${esc(r.sujeto_nombre)}</div><div class="text-[10px] text-gray-500 font-mono">${esc(r.sujeto_rif)} · ${esc(r.sujeto_tipo_persona)}</div></td>
+                    <td class="px-3 py-2.5 font-mono">${esc(r.numero_documento)}<div class="text-[10px] text-gray-400">Ctrl: ${esc(r.numero_control)}</div></td>
+                    <td class="px-3 py-2.5 text-right font-mono">${fmtBs(r.base_imponible_bs)}</td>
+                    <td class="px-3 py-2.5 text-right font-mono">${Number(r.porcentaje_retencion || 0)}%${Number(r.sustraendo_bs || 0) > 0 ? `<div class="text-[10px] text-amber-700">-${fmtBs(r.sustraendo_bs)}</div>` : ''}</td>
+                    <td class="px-3 py-2.5 text-right font-mono font-bold text-gray-900">${fmtBs(r.monto_retenido_bs)}<div class="text-[10px] text-gray-500">${fmtUsd(r.monto_retenido_usd)}</div></td>
+                    <td class="px-3 py-2.5 text-right">
+                        <button type="button" onclick="window.cxpDescargarRetencionPdf('${esc(r.id)}')" class="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-[11px] font-bold">PDF</button>
+                    </td>
+                </tr>
+            `).join('');
+    }
 
-            <tr class="hover:bg-gray-50">
+    function renderOrdenesPago() {
+        const ords = ESTADO.data.ordenes_pago || [];
+        $('tabla-cxp-ordenes-body').innerHTML = ords.length === 0
+            ? `<tr><td colspan="6" class="p-6 text-center text-gray-400">Aún no hay Órdenes de Pago programadas.</td></tr>`
+            : ords.map(o => `
+                <tr>
+                    <td class="px-3 py-2.5 font-mono font-bold">${esc(o.codigo_orden)}<div class="text-[10px] text-gray-400">${esc(o.fecha_programada)}</div></td>
+                    <td class="px-3 py-2.5 font-semibold">${esc(o.banco_origen_alias)}</td>
+                    <td class="px-3 py-2.5 text-center font-mono">${o.cantidad_documentos}</td>
+                    <td class="px-3 py-2.5 text-right font-mono font-bold">${fmtUsd(o.total_usd)}<div class="text-[10px] text-gray-500">${fmtBs(o.total_bs)}</div></td>
+                    <td class="px-3 py-2.5 text-center"><span class="px-2 py-0.5 rounded font-bold ${o.estado === 'EJECUTADA' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'}">${esc(o.estado)}</span></td>
+                    <td class="px-3 py-2.5 text-right space-x-1">
+                        ${o.estado !== 'EJECUTADA' ? `<button type="button" onclick="window.cxpEjecutarOrdenPago('${esc(o.id)}')" class="px-2 py-1 bg-emerald-600 text-white rounded font-bold">Ejecutar</button>` : ''}
+                        <button type="button" onclick="window.cxpDescargarOrdenPagoPdf('${esc(o.id)}')" class="px-2 py-1 bg-indigo-600 text-white rounded font-bold">PDF</button>
+                        <button type="button" onclick="window.cxpDescargarTxtBanco('${esc(o.id)}','${esc(o.banco_origen_alias)}')" class="px-2 py-1 bg-gray-800 text-white rounded font-bold">TXT Banco</button>
+                    </td>
+                </tr>
+            `).join('');
+    }
 
-                <td class="py-2.5">
+    function renderTransitoYAnticipos() {
+        const nds = ESTADO.data.notas_ajuste || [];
+        $('tabla-cxp-nd-transito').innerHTML = nds.length === 0
+            ? `<tr><td colspan="7" class="p-6 text-center text-gray-400">Sin variaciones de diferencial en CxP.</td></tr>`
+            : nds.map(n => `
+                <tr>
+                    <td class="px-3 py-2">${esc(n.fecha_operacion)}<div class="text-[11px] font-semibold">${esc(n.tercero_nombre || n.tercero_rif)}</div></td>
+                    <td class="px-3 py-2 font-mono font-bold">${esc(n.documento_origen_nro)}</td>
+                    <td class="px-3 py-2 text-right font-mono">${Number(n.tasa_original || 0).toFixed(2)} → ${Number(n.tasa_liquidacion || 0).toFixed(2)}</td>
+                    <td class="px-3 py-2 text-right font-mono font-bold">${fmtBs(n.variacion_bruta_bs)}</td>
+                    <td class="px-3 py-2 text-right font-mono">${fmtBs(n.base_imponible_nd_bs)} / <span class="text-amber-700">${fmtBs(n.iva_nd_bs)}</span></td>
+                    <td class="px-3 py-2 text-center"><span class="px-2 py-0.5 rounded font-bold ${n.nota_fiscal_cargada ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">${n.nota_fiscal_cargada ? 'CARGADA' : 'EN TRÁNSITO'}</span></td>
+                    <td class="px-3 py-2 text-right">
+                        ${!n.nota_fiscal_cargada ? `<button type="button" onclick="window.cxpResolverNdTransito('${esc(n.id)}')" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded font-bold">Cargar N/D y Control</button>` : esc(n.numero_nd_nc || '')}
+                    </td>
+                </tr>
+            `).join('');
 
-                    <div class="font-bold text-gray-800">${(it.nombre || 'Producto').toUpperCase()}</div>
+        const ants = ESTADO.data.anticipos || [];
+        $('tabla-cxp-anticipos-body').innerHTML = ants.length === 0
+            ? `<tr><td colspan="4" class="p-4 text-center text-gray-400">Sin anticipos a proveedores.</td></tr>`
+            : ants.map(a => `
+                <tr>
+                    <td class="px-3 py-2"><div class="font-semibold">${esc(a.tercero_nombre || a.tercero_rif)}</div><div class="text-[10px] text-gray-400">${esc(a.fecha)} · ${esc(a.tipo_registro)}</div></td>
+                    <td class="px-3 py-2"><span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 font-bold">${esc(a.modalidad_contrato)}</span></td>
+                    <td class="px-3 py-2 text-right font-mono font-bold">${fmtUsd(a.saldo_disponible_usd)}</td>
+                    <td class="px-3 py-2 text-center">${esc(a.estado)}</td>
+                </tr>
+            `).join('');
 
-                    <div class="text-xs text-gray-400 font-mono">ID: ${it.id || 'N/A'} • ${it.empaque || it.unidad || 'UN'}</div>
+        const cierres = ESTADO.data.cierres_cambiarios || [];
+        $('tabla-cxp-cierres-body').innerHTML = cierres.length === 0
+            ? `<tr><td colspan="5" class="p-4 text-center text-gray-400">Sin cierres mensuales CxP.</td></tr>`
+            : cierres.map(c => `
+                <tr>
+                    <td class="px-3 py-2 font-mono font-bold">${esc(c.periodo_aaaamm)}</td>
+                    <td class="px-3 py-2 text-right font-mono">${Number(c.tasa_cierre_bcv || 0).toFixed(4)}</td>
+                    <td class="px-3 py-2 text-right font-mono font-bold">${fmtBs(c.diferencial_no_realizado_bs)}</td>
+                    <td class="px-3 py-2 text-center">${esc(c.estado)}</td>
+                    <td class="px-3 py-2 text-right">${c.estado === 'ACTIVO' ? `<button type="button" onclick="window.cxpRevertirCierre('${esc(c.id)}')" class="px-2 py-0.5 bg-amber-500 text-white rounded font-bold">Revertir Día 1</button>` : '—'}</td>
+                </tr>
+            `).join('');
+    }
 
-                </td>
+    function renderTesoreria() {
+        const cuentas = ESTADO.tesoreria.cuentas || [];
+        $('grid-cxp-cuentas-tesoreria').innerHTML = cuentas.map(ct => `
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+                <div class="flex justify-between items-center"><span class="text-xs font-bold">${esc(ct.nombre)}</span><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100">${esc(ct.moneda)}</span></div>
+                <div class="mt-2 text-xl font-black font-mono">${ct.moneda === 'USD' ? fmtUsd(ct.saldo_actual) : fmtBs(ct.saldo_actual)}</div>
+            </div>
+        `).join('');
 
-                <td class="py-2.5 text-center font-semibold text-gray-700">${cant}</td>
+        const movs = ESTADO.tesoreria.movimientos || [];
+        $('tabla-cxp-tesoreria-movs').innerHTML = movs.length === 0
+            ? `<tr><td colspan="5" class="p-4 text-center text-gray-400">Sin movimientos de tesorería.</td></tr>`
+            : movs.map(m => `
+                <tr>
+                    <td class="px-3 py-2">${esc(m.fecha)}</td>
+                    <td class="px-3 py-2 font-semibold">${esc(m.cuenta_nombre || m.cuenta_id)}</td>
+                    <td class="px-3 py-2"><span class="font-bold ${m.tipo === 'INGRESO' ? 'text-emerald-700' : 'text-red-700'}">${esc(m.tipo)}</span> · ${esc(m.concepto)}</td>
+                    <td class="px-3 py-2 text-right font-mono font-bold">${m.moneda === 'USD' ? fmtUsd(m.monto) : fmtBs(m.monto)}</td>
+                    <td class="px-3 py-2 text-center"><button type="button" onclick="window.cxpToggleConciliar('${esc(m.id)}',${m.conciliado ? 0 : 1})" class="px-2 py-0.5 rounded font-bold ${m.conciliado ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'}">${m.conciliado ? 'Conciliado' : 'Pendiente'}</button></td>
+                </tr>
+            `).join('');
 
-                <td class="py-2.5 text-right font-medium text-gray-600">$${precio.toFixed(2)}</td>
+        const selPago = $('pago-cxp-cuenta');
+        if (selPago) selPago.innerHTML = `<option value="">-- Automático --</option>` + cuentas.map(c => `<option value="${esc(c.id)}">${esc(c.nombre)} (${esc(c.moneda)})</option>`).join('');
+    }
 
-                <td class="py-2.5 text-right font-bold text-green-700">$${sub.toFixed(2)}</td>
+    // ==================== NUEVO DOC CXP + FORMA 80 + OCR IA ====================
+    function recalcularTotalesDoc() {
+        const tasa = Math.max(0.01, Number($('ndoc-tasa').value || ESTADO.tasaBcv));
+        const alic = Number($('ndoc-alicuota').value || 0);
+        if ($('ndoc-tipo').value === 'IMPORTACION') {
+            const cif = Number($('f80-fob').value || 0) + Number($('f80-flete').value || 0) + Number($('f80-seguro').value || 0);
+            const arancel = cif * (Number($('f80-arancel').value || 0) / 100);
+            const baseAdu = cif + arancel;
+            const ivaAdu = baseAdu * (alic / 100);
+            $('ndoc-usd').value = (baseAdu + ivaAdu).toFixed(2);
+        }
+        const totalBs = Math.max(0, Number($('ndoc-usd').value || 0) * tasa);
+        const exentoBs = Math.min(totalBs, Math.max(0, Number($('ndoc-exento').value || 0)));
+        const gravadoBs = Math.max(0, totalBs - exentoBs);
+        const baseBs = alic > 0 ? gravadoBs / (1 + alic / 100) : 0;
+        const ivaBs = gravadoBs - baseBs;
+        $('ndoc-base-iva-lbl').value = `${baseBs.toFixed(2)} / ${ivaBs.toFixed(2)}`;
+    }
 
-            </tr>
+    window.cxpAbrirModalNuevoDoc = () => {
+        $('form-nuevo-doc-cxp').reset();
+        $('ndoc-fecha').value = hoyISO();
+        $('ndoc-tasa').value = ESTADO.tasaBcv.toFixed(4);
+        $('ndoc-tipo').value = 'FACTURA';
+        toggleSeccionesDoc();
+        recalcularTotalesDoc();
+        $('modal-nuevo-doc-cxp').classList.remove('hidden');
+    };
+    window.cxpCerrarModalNuevoDoc = () => $('modal-nuevo-doc-cxp').classList.add('hidden');
 
-        `;
-
+    function toggleSeccionesDoc() {
+        const t = $('ndoc-tipo').value;
+        $('ndoc-box-gasto').classList.toggle('hidden', t !== 'GASTO');
+        $('ndoc-box-afectada').classList.toggle('hidden', t !== 'NOTA_CREDITO' && t !== 'NOTA_DEBITO');
+        $('ndoc-box-forma80').classList.toggle('hidden', t !== 'IMPORTACION');
+        recalcularTotalesDoc();
+    }
+    $('ndoc-tipo').addEventListener('change', toggleSeccionesDoc);
+    document.querySelectorAll('.ndoc-calc, .f80-calc, #ndoc-exento').forEach(el => {
+        el.addEventListener('input', recalcularTotalesDoc);
+        el.addEventListener('change', recalcularTotalesDoc);
     });
 
+    $('ndoc-prov-rif').addEventListener('change', () => {
+        const prov = ESTADO.proveedores.find(p => p.rif === $('ndoc-prov-rif').value);
+        if (!prov) return;
+        $('ndoc-dias').value = prov.dias_credito_default ?? 15;
+        if (prov.porcentaje_retencion_iva && ['75', '100'].includes(String(prov.porcentaje_retencion_iva))) {
+            $('ndoc-pct-ret-iva').value = String(prov.porcentaje_retencion_iva);
+        }
+        if (prov.aplica_islr_default) {
+            $('ndoc-auto-ret-islr').checked = true;
+            if (prov.codigo_islr_default) $('ndoc-cod-islr').value = prov.codigo_islr_default;
+        }
+    });
 
+    $('btn-cxp-ocr-ia').addEventListener('click', () => $('cxp-ocr-file').click());
+    $('cxp-ocr-file').addEventListener('change', async (ev) => {
+        const file = ev.target.files?.[0];
+        ev.target.value = '';
+        if (!file) return;
+        try {
+            const btn = $('btn-cxp-ocr-ia');
+            btn.disabled = true;
+            btn.textContent = 'Analizando IA...';
+            const dataUrl = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+            const res = await window.nexusAPI.escanearFacturaCompraIa({ companyId: ESTADO.companyId, imageBase64: dataUrl, mimeType: file.type || 'image/jpeg' });
+            if (!res?.exito || !res.datos) throw new Error(res?.error || 'Sin respuesta OCR');
+            const d = res.datos;
+            if (d.numero_factura) $('ndoc-comprobante').value = d.numero_factura;
+            if (d.numero_control) $('ndoc-control').value = d.numero_control;
+            if (d.fecha_emision) $('ndoc-fecha').value = d.fecha_emision;
+            if (Number(d.tasa_bcv_sugerida) > 0) $('ndoc-tasa').value = d.tasa_bcv_sugerida;
+            if (Number(d.total_usd_estimado) > 0) $('ndoc-usd').value = d.total_usd_estimado;
+            if (d.proveedor_rif) {
+                const norm = String(d.proveedor_rif).toUpperCase().replace(/[^A-Z0-9]/g, '');
+                const m = ESTADO.proveedores.find(p => String(p.rif || '').toUpperCase().replace(/[^A-Z0-9]/g, '') === norm);
+                if (m) { $('ndoc-prov-rif').value = m.rif; $('ndoc-prov-rif').dispatchEvent(new Event('change')); }
+            }
+            recalcularTotalesDoc();
+            toast(`✨ OCR extrajo factura ${d.numero_factura || ''}`);
+        } catch (err) { toast('OCR: ' + err.message, 'error'); }
+        finally { $('btn-cxp-ocr-ia').disabled = false; $('btn-cxp-ocr-ia').innerHTML = '<span class="material-icons text-sm">auto_awesome</span> Escanear Factura (IA)'; }
+    });
 
-    tbody.innerHTML = html;
+    $('form-nuevo-doc-cxp').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+            const tipoDoc = $('ndoc-tipo').value;
+            const prov = ESTADO.proveedores.find(p => p.rif === $('ndoc-prov-rif').value);
+            const tasa = Math.max(0.01, Number($('ndoc-tasa').value || ESTADO.tasaBcv));
+            const montoUsd = Number($('ndoc-usd').value || 0);
+            const montoBs = Number((montoUsd * tasa).toFixed(2));
+            const exentoBs = Math.min(montoBs, Math.max(0, Number($('ndoc-exento').value || 0)));
+            const alic = Number($('ndoc-alicuota').value || 0);
+            const gravBs = Math.max(0, montoBs - exentoBs);
+            const baseBs = alic > 0 ? Number((gravBs / (1 + alic / 100)).toFixed(2)) : 0;
+            const ivaBs = Number((gravBs - baseBs).toFixed(2));
 
-    const totArtEl = document.getElementById('cxp-detalle-total-articulos');
+            const payload = {
+                company_id: ESTADO.companyId,
+                proveedor_rif: $('ndoc-prov-rif').value,
+                proveedor_nombre: prov?.nombre || $('ndoc-prov-rif').value,
+                tipo_documento: tipoDoc === 'IMPORTACION' ? 'FACTURA' : tipoDoc,
+                comprobante: $('ndoc-comprobante').value.trim(),
+                numero_control: $('ndoc-control').value.trim(),
+                fecha: $('ndoc-fecha').value,
+                condicion: $('ndoc-condicion').value,
+                dias_credito: Number($('ndoc-dias').value || 15),
+                es_gasto_operativo: tipoDoc === 'GASTO',
+                categoria_gasto: tipoDoc === 'GASTO' ? $('ndoc-categoria-gasto').value : '',
+                nota: $('ndoc-nota').value.trim() || $('ndoc-motivo-nota').value.trim(),
+                factura_afectada: $('ndoc-factura-afectada').value.trim(),
+                es_importacion: tipoDoc === 'IMPORTACION',
+                expediente_importacion: tipoDoc === 'IMPORTACION' ? $('f80-expediente').value.trim() : '',
+                forma80: tipoDoc === 'IMPORTACION' ? {
+                    fobUsd: Number($('f80-fob').value || 0),
+                    fleteUsd: Number($('f80-flete').value || 0),
+                    seguroUsd: Number($('f80-seguro').value || 0),
+                    arancelPct: Number($('f80-arancel').value || 0),
+                    tasaAduanaBcv: tasa,
+                    alicuotaIva: alic
+                } : null,
+                tasa_bcv: tasa, monto: montoUsd, monto_usd: montoUsd, monto_bs: montoBs,
+                monto_exento: exentoBs, base_imponible: baseBs, alicuota_iva: alic, monto_iva: ivaBs,
+                auto_retener_iva: $('ndoc-auto-ret-iva').checked,
+                porcentaje_retencion: Number($('ndoc-pct-ret-iva').value || 75),
+                auto_retener_islr: $('ndoc-auto-ret-islr').checked,
+                codigo_concepto_islr: $('ndoc-cod-islr').value,
+                tipo_persona_islr: $('ndoc-tipo-persona').value,
+                permitir_duplicado: $('ndoc-permitir-dup').checked
+            };
+            const res = await window.nexusAPI.guardarDocumentoCxpCompleto(payload);
+            if (!res?.exito) throw new Error(res?.error || 'Error guardando documento');
+            toast(`✅ Documento ${payload.comprobante} guardado en CxP`);
+            window.cxpCerrarModalNuevoDoc();
+            await cargarDatosCuentasPagar();
+        } catch (err) { toast(err.message, 'error'); }
+    });
 
-    if (totArtEl) totArtEl.textContent = `Total: ${items.length} producto(s) (${totalItems} unidades) | Total: $${sumaSubtotal.toFixed(2)}`;
+    // ==================== PAGO AVANZADO CXP ====================
+    window.cxpAbrirModalPago = (docId) => {
+        const doc = (ESTADO.data.movimientos || []).find(m => String(m.id) === String(docId));
+        if (!doc) return;
+        const netoUsd = Number(doc.neto_a_pagar_usd || 0) > 0 ? Number(doc.neto_a_pagar_usd) : Number(doc.monto || 0);
+        const saldoUsd = Number(doc.saldo_pendiente_usd ?? Math.max(0, netoUsd - Number(doc.monto_abonado || 0)));
+        const prov = ESTADO.proveedores.find(p => String(p.rif).replace(/[^A-Z0-9]/g, '') === String(doc.proveedor_rif).replace(/[^A-Z0-9]/g, ''));
 
+        $('pago-cxp-id').value = doc.id;
+        $('pago-cxp-prov-rif').value = doc.proveedor_rif;
+        $('pago-cxp-prov-nombre').value = doc.prov_nombre || doc.razon || doc.proveedor_rif;
+        $('pago-cxp-comprobante').value = doc.comprobante || doc.id;
+        $('pago-cxp-saldo-usd').value = saldoUsd.toFixed(2);
+        $('pago-cxp-subtitulo').textContent = `Doc ${doc.comprobante} · ${doc.prov_nombre || doc.proveedor_rif}`;
+        $('pago-cxp-fecha').value = hoyISO();
+        $('pago-cxp-tasa').value = ESTADO.tasaBcv.toFixed(4);
+        $('pago-cxp-moneda').value = 'BS';
+        $('pago-cxp-monto').value = (saldoUsd * ESTADO.tasaBcv).toFixed(2);
+        $('pago-cxp-usar-favor').value = '0';
+        $('pago-cxp-usar-favor').max = String(Number(prov?.saldo_a_favor_usd || 0));
+        $('pago-cxp-pronto').value = '0';
 
+        const tOrig = Number(doc.tasa_bcv || ESTADO.tasaBcv);
+        const semBanner = $('pago-cxp-semaforo-banner');
+        semBanner.className = 'p-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 text-xs';
+        semBanner.innerHTML = `<strong>Saldo neto por pagar: ${fmtUsd(saldoUsd)}</strong> (${fmtBs(saldoUsd * ESTADO.tasaBcv)}) · Tasa emisión doc: Bs. ${tOrig.toFixed(2)} · Saldo a favor prov: ${fmtUsd(prov?.saldo_a_favor_usd || 0)}. <br><span class="text-[11px]">Semáforo BCV: Cancela en Bs si posees flujo al día para congelar diferencial cambiario; si la tasa subió respecto a emisión, el diferencial requerirá N/D del proveedor.</span>`;
 
-    document.getElementById('modal-detalle-factura').classList.remove('hidden');
+        $('modal-pago-cxp').classList.remove('hidden');
+    };
+    window.cxpCerrarModalPago = () => $('modal-pago-cxp').classList.add('hidden');
 
-};
+    $('pago-cxp-moneda').addEventListener('change', () => {
+        const saldo = Number($('pago-cxp-saldo-usd').value || 0);
+        const tasa = Math.max(0.01, Number($('pago-cxp-tasa').value || ESTADO.tasaBcv));
+        if ($('pago-cxp-moneda').value === 'BS') {
+            $('pago-cxp-lbl-monto').textContent = 'Monto Desembolsado (Bs)';
+            $('pago-cxp-monto').value = (saldo * tasa).toFixed(2);
+        } else {
+            $('pago-cxp-lbl-monto').textContent = 'Monto Desembolsado (USD)';
+            $('pago-cxp-monto').value = saldo.toFixed(2);
+        }
+    });
 
+    $('form-pago-cxp').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+            const mon = $('pago-cxp-moneda').value;
+            const mto = Number($('pago-cxp-monto').value || 0);
+            const res = await window.nexusAPI.registrarPagoCxpAvanzado({
+                company_id: ESTADO.companyId,
+                movimiento_id: $('pago-cxp-id').value,
+                proveedor_rif: $('pago-cxp-prov-rif').value,
+                proveedor_nombre: $('pago-cxp-prov-nombre').value,
+                comprobante_doc_afectado: $('pago-cxp-comprobante').value,
+                fecha: $('pago-cxp-fecha').value,
+                tasa_bcv: Number($('pago-cxp-tasa').value || ESTADO.tasaBcv),
+                moneda_pago: mon,
+                monto_bs: mon === 'BS' ? mto : 0,
+                monto_usd: mon === 'USD' ? mto : 0,
+                usar_saldo_a_favor_usd: Number($('pago-cxp-usar-favor').value || 0),
+                descuento_pronto_pago_usd: Number($('pago-cxp-pronto').value || 0),
+                cuenta_tesoreria_id: $('pago-cxp-cuenta').value || null,
+                metodo_pago: $('pago-cxp-metodo').value,
+                referencia: $('pago-cxp-ref').value.trim()
+            });
+            if (!res?.exito) throw new Error(res?.error || 'Error aplicando pago CxP');
+            toast('✅ Pago CxP aplicado correctamente');
+            window.cxpCerrarModalPago();
+            await cargarDatosCuentasPagar();
+        } catch (err) { toast(err.message, 'error'); }
+    });
 
+    // ==================== RETENCIONES, SENIAT, OP, ND TRANSITO, TESORERIA ====================
+    window.cxpAbrirModalRetencion = (docId) => {
+        const doc = (ESTADO.data.movimientos || []).find(m => String(m.id) === String(docId));
+        if (!doc) return;
+        const islrOpts = (ESTADO.data.catalogo_islr || []).map(c => `<option value="${esc(c.codigo)}">${esc(c.codigo)} - ${esc(c.nombre || c.descripcion || c.concepto || '')}</option>`).join('');
+        $('modal-cxp-aux-titulo').textContent = `Emitir Retención Legal — Doc ${doc.comprobante}`;
+        $('modal-cxp-aux-body').innerHTML = `
+            <form class="space-y-3">
+                <div class="p-2.5 bg-gray-50 rounded-lg border border-gray-200">
+                    <div><strong>Proveedor:</strong> ${esc(doc.prov_nombre || doc.proveedor_rif)}</div>
+                    <div><strong>Base Bs:</strong> ${fmtBs(doc.base_imponible || doc.monto_bs)} · <strong>IVA Bs:</strong> ${fmtBs(doc.monto_iva || 0)}</div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="font-bold block mb-1">Impuesto</label><select id="aux-ret-imp" class="w-full border border-gray-300 rounded-lg p-2 bg-white"><option value="IVA">Retención IVA</option><option value="ISLR">Retención ISLR (D. 1808)</option></select></div>
+                    <div><label class="font-bold block mb-1">% Ret. IVA / Concepto ISLR</label>
+                        <select id="aux-ret-pct" class="w-full border border-gray-300 rounded-lg p-2 bg-white"><option value="75">75% IVA</option><option value="100">100% IVA</option></select>
+                        <select id="aux-ret-islr" class="hidden w-full border border-gray-300 rounded-lg p-2 bg-white">${islrOpts}</select>
+                    </div>
+                </div>
+                <div class="flex justify-end pt-2"><button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg font-bold">Emitir Comprobante 14 Dígitos</button></div>
+            </form>
+        `;
+        const selImp = $('aux-ret-imp');
+        selImp.onchange = () => {
+            $('aux-ret-pct').classList.toggle('hidden', selImp.value === 'ISLR');
+            $('aux-ret-islr').classList.toggle('hidden', selImp.value !== 'ISLR');
+        };
+        $('modal-cxp-aux').classList.remove('hidden');
+        $('modal-cxp-aux-body').querySelector('form').onsubmit = async (e) => {
+            e.preventDefault();
+            try {
+                const res = await window.nexusAPI.emitirRetencionCxpVe({
+                    company_id: ESTADO.companyId, movimiento_cxp_id: doc.id,
+                    tipo_impuesto: selImp.value,
+                    porcentaje_retencion: selImp.value === 'IVA' ? Number($('aux-ret-pct').value) : undefined,
+                    codigo_concepto_islr: selImp.value === 'ISLR' ? $('aux-ret-islr').value : undefined,
+                    fecha_emision: hoyISO(), tasa_bcv: ESTADO.tasaBcv
+                });
+                if (!res?.exito) throw new Error(res?.error || 'No se pudo emitir retención');
+                toast(`✅ Comprobante ${res.numero_comprobante} emitido`);
+                $('modal-cxp-aux').classList.add('hidden');
+                await cargarDatosCuentasPagar();
+            } catch (err) { toast(err.message, 'error'); }
+        };
+    };
 
-window.cerrarModalDetalleFactura = function() {
+    window.cxpDescargarRetencionPdf = async (retId) => {
+        try {
+            const res = await window.nexusAPI.generarPdfDocumentoCxcCxp({ company_id: ESTADO.companyId, tipo: 'RETENCION', retencion_id: retId });
+            if (res && !res.canceled) { if (!res.exito) throw new Error(res.error); toast('📄 Comprobante PDF generado'); }
+        } catch (err) { toast(err.message, 'error'); }
+    };
 
-    const m = document.getElementById('modal-detalle-factura');
+    window.cxpExportarArchivoSeniat = async (tipoImp) => {
+        try {
+            const res = await window.nexusAPI.exportarSeniatRetencionesArchivo({
+                company_id: ESTADO.companyId, tipo_impuesto: tipoImp, periodo_aaaamm: $('cxp-ret-periodo').value.trim()
+            });
+            if (res && !res.canceled) {
+                if (!res.exito) throw new Error(res.error);
+                toast(`✅ Archivo SENIAT ${tipoImp} (${res.cantidad || 0} reg.) guardado`);
+            }
+        } catch (err) { toast(err.message, 'error'); }
+    };
 
-    if (m) m.classList.add('hidden');
+    window.cxpCrearOrdenDesdeSeleccion = async () => {
+        try {
+            const ids = Array.from(ESTADO.seleccionados);
+            if (ids.length === 0) { toast('Marca al menos una factura pendiente en la tabla Documentos', 'warning'); return; }
+            const res = await window.nexusAPI.gestionarOrdenPagoCxp({
+                company_id: ESTADO.companyId, accion: 'CREAR', movimiento_ids: ids,
+                banco_origen_alias: $('cxp-op-banco').value, fecha_programada: $('cxp-op-fecha').value || hoyISO(),
+                tasa_bcv: ESTADO.tasaBcv, usuario: ESTADO.usuario
+            });
+            if (!res?.exito) throw new Error(res?.error || 'Error creando Orden de Pago');
+            ESTADO.seleccionados.clear();
+            actualizarContadoresSeleccion();
+            toast(`✅ Orden de Pago ${res.codigo_orden} creada`);
+            await cargarDatosCuentasPagar();
+        } catch (err) { toast(err.message, 'error'); }
+    };
 
-};
+    window.cxpEjecutarOrdenPago = async (opId) => {
+        try {
+            const res = await window.nexusAPI.gestionarOrdenPagoCxp({ company_id: ESTADO.companyId, accion: 'EJECUTAR', id: opId, tasa_bcv: ESTADO.tasaBcv });
+            if (!res?.exito) throw new Error(res?.error || 'No se pudo ejecutar OP');
+            toast(`✅ OP ${res.codigo_orden} ejecutada (${res.facturas_liquidadas} docs liquidados)`);
+            await cargarDatosCuentasPagar();
+        } catch (err) { toast(err.message, 'error'); }
+    };
 
+    window.cxpDescargarOrdenPagoPdf = async (opId) => {
+        try {
+            const res = await window.nexusAPI.generarPdfDocumentoCxcCxp({ company_id: ESTADO.companyId, tipo: 'ORDEN_PAGO', orden_pago_id: opId });
+            if (res && !res.canceled) { if (!res.exito) throw new Error(res.error); toast('📄 Orden de Pago PDF guardada'); }
+        } catch (err) { toast(err.message, 'error'); }
+    };
+
+    window.cxpDescargarTxtBanco = async (opId, banco) => {
+        try {
+            const res = await window.nexusAPI.exportarTxtPagosProveedores({
+                company_id: ESTADO.companyId, orden_pago_id: opId,
+                banco_formato: banco || $('cxp-op-banco').value,
+                cuenta_origen: $('cxp-op-cuenta-origen').value.trim(),
+                fecha_ejecucion: $('cxp-op-fecha').value || hoyISO()
+            });
+            if (res && !res.canceled) {
+                if (!res.exito) throw new Error(res.error);
+                toast(`🏦 TXT Bancario guardado (${res.cantidadRegistros} pagos)`);
+            }
+        } catch (err) { toast(err.message, 'error'); }
+    };
+
+    window.cxpResolverNdTransito = (ajusteId) => {
+        $('modal-cxp-aux-titulo').textContent = 'Cargar Nota de Débito del Proveedor';
+        $('modal-cxp-aux-body').innerHTML = `
+            <form class="space-y-3">
+                <p class="text-gray-600">Ingresa los datos de la N/D física/digital entregada por tu proveedor para incorporarla oficialmente al Libro de Compras SENIAT:</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="font-bold block mb-1">N° Nota de Débito</label><input id="aux-nd-num" required class="w-full border border-gray-300 rounded-lg p-2 font-mono"></div>
+                    <div><label class="font-bold block mb-1">N° Control Fiscal</label><input id="aux-nd-ctrl" required class="w-full border border-gray-300 rounded-lg p-2 font-mono"></div>
+                </div>
+                <div><label class="font-bold block mb-1">Fecha N/D</label><input id="aux-nd-fec" type="date" value="${hoyISO()}" required class="w-full border border-gray-300 rounded-lg p-2"></div>
+                <div class="flex justify-end pt-2"><button type="submit" class="px-4 py-2 bg-amber-600 text-white rounded-lg font-bold">Registrar N/D en Libro Compras</button></div>
+            </form>
+        `;
+        $('modal-cxp-aux').classList.remove('hidden');
+        $('modal-cxp-aux-body').querySelector('form').onsubmit = async (e) => {
+            e.preventDefault();
+            try {
+                const res = await window.nexusAPI.resolverNdTransitoCxp({
+                    companyId: ESTADO.companyId, ajusteId,
+                    numeroNdProveedor: $('aux-nd-num').value.trim(),
+                    numeroControlNd: $('aux-nd-ctrl').value.trim(),
+                    fechaNd: $('aux-nd-fec').value
+                });
+                if (!res?.exito) throw new Error(res?.error || 'Error cargando N/D');
+                toast('✅ N/D del proveedor incorporada al Libro de Compras');
+                $('modal-cxp-aux').classList.add('hidden');
+                await cargarDatosCuentasPagar();
+            } catch (err) { toast(err.message, 'error'); }
+        };
+    };
+
+    window.cxpAbrirModalAnticipo = () => {
+        const opts = ESTADO.proveedores.map(p => `<option value="${esc(p.rif)}">${esc(p.nombre)} (${esc(p.rif)})</option>`).join('');
+        $('modal-cxp-aux-titulo').textContent = 'Registrar Anticipo Entregado a Proveedor';
+        $('modal-cxp-aux-body').innerHTML = `
+            <form class="space-y-3">
+                <div><label class="font-bold block mb-1">Proveedor</label><select id="aux-cxp-ant-rif" required class="w-full border border-gray-300 rounded-lg p-2 bg-white">${opts}</select></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="font-bold block mb-1">Modalidad</label><select id="aux-cxp-ant-mod" class="w-full border border-gray-300 rounded-lg p-2 bg-white"><option value="INDEXADO_USD">Indexado USD</option><option value="NOMINAL_BS">Nominal Bs</option></select></div>
+                    <div><label class="font-bold block mb-1">Tasa BCV</label><input id="aux-cxp-ant-tasa" type="number" step="0.0001" value="${ESTADO.tasaBcv.toFixed(4)}" class="w-full border border-gray-300 rounded-lg p-2 font-mono"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="font-bold block mb-1">Monto USD</label><input id="aux-cxp-ant-usd" type="number" step="0.01" value="0" class="w-full border border-gray-300 rounded-lg p-2 font-mono"></div>
+                    <div><label class="font-bold block mb-1">Monto Bs</label><input id="aux-cxp-ant-bs" type="number" step="0.01" value="0" class="w-full border border-gray-300 rounded-lg p-2 font-mono"></div>
+                </div>
+                <div class="flex justify-end pt-2"><button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold">Guardar Anticipo</button></div>
+            </form>
+        `;
+        $('modal-cxp-aux').classList.remove('hidden');
+        $('modal-cxp-aux-body').querySelector('form').onsubmit = async (e) => {
+            e.preventDefault();
+            try {
+                const sel = $('aux-cxp-ant-rif');
+                const res = await window.nexusAPI.registrarAnticipoSaldoFavor({
+                    company_id: ESTADO.companyId, modulo: 'CXP', tipo_registro: 'ANTICIPO',
+                    tercero_rif: sel.value, tercero_nombre: sel.options[sel.selectedIndex]?.text || sel.value,
+                    modalidad_contrato: $('aux-cxp-ant-mod').value, tasa_bcv: Number($('aux-cxp-ant-tasa').value),
+                    monto_usd: Number($('aux-cxp-ant-usd').value || 0), monto_bs: Number($('aux-cxp-ant-bs').value || 0), fecha: hoyISO()
+                });
+                if (!res?.exito) throw new Error(res?.error || 'Error guardando anticipo');
+                toast('✅ Anticipo a proveedor registrado');
+                $('modal-cxp-aux').classList.add('hidden');
+                await cargarDatosCuentasPagar();
+            } catch (err) { toast(err.message, 'error'); }
+        };
+    };
+
+    window.cxpEjecutarCierreMensual = async () => {
+        try {
+            const res = await window.nexusAPI.ejecutarCierreCambiarioMensual({
+                companyId: ESTADO.companyId, modulo: 'CXP',
+                periodoAAAAMM: $('cxp-cierre-periodo').value.trim(),
+                tasaCierreBcv: Number($('cxp-cierre-tasa').value || ESTADO.tasaBcv),
+                usuario: ESTADO.usuario
+            });
+            if (!res?.exito) throw new Error(res?.error || 'Error ejecutando cierre');
+            toast('✅ Cierre NIC 21 CxP ejecutado');
+            await cargarDatosCuentasPagar();
+        } catch (err) { toast(err.message, 'error'); }
+    };
+
+    window.cxpRevertirCierre = async (cierreId) => {
+        try {
+            const res = await window.nexusAPI.revertirCierreCambiarioDiaUno({ companyId: ESTADO.companyId, cierreId });
+            if (!res?.exito) throw new Error(res?.error || 'Error revirtiendo cierre');
+            toast('✅ Cierre CxP revertido al Día 1');
+            await cargarDatosCuentasPagar();
+        } catch (err) { toast(err.message, 'error'); }
+    };
+
+    window.cxpDescargarEdoCuentaProveedor = async () => {
+        try {
+            const sel = $('cxp-edo-cta-prov');
+            if (!sel || !sel.value) return;
+            const res = await window.nexusAPI.generarPdfDocumentoCxcCxp({
+                company_id: ESTADO.companyId, tipo: 'ESTADO_CUENTA', modulo: 'CXP',
+                tercero_rif: sel.value, tercero_nombre: sel.options[sel.selectedIndex]?.text || sel.value, fecha_corte: hoyISO()
+            });
+            if (res && !res.canceled) { if (!res.exito) throw new Error(res.error); toast('📄 Estado de Cuenta Proveedor PDF generado'); }
+        } catch (err) { toast(err.message, 'error'); }
+    };
+
+    window.cxpAbrirModalCuentaTesoreria = () => {
+        $('modal-cxp-aux-titulo').textContent = 'Nueva Cuenta Bancaria o Caja';
+        $('modal-cxp-aux-body').innerHTML = `
+            <form class="space-y-3">
+                <div><label class="font-bold block mb-1">Nombre Cuenta</label><input id="aux-ccta-nom" required class="w-full border border-gray-300 rounded-lg p-2"></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="font-bold block mb-1">Moneda</label><select id="aux-ccta-mon" class="w-full border border-gray-300 rounded-lg p-2 bg-white"><option value="BS">Bolívares (Bs)</option><option value="USD">Divisas (USD)</option></select></div>
+                    <div><label class="font-bold block mb-1">Saldo Inicial</label><input id="aux-ccta-sal" type="number" step="0.01" value="0" class="w-full border border-gray-300 rounded-lg p-2 font-mono"></div>
+                </div>
+                <div class="flex justify-end pt-2"><button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold">Crear</button></div>
+            </form>
+        `;
+        $('modal-cxp-aux').classList.remove('hidden');
+        $('modal-cxp-aux-body').querySelector('form').onsubmit = async (e) => {
+            e.preventDefault();
+            try {
+                const res = await window.nexusAPI.gestionarTesoreriaBimonetaria({
+                    company_id: ESTADO.companyId, accion: 'CREAR_CUENTA',
+                    nombre: $('aux-ccta-nom').value.trim(), moneda: $('aux-ccta-mon').value, saldo_inicial: Number($('aux-ccta-sal').value || 0)
+                });
+                if (!res?.exito) throw new Error(res?.error || 'Error');
+                toast('✅ Cuenta creada');
+                $('modal-cxp-aux').classList.add('hidden');
+                await cargarDatosCuentasPagar();
+            } catch (err) { toast(err.message, 'error'); }
+        };
+    };
+
+    window.cxpToggleConciliar = async (movId, val) => {
+        try {
+            await window.nexusAPI.gestionarTesoreriaBimonetaria({ company_id: ESTADO.companyId, accion: 'CONCILIAR', movimiento_id: movId, conciliado: val });
+            await cargarDatosCuentasPagar();
+        } catch (err) { toast(err.message, 'error'); }
+    };
+
+    window.verDetalleFacturaCxp = function (movId) {
+        const mov = (ESTADO.data.movimientos || []).find(m => String(m.id) === String(movId));
+        if (!mov) return;
+        let items = [];
+        try { items = JSON.parse(mov.contenido_fac || '[]'); } catch (_) {}
+        const tbody = $('cxp-detalle-tbody');
+        let suma = 0, totalItems = 0;
+        tbody.innerHTML = items.length ? items.map(it => {
+            const qty = Number(it.cantidad || 0);
+            const precio = Number(it.precio || it.costo || 0);
+            const sub = Number(it.subtotal || (qty * precio));
+            suma += sub; totalItems += qty;
+            return `<tr><td class="py-2">${esc(it.nombre || 'Producto')}</td><td class="py-2 text-right">${qty}</td><td class="py-2 text-right font-mono">${fmtUsd(precio)}</td><td class="py-2 text-right font-mono font-bold text-emerald-700">${fmtUsd(sub)}</td></tr>`;
+        }).join('') : `<tr><td colspan="4" class="py-6 text-center text-gray-400">Documento sin desglose de inventario (Gasto o registro directo). Nota: ${esc(mov.nota || '—')}</td></tr>`;
+        $('cxp-detalle-total-articulos').textContent = `Total: ${items.length} producto(s) (${totalItems} unidades) | Total: ${fmtUsd(suma || mov.monto)}`;
+        $('modal-detalle-factura').classList.remove('hidden');
+    };
+    window.cerrarModalDetalleFactura = () => $('modal-detalle-factura').classList.add('hidden');
+
+    // Wiring tabs, filters, check-all
+    document.querySelectorAll('.cxp-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            ESTADO.tabActual = btn.dataset.cxpTab;
+            document.querySelectorAll('.cxp-tab-btn').forEach(b => {
+                b.className = b === btn
+                    ? 'cxp-tab-btn cxp-tab-active px-4 py-2 rounded-lg text-xs font-semibold transition'
+                    : 'cxp-tab-btn cxp-tab-inactive px-4 py-2 rounded-lg text-xs font-semibold transition';
+            });
+            document.querySelectorAll('.cxp-tab-panel').forEach(p => {
+                const match = p.id === `cxp-panel-${ESTADO.tabActual}`;
+                p.classList.toggle('hidden', !match);
+                p.classList.toggle('flex', match);
+            });
+        });
+    });
+
+    document.querySelectorAll('.cxp-filtro-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            ESTADO.filtroActual = btn.dataset.cxpFiltro;
+            document.querySelectorAll('.cxp-filtro-btn').forEach(b => {
+                b.className = b === btn
+                    ? 'cxp-filtro-btn cxp-filtro-active px-3 py-1.5 rounded-lg text-xs transition'
+                    : 'cxp-filtro-btn cxp-filtro-inactive px-3 py-1.5 rounded-lg text-xs transition';
+            });
+            renderDocumentos();
+        });
+    });
+
+    $('buscador-cxp')?.addEventListener('input', renderDocumentos);
+    $('cxp-check-all')?.addEventListener('change', (e) => {
+        document.querySelectorAll('#tabla-cxp-body .cxp-row-check').forEach(chk => {
+            chk.checked = e.target.checked;
+            if (chk.checked) ESTADO.seleccionados.add(chk.value);
+            else ESTADO.seleccionados.delete(chk.value);
+        });
+        actualizarContadoresSeleccion();
+    });
+
+    window.cargarDatosCuentasPagar = cargarDatosCuentasPagar;
+    cargarDatosCuentasPagar();
+})();
 </script>
-
-
-
-</div>

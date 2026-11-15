@@ -2496,6 +2496,7 @@ if (btnAdd) {
 window.addEventListener('online', async () => {
     console.log("🌐 Internet detectado. Iniciando sincronización de Nexus POS...");
     try {
+        if (typeof window.nexusAPI?.procesarColaSync !== 'function') return; // sin handler IPC en main.js; la cola la procesa inicio.html
         const resultado = await window.nexusAPI.procesarColaSync();
         console.log("✅ Sincronización completada:", resultado);
     } catch (err) {

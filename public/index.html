@@ -763,14 +763,14 @@
                             } else {
                                 // Actualizamos los datos locales en segundo plano
                                 const idTokenResult = await user.getIdTokenResult();
-                                const role = idTokenResult.claims.role;
+                                const role = idTokenResult.claims.role || sesionLocal.role || 'admin';
 
                                 await window.nexusAPI.guardarUsuarioLocal({
                                     uid: user.uid,
                                     email: user.email,
                                     role: role,
-                                    companyId: idTokenResult.claims.companyId || 'nexus_pos_id',
-                                    branchId: idTokenResult.claims.branchId || null
+                                    companyId: idTokenResult.claims.companyId || sesionLocal.companyId || 'nexus_pos_id',
+                                    branchId: idTokenResult.claims.branchId || sesionLocal.branchId || null
                                 });
                             }
                         }
@@ -794,7 +794,7 @@
                             } catch(e) { console.error("Error verificando plan local:", e); }
 
                             console.log("Sesión activa detectada (sin cierre explícito). Redirigiendo automáticamente...");
-                            const rolFinal = user ? (await user.getIdTokenResult()).claims.role : sesionLocal.role;
+                            const rolFinal = (user ? (await user.getIdTokenResult()).claims.role : null) || sesionLocal.role || 'admin';
                             window.nexusAPI.abrirVentanaPrincipal(rolFinal === 'admin' ? 'inicio.html' : 'inicio_cajera.html');
                         } else {
                             if (loadingContainer) loadingContainer.classList.add('hidden');
@@ -913,6 +913,7 @@
                         await window.nexusAPI.guardarUsuarioLocal({
                             uid: userCred.user.uid,
                             email: userCred.user.email,
+                            password: password,
                             role: idToken.claims.role || 'admin',
                             companyId: companyId || 'nexus_pos_id',
                             branchId: idToken.claims.branchId || null,
@@ -1024,6 +1025,21 @@
                             }
                         }
                         
+                        // --- GUARDAMOS CREDENCIAL HASH EN DISCO PARA MODO OFFLINE ---
+                        try {
+                            await window.nexusAPI.guardarUsuarioLocal({
+                                uid: userCred.user.uid,
+                                email: userCred.user.email,
+                                password: password,
+                                role: idToken.claims.role || 'cajera',
+                                companyId: companyId || 'nexus_pos_id',
+                                branchId: idToken.claims.branchId || null,
+                                companyData: null
+                            });
+                        } catch (errSyncLocal) {
+                            console.warn('No se pudo respaldar sesión offline de cajera:', errSyncLocal);
+                        }
+
                         localStorage.setItem('explicit_logout', 'false'); // REACTIVAR AUTO-LOGIN
                         showMessage("Cajera: Sesión iniciada.", "success");
                         window.nexusAPI.abrirVentanaPrincipal('inicio_cajera.html'); // Aseguramos el salto
@@ -1037,7 +1053,22 @@
                         try {
                             const user = await window.nexusAPI.loginLocal(email, password);
                             if (user && user.role === 'cajera') {
-                                localStorage.setItem('explicit_logout', 'false'); // REACTIVAR AUTO-LOGIN OFFLINE
+                                // --- GUARDAMOS CREDENCIAL HASH EN DISCO PARA MODO OFFLINE ---
+                        try {
+                            await window.nexusAPI.guardarUsuarioLocal({
+                                uid: userCred.user.uid,
+                                email: userCred.user.email,
+                                password: password,
+                                role: idToken.claims.role || 'cajera',
+                                companyId: companyId || 'nexus_pos_id',
+                                branchId: idToken.claims.branchId || null,
+                                companyData: null
+                            });
+                        } catch (errSyncLocal) {
+                            console.warn('No se pudo respaldar sesión offline de cajera:', errSyncLocal);
+                        }
+
+                        localStorage.setItem('explicit_logout', 'false'); // REACTIVAR AUTO-LOGIN OFFLINE
                                 showMessage("Modo sin conexión: Sesión de cajera iniciada.", "success");
                                 window.nexusAPI.abrirVentanaPrincipal('inicio_cajera.html');
                             } else { 

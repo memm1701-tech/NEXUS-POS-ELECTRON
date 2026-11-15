@@ -12,6 +12,7 @@
     <script src="tailwindcss.js"></script>
     <script src="jsbarcode.all.min.js"></script>
     <script src="chart.umd.js"></script>
+    <script src="xlsx.full.min.js"></script>
 <style>
         .swal2-container { z-index: 99999999 !important; }
         /* =========================================
@@ -44,6 +45,17 @@
         }
         .sidebar {
             font-family: 'Roboto', sans-serif !important;
+        }
+        .sidebar h3,
+        .sidebar p,
+        .sidebar span,
+        .sidebar a,
+        .sidebar label,
+        .sidebar select,
+        .sidebar input {
+            font-family: 'Roboto', sans-serif !important;
+        }
+        .sidebar {
             -ms-overflow-style: none;
             scrollbar-width: none;
             width: 280px;
@@ -77,6 +89,36 @@
 
         .sidebar-header h3 { font-size: 1.5rem; font-weight: 700; color: #333333; margin-top: 0.5rem; }
         .sidebar-header p { font-size: 0.875rem; color: #6B6B6B; }
+        .sidebar-meta-status {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem 0.45rem;
+            max-width: 100%;
+            white-space: normal;
+            text-align: center;
+        }
+        .sidebar-meta-status #rif-text {
+            font-size: 0.8125rem;
+            font-weight: 700;
+            line-height: 1.25;
+        }
+        .sidebar-meta-status .status-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            line-height: 1.25;
+            white-space: nowrap;
+        }
+        .sidebar-meta-status.stacked {
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+        .sidebar-meta-status.stacked .meta-sep {
+            display: none;
+        }
 
         .sidebar-branch-selection,
         .sidebar-dollar-rate-input {
@@ -173,11 +215,12 @@
 
         .sidebar.collapsed .sidebar-header h3,
         .sidebar.collapsed .sidebar-header #rif-text,
-        .sidebar.collapsed .sidebar-header .flex.items-center {
-            opacity: 0; transform: translateX(-20px); visibility: hidden; pointer-events: none;
+        .sidebar.collapsed .sidebar-header .flex.items-center,
+        .sidebar.collapsed .sidebar-header #sidebar-company-card {
+            opacity: 0; transform: translateX(-20px); visibility: hidden; pointer-events: none; height: 0; margin: 0; padding: 0; overflow: hidden;
         }
 
-        .sidebar-header h3, #rif-text, .sidebar-header .flex {
+        .sidebar-header h3, #rif-text, .sidebar-header .flex, #sidebar-company-card {
             transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s; opacity: 1; transform: translateX(0); visibility: visible;
         }
 
@@ -251,9 +294,10 @@
             .sidebar:not(.open) .sidebar-header h3,
             .sidebar:not(.open) .sidebar-header #rif-text,
             .sidebar:not(.open) .sidebar-header .flex.items-center,
+            .sidebar:not(.open) .sidebar-header #sidebar-company-card,
             .sidebar:not(.open) .sidebar-branch-selection,
             .sidebar:not(.open) .sidebar-dollar-rate-input {
-                opacity: 0; transform: translateX(-20px); visibility: hidden; pointer-events: none;
+                opacity: 0; transform: translateX(-20px); visibility: hidden; pointer-events: none; height: 0; margin: 0; padding: 0; overflow: hidden;
             }
 
             .sidebar:not(.open) .sidebar-nav .dropdown > ul { display: none !important; }
@@ -265,8 +309,9 @@
             /* MOSTRAR TEXTOS: Cuando se expande (.open) */
             .sidebar.open .sidebar-header h3,
             .sidebar.open .sidebar-header #rif-text,
-            .sidebar.open .sidebar-header .flex.items-center {
-                opacity: 1; transform: translateX(0); visibility: visible; pointer-events: auto;
+            .sidebar.open .sidebar-header .flex.items-center,
+            .sidebar.open .sidebar-header #sidebar-company-card {
+                opacity: 1; transform: translateX(0); visibility: visible; pointer-events: auto; height: auto;
             }
             .sidebar.open .sidebar-header .contenedor-logo,
             .sidebar.open .sidebar-header img { width: 120px !important; height: 120px !important; margin-top: 0 !important; }
@@ -317,15 +362,26 @@
                 </button>
                 
                 <div class="contenedor-logo">
-                    <img src="../assets/image_b9add182 - copia-Photoroom.png" alt="Logo NEXUS POS">
+                    <img src="../assets/image_57357170-Photoroom-diciembre.png" alt="Logo NEXUS POS">
                 </div>
                 <h3>NEXUS POS GOBAL</h3>
                 
-                <p id="rif-text" class="text-sm font-bold text-gray-500 mb-2">RIF: J-50807000-3</p>
-                
-                <div class="flex items-center justify-center mt-1 text-xs font-medium text-gray-500">
-                    <span id="status-circle" class="w-2.5 h-2.5 rounded-full bg-green-500 mr-2 shadow-[0_0_5px_rgba(34,197,94,0.6)] transition-colors duration-300"></span>
-                    <span id="status-text">Conectado (Online)</span>
+                <div id="sidebar-meta-status" class="sidebar-meta-status flex items-center justify-center gap-2 mb-2 text-xs font-medium text-gray-500">
+                    <span id="rif-text" class="font-bold text-gray-500">RIF: J-50807000-3</span>
+                    <span class="meta-sep text-gray-300">•</span>
+                    <div class="status-chip flex items-center">
+                        <span id="status-circle" class="w-2 h-2 rounded-full bg-green-500 mr-1.5 shadow-[0_0_5px_rgba(34,197,94,0.6)] transition-colors duration-300 inline-block"></span>
+                        <span id="status-text">Conectado (Online)</span>
+                    </div>
+                </div>
+
+                <div id="sidebar-company-card" class="sidebar-company-card flex items-center bg-white/90 border border-gray-200/90 rounded-xl px-3 py-2 shadow-sm text-left transition-all duration-300">
+                    <i class="fa-solid fa-store text-gray-400 text-lg mr-2.5 flex-shrink-0"></i>
+                    <div class="overflow-hidden min-w-0 flex-1">
+                        <p class="text-xs text-gray-800 truncate m-0 leading-tight">
+                            <span id="sidebar-company-name" class="font-bold text-gray-800">Cargando...</span>
+                        </p>
+                    </div>
                 </div>
             </div>
 
@@ -344,8 +400,13 @@
                     <li class="dropdown">
                         <a href="#"><i class="fa-solid fa-chart-simple"></i> Estadísticas</a>
                         <ul>
-                            <li><a href="#" data-page="index_inicio_admin/estadisticas/generales.html"><i class="fa-solid fa-chart-line"></i> Generales</a></li>
-                            <li><a href="#" data-page="index_inicio_admin/estadisticas/especificas.html"><i class="fa-solid fa-chart-pie"></i> Específicas</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/estadisticas/generales.html"><i class="fa-solid fa-chart-line"></i> Resumen y Flujo de Caja</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/estadisticas/tesoreria_cartera.html"><i class="fa-solid fa-wallet"></i> Tesorería, Liquidez y Cartera</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/estadisticas/especificas.html"><i class="fa-solid fa-chart-pie"></i> Tendencias y Sucursales</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/estadisticas/rentabilidad_costos.html"><i class="fa-solid fa-scale-balanced"></i> Rentabilidad y Costos</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/estadisticas/inteligencia_inventario.html"><i class="fa-solid fa-boxes-stacked"></i> Inteligencia de Inventario</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/estadisticas/proteccion_cambiaria.html"><i class="fa-solid fa-shield-halved"></i> Protección Cambiaria y Canales</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/estadisticas/inteligencia_comercial.html"><i class="fa-solid fa-users-viewfinder"></i> Inteligencia Comercial</a></li>
                         </ul>
                     </li>
 
@@ -354,6 +415,8 @@
                         <ul>
                             <li><a href="#" data-page="index_inicio_admin/administracion/cuentas_cobrar.html"><i class="fa-solid fa-file-invoice-dollar"></i> Cuentas por cobrar</a></li>
                             <li><a href="#" data-page="index_inicio_admin/administracion/cuentas_pagar.html"><i class="fa-solid fa-receipt"></i> Cuentas por pagar</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/administracion/libro_de_compras.html"><i class="fa-solid fa-book-bookmark"></i> Libro de compra</a></li>
+                            <li><a href="#" data-page="index_inicio_admin/administracion/libro_de_ventas.html"><i class="fa-solid fa-book-open-reader"></i> Libro de venta</a></li>
                             <li><a href="#" data-page="index_inicio_admin/administracion/gestion_de_empleados.html"><i class="fa-solid fa-id-badge"></i> Gestión de Empleados</a></li>
                         </ul>
                     </li>
@@ -478,18 +541,21 @@
             const config = await window.nexusAPI.obtenerConfigServer();
             
             // 🔥 CAPTURA BLINDADA: Busca en camelCase o exactamente como está en el .env
-            window.SERVER_IP = config.serverIp || config.SERVER_IP;
-            window.SERVER_PORT = config.serverPort || config.SERVER_PORT;
+            window.SERVER_IP = config.vpsIp || config.serverIp || config.SERVER_IP;
+            window.SERVER_PORT = config.vpsPort || config.serverPort || config.SERVER_PORT;
             window.esServidorLocal = (config.isServer === true || config.isServer === 'true');
+            const quiereRespaldo = (config.respaldo_datos === true || config.respaldo_datos === 'true' || config.respaldoActivo === true || config.respaldoActivo === 'true');
 
-            // 🔥 CORRECCIÓN DEL CANDADO: Acepta tanto el booleano (true) como el texto ('true')
-            if ((config.respaldo_datos === true || config.respaldo_datos === 'true') && navigator.onLine) {
+            // 🔒 REGLA IMPENETRABLE: SOLO isServer === true sincroniza con el VPS
+            if (window.esServidorLocal && quiereRespaldo && window.SERVER_IP && window.SERVER_PORT) {
                 respaldoActivo = true;
-                // Construimos la URL usando las variables seguras que acabamos de capturar
-                SERVER_URL = `http://${window.SERVER_IP}:${window.SERVER_PORT}`; 
+                SERVER_URL = `http://${window.SERVER_IP}:${window.SERVER_PORT}`;
             } else {
                 respaldoActivo = false;
                 SERVER_URL = null;
+                if (!window.esServidorLocal) {
+                    console.log("ℹ️ [ADMIN] Terminal hija (isServer=false): sincronización directa al VPS desactivada.");
+                }
             }
 
             // 2. Validación de la sesión en SQLite
@@ -529,14 +595,26 @@
                 activarVigilanteFirebase(sesion.companyId);
                 iniciarVigilanteHorarioPlan(sesion.companyId);
 
-                // 4. HIDRATACION INICIAL (sucursales, categorías, empaques) + DESCARGA DELTA DE PRODUCTOS Y STOCK DESDE EL VPS
-                if (respaldoActivo && SERVER_URL && navigator.onLine) {
+                // 4. HIDRATACION INICIAL (solo isServer === true) + RECONCILIACION INICIAL DE VENTAS + DESCARGA DELTA + DAEMONS GRUPO A
+                if (window.esServidorLocal && respaldoActivo && SERVER_URL && navigator.onLine) {
                     hidratarDesdeVPS(sesion.companyId).finally(() => {
                         descargarYValidarInventarioGlobal(sesion.companyId);
                         descargarYValidarStockGlobal(sesion.companyId);
+                        reconciliarYValidarVentasGlobal(sesion.companyId);
+                        const api = window.nexusAPI;
+                        if (api) {
+                            api.sincronizarCuentasCobrar?.(sesion.companyId).catch(() => {});
+                            api.sincronizarCuentasPagar?.(sesion.companyId).catch(() => {});
+                            api.sincronizarEmpleados?.(sesion.companyId).catch(() => {});
+                            api.sincronizarCierresVps?.(sesion.companyId).catch(() => {});
+                            api.sincronizarSucursalesVps?.(sesion.companyId).catch(() => {});
+                            api.sincronizarSalidasVps?.(sesion.companyId).catch(() => {});
+                            api.sincronizarTasasVps?.().catch(() => {});
+                            api.sincronizarConfigTiendaVps?.(sesion.companyId).catch(() => {});
+                        }
                     });
                 } else {
-                    console.warn(`[ARRANQUE] Descarga desde VPS omitida (respaldoActivo=${respaldoActivo}, SERVER_URL=${SERVER_URL}, online=${navigator.onLine}).`);
+                    console.warn(`[ARRANQUE] Descarga desde VPS omitida (esServidor=${window.esServidorLocal}, respaldoActivo=${respaldoActivo}, SERVER_URL=${SERVER_URL}, online=${navigator.onLine}).`);
                 }
 
             } else {
@@ -681,6 +759,18 @@
             const docRef = doc(db, "companies", companyId);
 
             onSnapshot(docRef, async (docSnap) => {
+                if (docSnap.exists()) {
+                    const snapData = docSnap.data();
+                    if (snapData) {
+                        const nEmpresa = snapData.name || snapData.nombre_empresa || snapData.razon_social;
+                        if (nEmpresa) {
+                            const sc = document.getElementById('sidebar-company-name');
+                            if (sc) { sc.textContent = nEmpresa; sc.setAttribute('title', nEmpresa); }
+                            const cd = document.getElementById('company-name-display');
+                            if (cd) cd.textContent = nEmpresa;
+                        }
+                    }
+                }
                 if (docSnap.exists() && docSnap.data().plan) {
                     const planNube = docSnap.data().plan;
 
@@ -813,6 +903,21 @@
                     bloquearEnlace(enlace, "Cuentas por pagar");
                 }
             }
+            // 10b. Libro de compra
+            else if (textoEnlace.includes("Libro de compra")) {
+                if (!permisos.includes("Libro de compra") && !permisos.includes("PURCHASE_BOOK") &&
+                    !permisos.includes("Cuentas por pagar") && !permisos.includes("ACCOUNTS_PAYABLE")) {
+                    bloquearEnlace(enlace, "Libro de compra");
+                }
+            }
+            // 10c. Libro de venta
+            else if (textoEnlace.includes("Libro de venta")) {
+                if (!permisos.includes("Libro de venta") && !permisos.includes("SALES_BOOK") &&
+                    !permisos.includes("Cuentas por cobrar") && !permisos.includes("ACCOUNTS_RECEIVABLE") &&
+                    !permisos.includes("Cierre de caja") && !permisos.includes("CASH_CLOSURE")) {
+                    bloquearEnlace(enlace, "Libro de venta");
+                }
+            }
             // 11. Gestión de Empleados
             else if (textoEnlace.includes("Gestión de Empleados")) {
                 if (!permisos.includes("Gestión de empleados") && !permisos.includes("EMPLOYEE_MANAGEMENT")) {
@@ -910,11 +1015,22 @@
     const RUTAS_VPS = {
         'productos':  '/api/maestro/inventario/sincronizar',
         'categorias': '/api/maestro/categorias/sincronizar',
+        'sucursales': '/api/maestro/sucursales/sincronizar',
         'configuracion_tienda': '/api/maestro/configuracion_tienda/sincronizar',
         'movimientos_stock': '/api/maestro/inventario/registrar-entrada',
         'ventas_descuento_vps': '/api/maestro/inventario/descontar-stock-venta',
         'unidades_empaque': '/api/maestro/empaque/sincronizar',
-        'empaques': '/api/maestro/empaque/sincronizar'
+        'empaques': '/api/maestro/empaque/sincronizar',
+        'salidas_inventario': '/api/maestro/inventario/salidas/sincronizar',
+        'historial_tasas': '/api/maestro/tasa/historial/sincronizar'
+    };
+
+    const RUTAS_DELETE_VPS = {
+        'productos': '/api/maestro/inventario',
+        'sucursales': '/api/maestro/sucursales',
+        'categorias': '/api/maestro/categorias',
+        'unidades_empaque': '/api/maestro/empaque',
+        'empaques': '/api/maestro/empaque'
     };
 
     let SERVER_URL = null;
@@ -1001,6 +1117,33 @@
         if (infoMessageModal) infoMessageModal.classList.add('hidden');
     }
 
+    function ajustarDistribucionMetaSidebar() {
+        const wrap = document.getElementById('sidebar-meta-status');
+        const rif = document.getElementById('rif-text');
+        const sep = wrap ? wrap.querySelector('.meta-sep') : null;
+        const chip = wrap ? wrap.querySelector('.status-chip') : null;
+        if (!wrap || !rif || !chip) return;
+        wrap.classList.remove('stacked');
+        if (wrap.clientWidth === 0) return;
+        const anchoNecesario = rif.scrollWidth + (sep ? sep.offsetWidth : 0) + chip.scrollWidth + 20;
+        if (anchoNecesario > wrap.clientWidth || chip.offsetTop > rif.offsetTop + 2) {
+            wrap.classList.add('stacked');
+        }
+    }
+    window.addEventListener('resize', ajustarDistribucionMetaSidebar);
+    (function iniciarObservadorMetaSidebar() {
+        const wrap = document.getElementById('sidebar-meta-status');
+        const header = document.querySelector('.sidebar-header');
+        if (wrap && typeof MutationObserver !== 'undefined') {
+            new MutationObserver(() => requestAnimationFrame(ajustarDistribucionMetaSidebar))
+                .observe(wrap, { childList: true, subtree: true, characterData: true });
+        }
+        if (header && typeof ResizeObserver !== 'undefined') {
+            new ResizeObserver(() => requestAnimationFrame(ajustarDistribucionMetaSidebar)).observe(header);
+        }
+        requestAnimationFrame(ajustarDistribucionMetaSidebar);
+    })();
+
     function actualizarUIConexion(online) {
         estadoConexion = online;
         if (!statusCircle || !statusText) return;
@@ -1017,6 +1160,7 @@
             statusText.classList.remove('text-gray-500');
             statusText.classList.add('text-red-500');
         }
+        requestAnimationFrame(ajustarDistribucionMetaSidebar);
     }
 
     // Definimos la función como parte de 'window' para que sea accesible desde el onclick del HTML
@@ -1110,8 +1254,8 @@
 async function iniciarSincronizacionSilenciosa() {
     if (sincronizando) return; 
     
-    // 🛡️ CANDADO DE SEGURIDAD: Si no hay red o el plan es básico, se cancela la operación
-    if (!navigator.onLine || !respaldoActivo || !SERVER_URL) {
+    // 🛡️ CANDADO DE SEGURIDAD: Solo Servidor Maestro con red, respaldo activo y URL VPS válida
+    if (!window.esServidorLocal || !navigator.onLine || !respaldoActivo || !SERVER_URL) {
         return; 
     }
 
@@ -1153,21 +1297,62 @@ async function iniciarSincronizacionSilenciosa() {
                     const ventasProcesadasEnCiclo = new Set();
 
                     for (const registro of cola) {
-                        const rutaParcial = RUTAS_VPS[registro.tabla];
-                        if (!rutaParcial) continue;
-
-                        // 🛡️ PROTECCIÓN ANTI-BUCLE LOCAL: Si SERVER_URL apunta al servidor local o si es la máquina maestra sin VPS remoto
+                        const accionCola = String(registro.accion || 'INSERT').toUpperCase();
                         const isLocalServerUrl = !SERVER_URL || SERVER_URL.includes('localhost') || SERVER_URL.includes('127.0.0.1') || SERVER_URL.includes(':3000');
-                        if ((registro.tabla === 'ventas_descuento_vps' || registro.tabla === 'movimientos_stock') && isLocalServerUrl) {
-                            console.log(`🛡️ [ADMIN SYNC] Registro ${registro.id} (${registro.tabla}) omitido: SERVER_URL es local y el movimiento ya fue aplicado directamente.`);
-                            await api.eliminarDeCola(registro.id, { omitidoSinSubir: true });
-                            continue;
-                        }
-
-                        const endpointCompleto = `${SERVER_URL}${rutaParcial}`;
 
                         try {
-                            const datosJSON = typeof registro.datos === 'string' ? JSON.parse(registro.datos) : registro.datos;
+                            const datosJSON = typeof registro.datos === 'string' ? JSON.parse(registro.datos) : (registro.datos || {});
+                            const idReal = String(registro.id_registro || datosJSON.id || datosJSON.producto_ID || datosJSON.empresa_ID || (datosJSON.items && datosJSON.items.length > 0 ? datosJSON.items[0].id : '') || '');
+
+                            if (accionCola === 'DELETE') {
+                                const rutaDelete = RUTAS_DELETE_VPS[registro.tabla];
+                                if (!rutaDelete || !idReal) {
+                                    if (rutaDelete && !idReal) {
+                                        console.warn(`⚠️ [ADMIN SYNC] DELETE sin id_registro en cola (${registro.id}, ${registro.tabla}).`);
+                                    }
+                                    continue;
+                                }
+                                const cIdDel = datosJSON.company_id || datosJSON.companyId || window.currentCompanyId || '';
+                                const urlDelete = cIdDel
+                                    ? `${SERVER_URL}${rutaDelete}/${encodeURIComponent(idReal)}?company_id=${encodeURIComponent(cIdDel)}`
+                                    : `${SERVER_URL}${rutaDelete}/${encodeURIComponent(idReal)}`;
+                                const responseDel = await fetch(urlDelete, {
+                                    method: 'DELETE',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ id: idReal, company_id: cIdDel || undefined }),
+                                    signal: AbortSignal.timeout(15000)
+                                });
+                                if (responseDel.ok || responseDel.status === 404) {
+                                    await api.eliminarDeCola(registro.id);
+                                    if (api.marcarComoSincronizado) {
+                                        await api.marcarComoSincronizado(registro.tabla, idReal);
+                                    }
+                                    procesadosConExito++;
+                                } else {
+                                    let errorTexto = 'HTTP ' + responseDel.status;
+                                    try {
+                                        const errJson = await responseDel.json();
+                                        if (errJson && errJson.error) errorTexto = responseDel.status + ': ' + errJson.error;
+                                    } catch (_) {}
+                                    console.warn('⚠️ [ADMIN SYNC] DELETE ' + registro.id + ' (' + registro.tabla + ') falló: ' + errorTexto);
+                                    if (api && typeof api.registrarFalloCola === 'function') {
+                                        await api.registrarFalloCola(registro.id, errorTexto);
+                                    }
+                                }
+                                continue;
+                            }
+
+                            const rutaParcial = RUTAS_VPS[registro.tabla];
+                            if (!rutaParcial) continue;
+
+                            // 🛡️ PROTECCIÓN ANTI-BUCLE LOCAL: Si SERVER_URL apunta al servidor local o si es la máquina maestra sin VPS remoto
+                            if ((registro.tabla === 'ventas_descuento_vps' || registro.tabla === 'movimientos_stock') && isLocalServerUrl) {
+                                console.log(`🛡️ [ADMIN SYNC] Registro ${registro.id} (${registro.tabla}) omitido: SERVER_URL es local y el movimiento ya fue aplicado directamente.`);
+                                await api.eliminarDeCola(registro.id, { omitidoSinSubir: true });
+                                continue;
+                            }
+
+                            const endpointCompleto = `${SERVER_URL}${rutaParcial}`;
 
                             if (registro.tabla === 'ventas_descuento_vps') {
                                 const refVenta = String(datosJSON.ventaId || datosJSON.factura_ref || datosJSON.numero_factura || registro.id_registro || '');
@@ -1182,6 +1367,7 @@ async function iniciarSincronizacionSilenciosa() {
                             const response = await fetch(endpointCompleto, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
+                                signal: AbortSignal.timeout(15000),
                                 body: JSON.stringify((function() {
                                     if (registro.tabla === 'movimientos_stock') {
                                         const cId = datosJSON.companyId || datosJSON.company_id || window.currentCompanyId;
@@ -1219,17 +1405,27 @@ async function iniciarSincronizacionSilenciosa() {
                                             };
                                         }
                                     }
+                                    if (registro.tabla === 'salidas_inventario') {
+                                        const cId = datosJSON.company_id || datosJSON.companyId || window.currentCompanyId;
+                                        if (!Array.isArray(datosJSON.items)) {
+                                            return { company_id: cId, items: [datosJSON] };
+                                        }
+                                    }
+                                    if (registro.tabla === 'historial_tasas') {
+                                        const cId = datosJSON.company_id || datosJSON.companyId || window.currentCompanyId;
+                                        if (!Array.isArray(datosJSON.items) && !Array.isArray(datosJSON.tasas)) {
+                                            return { company_id: cId, items: [datosJSON] };
+                                        }
+                                    }
                                     return datosJSON;
                                 })())
                             });
 
                             if (response.ok) {
                                 await api.eliminarDeCola(registro.id);
-                                const idReal = datosJSON.id || datosJSON.producto_ID || datosJSON.empresa_ID || (datosJSON.items && datosJSON.items.length > 0 ? datosJSON.items[0].id : null);
-                                if (idReal) {
-                                    await window.nexusAPI.marcarComoSincronizado(registro.tabla, idReal);
+                                if (idReal && api.marcarComoSincronizado) {
+                                    await api.marcarComoSincronizado(registro.tabla, idReal);
                                 }
-                                
                                 procesadosConExito++;
                             } else {
                                 let errorTexto = 'HTTP ' + response.status;
@@ -1243,7 +1439,7 @@ async function iniciarSincronizacionSilenciosa() {
                                 }
                             }
                         } catch (uploadErr) {
-                            console.error(`❌ Falló la subida al VPS Xeon. Sincronización pausada.`);
+                            console.error(`❌ Falló la subida al VPS Xeon. Sincronización pausada:`, uploadErr && uploadErr.message ? uploadErr.message : '');
                             break; 
                         }
                     }
@@ -1255,13 +1451,23 @@ async function iniciarSincronizacionSilenciosa() {
             }
         }
 
-        // ☁️ Sincronización continua de ventas al VPS
+        // ☁️ Sincronización continua de ventas al VPS por lotes (POST con aislamiento de errores)
+        let redVentasCaida = false;
         if (api && typeof api.sincronizarVentasServidor === 'function') {
-            await api.sincronizarVentasServidor(50, SERVER_URL);
+            const resVentas = await api.sincronizarVentasServidor(50, SERVER_URL, { maxLotes: 4 });
+            if (resVentas && resVentas.redCaida) {
+                redVentasCaida = true;
+            } else if (resVentas && (resVentas.sincronizadas > 0 || resVentas.erroresCount > 0)) {
+                console.log(`☁️ [ADMIN SYNC VENTAS] Subidas: ${resVentas.sincronizadas || 0}, Errores/Aisladas: ${resVentas.erroresCount || 0}, Restantes: ${resVentas.restantes || 0}`);
+            }
         }
         
-        // Mantenemos el estado en verde si la rutina terminó bien
-        if (statusText) statusText.textContent = 'Conectado (Online)';
+        if (redVentasCaida) {
+            actualizarUIConexion(false);
+        } else {
+            // Mantenemos el estado en verde si la rutina terminó bien
+            if (statusText) statusText.textContent = 'Conectado (Online)';
+        }
         
     } catch (error) {
         // 🚦 Si algo falló (como el timeout de Google), lo marcamos como offline temporal
@@ -1269,10 +1475,17 @@ async function iniciarSincronizacionSilenciosa() {
     } finally {
         // 🔥 VITAL: Soltamos el candado SIEMPRE, pase lo que pase
         sincronizando = false;
-        if (window.stockDescargaEnStandby && window.currentCompanyId) {
+        if (window.esServidorLocal && window.stockDescargaEnStandby && window.currentCompanyId) {
             window.stockDescargaEnStandby = false;
             console.log("▶️ [STANDBY ADMIN] Pendientes procesados. Ejecutando aplicación de stock en standby...");
             descargarYValidarStockGlobal(window.currentCompanyId);
+        }
+        if (window.esServidorLocal && window.ventasReconciliacionEnStandby && window.currentCompanyId) {
+            window.ventasReconciliacionEnStandby = false;
+            reconciliarYValidarVentasGlobal(window.currentCompanyId);
+        } else if (window.esServidorLocal && window.ventasDescargaEnStandby && window.currentCompanyId) {
+            window.ventasDescargaEnStandby = false;
+            descargarYValidarVentasGlobal(window.currentCompanyId);
         }
     }
 }
@@ -1383,6 +1596,8 @@ if (logoutBtn) {
             
             try {
                 // NO SE ELIMINAN LOS DATOS DE LA SESIÓN
+                sessionStorage.removeItem('adminAccessKey');
+                sessionStorage.removeItem('fiscalAccessKey');
                 localStorage.setItem('explicit_logout', 'true');
                 window.nexusAPI.cerrarYVolverAlLogin();
             } catch (error) {
@@ -1490,7 +1705,7 @@ if (logoutBtn) {
             }
 
             // 2. Ejecutar la sincronización de SUBIDA (Cada 10 segundos)
-            if (estadoConexion && !sincronizando) {
+            if (window.esServidorLocal && respaldoActivo && SERVER_URL && estadoConexion && !sincronizando) {
                 contadorSubida++;
                 if (contadorSubida >= 10) {
                     contadorSubida = 0;
@@ -1498,14 +1713,19 @@ if (logoutBtn) {
                 }
             }
 
-            // 3. Descarga en segundo plano de Inventario y Stock (Delta Sync) cada 30 segundos
-            if (estadoConexion && window.currentCompanyId && respaldoActivo && SERVER_URL) {
+            // 3. Descarga en segundo plano de Inventario, Stock, Ventas y Tasa (Delta Sync) cada 30 segundos
+            if (window.esServidorLocal && estadoConexion && window.currentCompanyId && respaldoActivo && SERVER_URL) {
                 contadorDescargas++;
                 if (contadorDescargas >= 30) { // 30 ticks = 30 segundos
                     contadorDescargas = 0;
                     if (!window.hidratacionVpsOk) hidratarDesdeVPS(window.currentCompanyId);
                     descargarYValidarInventarioGlobal(window.currentCompanyId);
                     descargarYValidarStockGlobal(window.currentCompanyId);
+                    if (!window.reconciliacionVentasHecha) {
+                        reconciliarYValidarVentasGlobal(window.currentCompanyId);
+                    } else {
+                        descargarYValidarVentasGlobal(window.currentCompanyId);
+                    }
                     descargarYValidarTasaGlobal(window.currentCompanyId);
                 }
             }
@@ -1515,11 +1735,14 @@ if (logoutBtn) {
 // NUEVA VARIABLE GLOBAL PARA CONTROLAR LA DESCARGA
 window.descargandoFondo = false;
 window.descargandoStockFondo = false;
+window.descargandoVentasFondo = false;
+window.reconciliacionVentasHecha = false;
+window.ventasReconciliacionEnStandby = false;
 window.descargandoTasaGlobal = false;
 
 // SINCRONIZACIÓN EN SEGUNDO PLANO DE TASA Y CONFI_AUTO_TASA (GET Y POST)
 async function descargarYValidarTasaGlobal(companyId) {
-    if (!navigator.onLine || !respaldoActivo || !SERVER_URL || !companyId || window.descargandoTasaGlobal) return;
+    if (!window.esServidorLocal || !navigator.onLine || !respaldoActivo || !SERVER_URL || !companyId || window.descargandoTasaGlobal) return;
     window.descargandoTasaGlobal = true;
     try {
         const response = await fetch(`${SERVER_URL}/api/maestro/tasa/${encodeURIComponent(companyId)}`, {
@@ -1561,7 +1784,9 @@ async function descargarYValidarTasaGlobal(companyId) {
 
 // Helper para sincronizar Tasa y Confi_Auto_Tasa al Servidor (POST)
 window.sincronizarTasaServidor = async function(tasa, confi_auto_tasa) {
-    if (!SERVER_URL || !window.currentCompanyId) return { success: false, error: 'No conectado al servidor' };
+    if (!window.esServidorLocal || !respaldoActivo || !SERVER_URL || !window.currentCompanyId) {
+        return { success: false, error: 'Solo el servidor maestro con respaldo activo sincroniza tasa al VPS' };
+    }
     try {
         const resp = await fetch(`${SERVER_URL}/api/maestro/tasa/sincronizar`, {
             method: 'POST',
@@ -1570,7 +1795,8 @@ window.sincronizarTasaServidor = async function(tasa, confi_auto_tasa) {
                 empresa_ID: window.currentCompanyId,
                 tasa: parseFloat(tasa),
                 confi_auto_tasa: Boolean(confi_auto_tasa)
-            })
+            }),
+            signal: AbortSignal.timeout(10000)
         });
         if (resp.ok) {
             return await resp.json();
@@ -1583,7 +1809,7 @@ window.sincronizarTasaServidor = async function(tasa, confi_auto_tasa) {
 
 // NUEVA FUNCIÓN: DESCARGA GLOBAL EN SEGUNDO PLANO (Sincronización Delta)
 async function descargarYValidarInventarioGlobal(companyId) {
-    if (!navigator.onLine || !respaldoActivo || !SERVER_URL || window.descargandoFondo) return;
+    if (!window.esServidorLocal || !navigator.onLine || !respaldoActivo || !SERVER_URL || !companyId || window.descargandoFondo) return;
 
     window.descargandoFondo = true;
     try {
@@ -1598,7 +1824,8 @@ async function descargarYValidarInventarioGlobal(companyId) {
         
         if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
         
-        const productosServidor = await response.json();
+        const rawProductos = await response.json();
+        const productosServidor = Array.isArray(rawProductos) ? rawProductos : (rawProductos && (rawProductos.items || rawProductos.data) || []);
         const ahoraCaracas = (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})();
         
         // 3. Si el servidor responde con un arreglo vacío [], no hay nada nuevo.
@@ -1656,7 +1883,7 @@ async function descargarYValidarInventarioGlobal(companyId) {
             let cambiosReales = 0;
             if (api.sincronizarProductosLote) {
                 const resLote = await api.sincronizarProductosLote(loteParaSincronizar);
-                cambiosReales = (resLote && resLote.success) ? ((resLote.inserted || 0) + (resLote.updated || 0)) : 0;
+                cambiosReales = (resLote && resLote.success !== false) ? ((resLote.inserted || 0) + (resLote.updated || 0) || resLote.changes || 0) : 0;
             } else {
                 for (const prod of loteParaSincronizar) {
                     const resProd = await api.sincronizarProductoServidor(prod);
@@ -1679,9 +1906,115 @@ async function descargarYValidarInventarioGlobal(companyId) {
     }
 }
 
+// NUEVA FUNCIÓN: ESCANEO PREVIO Y RECONCILIACIÓN DE VENTAS MULTISUCURSAL AL ARRANQUE
+async function reconciliarYValidarVentasGlobal(companyId) {
+    if (!window.esServidorLocal || !navigator.onLine || !respaldoActivo || !SERVER_URL || !companyId || window.descargandoVentasFondo) return;
+    if (sincronizando) {
+        window.ventasReconciliacionEnStandby = true;
+        return;
+    }
+
+    const api = window.nexusAPI;
+    if (!api || typeof api.reconciliarVentasServidor !== 'function') {
+        window.reconciliacionVentasHecha = true;
+        return descargarYValidarVentasGlobal(companyId);
+    }
+
+    window.descargandoVentasFondo = true;
+    try {
+        const res = await api.reconciliarVentasServidor({
+            companyId,
+            batchSize: 50,
+            serverUrl: SERVER_URL
+        });
+
+        if (!res || res.omitido || res.enCurso) return;
+        if (res.noDisponible) {
+            window.reconciliacionVentasHecha = true;
+            return;
+        }
+        if (!res.exito) {
+            if (res.redCaida) {
+                console.warn('[RECONCILIACION VENTAS] Red/VPS en pausa durante escaneo previo:', res.error || '');
+            }
+            return;
+        }
+
+        window.reconciliacionVentasHecha = true;
+        const totalCambios = (res.insertadas || 0) + (res.actualizadas || 0);
+        if (totalCambios > 0) {
+            console.log(`🔍 [RECONCILIACION VENTAS GLOBAL] Insertadas: ${res.insertadas || 0}, Actualizadas: ${res.actualizadas || 0}, Escudo local: ${res.omitidasEscudo || 0}, Errores: ${res.erroresCount || 0}`);
+            window.dispatchEvent(new CustomEvent('ventas-actualizadas-vps', { detail: res }));
+        }
+
+        const claveStorage = `last_sync_ventas_${companyId}`;
+        if (res.ultimaMarca) {
+            localStorage.setItem(claveStorage, res.ultimaMarca);
+        } else if (!localStorage.getItem(claveStorage) && (res.erroresCount || 0) === 0) {
+            localStorage.setItem(claveStorage, new Date().toISOString());
+        }
+    } catch (error) {
+        console.warn('[RECONCILIACION VENTAS] Falló el escaneo previo:', error.message);
+    } finally {
+        window.descargandoVentasFondo = false;
+    }
+}
+
+// NUEVA FUNCIÓN: DESCARGA GLOBAL DE VENTAS EN SEGUNDO PLANO (GET Delta por lotes + aislamiento de errores)
+async function descargarYValidarVentasGlobal(companyId) {
+    if (!window.esServidorLocal || !navigator.onLine || !respaldoActivo || !SERVER_URL || !companyId || window.descargandoVentasFondo) return;
+    if (sincronizando) {
+        window.ventasDescargaEnStandby = true;
+        return;
+    }
+
+    const api = window.nexusAPI;
+    if (!api || typeof api.descargarVentasServidor !== 'function') return;
+
+    window.descargandoVentasFondo = true;
+    try {
+        const claveStorage = `last_sync_ventas_${companyId}`;
+        const ultimaRevision = localStorage.getItem(claveStorage) || '2000-01-01T00:00:00.000Z';
+
+        const res = await api.descargarVentasServidor({
+            companyId,
+            desde: ultimaRevision,
+            limit: 100,
+            maxPaginas: 5,
+            serverUrl: SERVER_URL
+        });
+
+        if (!res || res.noDisponible || res.omitido || res.enCurso) return;
+
+        if (!res.exito) {
+            if (res.redCaida) {
+                console.warn('[DOWNLOAD VENTAS] Red/VPS en pausa durante descarga delta:', res.error || '');
+            }
+            return;
+        }
+
+        const totalCambios = (res.insertadas || 0) + (res.actualizadas || 0);
+        if (totalCambios > 0) {
+            console.log(`📥 [DOWNLOAD VENTAS GLOBAL] Insertadas: ${res.insertadas || 0}, Actualizadas: ${res.actualizadas || 0}, Escudo local: ${res.omitidasEscudo || 0}, Rechazadas: ${res.erroresCount || 0}`);
+            window.dispatchEvent(new CustomEvent('ventas-actualizadas-vps', { detail: res }));
+        }
+
+        // Solo avanzamos el cursor usando la marca devuelta por el servidor (evita desfase de reloj local)
+        if (res.ultimaMarca) {
+            localStorage.setItem(claveStorage, res.ultimaMarca);
+        } else if (!localStorage.getItem(claveStorage) && (res.erroresCount || 0) === 0) {
+            localStorage.setItem(claveStorage, new Date().toISOString());
+        }
+    } catch (error) {
+        console.warn('[DOWNLOAD VENTAS] Falló la descarga delta:', error.message);
+    } finally {
+        window.descargandoVentasFondo = false;
+    }
+}
+
 // NUEVA FUNCIÓN: DESCARGA GLOBAL DE STOCK EN SEGUNDO PLANO
 async function descargarYValidarStockGlobal(companyId) {
-    if (!navigator.onLine || !respaldoActivo || !SERVER_URL || window.descargandoStockFondo || sincronizando) return;
+    if (!window.esServidorLocal || !navigator.onLine || !respaldoActivo || !SERVER_URL || !companyId || window.descargandoStockFondo || sincronizando) return;
 
     window.descargandoStockFondo = true;
     try {
@@ -1717,6 +2050,8 @@ async function descargarYValidarStockGlobal(companyId) {
                 ? sucursales
                 : [{ id: 'principal' }];
 
+            const loteStock = [];
+            let todasOk = true;
             for (const s of listaSucursales) {
                 const sId = s.id;
                 try {
@@ -1724,29 +2059,56 @@ async function descargarYValidarStockGlobal(companyId) {
                         signal: AbortSignal.timeout(15000)
                     });
                     if (responseInv.ok) {
-                        const stockServidor = await responseInv.json();
-                        if (Array.isArray(stockServidor) && stockServidor.length > 0) {
-                            for (const item of stockServidor) {
-                                const prodId = item.producto_id || item.id;
-                                const cant = parseFloat(item.cantidad_real !== undefined ? item.cantidad_real : item.stock || 0);
-                                const resStock = await api.guardarStockSucursal({
-                                    productoId: prodId,
-                                    sucursalId: sId,
-                                    companyId: companyId,
-                                    cantidad: cant,
-                                    operacion: 'FIJAR',
-                                    datosStock: { estado_sync: 1 }
-                                });
-                                if (resStock && resStock.changed) cambiosReales++;
-                            }
+                        const rawInv = await responseInv.json();
+                        const stockServidor = Array.isArray(rawInv) ? rawInv : (rawInv && (rawInv.items || rawInv.data) || []);
+                        for (const item of stockServidor) {
+                            const prodId = item && (item.producto_id || item.id);
+                            if (!prodId) continue;
+                            const cant = parseFloat(item.cantidad_real !== undefined ? item.cantidad_real : (item.stock || 0));
+                            loteStock.push({
+                                producto_id: prodId,
+                                sucursal_id: sId,
+                                company_id: companyId,
+                                cantidad_real: cant,
+                                estado_sync: 1
+                            });
                         }
+                    } else if (responseInv.status !== 404) {
+                        todasOk = false;
                     }
                 } catch(eOne) {
+                    todasOk = false;
                     console.warn(`[DOWNLOAD STOCK] Error en sucursal ${sId}:`, eOne.message);
                 }
             }
 
-            localStorage.setItem(claveStorage, ahoraCaracas);
+            let huboEnStandby = false;
+            if (loteStock.length > 0) {
+                if (api && typeof api.sincronizarStockMaestroLote === 'function') {
+                    const resBatch = await api.sincronizarStockMaestroLote(loteStock);
+                    cambiosReales = (resBatch && resBatch.success !== false) ? (resBatch.applied || 0) : 0;
+                    if (resBatch && resBatch.standby > 0) huboEnStandby = true;
+                } else {
+                    for (const st of loteStock) {
+                        const resStock = await api.guardarStockSucursal({
+                            productoId: st.producto_id,
+                            sucursalId: st.sucursal_id,
+                            companyId: st.company_id,
+                            cantidad: st.cantidad_real,
+                            operacion: 'FIJAR',
+                            datosStock: { estado_sync: 1 }
+                        });
+                        if (resStock && resStock.standby) huboEnStandby = true;
+                        if (resStock && resStock.changed) cambiosReales++;
+                    }
+                }
+            }
+
+            if (todasOk && !huboEnStandby) {
+                localStorage.setItem(claveStorage, ahoraCaracas);
+            } else if (huboEnStandby) {
+                window.stockDescargaEnStandby = true;
+            }
             if (cambiosReales > 0) {
                 console.log(`📥 [DOWNLOAD STOCK GLOBAL] ${cambiosReales} stocks actualizados desde VPS.`);
                 window.dispatchEvent(new CustomEvent('stock-actualizado-vps', { detail: { cantidad: cambiosReales } }));
@@ -1763,25 +2125,47 @@ async function descargarYValidarStockGlobal(companyId) {
             return; 
         }
         
-        const stockServidor = await response.json();
+        const rawDelta = await response.json();
+        const stockServidor = Array.isArray(rawDelta) ? rawDelta : (rawDelta && (rawDelta.items || rawDelta.data) || []);
         
         if (!Array.isArray(stockServidor) || stockServidor.length === 0) {
             localStorage.setItem(claveStorage, ahoraCaracas);
             return; 
         }
 
-        let huboEnStandby = false;
+        const loteDelta = [];
         for (const s of stockServidor) {
-            const resStock = await window.nexusAPI.guardarStockSucursal({
-                productoId: s.producto_id,
-                sucursalId: s.sucursal_id,
-                companyId: companyId,
-                cantidad: s.cantidad_real,
-                operacion: 'FIJAR',
-                datosStock: { estado_sync: 1 }
+            const prodId = s && (s.producto_id || s.id);
+            if (!prodId) continue;
+            loteDelta.push({
+                producto_id: prodId,
+                sucursal_id: s.sucursal_id || 'principal',
+                company_id: s.company_id || companyId,
+                cantidad_real: parseFloat(s.cantidad_real !== undefined ? s.cantidad_real : (s.stock || 0)),
+                estado_sync: 1
             });
-            if (resStock && resStock.standby) huboEnStandby = true;
-            if (resStock && resStock.changed) cambiosReales++;
+        }
+
+        let huboEnStandby = false;
+        if (loteDelta.length > 0) {
+            if (api && typeof api.sincronizarStockMaestroLote === 'function') {
+                const resBatch = await api.sincronizarStockMaestroLote(loteDelta);
+                cambiosReales = (resBatch && resBatch.success !== false) ? (resBatch.applied || 0) : 0;
+                if (resBatch && resBatch.standby > 0) huboEnStandby = true;
+            } else {
+                for (const st of loteDelta) {
+                    const resStock = await api.guardarStockSucursal({
+                        productoId: st.producto_id,
+                        sucursalId: st.sucursal_id,
+                        companyId: st.company_id,
+                        cantidad: st.cantidad_real,
+                        operacion: 'FIJAR',
+                        datosStock: { estado_sync: 1 }
+                    });
+                    if (resStock && resStock.standby) huboEnStandby = true;
+                    if (resStock && resStock.changed) cambiosReales++;
+                }
+            }
         }
 
         if (cambiosReales > 0) {
@@ -1805,7 +2189,7 @@ async function descargarYValidarStockGlobal(companyId) {
 window.hidratacionVpsOk = false;
 window.hidratandoVps = false;
 async function hidratarDesdeVPS(companyId) {
-    if (!companyId || window.hidratandoVps) return;
+    if (!window.esServidorLocal || !companyId || window.hidratandoVps) return;
     if (!navigator.onLine || !respaldoActivo || !SERVER_URL) {
         console.warn(`[HIDRATACION] Omitida (online=${navigator.onLine}, respaldoActivo=${respaldoActivo}, SERVER_URL=${SERVER_URL}). Active respaldo_datos=true en .env para descargar datos del VPS.`);
         return;
@@ -1815,15 +2199,22 @@ async function hidratarDesdeVPS(companyId) {
     const api = window.nexusAPI;
     const resumen = { sucursales: 0, categorias: 0, empaques: 0 };
     let huboErrores = false;
+    const ahoraCaracas = () => {
+        const d = new Date();
+        const c = new Date(d.getTime() + (d.getTimezoneOffset() * 60000) - (4 * 3600000));
+        const p = (n) => String(n).padStart(2, '0');
+        return `${c.getFullYear()}-${p(c.getMonth() + 1)}-${p(c.getDate())} ${p(c.getHours())}:${p(c.getMinutes())}:${p(c.getSeconds())}`;
+    };
 
-    let colaIds = { categorias: new Set(), empaques: new Set() };
+    const colaIds = { sucursales: new Set(), categorias: new Set(), empaques: new Set() };
     try {
         const cola = (api && api.obtenerColaSincronizacion) ? await api.obtenerColaSincronizacion() : [];
         (cola || []).forEach(r => {
             try {
                 const d = typeof r.datos === 'string' ? JSON.parse(r.datos) : r.datos;
-                const id = d && (d.id || d.categoria_id || d.categoria_ID || d.empaque_id || d.empaque_ID);
+                const id = r.id_registro || (d && (d.id || d.sucursal_id || d.sucursal_ID || d.categoria_id || d.categoria_ID || d.empaque_id || d.empaque_ID));
                 if (!id) return;
+                if (r.tabla === 'sucursales') colaIds.sucursales.add(id);
                 if (r.tabla === 'categorias') colaIds.categorias.add(id);
                 if (r.tabla === 'unidades_empaque' || r.tabla === 'empaques') colaIds.empaques.add(id);
             } catch (e) { console.warn('[HIDRATACION] Registro de cola ilegible:', e.message); }
@@ -1836,25 +2227,35 @@ async function hidratarDesdeVPS(companyId) {
     try {
         const res = await fetch(`${SERVER_URL}/api/maestro/sucursales/${encodeURIComponent(companyId)}`, { signal: AbortSignal.timeout(15000) });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const sucursalesVps = await res.json();
+        const rawSuc = await res.json();
+        const sucursalesVps = Array.isArray(rawSuc) ? rawSuc : (rawSuc && (rawSuc.items || rawSuc.data || rawSuc.sucursales) || []);
         const locales = await api.obtenerSucursalesLocal(companyId);
         const mapaLocal = {};
         (Array.isArray(locales) ? locales : []).forEach(s => { mapaLocal[s.id] = s; });
 
-        for (const s of (Array.isArray(sucursalesVps) ? sucursalesVps : [])) {
+        const loteSucursales = [];
+        for (const s of sucursalesVps) {
             if (!s || !s.id) continue;
+            if (colaIds.sucursales.has(s.id)) continue;
             const local = mapaLocal[s.id];
             if (local && local.estado_sync === 0) continue; // cambio local pendiente de subir
-            await api.guardarSucursalLocal({
+            loteSucursales.push({
                 id: s.id,
                 company_id: s.company_id || companyId,
                 nombre: s.nombre,
                 direccion: s.direccion || '',
                 telefono: s.telefono || '',
                 estado_sync: 1,
-                fecha_modificacion: s.fecha_modificacion ? new Date(s.fecha_modificacion).toISOString() : (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})()
+                fecha_modificacion: s.fecha_modificacion ? new Date(s.fecha_modificacion).toISOString() : ahoraCaracas()
             });
-            resumen.sucursales++;
+        }
+        if (loteSucursales.length > 0) {
+            if (api.sincronizarSucursalesLote) {
+                await api.sincronizarSucursalesLote(loteSucursales);
+            } else {
+                for (const sLoc of loteSucursales) await api.guardarSucursalLocal(sLoc);
+            }
+            resumen.sucursales = loteSucursales.length;
         }
     } catch (e) {
         huboErrores = true;
@@ -1865,17 +2266,35 @@ async function hidratarDesdeVPS(companyId) {
     try {
         const res = await fetch(`${SERVER_URL}/api/maestro/categorias/${encodeURIComponent(companyId)}`, { signal: AbortSignal.timeout(15000) });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const categoriasVps = await res.json();
-        for (const c of (Array.isArray(categoriasVps) ? categoriasVps : [])) {
-            const id = c.categoria_id || c.id;
-            if (!id || colaIds.categorias.has(id)) continue;
-            await api.sincronizarCategoriaServidor({
+        const rawCat = await res.json();
+        const categoriasVps = Array.isArray(rawCat) ? rawCat : (rawCat && (rawCat.items || rawCat.data || rawCat.categorias) || []);
+        const estadosCatLocal = {};
+        try {
+            if (api.obtenerCategoriasLocal) {
+                const catsLoc = await api.obtenerCategoriasLocal(companyId);
+                (Array.isArray(catsLoc) ? catsLoc : []).forEach(c => { estadosCatLocal[c.id] = c.estado_sync; });
+            }
+        } catch (_) {}
+
+        const loteCategorias = [];
+        for (const c of categoriasVps) {
+            const id = c && (c.categoria_id || c.id);
+            if (!id || colaIds.categorias.has(id) || estadosCatLocal[id] === 0) continue;
+            loteCategorias.push({
                 id,
                 company_id: c.company_id || companyId,
                 nombre: c.nombre,
-                fecha_modificacion: c.fecha_modificacion ? new Date(c.fecha_modificacion).toISOString() : (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})()
+                estado_sync: 1,
+                fecha_modificacion: c.fecha_modificacion ? new Date(c.fecha_modificacion).toISOString() : ahoraCaracas()
             });
-            resumen.categorias++;
+        }
+        if (loteCategorias.length > 0) {
+            if (api.sincronizarCategoriasLocal) {
+                await api.sincronizarCategoriasLocal(loteCategorias);
+            } else {
+                for (const cLoc of loteCategorias) await api.sincronizarCategoriaServidor(cLoc);
+            }
+            resumen.categorias = loteCategorias.length;
         }
     } catch (e) {
         huboErrores = true;
@@ -1887,9 +2306,17 @@ async function hidratarDesdeVPS(companyId) {
         const res = await fetch(`${SERVER_URL}/api/maestro/empaque/${encodeURIComponent(companyId)}`, { signal: AbortSignal.timeout(20000) });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
-        const lista = Array.isArray(json) ? json : (json && Array.isArray(json.data) ? json.data : []);
+        const lista = Array.isArray(json) ? json : (json && (json.items || json.data || json.empaques) || []);
+        const estadosEmpLocal = {};
+        try {
+            if (api.obtenerUnidadesEmpaqueLocal) {
+                const empsLoc = await api.obtenerUnidadesEmpaqueLocal(companyId);
+                (Array.isArray(empsLoc) ? empsLoc : []).forEach(emp => { estadosEmpLocal[emp.id] = emp.estado_sync; });
+            }
+        } catch (_) {}
+
         const lote = lista
-            .filter(e => e && e.id && !colaIds.empaques.has(e.id))
+            .filter(e => e && e.id && !colaIds.empaques.has(e.id) && estadosEmpLocal[e.id] !== 0)
             .map(e => ({
                 id: e.id,
                 company_id: e.company_id || companyId,
@@ -1899,8 +2326,8 @@ async function hidratarDesdeVPS(companyId) {
                 tipo_medida: e.tipo_medida || 'Unidades',
                 factor_cantidad: parseFloat(e.factor_cantidad || 1),
                 estado_sync: 1,
-                fecha_modificacion: e.fecha_modificacion ? new Date(e.fecha_modificacion).toISOString() : (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})(),
-                ultima_sincronizacion: e.ultima_sincronizacion ? new Date(e.ultima_sincronizacion).toISOString() : (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})()
+                fecha_modificacion: e.fecha_modificacion ? new Date(e.fecha_modificacion).toISOString() : ahoraCaracas(),
+                ultima_sincronizacion: e.ultima_sincronizacion ? new Date(e.ultima_sincronizacion).toISOString() : ahoraCaracas()
             }));
         if (lote.length > 0) {
             await api.sincronizarUnidadesEmpaqueLote(lote);
@@ -1923,17 +2350,18 @@ async function hidratarDesdeVPS(companyId) {
         const emailDisplay = document.getElementById('user-email-display');
         const roleDisplay = document.getElementById('user-role-display');
         const companyDisplay = document.getElementById('company-name-display');
+        const sidebarCompany = document.getElementById('sidebar-company-name');
 
         if (emailDisplay) emailDisplay.textContent = sesion.email;
         if (roleDisplay) roleDisplay.textContent = sesion.role.toUpperCase();
 
-        let companyName = "Modo Offline (Local)";
+        let companyName = sesion.nombre_empresa || "Modo Offline (Local)";
         
         // LA MAGIA DE DESEMPAQUETADO DEL JSON
         if (sesion.company_data) {
             try {
-                const dataEmpresa = JSON.parse(sesion.company_data);
-                companyName = dataEmpresa.name || companyName;
+                const dataEmpresa = typeof sesion.company_data === 'string' ? JSON.parse(sesion.company_data) : sesion.company_data;
+                companyName = dataEmpresa.name || dataEmpresa.nombre_empresa || dataEmpresa.razon_social || companyName;
                 console.log(`Cargando offline. Plan activo: ${dataEmpresa.plan ? dataEmpresa.plan.nombre_plan : 'No definido'}`);
             } catch (e) {
                 console.error("Error parseando JSON de SQLite:", e);
@@ -1941,6 +2369,10 @@ async function hidratarDesdeVPS(companyId) {
         }
         
         if (companyDisplay) companyDisplay.textContent = companyName;
+        if (sidebarCompany) {
+            sidebarCompany.textContent = companyName;
+            sidebarCompany.setAttribute('title', companyName);
+        }
     }
 
 

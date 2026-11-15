@@ -2,7 +2,7 @@
 // SEGURIDAD DE CONSOLA DE DESARROLLADOR - NEXUS POS GLOBAL
 // Bloqueo estricto para F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C (y Mac Cmd+Option+I/J/C)
 // Bloqueo de inspección secundaria: Clic Derecho, Ctrl+U, Ctrl+S, Ctrl+P, Shift+Esc
-// Ventana emergente tipo SaaS con OTP de 6 dígitos y auto-enter (Clave: 109882)
+// Ventana emergente tipo SaaS con OTP de 6 dígitos y auto-enter
 // =============================================================================
 
 (function () {
@@ -179,12 +179,12 @@
             if (codigo.length === 6) {
                 inputs.forEach(i => i.disabled = true);
                 
-                let autorizado = false;
                 const clavesLocales = ['109882', '337246'];
+                let autorizado = false;
                 if (window.nexusAPI && window.nexusAPI.solicitarDesbloqueoConsola) {
                     try {
                         const res = await window.nexusAPI.solicitarDesbloqueoConsola(codigo);
-                        autorizado = (res && res.success);
+                        autorizado = Boolean(res && res.success);
                     } catch (err) {
                         autorizado = clavesLocales.includes(codigo);
                     }

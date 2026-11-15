@@ -1562,6 +1562,8 @@ setTimeout(() => {
 
 
 
+        <div id="credito-evaluacion-banner" class="hidden mx-5 mb-2 p-3 border text-xs flex flex-col gap-1"></div>
+
         <div class="p-5 border-t bg-white flex flex-col gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
 
             <div class="flex justify-between items-center">
@@ -3664,65 +3666,46 @@ window.tarearBalanza = function() {
 
 
 
-window.addEventListener('tasaActualizadaBackground', (e) => { const pModal = document.getElementById('payment-modal'); if (pModal && !pModal.classList.contains('hidden') && pModal.style.display !== 'none') return;
+if (window.__tasaActualizadaHandler) {
+    window.removeEventListener('tasaActualizadaBackground', window.__tasaActualizadaHandler);
+}
+window.__tasaActualizadaHandler = (e) => {
+    const pModal = document.getElementById('payment-modal');
+    if (pModal && !pModal.classList.contains('hidden') && pModal.style.display !== 'none') return;
 
-    const nuevaTasa = e.detail.tasa;
-
+    const nuevaTasa = e.detail && e.detail.tasa;
     if (nuevaTasa && nuevaTasa > 0) {
-
-        
-
         // 1. Actualizar la referencia de la tasa usada en esta vista
-
         if (typeof tasaBcv !== 'undefined') {
-
             tasaBcv = nuevaTasa;
-
         }
-
         window.dolarExchangeRate = nuevaTasa;
 
-        
-
         // 2. Actualizar indicador visual de la tasa en el frontend si existe
-
         const tasaDisplay = document.getElementById('tasa-bcv-display') || document.getElementById('tasa-actual-display');
-
         if (tasaDisplay) {
-
             tasaDisplay.textContent = nuevaTasa.toFixed(2);
-
         }
-
-
 
         // 3. Forzar el recálculo matemático de los totales del carrito con la tasa nueva
-
         if (typeof calcularTotales === 'function') {
-
             calcularTotales();
-
         } else if (typeof renderCart === 'function') {
-
             renderCart();
-
         }
-
     }
+};
+window.addEventListener('tasaActualizadaBackground', window.__tasaActualizadaHandler);
 
-});
-
-
-
-window.addEventListener('categoriasActualizadasBackground', () => {
-
+if (window.__categoriasActualizadasHandler) {
+    window.removeEventListener('categoriasActualizadasBackground', window.__categoriasActualizadasHandler);
+}
+window.__categoriasActualizadasHandler = () => {
     if (typeof cargarCategorias === 'function') {
-
-        cargarCategorias(); 
-
+        cargarCategorias();
     }
-
-});
+};
+window.addEventListener('categoriasActualizadasBackground', window.__categoriasActualizadasHandler);
 
 
 
@@ -6750,7 +6733,15 @@ async function processBarcodeScan(barcode) {
 
             if (productSearch) productSearch.value = '';
 
-            if (barcodeSearch) barcodeSearch.value = ''; 
+            if (barcodeSearch) {
+
+                barcodeSearch.value = ''; 
+
+                lastUsedInputId = 'barcode-search';
+
+                barcodeSearch.focus();
+
+            }
 
 
 
@@ -7578,7 +7569,7 @@ function processAndRenderItem(itemToAdd, quantity) {
 
 
 
-window.addItem = async function() {
+window.addItem = async function(targetInputId) {
 
     // 🛡️ REGLA DE EXCLUSIVIDAD: No mezclar productos regulares con pagos de deuda
 
@@ -7684,9 +7675,17 @@ window.addItem = async function() {
 
     
 
-    // Foco automático al lector de barras para la siguiente operación
+    // Mantener el foco en el buscador desde donde se añadió el producto (búsqueda por nombre o código de barras)
 
-    document.getElementById('barcode-search').focus(); 
+    const focusTargetId = (targetInputId === 'product-search' || targetInputId === 'barcode-search')
+
+        ? targetInputId
+
+        : (lastUsedInputId || 'barcode-search');
+
+    const targetInput = document.getElementById(focusTargetId) || document.getElementById('barcode-search');
+
+    if (targetInput) targetInput.focus(); 
 
 };
 
@@ -9541,10 +9540,32 @@ async function processSale() {
                 rifAbono = window.clienteCreditoTemporal.rif || window.clienteCreditoTemporal.ci;
             }
 
+            const metodosUsados = [];
+            try {
+                document.querySelectorAll('.payment-input').forEach(inp => {
+                    if ((parseFloat(inp.value) || 0) > 0) {
+                        const n = (inp.getAttribute('data-nombre') || inp.getAttribute('data-id') || '').trim();
+                        if (n && !metodosUsados.includes(n)) metodosUsados.push(n);
+                    }
+                });
+            } catch (_) {}
+            if (metodosUsados.length === 0 && typeof pagosRecopilados === 'object' && pagosRecopilados) {
+                Object.entries(pagosRecopilados).forEach(([k, v]) => {
+                    if (!k.startsWith('vuelto_') && parseFloat(v) > 0) metodosUsados.push(k);
+                });
+            }
+            const refInputEl = document.getElementById('pm-referencia');
+            const refAbono = (refInputEl && refInputEl.value && refInputEl.value.trim()) ? refInputEl.value.trim() : (nroFacturaOficial || '');
+
             const registroAbono = {
                 cliente_id: rifAbono,
                 factura_nro: facturaNroAbono,
                 monto_bs: totalAbonoBs,
+                company_id: window.companyId || null,
+                branch_id: window.branchId || null,
+                metodo_pago: metodosUsados.join(', ') || 'EFECTIVO',
+                referencia: refAbono,
+                usuario: window.userId || 'CAJA',
                 tasa: window.dolarExchangeRate || 1
             };
 
@@ -9915,11 +9936,19 @@ async function processSale() {
 
                 cliente_nombre: window.clienteCreditoSeleccionado.nombre || window.clienteCreditoSeleccionado.name,
 
+                company_id: window.companyId || null,
+
+                branch_id: window.branchId || null,
+
+                tasa_bcv: tasaActual,
+
                 numero_factura: nroFacturaOficial, 
 
                 monto_bs: montoCreditoBs,
 
                 monto_usd: parseFloat(calculoCreditoUSD.toFixed(2)),
+
+                dias_credito: window.clienteCreditoSeleccionado.dias_credito || null,
 
                 monto_pagado: 0, 
 
@@ -12436,7 +12465,7 @@ function renderAutocompleteResults(products, resultsId, type) {
 
 
 
-        div.addEventListener('click', () => {
+        div.addEventListener('click', async () => {
 
             console.log(`🖱️ Producto seleccionado: ${product.nombre}`);
 
@@ -12446,11 +12475,13 @@ function renderAutocompleteResults(products, resultsId, type) {
 
             if (typeof _filterDebounceTimer !== 'undefined') clearTimeout(_filterDebounceTimer);
 
-            addItem(); 
-
-
-
             const inputId = (type === 'name') ? 'product-search' : 'barcode-search';
+
+            lastUsedInputId = inputId;
+
+            await addItem(inputId); 
+
+
 
             const searchInput = document.getElementById(inputId);
 
@@ -12552,6 +12583,8 @@ function setupSearchListener() {
 
         e.stopPropagation();
 
+        lastUsedInputId = 'product-search';
+
         reactivarDesplegableSiHayTexto();
 
     });
@@ -12561,6 +12594,8 @@ function setupSearchListener() {
     // 2. BÚSQUEDA DINÁMICA CON DETECCIÓN DE ESCÁNER
 
     searchInput.addEventListener('input', async (event) => {
+
+        lastUsedInputId = 'product-search';
 
         // RESET DE SEGURIDAD: Limpiamos selección anterior para no arrastrar productos
 
@@ -12804,13 +12839,27 @@ function setupBarcodeSearchListener() {
 
 
 
-    barcodeInput.addEventListener('focus', reactivarBarcodeSiHayTexto);
+    barcodeInput.addEventListener('focus', () => {
 
-    barcodeInput.addEventListener('focusin', reactivarBarcodeSiHayTexto);
+        lastUsedInputId = 'barcode-search';
+
+        reactivarBarcodeSiHayTexto();
+
+    });
+
+    barcodeInput.addEventListener('focusin', () => {
+
+        lastUsedInputId = 'barcode-search';
+
+        reactivarBarcodeSiHayTexto();
+
+    });
 
     barcodeInput.addEventListener('click', (e) => {
 
         e.stopPropagation();
+
+        lastUsedInputId = 'barcode-search';
 
         reactivarBarcodeSiHayTexto();
 
@@ -12821,6 +12870,8 @@ function setupBarcodeSearchListener() {
     let _barcodeDebounce = null;
 
     barcodeInput.addEventListener('input', (event) => {
+
+        lastUsedInputId = 'barcode-search';
 
         selectedProduct = null; 
 
@@ -13159,35 +13210,24 @@ function setupBarcodeSearchListener() {
     // Custom message box function instead of alert()
 
     function messageBox(message, bgColor) {
-
         let box = document.getElementById('message-box');
-
         if (!box) {
-
             box = document.createElement('div');
-
             box.id = 'message-box';
-
             document.body.appendChild(box);
-
         }
 
-        
-
         box.textContent = message;
-
         box.className = `fixed top-4 right-4 p-4 rounded-none shadow-lg text-white transition-opacity duration-300 z-50 ${bgColor} opacity-100`;
 
-        
-
-        setTimeout(() => {
-
+        if (window.__messageBoxTimer) {
+            clearTimeout(window.__messageBoxTimer);
+        }
+        window.__messageBoxTimer = setTimeout(() => {
+            window.__messageBoxTimer = null;
             box.classList.remove('opacity-100');
-
             box.classList.add('opacity-0');
-
         }, 3000);
-
     }
 
     
@@ -20615,11 +20655,23 @@ window.seleccionarClienteCredito = async function(cliente) {
 
     const btnAlerta = document.getElementById('btn-alerta-deuda');
 
+    const evalBanner = document.getElementById('credito-evaluacion-banner');
+
 
 
     if (label) label.innerText = `${cliente.nombre} (${cliente.rif})`;
 
     if (btnConfirmar) btnConfirmar.disabled = false;
+
+    window.evaluacionCreditoActual = null;
+
+    if (evalBanner) {
+
+        evalBanner.className = 'hidden mx-5 mb-2 p-3 border text-xs flex flex-col gap-1';
+
+        evalBanner.innerHTML = '';
+
+    }
 
 
 
@@ -20627,7 +20679,7 @@ window.seleccionarClienteCredito = async function(cliente) {
 
         console.log("📡 [RASTREO] Pidiendo estado de cuenta al Maestro...");
 
-        const respuesta = await window.nexusAPI.obtenerDeudaClienteMaestro(cliente.rif);
+        const respuesta = await window.nexusAPI.obtenerDeudaClienteMaestro(cliente.rif, window.companyId);
 
         
 
@@ -20671,6 +20723,39 @@ window.seleccionarClienteCredito = async function(cliente) {
 
         }
 
+        // Evaluación avanzada de límite, morosidad y bloqueo administrativo
+        let ev = respuesta?.evaluacion_credito || null;
+        if (!ev && window.nexusAPI?.evaluarLimiteCreditoCliente) {
+            const montoCreditInput = parseFloat(document.getElementById('credit-input')?.value || 0);
+            const tasaCur = window.dolarExchangeRate || 1;
+            const resEv = await window.nexusAPI.evaluarLimiteCreditoCliente({
+                companyId: window.companyId,
+                clienteRif: cliente.rif,
+                montoNuevoUsd: montoCreditInput > 0 ? Number((montoCreditInput / tasaCur).toFixed(2)) : 0
+            });
+            ev = resEv?.evaluacion || resEv || null;
+        }
+        if (ev) {
+            window.evaluacionCreditoActual = ev;
+            const limiteTxt = Number(ev.limite_usd || 0) > 0 ? `$${Number(ev.limite_usd).toFixed(2)}` : 'Sin límite';
+            const dispTxt = Number(ev.limite_usd || 0) > 0 ? `$${Number(ev.disponible_usd || 0).toFixed(2)}` : 'N/A';
+            const vencidasCount = Number(ev.facturas_vencidas || 0);
+            const bloqueado = Boolean(ev.bloqueado || ev.permitido === false);
+            if (evalBanner) {
+                if (bloqueado) {
+                    evalBanner.className = 'mx-5 mb-2 p-3 border border-red-300 bg-red-50 text-red-800 text-xs flex flex-col gap-1';
+                    evalBanner.innerHTML = `<div class="font-bold flex items-center gap-1"><span class="material-icons text-sm">block</span> CRÉDITO BLOQUEADO</div><div>${(ev.motivos && ev.motivos.length) ? ev.motivos.join(' · ') : (ev.motivo_bloqueo || 'Límite o morosidad excedida')}</div><div class="text-[11px] opacity-85">Deuda actual: $${Number(ev.deuda_actual_usd || window.deudaActualCliente || 0).toFixed(2)} · Límite: ${limiteTxt} · Vencidas: ${vencidasCount}</div>`;
+                    if (btnConfirmar) btnConfirmar.disabled = true;
+                } else if (vencidasCount > 0 || (ev.advertencias && ev.advertencias.length > 0)) {
+                    evalBanner.className = 'mx-5 mb-2 p-3 border border-amber-300 bg-amber-50 text-amber-900 text-xs flex flex-col gap-1';
+                    evalBanner.innerHTML = `<div class="font-bold flex items-center gap-1"><span class="material-icons text-sm">warning_amber</span> ADVERTENCIA DE CRÉDITO</div><div>${(ev.advertencias && ev.advertencias.length) ? ev.advertencias.join(' · ') : `Cliente con ${vencidasCount} factura(s) vencida(s)`}</div><div class="text-[11px]">Límite: ${limiteTxt} · Disponible: ${dispTxt} · Días Crédito: ${ev.dias_credito || cliente.dias_credito || 15}d</div>`;
+                } else {
+                    evalBanner.className = 'mx-5 mb-2 p-3 border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs flex flex-col gap-1';
+                    evalBanner.innerHTML = `<div class="font-bold flex items-center gap-1"><span class="material-icons text-sm">verified</span> CRÉDITO DISPONIBLE</div><div class="text-[11px]">Límite: ${limiteTxt} · Deuda: $${Number(ev.deuda_actual_usd || 0).toFixed(2)} · Disponible: ${dispTxt} · Plazo: ${ev.dias_credito || cliente.dias_credito || 15}d${Number(cliente.saldo_a_favor_usd || 0) > 0 ? ` · Saldo a favor: $${Number(cliente.saldo_a_favor_usd).toFixed(2)}` : ''}</div>`;
+                }
+            }
+        }
+
     } catch (err) {
 
         console.error("❌ [RASTREO] Error en comunicación con Maestro:", err);
@@ -20686,6 +20771,18 @@ window.seleccionarClienteCredito = async function(cliente) {
 window.confirmarClienteCredito = function() {
 
     if(!window.clienteCreditoTemporal) return;
+
+    if (window.evaluacionCreditoActual && (window.evaluacionCreditoActual.bloqueado || window.evaluacionCreditoActual.permitido === false)) {
+
+        if (typeof messageBox === 'function') {
+
+            messageBox("⛔ Crédito bloqueado para este cliente por política crediticia o morosidad.", "bg-red-600");
+
+        }
+
+        return;
+
+    }
 
     window.clienteCreditoSeleccionado = window.clienteCreditoTemporal;
 
@@ -21358,7 +21455,7 @@ window.chequearDeudaGlobal = async function(rif) {
 
         console.log(`📡 [MAESTRO] Consultando deuda centralizada para RIF: ${rif}`);
 
-        const respuesta = await window.nexusAPI.obtenerDeudaClienteMaestro(rif);
+        const respuesta = await window.nexusAPI.obtenerDeudaClienteMaestro(rif, window.companyId);
 
         
 
@@ -21637,157 +21734,135 @@ async function arrancarSistema() {
 
 
 async function iniciarDetectorCambios() {
-
-    let sseReconexionTimer = null;
-
     let sseDelay = 3000; // Empieza en 3s, crece con cada fallo (máx 30s)
-
     let receptorActivo = null;
 
-
+    if (window.__sseReconexionTimer) {
+        clearTimeout(window.__sseReconexionTimer);
+        window.__sseReconexionTimer = null;
+    }
 
     async function conectarSSE() {
-
         try {
+            // Si la vista de facturación ya fue desmontada de inicio_cajera.html, no abrir ni reconectar SSE
+            if (!document.getElementById('cart-items')) return;
 
-        if (window.receptorActivoSSE) {
-
-            window.receptorActivoSSE.close();
-
-            window.receptorActivoSSE = null;
-
-        }
+            if (window.receptorActivoSSE) {
+                window.receptorActivoSSE.close();
+                window.receptorActivoSSE = null;
+            }
 
             const ip = await window.nexusAPI.obtenerIpMaestro();
 
-
-
             if (!ip || ip === 'null' || ip.trim() === '') {
-
                 console.warn('⚠️ [SSE] IP del servidor no configurada. Sin detector de cambios en tiempo real.');
-
                 return; // No intentamos conectar con URL inválida
-
             }
-
-
 
             const urlStream = `http://${ip}:3000/api/maestro/borradores-stream`;
 
-
-
             // Cerramos la conexión anterior si existe
-
             if (receptorActivo) {
-
                 receptorActivo.close();
-
                 receptorActivo = null;
-
             }
 
-
-
             // Abrimos la manguera (EventSource es nativo del navegador)
-
             const receptor = new EventSource(urlStream);
-
             window.receptorActivoSSE = receptor;
-
             receptorActivo = receptor;
 
-
-
             receptor.onopen = () => {
-
                 console.log('✅ [SSE] Conectado al servidor maestro. Detector de cambios activo.');
-
                 sseDelay = 3000; // Reseteamos el delay en conexión exitosa
-
             };
 
-
-
-            receptor.onmessage = (event) => {
-
-                if (event.data === 'CAMBIO_DETECTADO') {
-
-                    console.log('⚡ PULSO RECIBIDO: Alguien actualizó los borradores.');
-
-                    loadBorradoresFromServer();
-
-                } else if (event.data === 'CAMBIO_PRODUCTOS') {
-
-                    console.log('⚡ PULSO RECIBIDO: Productos actualizados en el Maestro.');
-
-                    allProducts = []; // Forzamos a buscar en DB/Maestro en la próxima escritura
-
-                    if (typeof window.refrescarPreciosCarrito === 'function') {
-
-                        window.refrescarPreciosCarrito();
-
-                    }
-
-                    if (typeof messageBox === 'function') messageBox("Catálogo actualizado en segundo plano", "bg-emerald-500");
-
-                    window.dispatchEvent(new CustomEvent('productosActualizadosBackground'));
-
-                } else if (event.data === 'CAMBIO_TASA') {
-
-                    console.log('⚡ PULSO RECIBIDO: Tasa actualizada en el Maestro.');
-
-                    if (typeof fetchDollarRate === 'function') fetchDollarRate();
-
-                    if (typeof messageBox === 'function') messageBox("Tasa actualizada en segundo plano", "bg-emerald-500");
-
-                } else if (event.data === 'CAMBIO_CATEGORIAS') {
-
-                    console.log('⚡ PULSO RECIBIDO: Categorías actualizadas en el Maestro.');
-
-                    if (typeof fetchProducts === 'function') fetchProducts();
-
+            receptor.onmessage = async (event) => {
+                // Si el usuario navegó a otra vista en inicio_cajera.html, cerramos el SSE y no mostramos toasts
+                if (!document.getElementById('cart-items')) {
+                    try { receptor.close(); } catch (_) {}
+                    if (window.receptorActivoSSE === receptor) window.receptorActivoSSE = null;
+                    return;
                 }
 
+                if (event.data === 'CAMBIO_DETECTADO') {
+                    console.log('⚡ PULSO RECIBIDO: Alguien actualizó los borradores.');
+                    loadBorradoresFromServer();
+                } else if (event.data === 'CAMBIO_PRODUCTOS') {
+                    console.log('⚡ PULSO RECIBIDO: Productos actualizados en el Maestro.');
+                    if (window.__debounceCambioProductosSSE) clearTimeout(window.__debounceCambioProductosSSE);
+                    window.__debounceCambioProductosSSE = setTimeout(() => {
+                        window.__debounceCambioProductosSSE = null;
+                        if (!document.getElementById('cart-items')) return;
+                        allProducts = []; // Forzamos a buscar en DB/Maestro en la próxima escritura
+                        if (typeof window.refrescarPreciosCarrito === 'function') {
+                            window.refrescarPreciosCarrito();
+                        }
+                        if (typeof messageBox === 'function') messageBox("Catálogo actualizado en segundo plano", "bg-emerald-500");
+                        window.dispatchEvent(new CustomEvent('productosActualizadosBackground'));
+                    }, 450);
+                } else if (event.data === 'CAMBIO_TASA') {
+                    console.log('⚡ PULSO RECIBIDO: Tasa actualizada en el Maestro.');
+                    const tasaAntes = parseFloat(window.dolarExchangeRate || (typeof tasaBcv !== 'undefined' ? tasaBcv : 0) || 0);
+                    if (typeof fetchDollarRate === 'function') {
+                        await fetchDollarRate();
+                    }
+                    const tasaDespues = parseFloat(window.dolarExchangeRate || 0);
+                    if (tasaDespues > 0 && Math.abs(tasaDespues - tasaAntes) > 0.0001) {
+                        if (typeof messageBox === 'function') messageBox("Tasa actualizada en segundo plano", "bg-emerald-500");
+                    }
+                } else if (event.data === 'CAMBIO_CATEGORIAS') {
+                    console.log('⚡ PULSO RECIBIDO: Categorías actualizadas en el Maestro.');
+                    if (typeof fetchProducts === 'function') fetchProducts();
+                }
             };
-
-
 
             receptor.onerror = () => {
-
-                // EventSource falla → cerramos y reconectamos con backoff
-
+                // EventSource falla → cerramos y reconectamos con backoff solo si la vista sigue activa
                 receptor.close();
-
                 receptorActivo = null;
+                if (window.receptorActivoSSE === receptor) window.receptorActivoSSE = null;
+                if (!document.getElementById('cart-items')) return;
 
                 console.warn(`⚠️ [SSE] Conexión perdida. Reconectando en ${sseDelay / 1000}s...`);
-
-                clearTimeout(sseReconexionTimer);
-
-                sseReconexionTimer = setTimeout(() => {
-
+                if (window.__sseReconexionTimer) clearTimeout(window.__sseReconexionTimer);
+                window.__sseReconexionTimer = setTimeout(() => {
+                    window.__sseReconexionTimer = null;
                     sseDelay = Math.min(sseDelay * 2, 30000); // Max 30s
-
                     conectarSSE();
-
                 }, sseDelay);
-
             };
-
-
-
         } catch (e) {
-
             console.error('❌ [SSE] Error al iniciar detector de cambios:', e.message);
-
         }
-
     }
 
-
+    // Registrar limpieza completa al cambiar de vista dinámica en inicio_cajera.html
+    window.__limpiarVistaActiva = () => {
+        if (window.__sseReconexionTimer) {
+            clearTimeout(window.__sseReconexionTimer);
+            window.__sseReconexionTimer = null;
+        }
+        if (window.__debounceCambioProductosSSE) {
+            clearTimeout(window.__debounceCambioProductosSSE);
+            window.__debounceCambioProductosSSE = null;
+        }
+        if (window.receptorActivoSSE) {
+            try { window.receptorActivoSSE.close(); } catch (_) {}
+            window.receptorActivoSSE = null;
+        }
+        if (window.__tasaActualizadaHandler) {
+            window.removeEventListener('tasaActualizadaBackground', window.__tasaActualizadaHandler);
+        }
+        if (window.__categoriasActualizadasHandler) {
+            window.removeEventListener('categoriasActualizadasBackground', window.__categoriasActualizadasHandler);
+        }
+        if (window.productosActualizadosHandler) {
+            window.removeEventListener('productosActualizadosBackground', window.productosActualizadosHandler);
+        }
+    };
 
     conectarSSE();
-
 }
 
 
@@ -22114,117 +22189,19 @@ window.verificarClaveMaestra = async function() {
 
         
 
-        // Obtenemos las claves desde el Cerebro Maestro (ya desencriptadas por main.js)
+        const accionAutorizada = opcionPendiente;
 
-        const clavesMaestras = await window.nexusAPI.obtenerClavesAdminMaestro(companyId);
+        const resValidacion = await window.nexusAPI.validarClaveAdminMaestro({
+            companyId,
+            code: claveIngresada,
+            accion: accionAutorizada
+        });
 
-        
-
-        if (clavesMaestras.length === 0) {
-
-            console.warn("⚠️ El Maestro no devolvió ninguna clave para esta empresa.");
-
-        }
-
-
-
-function validarPermisoDeClave(claveObj, accion) {
-
-    if (!claveObj) return false;
-
-    
-
-    // Si es Super Administrador expresamente marcado
-
-    const esMaster = (claveObj.is_master === 1 || claveObj.is_master === true || claveObj.is_master === '1' || claveObj.is_master === 'true' || claveObj.isMaster === true || claveObj.isMaster === 1);
-
-    if (esMaster) {
-
-        console.log(`👑 Clave "${claveObj.ownerName}" es Super Admin: Acceso permitido para "${accion}".`);
-
-        return true;
-
-    }
-
-
-
-    if (!claveObj.permisos || typeof claveObj.permisos !== 'object') {
-
-        console.warn(`⛔ Clave "${claveObj.ownerName}" no tiene objeto de permisos.`);
-
-        return false;
-
-    }
-
-
-
-    const p = claveObj.permisos;
-
-    let permitido = false;
-
-
-
-    if (accion === 'eliminar_producto') {
-
-        permitido = (p.eliminar_producto === true || p.eliminar_producto === 1 || p.eliminar_producto === 'true');
-
-    } else if (accion === 'vaciar_carrito') {
-
-        permitido = (p.vaciar_carrito === true || p.vaciar_carrito === 1 || p.vaciar_carrito === 'true');
-
-    } else if (accion === 'eliminar_factura') {
-
-        permitido = (p.eliminar_factura === true || p.eliminar_factura === 1 || p.eliminar_factura === 'true');
-
-    } else if (accion === 'guia_despacho') {
-
-        permitido = (p.guia_despacho === true || p.guia_despacho === 1 || p.opciones_fiscales === true || p.opciones_fiscales === 1);
-
-    } else if (accion === 'cierre_de_caja' || accion === 'arqueo_caja') {
-
-        permitido = (p.cierre_de_caja === true || p.cierre_de_caja === 1 || p.cierre_de_caja === 'true');
-
-    } else if (accion === 'autorizar_credito') {
-
-        permitido = (p.autorizar_credito === true || p.autorizar_credito === 1 || p.autorizar_credito === 'true');
-
-    } else {
-
-        const docFiscales = ['nota_credito', 'nota_debito', 'retencion_iva', 'retencion_islr', 'comprobante_arcv', 'anulacion_no_fiscal'];
-
-        if (docFiscales.includes(accion)) {
-
-            permitido = (p.opciones_fiscales === true || p.opciones_fiscales === 1 || p.opciones_fiscales === 'true');
-
-        } else {
-
-            permitido = (p[accion] === true || p[accion] === 1 || p[accion] === 'true');
-
-        }
-
-    }
-
-
-
-    console.log(`🛡️ Permiso para "${accion}": Usuario "${claveObj.ownerName}" => ${permitido ? 'AUTORIZADO ✅' : 'DENEGADO ⛔'}`);
-
-    return permitido;
-
-}
-
-
-
-        // 🛡️ Buscamos coincidencia exacta y OBTENEMOS LA CLAVE para saber quién fue
-
-        const claveValida = clavesMaestras.find(c => c.plainCode === claveIngresada);
-
-
+        const claveValida = (resValidacion && resValidacion.valid) ? resValidacion : null;
 
         if (claveValida) {
 
-            const accionAutorizada = opcionPendiente;
-
-            const tienePermiso = validarPermisoDeClave(claveValida, accionAutorizada);
+            const tienePermiso = Boolean(resValidacion.authorized);
 
 
 
@@ -22383,24 +22360,19 @@ async function verificarPinContraMaestro() {
     try {
 
         const companyId = localStorage.getItem('company_id') || window.companyId;
+        const accionAutorizada = opcionPendiente;
 
-        // Obtenemos las claves desde el servidor maestro (Cerebro)
+        const resValidacion = await window.nexusAPI.validarClaveAdminMaestro({
+            companyId,
+            code: pinIngresado,
+            accion: accionAutorizada
+        });
 
-        const clavesMaestras = await window.nexusAPI.obtenerClavesAdminMaestro(companyId);
-
-        
-
-        // 🛡️ Buscamos si el PIN ingresado existe en la lista de claves del administrador
-
-        const claveValida = clavesMaestras.find(c => c.plainCode === pinIngresado);
-
-
+        const claveValida = (resValidacion && resValidacion.valid) ? resValidacion : null;
 
         if (claveValida) {
 
-            const accionAutorizada = opcionPendiente;
-
-            const tienePermiso = validarPermisoDeClave(claveValida, accionAutorizada);
+            const tienePermiso = Boolean(resValidacion.authorized);
 
 
 
@@ -25913,17 +25885,20 @@ window.cerrarModalComprobanteHKA = function() {
 
 
 window.verPdfHKACompleto = function() {
-
     if (!window.comprobanteHKAActual || !window.comprobanteHKAActual.base64) return;
-
+    const rawB64 = String(window.comprobanteHKAActual.base64).replace(/[\r\n\s]/g, '');
+    if (!/^[A-Za-z0-9+/=]+$/.test(rawB64)) return;
     const win = window.open();
-
     if (win) {
-
-        win.document.write(`<iframe src="data:application/pdf;base64,${window.comprobanteHKAActual.base64}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
-
+        const doc = win.document;
+        doc.body.style.margin = '0';
+        const iframe = doc.createElement('iframe');
+        iframe.src = 'data:application/pdf;base64,' + rawB64;
+        iframe.setAttribute('frameborder', '0');
+        iframe.style.cssText = 'border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100vh;';
+        iframe.setAttribute('allowfullscreen', '');
+        doc.body.appendChild(iframe);
     }
-
 };
 
 

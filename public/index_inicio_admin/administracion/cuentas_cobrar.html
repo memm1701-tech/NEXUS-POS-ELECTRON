@@ -1,1032 +1,1346 @@
-<div class="w-full min-h-screen p-4 md:p-6 bg-gray-50 flex flex-col">
-    <div class="flex justify-between items-center mb-6">
+<style>
+    .nexus-libro-table {
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    .nexus-libro-table th,
+    .nexus-libro-table td {
+        border-right: 1px solid #e5e7eb;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .nexus-libro-table th {
+        border-top: 1px solid #e5e7eb;
+    }
+    .nexus-libro-table tr th:first-child,
+    .nexus-libro-table tr td:first-child {
+        border-left: 1px solid #e5e7eb;
+    }
+    .cxc-tab-active {
+        background-color: #2563eb;
+        color: #ffffff;
+        border: 1px solid #2563eb;
+    }
+    .cxc-tab-inactive {
+        background-color: #ffffff;
+        color: #4b5563;
+        border: 1px solid #d1d5db;
+    }
+    .cxc-tab-inactive:hover {
+        background-color: #f3f4f6;
+        color: #1f2937;
+    }
+    .cxc-bucket-active {
+        background-color: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #93c5fd;
+        font-weight: 700;
+    }
+    .cxc-bucket-inactive {
+        background-color: #f3f4f6;
+        color: #4b5563;
+        border: 1px solid #e5e7eb;
+        font-weight: 600;
+    }
+    .cxc-bucket-inactive:hover {
+        background-color: #e5e7eb;
+    }
+</style>
+
+<div id="cxc-module-root" class="w-full h-screen max-h-screen p-4 md:p-6 bg-gray-50 flex flex-col gap-4 overflow-hidden">
+    <!-- HEADER -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0">
         <div>
             <h1 class="text-2xl font-bold text-gray-800 flex items-center">
                 <i class="material-icons mr-2 text-blue-600">request_quote</i>
-                Cuentas por Cobrar
+                Cuentas por Cobrar & Tesorería Bimonetaria
             </h1>
-            <p class="text-sm text-gray-500 mt-1">Gestión y control de deudas de clientes</p>
+            <p class="text-sm text-gray-500 mt-0.5">
+                Control de cartera bimoneda, Aging, IGTF 3%, Retenciones, Cashea, Giros, Art. 51 Ley IVA y Cierre NIC 21
+            </p>
         </div>
-        <button onclick="cargarDatosCuentasCobrar()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 p-2 rounded-full transition-colors flex items-center justify-center shadow-sm" title="Actualizar datos">
-            <i class="material-icons text-xl">refresh</i>
+        <div class="flex flex-wrap items-center gap-2">
+            <span id="cxc-badge-tasa-bcv" class="px-3 py-1.5 rounded-lg bg-white border border-gray-300 text-gray-700 text-xs font-semibold">
+                Tasa BCV: Bs. 0.0000/$
+            </span>
+            <span id="cxc-badge-modo-fiscal" class="px-3 py-1.5 rounded-lg bg-white border border-gray-300 text-gray-700 text-xs font-semibold">
+                Modo: Art. 51 IVA
+            </span>
+            <button type="button" onclick="document.getElementById('guia-rastreo-cuentas').classList.toggle('hidden')"
+                class="px-3 py-2 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-lg text-xs font-semibold transition">
+                Guía Contable
+            </button>
+            <button type="button" id="btn-cxc-refrescar" onclick="window.cargarDatosCuentasCobrar()"
+                class="bg-gray-200 hover:bg-gray-300 text-gray-700 p-2 rounded-full transition-colors flex items-center justify-center shadow-sm cursor-pointer" title="Actualizar datos">
+                <i class="material-icons text-xl">refresh</i>
+            </button>
+        </div>
+    </div>
+
+    <!-- GUÍA CONTABLE Y FISCAL PLEGABLE -->
+    <div id="guia-rastreo-cuentas" class="hidden bg-white border border-gray-200 rounded-xl p-4 text-xs text-gray-700 grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0">
+        <div>
+            <p class="font-bold uppercase tracking-wider text-gray-800 mb-1">1. Prelación Legal de Cobro & IGTF 3%</p>
+            <p>Primero se imputan <strong>Retenciones de IVA/ISLR</strong> y <strong>Descuento Pronto Pago</strong>; sobre el saldo neto abonado en divisas físicas o cuentas extranjeras se calcula el <strong>3% IGTF</strong> sin cobrar IGTF sobre la porción pagada en Bolívares o retenida.</p>
+        </div>
+        <div>
+            <p class="font-bold uppercase tracking-wider text-gray-800 mb-1">2. Diferencial Cambiario Art. 51 vs VEN-NIF</p>
+            <p>Al cobrar una factura a tasa BCV mayor que la tasa de emisión, si tu empresa opera bajo <strong>Art. 51 Reglamento IVA</strong>, NEXUS emite automáticamente la <strong>Nota de Débito fiscal</strong> al Libro de Ventas con el IVA sobre el diferencial realizado.</p>
+        </div>
+        <div>
+            <p class="font-bold uppercase tracking-wider text-gray-800 mb-1">3. Anticipos & Sobre-pagos (Indexado vs Nominal)</p>
+            <p>Los anticipos <strong>Indexados USD</strong> conservan su poder de compra en dólares hasta el cruce; los <strong>Nominales Bs</strong> congelan su monto en Bolívares. Todo excedente al cobrar pasa automáticamente a <strong>Saldo a Favor</strong>.</p>
+        </div>
+    </div>
+
+    <!-- 4 KPI CARDS BIMONETARIOS (LIMPIOS, SIN BORDES LATERALES NI ÍCONOS) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <p class="text-sm text-gray-500 font-medium">Por Cobrar Activo</p>
+            <h3 class="text-2xl font-bold text-gray-800 mt-0.5 font-mono" id="kpi-cxc-total-usd">$0.00</h3>
+            <p class="text-xs text-gray-500 mt-1" id="kpi-cxc-total-bs">Bs. 0.00 · 0 docs</p>
+        </div>
+
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <p class="text-sm text-gray-500 font-medium">Cartera Vencida (Aging)</p>
+            <h3 class="text-2xl font-bold text-red-600 mt-0.5 font-mono" id="kpi-cxc-vencida-usd">$0.00</h3>
+            <p class="text-xs text-gray-500 mt-1" id="kpi-cxc-vencida-det">1-30d: $0 · +30d: $0</p>
+        </div>
+
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <p class="text-sm text-gray-500 font-medium">Diferencial Realizado</p>
+            <h3 class="text-2xl font-bold text-blue-600 mt-0.5 font-mono" id="kpi-cxc-diff-bs">Bs. 0.00</h3>
+            <p class="text-xs text-gray-500 mt-1" id="kpi-cxc-diff-count">0 ajustes fiscales / VEN-NIF</p>
+        </div>
+
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <p class="text-sm text-gray-500 font-medium">Anticipos & Cashea/Giros</p>
+            <h3 class="text-2xl font-bold text-gray-800 mt-0.5 font-mono" id="kpi-cxc-favor-usd">$0.00</h3>
+            <p class="text-xs text-gray-500 mt-1" id="kpi-cxc-cashea-giros">Cashea: $0.00 · Giros: $0.00</p>
+        </div>
+    </div>
+
+    <!-- BARRA DE TABS SIN ÍCONOS -->
+    <div class="flex flex-wrap gap-2 shrink-0" role="tablist">
+        <button type="button" role="tab" data-cxc-tab="cartera" class="cxc-tab-btn cxc-tab-active px-4 py-2 rounded-lg text-xs font-semibold transition">
+            Cartera & Aging
+        </button>
+        <button type="button" role="tab" data-cxc-tab="abonos" class="cxc-tab-btn cxc-tab-inactive px-4 py-2 rounded-lg text-xs font-semibold transition">
+            Abonos, IGTF & Retenciones
+        </button>
+        <button type="button" role="tab" data-cxc-tab="instrumentos" class="cxc-tab-btn cxc-tab-inactive px-4 py-2 rounded-lg text-xs font-semibold transition">
+            Anticipos, Cashea & Giros
+        </button>
+        <button type="button" role="tab" data-cxc-tab="fiscal" class="cxc-tab-btn cxc-tab-inactive px-4 py-2 rounded-lg text-xs font-semibold transition">
+            Notas Débito Art. 51 & Cierre NIC 21
+        </button>
+        <button type="button" role="tab" data-cxc-tab="tesoreria" class="cxc-tab-btn cxc-tab-inactive px-4 py-2 rounded-lg text-xs font-semibold transition">
+            Tesorería Bimonetaria
         </button>
     </div>
 
-    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 mb-6 flex flex-col w-full transition-all duration-300">
-        
-        <div class="flex flex-col md:flex-row gap-4 w-full">
-            <div class="flex-1">
-                <label class="block text-[15px] font-semibold text-gray-500 mb-1 flex items-center">
-                    Buscar Cliente o Factura
-                    
-                    <button onclick="document.getElementById('guia-rastreo-cuentas').classList.toggle('hidden')" 
-                            class="ml-3 px-3 py-0.5 text-[11px] font-bold text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-colors focus:outline-none flex items-center uppercase tracking-wider cursor-pointer" 
-                            title="Mostrar/Ocultar guía">
-                        Como analizar el estado de cuenta detallado de un cliente específico 
+    <!-- ==================== TAB 1: CARTERA & AGING (FILTROS + BUSCADOR UNIDOS A TABLA AL 100% ALTO) ==================== -->
+    <section id="cxc-panel-cartera" class="cxc-tab-panel flex-1 min-h-0 flex flex-col">
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex-1 min-h-0 flex flex-col w-full">
+            <div class="px-4 py-3 border-b border-gray-200 bg-white flex flex-col lg:flex-row lg:items-center justify-between gap-3 shrink-0">
+                <div class="flex flex-wrap items-center gap-1.5" id="cxc-aging-pills">
+                    <button type="button" data-bucket="ABIERTAS" class="cxc-bucket-btn cxc-bucket-active px-3 py-1.5 rounded-lg text-xs transition">Abiertas</button>
+                    <button type="button" data-bucket="POR_VENCER" class="cxc-bucket-btn cxc-bucket-inactive px-3 py-1.5 rounded-lg text-xs transition">Por Vencer</button>
+                    <button type="button" data-bucket="0_30" class="cxc-bucket-btn cxc-bucket-inactive px-3 py-1.5 rounded-lg text-xs transition">1-30d</button>
+                    <button type="button" data-bucket="31_60" class="cxc-bucket-btn cxc-bucket-inactive px-3 py-1.5 rounded-lg text-xs transition">31-60d</button>
+                    <button type="button" data-bucket="61_90" class="cxc-bucket-btn cxc-bucket-inactive px-3 py-1.5 rounded-lg text-xs transition">61-90d</button>
+                    <button type="button" data-bucket="MAS_90" class="cxc-bucket-btn cxc-bucket-inactive px-3 py-1.5 rounded-lg text-xs transition">+90d</button>
+                    <button type="button" data-bucket="PAGADAS" class="cxc-bucket-btn cxc-bucket-inactive px-3 py-1.5 rounded-lg text-xs transition">Pagadas / Todas</button>
+                </div>
+                <div class="flex items-center gap-3 w-full lg:w-80">
+                    <div class="relative flex-1">
+                        <span class="material-icons text-gray-400 text-base absolute left-3 top-2">search</span>
+                        <input type="text" id="buscador-cuentas" placeholder="Buscar cliente, RIF o N° factura..."
+                            class="w-full pl-9 pr-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-1 min-h-0 overflow-auto w-full">
+                <table class="nexus-libro-table w-full text-sm text-left relative">
+                    <thead class="text-xs text-gray-600 uppercase bg-gray-100 sticky top-0 z-10 shadow-sm">
+                        <tr>
+                            <th class="px-4 py-3 text-left whitespace-nowrap">Documento / Emisión & Venc.</th>
+                            <th class="px-4 py-3 text-left whitespace-nowrap">Cliente / RIF</th>
+                            <th class="px-4 py-3 text-right whitespace-nowrap">Original ($ / Tasa)</th>
+                            <th class="px-4 py-3 text-right whitespace-nowrap">Saldo Pendiente ($ / Bs Hoy)</th>
+                            <th class="px-4 py-3 text-center whitespace-nowrap">Estado & Aging</th>
+                            <th class="px-4 py-3 text-right whitespace-nowrap">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-cxc-body" class="bg-white">
+                        <tr><td colspan="6" class="p-8 text-center text-gray-400">Cargando cartera...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== TAB 2: HISTORIAL DE ABONOS ==================== -->
+    <section id="cxc-panel-abonos" class="cxc-tab-panel hidden flex-1 min-h-0 flex-col">
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex-1 min-h-0 flex flex-col w-full">
+            <div class="px-4 py-3 border-b border-gray-200 bg-white flex flex-wrap justify-between items-center gap-3 shrink-0">
+                <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider">Historial de Cobros, Prelación IGTF 3% y Retenciones</h3>
+                <input type="text" id="buscador-abonos-cxc" placeholder="Filtrar por factura, cliente o referencia..."
+                    class="w-64 px-3 py-1.5 border border-gray-300 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="flex-1 min-h-0 overflow-auto w-full">
+                <table class="nexus-libro-table w-full text-xs text-left relative">
+                    <thead class="bg-gray-100 text-gray-600 uppercase font-bold sticky top-0 z-10 shadow-sm">
+                        <tr>
+                            <th class="px-4 py-3 text-left whitespace-nowrap">Fecha</th>
+                            <th class="px-4 py-3 text-left whitespace-nowrap">Factura</th>
+                            <th class="px-4 py-3 text-left whitespace-nowrap">Cliente</th>
+                            <th class="px-4 py-3 text-right whitespace-nowrap">Tasa</th>
+                            <th class="px-4 py-3 text-right whitespace-nowrap">Abono USD</th>
+                            <th class="px-4 py-3 text-right whitespace-nowrap">IGTF 3%</th>
+                            <th class="px-4 py-3 text-right whitespace-nowrap">Ret. IVA/ISLR</th>
+                            <th class="px-4 py-3 text-left whitespace-nowrap">Método / Ref</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-cxc-abonos-body" class="bg-white"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== TAB 3: ANTICIPOS, CASHEA & GIROS ==================== -->
+    <section id="cxc-panel-instrumentos" class="cxc-tab-panel hidden flex-1 min-h-0 flex-col gap-5 overflow-y-auto pr-1">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <!-- BILLETERA ANTICIPOS -->
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex flex-col gap-4">
+                <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-800 uppercase">Anticipos & Saldos a Favor de Clientes</h3>
+                        <p class="text-xs text-gray-500">Modalidad Indexada en USD o Nominal en Bs</p>
+                    </div>
+                    <button type="button" onclick="window.cxcAbrirModalAnticipo()"
+                        class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1">
+                        <span class="material-icons text-sm">add</span> Nuevo Anticipo
                     </button>
-                </label>
-                <div class="relative">
-                    <span class="absolute inset-y-0 left-0 flex items-center pl-3">
-                        <i class="material-icons text-gray-400">search</i>
-                    </span>
-                    <input type="text" id="buscador-cuentas" placeholder="Nombre, Cédula/RIF o N° de Comprobante..." 
-                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm">
+                </div>
+                <div class="overflow-x-auto max-h-80 overflow-y-auto">
+                    <table class="min-w-full text-xs divide-y divide-gray-200">
+                        <thead class="bg-gray-50 text-gray-500 uppercase font-bold">
+                            <tr>
+                                <th class="px-3 py-2 text-left">Fecha / Cliente</th>
+                                <th class="px-3 py-2 text-left">Modalidad</th>
+                                <th class="px-3 py-2 text-right">Disponible</th>
+                                <th class="px-3 py-2 text-center">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-cxc-anticipos-body" class="divide-y divide-gray-100"></tbody>
+                    </table>
                 </div>
             </div>
 
-            <div class="w-full md:w-48">
-                <label class="block text-[15px] font-semibold text-gray-500 mb-1">Estado de Deuda</label>
-                <select id="filtro-estado" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm">
-                    <option value="TODOS">Todos los estados</option>
-                    <option value="PENDIENTE">Pendientes</option>
-                    <option value="PAGADA">Pagadas</option>
-                </select>
+            <!-- CASHEA BNPL -->
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex flex-col gap-4">
+                <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-800 uppercase">Cashea BNPL / Financiamiento Tripartito</h3>
+                        <p class="text-xs text-gray-500">Partición Inicial Cliente + Neto por Cobrar a Cashea (-Comisión)</p>
+                    </div>
+                    <button type="button" onclick="window.cxcAbrirModalCashea()"
+                        class="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-gray-900 rounded-lg text-xs font-bold flex items-center gap-1">
+                        <span class="material-icons text-sm">bolt</span> Registrar Cashea
+                    </button>
+                </div>
+                <div id="lista-cashea-resumen" class="text-xs text-gray-600 space-y-2 max-h-80 overflow-y-auto"></div>
             </div>
+        </div>
 
-            <div class="flex gap-2 w-full md:w-auto">
+        <!-- GIROS Y CHEQUES -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex flex-col gap-4">
+            <div class="flex justify-between items-center border-b border-gray-100 pb-3">
                 <div>
-                    <label class="block text-[15px] font-semibold text-gray-500 mb-1">Desde</label>
-                    <input type="date" id="filtro-fecha-inicio" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm">
+                    <h3 class="text-sm font-bold text-gray-800 uppercase">Cartera de Giros & Cheques Postdatados</h3>
+                    <p class="text-xs text-gray-500">Custodia, cobro efectivo o reverso bancario por cheque devuelto + comisión</p>
                 </div>
+                <button type="button" onclick="window.cxcAbrirModalGiro()"
+                    class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1">
+                    <span class="material-icons text-sm">fact_check</span> Registrar Giro / Cheque
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-xs divide-y divide-gray-200">
+                    <thead class="bg-gray-50 text-gray-500 uppercase font-bold">
+                        <tr>
+                            <th class="px-3 py-2 text-left">Instrumento & Banco</th>
+                            <th class="px-3 py-2 text-left">Cliente / Factura</th>
+                            <th class="px-3 py-2 text-left">Vencimiento</th>
+                            <th class="px-3 py-2 text-right">Monto ($)</th>
+                            <th class="px-3 py-2 text-center">Estado</th>
+                            <th class="px-3 py-2 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-cxc-giros-body" class="divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== TAB 4: NOTAS DÉBITO ART. 51 & CIERRE NIC 21 ==================== -->
+    <section id="cxc-panel-fiscal" class="cxc-tab-panel hidden flex-1 min-h-0 flex-col gap-5 overflow-y-auto pr-1">
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex flex-col gap-4">
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-gray-100 pb-4">
                 <div>
-                    <label class="block text-[15px] font-semibold text-gray-500 mb-1">Hasta</label>
-                    <input type="date" id="filtro-fecha-fin" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm">
+                    <h3 class="text-sm font-bold text-gray-800 uppercase flex items-center gap-1.5">
+                        <span class="material-icons text-indigo-600 text-base">event_repeat</span>
+                        Cierre Cambiario Mensual VEN-NIF (NIC 21) & Reverso Día 1
+                    </h3>
+                    <p class="text-xs text-gray-500 mt-1">Calcula la ganancia/pérdida por tenencia no realizada al cierre de mes (contable, NO gravada con IVA) y genera su reverso automático el día 1 del mes siguiente.</p>
+                </div>
+                <div class="flex flex-wrap items-end gap-2">
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-600 mb-1">Período (AAAAMM)</label>
+                        <input type="text" id="cxc-cierre-periodo" maxlength="6" class="w-28 px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs font-mono" placeholder="202611">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-600 mb-1">Tasa BCV Cierre</label>
+                        <input type="number" id="cxc-cierre-tasa" step="0.0001" class="w-32 px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs font-mono">
+                    </div>
+                    <button type="button" onclick="window.cxcEjecutarCierreMensual()"
+                        class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-sm">
+                        Ejecutar Cierre NIC 21
+                    </button>
                 </div>
             </div>
-        </div>
-
-        <div id="guia-rastreo-cuentas" class="hidden mt-4 p-4 bg-blue-50 border-l-4 border-blue-400 rounded-r-lg text-left text-xs text-blue-900 animate-in fade-in slide-in-from-top-1">
-            <p class="font-bold mb-2 flex items-center text-blue-700">
-                <span class="material-icons text-sm mr-1">info</span> GUÍA DE FILTRADO Y ESTADO DE CUENTA
-            </p>
-            <p class="mb-2 leading-relaxed">Para analizar el estado de cuenta detallado de un cliente en particular, siga estos pasos:</p>
-            <ul class="space-y-2 font-medium">
-                <li class="flex items-start">
-                    <span class="bg-blue-200 text-blue-800 rounded-full h-4 w-4 flex items-center justify-center text-[10px] mr-2 shrink-0 mt-0.5">1</span>
-                    <span>Ingrese el <b>Nombre completo</b> o la <b>Cédula/RIF</b> del cliente en la barra de búsqueda superior.</span>
-                </li>
-                <li class="flex items-start">
-                    <span class="bg-blue-200 text-blue-800 rounded-full h-4 w-4 flex items-center justify-center text-[10px] mr-2 shrink-0 mt-0.5">2</span>
-                    <span>La tabla inferior filtrará automáticamente y mostrará únicamente los registros asociados a ese usuario.</span>
-                </li>
-                <li class="flex items-start">
-                    <span class="bg-blue-200 text-blue-800 rounded-full h-4 w-4 flex items-center justify-center text-[10px] mr-2 shrink-0 mt-0.5">3</span>
-                    <span>Las tarjetas superiores (Total, Pendiente y Cobrado) se recalcularán al instante reflejando la deuda exacta de dicho cliente.</span>
-                </li>
-            </ul>
-            <p class="mt-3 text-[10px] italic text-blue-600 border-t border-blue-100 pt-2">Nota: Puede combinar la búsqueda del cliente con los filtros de "Estado de Deuda" y "Fechas" para mayor precisión.</p>
-        </div>
-
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 w-full" id="tarjetas-resumen">
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-            <p class="text-sm text-gray-500 font-medium">Total Cuentas por Cobrar</p>
-            <h3 class="text-2xl font-bold text-gray-800" id="resumen-total">0.00 $</h3>
-        </div>
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-            <p class="text-sm text-gray-500 font-medium">Total Pendiente</p>
-            <h3 class="text-2xl font-bold text-gray-800" id="resumen-pendiente">0.00 $</h3>
-        </div>
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-            <p class="text-sm text-gray-500 font-medium">Total Cobrado (Abonos)</p>
-            <h3 class="text-2xl font-bold text-gray-800" id="resumen-cobrado">0.00 $</h3>
-        </div>
-    </div>
-
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex-1 flex flex-col w-full">
-        <!-- ENCABEZADO SUPERIOR CON TOGGLE DE FACTURAS PAGADAS -->
-        <div class="px-5 py-3 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-3 bg-white">
-            <div class="flex items-center gap-3">
-                <h3 class="text-base font-bold text-gray-800 flex items-center gap-2">
-                    <span class="material-icons text-blue-600 text-lg">receipt_long</span>
-                    Asientos y Facturas por Cobrar
-                </h3>
-                <span id="cxc-contador-registros" class="text-xs text-gray-600 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-full font-semibold">
-                    Mostrando 0 registros
-                </span>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-xs divide-y divide-gray-200">
+                    <thead class="bg-gray-50 text-gray-500 uppercase font-bold">
+                        <tr>
+                            <th class="px-3 py-2 text-left">Período / Fecha Cierre</th>
+                            <th class="px-3 py-2 text-right">Tasa Cierre</th>
+                            <th class="px-3 py-2 text-right">Saldo Abierto USD</th>
+                            <th class="px-3 py-2 text-right">No Realizado Bs</th>
+                            <th class="px-3 py-2 text-right">Realizado Mes Bs</th>
+                            <th class="px-3 py-2 text-center">Estado</th>
+                            <th class="px-3 py-2 text-right">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-cxc-cierres-body" class="divide-y divide-gray-100"></tbody>
+                </table>
             </div>
-            <div>
-                <button id="btn-toggle-pagadas" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-all shadow-xs cursor-pointer">
-                    <span class="material-icons text-base text-red-600" id="icon-toggle-pagadas">visibility</span>
-                    <span id="txt-toggle-pagadas">Mostrar facturas pagadas</span>
+        </div>
+
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-gray-200 bg-gray-50">
+                <h3 class="text-sm font-bold text-gray-800 uppercase">Bitácora de Diferenciales Cambiarios & Notas de Débito Art. 51 Regl. IVA</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-xs divide-y divide-gray-200">
+                    <thead class="bg-gray-50 text-gray-500 uppercase font-bold">
+                        <tr>
+                            <th class="px-3 py-2 text-left">Fecha</th>
+                            <th class="px-3 py-2 text-left">Factura / Cliente</th>
+                            <th class="px-3 py-2 text-left">Tipo / N° ND Fiscal</th>
+                            <th class="px-3 py-2 text-right">Tasas (Orig → Cobro)</th>
+                            <th class="px-3 py-2 text-right">Diferencial Bruto Bs</th>
+                            <th class="px-3 py-2 text-right">Base ND / IVA ND Bs</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-cxc-nd-body" class="divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== TAB 5: TESORERÍA BIMONETARIA ==================== -->
+    <section id="cxc-panel-tesoreria" class="cxc-tab-panel hidden flex-1 min-h-0 flex-col gap-5 overflow-y-auto pr-1">
+        <div class="flex flex-wrap justify-between items-center gap-3">
+            <h3 class="text-sm font-bold text-gray-800 uppercase">Cuentas de Caja & Bancos Bimonetarios</h3>
+            <div class="flex gap-2">
+                <button type="button" onclick="window.cxcAbrirModalCuentaTesoreria()"
+                    class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1">
+                    <span class="material-icons text-sm">add_card</span> Nueva Cuenta
+                </button>
+                <button type="button" onclick="window.cxcAbrirModalMovTesoreria()"
+                    class="px-3 py-1.5 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-xs font-bold flex items-center gap-1">
+                    <span class="material-icons text-sm">swap_vert</span> Ajuste Manual
                 </button>
             </div>
         </div>
-
-        <div class="flex-1 overflow-auto">
-            <table class="w-full text-sm text-left relative">
-                <thead class="text-xs text-gray-600 uppercase bg-gray-100 sticky top-0 z-10 shadow-sm">
-                    <tr>
-                        <th class="px-4 py-3">ID / Fecha</th>
-                        <th class="px-4 py-3">Cliente</th>
-                        <th class="px-4 py-3">Comprobante</th>
-                        <th class="px-4 py-3 text-right">Monto Total</th>
-                        <th class="px-4 py-3 text-right">Abonado</th>
-                        <th class="px-4 py-3 text-right">Restante</th>
-                        <th class="px-4 py-3 text-center">Estado</th>
-                        <th class="px-4 py-3 text-center">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody id="tabla-cuentas-body" class="divide-y divide-gray-100">
-                    <tr>
-                        <td colspan="8" class="px-4 py-8 text-center text-gray-500">
-                            <div class="spinner inline-block"></div>
-                            <p class="mt-2">Cargando cuentas por cobrar...</p>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        <div class="bg-gray-50 px-4 py-3 border-t border-gray-100 flex items-center justify-between sm:px-6 w-full">
-            <span class="text-sm text-gray-700" id="contador-registros">Mostrando 0 registros</span>
-        </div>
-    </div>
-</div>
-
-<div id="modal-detalles-venta" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex justify-center items-center p-4">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col transition-all">
-        <div class="bg-blue-600 p-4 flex justify-between items-center">
-            <h3 class="text-white font-bold text-lg flex items-center">
-                <i class="material-icons mr-2">receipt_long</i>
-                Detalles del Comprobante
-            </h3>
-            <button onclick="cerrarModalDetalles()" class="text-blue-100 hover:text-white transition-colors">
-                <i class="material-icons text-xl">close</i>
-            </button>
-        </div>
-        <div id="modal-detalles-content" class="p-5 flex-1 overflow-y-auto"></div>
-        <div class="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
-            <button onclick="cerrarModalDetalles()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors">
-                Cerrar
-            </button>
-        </div>
-    </div>
-</div>
-
-<div id="modal-registrar-pago" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex justify-center items-center p-4">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col">
-        <div class="bg-green-600 p-4 flex justify-between items-center">
-            <h3 class="text-white font-bold text-lg flex items-center">
-                <i class="material-icons mr-2">payments</i>
-                Registrar Abono de Deuda
-            </h3>
-            <button onclick="cerrarModalPago()" class="text-green-100 hover:text-white transition-colors">
-                <i class="material-icons text-xl">close</i>
-            </button>
-        </div>
-        <div class="p-5 flex-1 overflow-y-auto flex flex-col gap-4">
-            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 text-sm">
-                <p class="text-gray-600 font-medium">Cliente: <span id="pago-cliente-nombre" class="text-gray-900 font-bold">...</span></p>
-                <p class="text-gray-600 font-medium">Cédula/RIF: <span id="pago-cliente-rif" class="text-gray-900 font-mono">...</span></p>
-                <div class="mt-2 pt-2 border-t border-gray-200 flex justify-between items-center">
-                    <span class="font-bold text-gray-800">Total Deuda Acumulada:</span>
-                    <span id="pago-total-pendiente" class="text-red-600 font-extrabold text-lg">0.00 $</span>
-                </div>
+        <div id="grid-cxc-cuentas-tesoreria" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-gray-200 bg-gray-50">
+                <h4 class="text-xs font-bold text-gray-700 uppercase">Últimos Movimientos de Tesorería & Conciliación Bancaria</h4>
             </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-xs divide-y divide-gray-200">
+                    <thead class="bg-gray-50 text-gray-500 uppercase font-bold">
+                        <tr>
+                            <th class="px-3 py-2 text-left">Fecha</th>
+                            <th class="px-3 py-2 text-left">Cuenta</th>
+                            <th class="px-3 py-2 text-left">Tipo / Concepto</th>
+                            <th class="px-3 py-2 text-right">Monto</th>
+                            <th class="px-3 py-2 text-center">Conciliado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-cxc-tesoreria-movs" class="divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</div>
 
+<!-- ==================== MODAL COBRO AVANZADO & PRELACIÓN IGTF ==================== -->
+<div id="modal-abono-cxc" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh]">
+        <div class="p-4 border-b border-gray-200 bg-blue-600 text-white flex justify-between items-center">
             <div>
-                <h4 class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2 flex items-center">
-                    <i class="material-icons text-[16px] text-gray-400 mr-1">list</i> Facturas Pendientes Detectadas
-                </h4>
-                <div id="pago-lista-facturas" class="border border-gray-200 rounded-xl divide-y divide-gray-100 max-h-40 overflow-y-auto bg-white shadow-inner">
-                    </div>
+                <h3 class="font-bold text-base flex items-center gap-2">
+                    <span class="material-icons">point_of_sale</span> Registrar Cobro / Abono CxC Bimonetario
+                </h3>
+                <p class="text-xs text-blue-100" id="abono-cxc-subtitulo">Factura · Cliente</p>
+            </div>
+            <button type="button" onclick="window.cerrarModalAbonoCxc()" class="text-white/80 hover:text-white"><span class="material-icons">close</span></button>
+        </div>
+
+        <form id="form-abono-cxc" class="p-5 overflow-y-auto flex-1 space-y-4 text-xs">
+            <input type="hidden" id="abono-cxc-id">
+            <input type="hidden" id="abono-cxc-factura">
+            <input type="hidden" id="abono-cxc-cliente-rif">
+            <input type="hidden" id="abono-cxc-cliente-nombre">
+            <input type="hidden" id="abono-cxc-tasa-orig">
+            <input type="hidden" id="abono-cxc-saldo-pendiente">
+
+            <div class="grid grid-cols-3 gap-3 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                <div>
+                    <span class="text-gray-500 block">Saldo Pendiente</span>
+                    <span class="text-base font-black text-gray-800 font-mono" id="abono-cxc-lbl-saldo">$0.00</span>
+                </div>
+                <div>
+                    <span class="text-gray-500 block">Tasa Orig. vs Hoy</span>
+                    <span class="font-bold text-indigo-700 font-mono" id="abono-cxc-lbl-tasas">0 → 0</span>
+                </div>
+                <div>
+                    <span class="text-gray-500 block">Saldo a Favor Cliente</span>
+                    <span class="font-bold text-emerald-700 font-mono" id="abono-cxc-lbl-favor">$0.00</span>
+                </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">Monto a Abonar (Bs)</label>
-                    <input type="text" inputmode="decimal" id="pago-monto-bs" placeholder="0.00" oninput="calcularConversionPago('BS')"
-                        class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-all font-semibold text-gray-800">
+                    <label class="block font-bold text-gray-700 mb-1">Fecha Cobro</label>
+                    <input type="date" id="abono-cxc-fecha" class="w-full border border-gray-300 rounded-lg px-2.5 py-2" required>
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">Equivalente a Abonar ($)</label>
-                    <input type="text" inputmode="decimal" id="pago-monto-usd" placeholder="0.00" oninput="calcularConversionPago('USD')"
-                        class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-all font-semibold text-green-600">
+                    <label class="block font-bold text-gray-700 mb-1">Tasa BCV Liquidación</label>
+                    <input type="number" step="0.0001" id="abono-cxc-tasa" class="w-full border border-gray-300 rounded-lg px-2.5 py-2 font-mono font-bold text-blue-700" required>
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Método Principal</label>
+                    <select id="abono-cxc-metodo" class="w-full border border-gray-300 rounded-lg px-2.5 py-2 bg-white">
+                        <option value="MIXTO">Mixto (Bs / Divisas / Ret.)</option>
+                        <option value="TRANSFERENCIA_BS">Transferencia Bancaria Bs</option>
+                        <option value="PAGO_MOVIL">Pago Móvil Bs</option>
+                        <option value="EFECTIVO_USD">Divisas Efectivo ($)</option>
+                        <option value="ZELLE">Zelle / Binance ($)</option>
+                    </select>
                 </div>
             </div>
-            <p class="text-right text-[11px] text-gray-400">Tasa Oficial de Cambio: Bs. <span id="pago-tasa-bcv" class="font-bold">0.00</span></p>
+
+            <!-- Paso 1: Deducciones & Saldos Previos -->
+            <div class="border border-amber-200 bg-amber-50/50 rounded-xl p-3 space-y-2">
+                <div class="font-bold text-amber-900 uppercase text-[11px]">1. Prelación previa (Sin IGTF): Retenciones, Pronto Pago & Saldo a Favor</div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div>
+                        <label class="block text-gray-600 mb-0.5">Ret. IVA Cliente (Bs)</label>
+                        <input type="number" step="0.01" min="0" id="abono-cxc-ret-iva" value="0" class="cxc-calc-input w-full border border-gray-300 rounded-lg px-2 py-1.5 font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-gray-600 mb-0.5">N° Comp. Ret. IVA</label>
+                        <input type="text" id="abono-cxc-comp-ret" maxlength="20" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 font-mono" placeholder="AAAAMM...">
+                    </div>
+                    <div>
+                        <label class="block text-gray-600 mb-0.5">Ret. ISLR Cliente (Bs)</label>
+                        <input type="number" step="0.01" min="0" id="abono-cxc-ret-islr" value="0" class="cxc-calc-input w-full border border-gray-300 rounded-lg px-2 py-1.5 font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-gray-600 mb-0.5">Pronto Pago / Saldo Fav ($)</label>
+                        <div class="flex gap-1">
+                            <input type="number" step="0.01" min="0" id="abono-cxc-pronto-pago" value="0" title="Descuento Pronto Pago USD" class="cxc-calc-input w-1/2 border border-gray-300 rounded-lg px-1.5 py-1.5 font-mono">
+                            <input type="number" step="0.01" min="0" id="abono-cxc-usar-favor" value="0" title="Usar Saldo a Favor USD" class="cxc-calc-input w-1/2 border border-emerald-300 bg-emerald-50 rounded-lg px-1.5 py-1.5 font-mono">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Paso 2: Cobro Bimonetario -->
+            <div class="border border-blue-200 bg-blue-50/40 rounded-xl p-3 space-y-2">
+                <div class="font-bold text-blue-900 uppercase text-[11px]">2. Ingreso en Bolívares & Divisas (IGTF 3% Automático)</div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-1">Monto Recibido en Bolívares (Bs)</label>
+                        <input type="number" step="0.01" min="0" id="abono-cxc-monto-bs" value="0" class="cxc-calc-input w-full border border-gray-300 rounded-lg px-2.5 py-2 font-mono text-sm font-bold">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-1">Monto Recibido en Divisas ($)</label>
+                        <input type="number" step="0.01" min="0" id="abono-cxc-monto-usd" value="0" class="cxc-calc-input w-full border border-gray-300 rounded-lg px-2.5 py-2 font-mono text-sm font-bold">
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-4 pt-1">
+                    <label class="inline-flex items-center gap-1.5 font-semibold text-gray-700 cursor-pointer">
+                        <input type="checkbox" id="abono-cxc-aplicar-igtf" class="cxc-calc-input w-4 h-4 text-blue-600 rounded" checked>
+                        <span>Cobrar IGTF 3% sobre divisas (Empresa SPE)</span>
+                    </label>
+                    <label class="inline-flex items-center gap-1.5 font-semibold text-gray-700 cursor-pointer">
+                        <input type="checkbox" id="abono-cxc-divisa-incluye-igtf" class="cxc-calc-input w-4 h-4 text-blue-600 rounded">
+                        <span>El monto en divisas ya incluye el 3% IGTF</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Cuenta Destino & Ref -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Cuenta Destino Tesorería</label>
+                    <select id="abono-cxc-cuenta-tesoreria" class="w-full border border-gray-300 rounded-lg px-2.5 py-2 bg-white">
+                        <option value="">-- Automático --</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Referencia Bancaria</label>
+                    <input type="text" id="abono-cxc-referencia" class="w-full border border-gray-300 rounded-lg px-2.5 py-2 font-mono" placeholder="N° Ref / Lote">
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Observación</label>
+                    <input type="text" id="abono-cxc-nota" class="w-full border border-gray-300 rounded-lg px-2.5 py-2" placeholder="Nota del cobro">
+                </div>
+            </div>
+
+            <!-- Preview Prelación en vivo -->
+            <div id="abono-cxc-preview-box" class="bg-gray-900 text-gray-100 rounded-xl p-3 font-mono text-[11px] space-y-1">
+                Cargando cálculo de prelación...
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2 border-t border-gray-200">
+                <button type="button" onclick="window.cerrarModalAbonoCxc()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-bold">Cancelar</button>
+                <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-sm">Confirmar Cobro</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ==================== MODAL DETALLES DE FACTURA ==================== -->
+<div id="modal-detalles-venta" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+            <h3 class="font-bold text-gray-800 text-base flex items-center gap-2">
+                <span class="material-icons text-blue-600">receipt</span> Detalles de Documento
+            </h3>
+            <button type="button" onclick="window.cerrarModalDetalles()" class="text-gray-400 hover:text-gray-700"><span class="material-icons">close</span></button>
         </div>
-        <div class="p-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-2">
-            <button onclick="cerrarModalPago()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors">
-                Cancelar
-            </button>
-            <button onclick="procesarAbonoDeuda()" id="btn-confirmar-pago" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-5 rounded-lg transition-colors flex items-center justify-center">
-                Confirmar Pago
-            </button>
+        <div id="cuerpo-modal-detalles" class="p-5 overflow-y-auto flex-1"></div>
+    </div>
+</div>
+
+<!-- ==================== MODAL SIMPLE REUTILIZABLE (Anticipo/Cashea/Giro/Tesorería) ==================== -->
+<div id="modal-cxc-aux" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
+        <div class="p-4 border-b border-gray-200 bg-gray-800 text-white flex justify-between items-center">
+            <h3 id="modal-cxc-aux-titulo" class="font-bold text-sm uppercase">Operación CxC</h3>
+            <button type="button" onclick="document.getElementById('modal-cxc-aux').classList.add('hidden')" class="text-gray-300 hover:text-white"><span class="material-icons">close</span></button>
         </div>
+        <div id="modal-cxc-aux-body" class="p-5 text-xs space-y-3 max-h-[80vh] overflow-y-auto"></div>
     </div>
 </div>
 
 <script>
-    // CONTROL DEL CONTEXTO CON VARIABLES DE ENTORNO SPA MULTI-DECLARACIÓN
-    
-        
-        function formatNumberToLocal(value) {
-            let val = String(value).replace(/[^0-9]/g, '');
-            if (val === '') return '';
-            let number = parseInt(val, 10) / 100;
-            return number.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        }
+(function () {
+    const ESTADO = {
+        companyId: null,
+        usuario: 'ADMIN',
+        tasaBcv: 1,
+        cartera: { cuentas: [], abonos: [], anticipos: [], notas_ajuste: [], giros: [], cierres_cambiarios: [], parametros: {}, clientes_saldo_favor: [] },
+        tesoreria: { cuentas: [], movimientos: [] },
+        clientes: [],
+        tabActual: 'cartera',
+        bucketActual: 'ABIERTAS'
+    };
 
-        function parseLocalNumber(value) {
-            if (!value) return 0;
-            return parseFloat(String(value).replace(/\./g, '').replace(',', '.'));
-        }
+    const $ = (id) => document.getElementById(id);
+    const fmtUsd = (n) => `$${(Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const fmtBs = (n) => `Bs. ${(Number(n) || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-        
-        function initCxcFormatters() {
-            const mBs = document.getElementById('pago-monto-bs');
-            const mUsd = document.getElementById('pago-monto-usd');
-            const mAbono = document.getElementById('prompt-abono-input');
-
-            if(mBs) {
-                mBs.addEventListener('input', (e) => {
-                    e.target.value = formatNumberToLocal(e.target.value);
-                    let val = parseLocalNumber(e.target.value);
-                    if(mUsd && val > 0) mUsd.value = formatNumberToLocal((val / tasaCambioActiva).toFixed(2).replace('.', ''));
-                    else if (mUsd) mUsd.value = '';
-                });
-            }
-            if(mUsd) {
-                mUsd.addEventListener('input', (e) => {
-                    e.target.value = formatNumberToLocal(e.target.value);
-                    let val = parseLocalNumber(e.target.value);
-                    if(mBs && val > 0) mBs.value = formatNumberToLocal((val * tasaCambioActiva).toFixed(2).replace('.', ''));
-                    else if (mBs) mBs.value = '';
-                });
-            }
-            if(mAbono) {
-                mAbono.addEventListener('input', (e) => {
-                    e.target.value = formatNumberToLocal(e.target.value);
-                });
-            }
-        }
-        
-        // We observe dom changes if modal is dynamic, but init works for now.
-        document.addEventListener('DOMContentLoaded', initCxcFormatters);
-        // Sometimes the modal is injected or rendered later, so we will hijack modal open
-    
-      var cuentasData = []; 
-    var ventasCache = null; 
-    var userCompanyId = null;
-    var userBranchId = null;
-    var tasaCambioActiva = 1;
-
-    var tbody = document.getElementById('tabla-cuentas-body');
-    var inputBuscador = document.getElementById('buscador-cuentas');
-    var selectEstado = document.getElementById('filtro-estado');
-    var inputFechaInicio = document.getElementById('filtro-fecha-inicio');
-    var inputFechaFin = document.getElementById('filtro-fecha-fin');
-    var mostrarFacturasPagadas = false;
-
-    function actualizarBotonTogglePagadas() {
-        const btn = document.getElementById('btn-toggle-pagadas');
-        const icon = document.getElementById('icon-toggle-pagadas');
-        const txt = document.getElementById('txt-toggle-pagadas');
-        if (!btn || !icon || !txt) return;
-
-        if (mostrarFacturasPagadas) {
-            btn.className = "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-gray-300 bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all shadow-xs cursor-pointer";
-            icon.className = "material-icons text-base text-gray-600";
-            icon.textContent = "visibility_off";
-            txt.textContent = "Ocultar facturas pagadas";
-        } else {
-            btn.className = "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-all shadow-xs cursor-pointer";
-            icon.className = "material-icons text-base text-red-600";
-            icon.textContent = "visibility";
-            txt.textContent = "Mostrar facturas pagadas";
-        }
+    function toast(msg, type = 'success') {
+        const div = document.createElement('div');
+        div.textContent = msg;
+        const bg = type === 'error' ? '#dc2626' : (type === 'warning' ? '#d97706' : '#059669');
+        div.style.cssText = `position:fixed;top:18px;right:18px;z-index:99999;background:${bg};color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,0.18);max-width:440px;`;
+        document.body.appendChild(div);
+        setTimeout(() => { div.style.opacity = '0'; div.style.transition = 'opacity .35s'; setTimeout(() => div.remove(), 350); }, 3600);
     }
 
-    async function initCuentasCobrar() {
+    function esc(s) {
+        return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function hoyISO() {
+        const d = new Date(Date.now() - (4 * 3600 * 1000));
+        return d.toISOString().slice(0, 10);
+    }
+
+    async function cargarDatosCuentasCobrar() {
         try {
-            if (window.nexusAPI) {
+            if (!ESTADO.companyId) {
                 const sesion = await window.nexusAPI.obtenerSesionLocal();
                 if (sesion) {
-                    userCompanyId = sesion.companyId;
-                    userBranchId = sesion.branchId;
+                    ESTADO.companyId = sesion.companyId;
+                    ESTADO.usuario = sesion.nombre || sesion.usuario || 'ADMIN';
                 }
-                
-                // Traccionar tasa de cambio activa en la persistencia local
-                var tasaGuardada = await window.nexusAPI.obtenerConfiguracion('TASA_BCV');
-                tasaCambioActiva = parseFloat(tasaGuardada || 1);
             }
-        } catch (error) {
-            console.warn("No se pudo obtener la configuración de arranque:", error);
-        }
+            const cfgTasa = await window.nexusAPI.obtenerConfiguracion('dolar_bcv').catch(() => null);
+            const [resCartera, resTesoreria, resClientes] = await Promise.all([
+                window.nexusAPI.obtenerCarteraCxcAvanzada(ESTADO.companyId),
+                window.nexusAPI.gestionarTesoreriaBimonetaria({ company_id: ESTADO.companyId, accion: 'LISTAR' }),
+                window.nexusAPI.obtenerClientesLocal().catch(() => [])
+            ]);
 
-        await cargarDatosCuentasCobrar();
-        configurarEventosFiltros();
-
-        // Sincronización silenciosa en segundo plano con VPS
-        if (window.nexusAPI && window.nexusAPI.sincronizarCuentasCobrar) {
-            window.nexusAPI.sincronizarCuentasCobrar(userCompanyId).then(() => {
-                cargarDatosCuentasCobrar();
-            }).catch(() => {});
-        }
-    }
-
-   async function cargarDatosCuentasCobrar() {
-        try {
-            tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-8 text-center text-gray-500"><div class="spinner inline-block"></div><p class="mt-2">Cargando cuentas por cobrar...</p></td></tr>`;
-            
-            var api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
-            var ip = '127.0.0.1';
-            if (api && typeof api.obtenerIpMaestro === 'function') {
-                var ipObtenida = await api.obtenerIpMaestro();
-                if (ipObtenida && ipObtenida !== 'null' && ipObtenida.trim() !== '') ip = ipObtenida.trim();
-            }
-            var localServerUrl = `http://${ip}:3000`;
-                
-            var response = await fetch(`${localServerUrl}/api/cuentas_por_cobrar`);
-            if (!response.ok) throw new Error('Error al obtener deudas');
-            
-            var rawData = await response.json();
-            
-            cuentasData = rawData.map(item => {
-                var mUsd = parseFloat(item.monto_usd || 0);
-                var mBs = parseFloat(item.monto_bs || item.monto_deuda || item.monto || 0);
-                if (mUsd <= 0 && mBs > 0 && tasaCambioActiva > 0) {
-                    mUsd = parseFloat((mBs / tasaCambioActiva).toFixed(2));
-                }
-                return {
-                    id: item.id,
-                    documento: item.cliente_rif || item.cliente_id || item.rif_cliente || 'S/N', 
-                    cliente: item.cliente_nombre || item.cliente || 'Desconocido',
-                    monto_bs: mBs,
-                    monto_usd: mUsd,
-                    comprobante: item.numero_factura || item.factura_nro || item.comprobante || item.referencia || item.concepto || `CXC-${item.id}`,
-                    abono: parseFloat(item.monto_pagado || item.abono || 0),
-                    fecha: item.fecha_emision || item.fecha || item.createdAt || new Date().toISOString(),
-                    estado: item.estado || 'PENDIENTE'
+            if (resCartera && resCartera.exito) {
+                ESTADO.cartera = resCartera;
+                ESTADO.tasaBcv = Number(resCartera.tasa_bcv || cfgTasa?.valor || 1) || 1;
+            } else {
+                const [cuentasLegacy, abonosLegacy] = await Promise.all([
+                    window.nexusAPI.obtenerCuentasCobrarLocal(ESTADO.companyId).catch(() => []),
+                    window.nexusAPI.obtenerAbonosCxc({ companyId: ESTADO.companyId }).catch(() => [])
+                ]);
+                ESTADO.tasaBcv = Number(cfgTasa?.valor || 1) || 1;
+                ESTADO.cartera = {
+                    cuentas: Array.isArray(cuentasLegacy) ? cuentasLegacy : [],
+                    abonos: Array.isArray(abonosLegacy) ? abonosLegacy : [],
+                    anticipos: [], notas_ajuste: [], giros: [], cierres_cambiarios: [], parametros: {}, clientes_saldo_favor: []
                 };
-            });
-            
-            aplicarFiltros();
-            
-        } catch (error) {
-            console.error("Error al cargar cuentas por cobrar:", error);
-            var api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
-            if (api && typeof api.obtenerCuentasCobrarLocal === 'function') {
-                try {
-                    var fallbackData = await api.obtenerCuentasCobrarLocal();
-                    if (Array.isArray(fallbackData) && fallbackData.length > 0) {
-                        cuentasData = fallbackData.map(item => {
-                            var mUsd = parseFloat(item.monto_usd || 0);
-                            var mBs = parseFloat(item.monto_bs || item.monto_deuda || item.monto || 0);
-                            if (mUsd <= 0 && mBs > 0 && tasaCambioActiva > 0) {
-                                mUsd = parseFloat((mBs / tasaCambioActiva).toFixed(2));
-                            }
-                            return {
-                                id: item.id,
-                                documento: item.cliente_rif || item.cliente_id || item.rif_cliente || 'S/N', 
-                                cliente: item.cliente_nombre || item.cliente || 'Desconocido',
-                                monto_bs: mBs,
-                                monto_usd: mUsd,
-                                comprobante: item.numero_factura || item.factura_nro || item.comprobante || item.referencia || item.concepto || `CXC-${item.id}`,
-                                abono: parseFloat(item.monto_pagado || item.abono || 0),
-                                fecha: item.fecha_emision || item.fecha || item.createdAt || new Date().toISOString(),
-                                estado: item.estado || 'PENDIENTE'
-                            };
-                        });
-                        aplicarFiltros();
-                        return;
-                    }
-                } catch(eFb) {}
             }
-            tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-8 text-center text-red-500"><i class="material-icons block text-4xl mb-2">error_outline</i>Error de conexión con el Cerebro Maestro Local.</td></tr>`;
+            if (resTesoreria && resTesoreria.exito) ESTADO.tesoreria = resTesoreria;
+            ESTADO.clientes = Array.isArray(resClientes) ? resClientes : [];
+
+            renderHeaderAndKpis();
+            renderCarteraTable();
+            renderAbonosTable();
+            renderInstrumentos();
+            renderFiscalCierres();
+            renderTesoreria();
+        } catch (err) {
+            console.error('Error cargando CxC:', err);
+            toast('Error al cargar CxC: ' + err.message, 'error');
         }
     }
 
-    function renderizarTabla(datos) {
-        tbody.innerHTML = '';
-        
-        var totalGeneral = 0;
-        var totalPendiente = 0;
-        var totalAbonado = 0;
+    function renderHeaderAndKpis() {
+        const c = ESTADO.cartera;
+        const tasa = ESTADO.tasaBcv || 1;
+        $('cxc-badge-tasa-bcv').textContent = `Tasa BCV: Bs. ${tasa.toFixed(4)}/$`;
+        const modoFiscal = (c.parametros && c.parametros.modo_ajuste_cambiario) || 'FISCAL_ND_ART51';
+        $('cxc-badge-modo-fiscal').textContent = modoFiscal === 'VEN_NIF_RESULTADO' ? 'Modo: VEN-NIF Resultado' : 'Modo: Art. 51 Regl. IVA';
 
-        if (datos.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">${mostrarFacturasPagadas ? 'No se encontraron registros.' : 'No hay facturas pendientes por cobrar.'}</td></tr>`;
-            actualizarTarjetas(0,0,0);
-            const msgVacio = `Mostrando 0 registros`;
-            document.getElementById('contador-registros').textContent = msgVacio;
-            const topContador = document.getElementById('cxc-contador-registros');
-            if (topContador) topContador.textContent = msgVacio;
+        const abiertas = (c.cuentas || []).filter(r => r.estado !== 'PAGADA' && Number(r.saldo_pendiente_usd ?? (Number(r.monto_usd || 0) - Number(r.monto_pagado || 0))) > 0.01);
+        const totalUsd = c.total_por_cobrar_usd != null ? Number(c.total_por_cobrar_usd) : abiertas.reduce((s, r) => s + Math.max(0, Number(r.monto_usd || 0) - Number(r.monto_pagado || 0)), 0);
+        $('kpi-cxc-total-usd').textContent = fmtUsd(totalUsd);
+        $('kpi-cxc-total-bs').textContent = `${fmtBs(totalUsd * tasa)} · ${abiertas.length} factura(s)`;
+
+        const ag = c.aging || {};
+        const v130 = Number(ag['0_30'] || 0);
+        const vMas = Number(ag['31_60'] || 0) + Number(ag['61_90'] || 0) + Number(ag['MAS_90'] || 0);
+        const vencUsd = v130 + vMas;
+        $('kpi-cxc-vencida-usd').textContent = fmtUsd(vencUsd);
+        $('kpi-cxc-vencida-det').textContent = `1-30d: ${fmtUsd(v130)} · +30d: ${fmtUsd(vMas)}`;
+
+        const diffSum = (c.notas_ajuste || []).reduce((s, n) => s + Number(n.variacion_bruta_bs || 0), 0);
+        $('kpi-cxc-diff-bs').textContent = fmtBs(diffSum);
+        $('kpi-cxc-diff-count').textContent = `${(c.notas_ajuste || []).length} movimiento(s) · ${modoFiscal === 'VEN_NIF_RESULTADO' ? 'VEN-NIF' : 'Art. 51'}`;
+
+        const favorUsd = (c.anticipos || []).filter(a => a.estado !== 'AGOTADO' && a.estado !== 'ANULADO').reduce((s, a) => s + Number(a.saldo_disponible_usd || 0), 0);
+        const casheaUsd = abiertas.filter(r => String(r.tipo_documento || '').toUpperCase().includes('CASHEA')).reduce((s, r) => s + Number(r.saldo_pendiente_usd || 0), 0);
+        const girosUsd = (c.giros || []).filter(g => g.estado === 'EN_CARTERA').reduce((s, g) => s + Number(g.monto_usd || 0), 0);
+        $('kpi-cxc-favor-usd').textContent = fmtUsd(favorUsd);
+        $('kpi-cxc-cashea-giros').textContent = `Cashea: ${fmtUsd(casheaUsd)} · Giros: ${fmtUsd(girosUsd)}`;
+
+        if (!$('cxc-cierre-tasa').value) $('cxc-cierre-tasa').value = tasa.toFixed(4);
+        if (!$('cxc-cierre-periodo').value) $('cxc-cierre-periodo').value = hoyISO().slice(0, 7).replace('-', '');
+    }
+
+    function renderCarteraTable() {
+        const tbody = $('tabla-cxc-body');
+        const q = ($('buscador-cuentas')?.value || '').trim().toLowerCase();
+        const tasaHoy = ESTADO.tasaBcv || 1;
+
+        const mapaFavor = new Map();
+        (ESTADO.clientes || []).forEach(cl => mapaFavor.set(String(cl.rif || '').toUpperCase().replace(/[^A-Z0-9]/g, ''), Number(cl.saldo_a_favor_usd || 0)));
+
+        const lista = (ESTADO.cartera.cuentas || []).filter(r => {
+            const saldo = Number(r.saldo_pendiente_usd ?? Math.max(0, Number(r.monto_usd || 0) - Number(r.monto_pagado || 0)));
+            const isPagada = r.estado === 'PAGADA' || saldo <= 0.01;
+            const bucket = r.aging_bucket || 'POR_VENCER';
+            if (ESTADO.bucketActual === 'ABIERTAS' && isPagada) return false;
+            else if (ESTADO.bucketActual === 'PAGADAS') { /* show all including paid */ }
+            else if (ESTADO.bucketActual !== 'ABIERTAS' && (isPagada || bucket !== ESTADO.bucketActual)) return false;
+
+            if (!q) return true;
+            return (
+                String(r.cliente_nombre || '').toLowerCase().includes(q) ||
+                String(r.cliente_id || '').toLowerCase().includes(q) ||
+                String(r.factura_nro || '').toLowerCase().includes(q)
+            );
+        });
+
+        if (lista.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-400">No hay documentos en este filtro.</td></tr>`;
             return;
         }
 
-        datos.forEach(item => {
-            var montoUsd = parseFloat(item.monto_usd || 0);
-            var abonado = parseFloat(item.abono || 0);
-            var restante = Math.max(0, montoUsd - abonado);
-            var isPagada = (item.estado === 'PAGADA' || item.estado === 'PAGADO' || restante <= 0.01);
-            
-            totalGeneral += montoUsd;
-            totalAbonado += abonado;
-            if (!isPagada && restante > 0.01) {
-                totalPendiente += restante;
-            }
+        tbody.innerHTML = lista.map(r => {
+            const origUsd = Number(r.monto_usd || 0);
+            const saldoUsd = Number(r.saldo_pendiente_usd ?? Math.max(0, origUsd - Number(r.monto_pagado || 0)));
+            const isPagada = r.estado === 'PAGADA' || saldoUsd <= 0.01;
+            const tasaOrig = Number(r.tasa_bcv || tasaHoy) || tasaHoy;
+            const saldoBsHoy = saldoUsd * tasaHoy;
+            const diffLatenteBs = saldoUsd * (tasaHoy - tasaOrig);
+            const diasVenc = Number(r.dias_vencido || 0);
+            const rifKey = String(r.cliente_id || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const favorCli = mapaFavor.get(rifKey) || 0;
 
-            var fechaObj = new Date(item.fecha);
-            var fechaFormateada = fechaObj.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            var horaFormateada = fechaObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+            const badgeAging = isPagada
+                ? `<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">PAGADA</span>`
+                : (diasVenc > 0
+                    ? `<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-700">Vencida ${diasVenc}d (${esc(r.aging_bucket || '')})</span>`
+                    : `<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-700">Al día</span>`);
 
-            var estadoTexto = isPagada ? 'PAGADA' : (abonado > 0 ? 'ABONADO' : 'PENDIENTE');
-            var badgeClass = '';
-            if (isPagada) badgeClass = 'bg-green-100 text-green-800 border-green-200';
-            else if (abonado > 0) badgeClass = 'bg-blue-100 text-blue-800 border-blue-200';
-            else badgeClass = 'bg-yellow-100 text-yellow-800 border-yellow-200';
+            const casheaBadge = String(r.tipo_documento || '').toUpperCase().includes('CASHEA')
+                ? `<span class="ml-1 px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-900 text-[10px] font-bold">CASHEA</span>` : '';
 
-            var tr = document.createElement('tr');
-            tr.className = "hover:bg-blue-50 transition-colors group";
-            tr.innerHTML = `
-                <td class="px-4 py-3 whitespace-nowrap">
-                    <div class="font-semibold text-gray-700">#${item.id}</div>
-                    <div class="text-xs text-gray-500">${fechaFormateada} ${horaFormateada}</div>
-                </td>
-                <td class="px-4 py-3">
-                    <div class="font-semibold text-gray-800">${item.cliente || 'Desconocido'}</div>
-                    <div class="text-xs text-gray-500">${item.documento || 'S/N'}</div>
-                </td>
-                <td class="px-4 py-3">
-                    <span class="font-mono text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded">${item.comprobante || 'N/A'}</span>
-                </td>
-                <td class="px-4 py-3 text-right font-medium text-gray-800">
-                    $${montoUsd.toFixed(2)}
-                </td>
-                <td class="px-4 py-3 text-right font-medium text-green-600">
-                    $${abonado.toFixed(2)}
-                </td>
-                <td class="px-4 py-3 text-right font-bold ${!isPagada && restante > 0 ? 'text-red-500' : 'text-gray-500'}">
-                    $${restante.toFixed(2)}
-                </td>
-                <td class="px-4 py-3 text-center">
-                    <span class="px-2.5 py-1 text-xs font-semibold rounded-full border ${badgeClass}">
-                        ${estadoTexto}
-                    </span>
-                </td>
-                <td class="px-4 py-3 text-center">
-                    <button onclick="abrirModalDetalles('${item.comprobante}', '${(item.cliente || '').replace(/'/g, "\\'")}')" class="text-gray-400 hover:text-blue-600 transition-colors p-1" title="Ver Detalles">
-                        <i class="material-icons text-xl">visibility</i>
-                    </button>
-                    ${!isPagada && restante > 0.01 ? `
-                    <button onclick="abrirModalPago('${item.documento}', '${(item.cliente || '').replace(/'/g, "\\'")}')" class="text-gray-400 hover:text-green-600 transition-colors p-1 ml-1" title="Registrar Pago">
-                        <i class="material-icons text-xl">payments</i>
-                    </button>
-                    ` : ''}
-                </td>
+            return `
+                <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="px-4 py-2.5">
+                        <div class="font-mono font-bold text-gray-800">${esc(r.factura_nro || r.id)}${casheaBadge}</div>
+                        <div class="text-[11px] text-gray-500">Emisión: ${esc(String(r.fecha || '').slice(0, 10))} · Vence: ${esc(r.fecha_vencimiento || '—')}</div>
+                    </td>
+                    <td class="px-4 py-2.5">
+                        <div class="font-semibold text-gray-800">${esc(r.cliente_nombre || 'Cliente')}</div>
+                        <div class="text-[11px] text-gray-500 font-mono">${esc(r.cliente_id)}</div>
+                        ${favorCli > 0.009 ? `<span class="inline-block mt-0.5 px-1.5 py-0.5 rounded bg-gray-100 border border-gray-200 text-gray-700 text-[10px] font-semibold">Saldo a favor: ${fmtUsd(favorCli)}</span>` : ''}
+                    </td>
+                    <td class="px-4 py-2.5 text-right font-mono">
+                        <div class="font-semibold text-gray-700">${fmtUsd(origUsd)}</div>
+                        <div class="text-[11px] text-gray-400">BCV ${tasaOrig.toFixed(2)}</div>
+                    </td>
+                    <td class="px-4 py-2.5 text-right font-mono">
+                        <div class="font-bold ${isPagada ? 'text-gray-500' : 'text-gray-900'}">${fmtUsd(saldoUsd)}</div>
+                        <div class="text-[11px] text-blue-700 font-semibold">${fmtBs(saldoBsHoy)}</div>
+                        ${!isPagada && Math.abs(diffLatenteBs) > 0.05 ? `<div class="text-[10px] ${diffLatenteBs >= 0 ? 'text-gray-600' : 'text-red-500'}">Dif: ${diffLatenteBs >= 0 ? '+' : ''}${fmtBs(diffLatenteBs)}</div>` : ''}
+                    </td>
+                    <td class="px-4 py-2.5 text-center">${badgeAging}</td>
+                    <td class="px-4 py-2.5 text-right space-x-1 whitespace-nowrap">
+                        ${!isPagada ? `<button type="button" onclick="window.cxcAbrirModalAbono('${esc(r.id)}')" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-semibold shadow-sm">Cobrar</button>` : ''}
+                        <button type="button" onclick="window.cxcVerDetallesFactura('${esc(r.factura_nro)}')" class="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-xs font-semibold" title="Ver detalles"><span class="material-icons text-sm align-middle">visibility</span></button>
+                        <button type="button" onclick="window.cxcExportarEstadoCuentaPdf('${esc(r.cliente_id)}','${esc(r.cliente_nombre)}')" class="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-xs font-semibold" title="Estado de Cuenta PDF"><span class="material-icons text-sm align-middle">picture_as_pdf</span></button>
+                        <button type="button" onclick="window.cxcEnviarWhatsApp('${esc(r.cliente_id)}','${esc(r.cliente_nombre)}','${esc(r.factura_nro)}',${saldoUsd.toFixed(2)})" class="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-xs font-semibold" title="Recordatorio WhatsApp"><span class="material-icons text-sm align-middle">chat</span></button>
+                    </td>
+                </tr>
             `;
-            tbody.appendChild(tr);
+        }).join('');
+    }
+
+    function renderAbonosTable() {
+        const q = ($('buscador-abonos-cxc')?.value || '').trim().toLowerCase();
+        const rows = (ESTADO.cartera.abonos || []).filter(a => {
+            if (!q) return true;
+            return (
+                String(a.factura_nro || '').toLowerCase().includes(q) ||
+                String(a.cliente_nombre || '').toLowerCase().includes(q) ||
+                String(a.referencia || '').toLowerCase().includes(q)
+            );
         });
-
-        actualizarTarjetas(totalGeneral, totalPendiente, totalAbonado);
-        const textoContador = mostrarFacturasPagadas ? `Mostrando ${datos.length} registros (Pendientes + Pagadas)` : `Mostrando ${datos.length} pendientes`;
-        document.getElementById('contador-registros').textContent = textoContador;
-        const topContador = document.getElementById('cxc-contador-registros');
-        if (topContador) topContador.textContent = textoContador;
+        $('tabla-cxc-abonos-body').innerHTML = rows.length === 0
+            ? `<tr><td colspan="8" class="p-6 text-center text-gray-400">Sin abonos registrados.</td></tr>`
+            : rows.map(a => `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2.5">${esc(String(a.fecha || '').slice(0, 10))}</td>
+                    <td class="px-4 py-2.5 font-mono font-bold text-blue-700">${esc(a.factura_nro || '—')}</td>
+                    <td class="px-4 py-2.5">${esc(a.cliente_nombre || a.cliente_id)}</td>
+                    <td class="px-4 py-2.5 text-right font-mono">${Number(a.tasa_bcv || 0).toFixed(2)}</td>
+                    <td class="px-4 py-2.5 text-right font-mono font-bold text-gray-800">${fmtUsd(a.monto_usd)}</td>
+                    <td class="px-4 py-2.5 text-right font-mono text-amber-700">${Number(a.igtf_bs || 0) > 0 ? fmtBs(a.igtf_bs) : '—'}</td>
+                    <td class="px-4 py-2.5 text-right font-mono text-indigo-700">${(Number(a.retencion_iva_bs || 0) + Number(a.retencion_islr_bs || 0)) > 0 ? fmtBs(Number(a.retencion_iva_bs || 0) + Number(a.retencion_islr_bs || 0)) : '—'}</td>
+                    <td class="px-4 py-2.5">${esc(a.metodo_pago || 'MIXTO')} <span class="text-gray-400">${esc(a.referencia)}</span></td>
+                </tr>
+            `).join('');
     }
 
-    function actualizarTarjetas(total, pendiente, abonado) {
-        document.getElementById('resumen-total').textContent = `$${total.toFixed(2)}`;
-        document.getElementById('resumen-pendiente').textContent = `$${pendiente.toFixed(2)}`;
-        document.getElementById('resumen-cobrado').textContent = `$${abonado.toFixed(2)}`;
-    }
-
-    function aplicarFiltros() {
-        actualizarBotonTogglePagadas();
-        var busqueda = inputBuscador.value.toLowerCase().trim();
-        var estado = selectEstado.value;
-        var fechaInicio = inputFechaInicio.value ? new Date(inputFechaInicio.value + 'T00:00:00') : null;
-        var fechaFin = inputFechaFin.value ? new Date(inputFechaFin.value + 'T23:59:59') : null;
-
-        var datosFiltrados = cuentasData.filter(item => {
-            var montoUsd = parseFloat(item.monto_usd || 0);
-            var abonado = parseFloat(item.abono || 0);
-            var restante = Math.max(0, montoUsd - abonado);
-            var isPagada = (item.estado === 'PAGADA' || item.estado === 'PAGADO' || restante <= 0.01);
-
-            // Si mostrarFacturasPagadas es false (por defecto), ocultar las pagadas
-            if (!mostrarFacturasPagadas && isPagada) {
-                return false;
-            }
-
-            var coincideTexto = !busqueda || 
-                (item.cliente && item.cliente.toLowerCase().includes(busqueda)) || 
-                (item.documento && item.documento.toLowerCase().includes(busqueda)) || 
-                (item.comprobante && item.comprobante.toLowerCase().includes(busqueda));
-
-            var coincideEstado = estado === 'TODOS' || item.estado === estado;
-
-            var fechaItem = new Date(item.fecha);
-            var coincideFechaInicio = !fechaInicio || fechaItem >= fechaInicio;
-            var coincideFechaFin = !fechaFin || fechaItem <= fechaFin;
-
-            return coincideTexto && coincideEstado && coincideFechaInicio && coincideFechaFin;
-        });
-
-        renderizarTabla(datosFiltrados);
-    }
-
-    function configurarEventosFiltros() {
-        inputBuscador.addEventListener('input', aplicarFiltros);
-        selectEstado.addEventListener('change', () => {
-            if (selectEstado.value === 'PAGADA') {
-                mostrarFacturasPagadas = true;
-            } else if (selectEstado.value === 'PENDIENTE') {
-                mostrarFacturasPagadas = false;
-            }
-            aplicarFiltros();
-        });
-        inputFechaInicio.addEventListener('change', aplicarFiltros);
-        inputFechaFin.addEventListener('change', aplicarFiltros);
-
-        const btnToggle = document.getElementById('btn-toggle-pagadas');
-        if (btnToggle) {
-            btnToggle.addEventListener('click', () => {
-                mostrarFacturasPagadas = !mostrarFacturasPagadas;
-                if (!mostrarFacturasPagadas && selectEstado.value === 'PAGADA') {
-                    selectEstado.value = 'TODOS';
-                }
-                aplicarFiltros();
-            });
-        }
-    }
-
-   // --- NUEVO SISTEMA DINÁMICO DE DISTRIBUCIÓN DE ABONOS ---
-    async function abrirModalPago(rif, nombre) {
-          setTimeout(initCxcFormatters, 100);
-        console.log("💳 Iniciando abono inteligente con detección de excedentes...");
-
-        // Mostrar loading temporal
-        const loadingId = 'loading-deuda-temp';
-        document.body.insertAdjacentHTML('beforeend', `<div id="${loadingId}" class="fixed inset-0 bg-black/60 flex items-center justify-center z-[999999] backdrop-blur-sm"><div class="bg-white p-4 rounded-xl flex items-center gap-3 shadow-2xl"><div class="spinner inline-block border-indigo-600"></div><p class="font-bold text-gray-700">Consultando Maestro...</p></div></div>`);
-
-        try {
-            if (!window.nexusAPI || !window.nexusAPI.obtenerDeudaClienteMaestro) {
-                throw new Error("La API del sistema no está disponible.");
-            }
-
-            const response = await window.nexusAPI.obtenerDeudaClienteMaestro(rif);
-            document.getElementById(loadingId)?.remove();
-
-            if (!response || !response.existe) {
-                alert("El cliente no registra saldo en el Maestro.");
-                return;
-            }
-
-            const facturasPendientes = (response.detalles || []).filter(f => {
-                const est = String(f.estado || '').toUpperCase().trim();
-                const r = (parseFloat(f.monto_usd) || 0) - (parseFloat(f.monto_pagado) || 0);
-                return est !== 'PAGADA' && est !== 'PAGADO' && r > 0.01;
-            });
-
-            if (facturasPendientes.length === 0) {
-                alert("No hay facturas pendientes para abonar.");
-                return;
-            }
-
-            const tasa = tasaCambioActiva || 1;
-            const deudaTotalBs = parseFloat(response.monto_deuda_usd || 0) * tasa;
-
-            const oldPrompt = document.getElementById('modal-prompt-pago');
-            if (oldPrompt) oldPrompt.remove();
-
-            // La más antigua es la última del array (debido al ORDER BY fecha DESC en el servidor)
-            const indiceMasAntigua = facturasPendientes.length - 1;
-
-            const opcionesFacturas = facturasPendientes.map((f, i) => {
-                const restaUsd = (parseFloat(f.monto_usd) || 0) - (parseFloat(f.monto_pagado) || 0);
-                const restaBs = restaUsd * tasa;
-                const isSelected = (i === indiceMasAntigua) ? 'selected' : '';
-                return `<option value="${i}" ${isSelected}>${f.factura_nro} (Resta Bs. ${restaBs.toFixed(2)})</option>`;
-            }).join('');
-
-            // EL FRONTEND CORREGIDO (CON DESBORDE VISIBLE Y SUPERPOSICIÓN TOTAL)
-            const promptHTML = `
-            <div id="modal-prompt-pago" class="fixed inset-0 bg-black/60 flex items-center justify-center backdrop-blur-sm" style="z-index: 9999999;">
-                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-visible animate-in zoom-in duration-200 scale-100">
-                    
-                    <div class="p-5 border-b bg-indigo-600 rounded-t-2xl flex justify-center items-center">
-                        <h2 class="text-xl font-black text-white flex items-center">
-                            <span class="material-icons mr-2">account_balance</span> DISTRIBUCIÓN DE ABONO
-                        </h2>
-                    </div>
-                    
-                    <div class="p-6">
-                        <div class="mb-4">
-                            <div class="flex justify-between items-center mb-1 relative">
-                                <label class="block text-xs font-black text-gray-500 uppercase">1. Factura destino</label>
-                                
-                                <div class="group relative flex items-center cursor-help">
-                                    <span class="text-[10px] font-black text-indigo-500 uppercase flex items-center hover:text-indigo-700 transition-colors">
-                                        <i class="material-icons text-[14px] mr-0.5">info</i> GUÍA DE ABONOS
-                                    </span>
-                                    
-                                    <div class="absolute bottom-full right-0 mb-2 hidden group-hover:block w-[290px] p-4 bg-gray-900 text-white text-xs rounded-xl shadow-2xl z-[999999] font-normal leading-relaxed text-left pointer-events-none">
-                                        <p class="font-bold mb-2 text-indigo-300 border-b border-gray-700 pb-1.5 flex items-center">
-                                            <i class="material-icons text-[14px] mr-1">tips_and_updates</i> Lógica de Distribución
-                                        </p>
-                                        <ul class="space-y-2 mt-2">
-                                            <li><span class="text-indigo-400 font-bold">•</span> Al iniciar, el monto cargado sugiere el <b>pago total</b> de todas las deudas juntas.</li>
-                                            <li><span class="text-indigo-400 font-bold">•</span> Seleccione la factura específica a la que desea aplicarle el dinero.</li>
-                                            <li><span class="text-indigo-400 font-bold">•</span> Si el monto abonado <b>supera</b> la deuda de esa factura, el sistema tomará el excedente y lo descontará <b>automáticamente</b> de la siguiente factura.</li>
-                                        </ul>
-                                        <div class="absolute top-full right-6 border-4 border-transparent border-t-gray-800"></div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <select id="select-factura-abono" class="w-full p-3 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:border-indigo-500">
-                                ${opcionesFacturas}
-                            </select>
-                        </div>
-
-                        <div class="mb-4">
-                            <label class="block text-xs font-black text-gray-500 uppercase mb-1">2. Monto del Abono (Bolívares)</label>
-                            <input type="text" inputmode="decimal" id="prompt-abono-input" value="${formatNumberToLocal(deudaTotalBs.toFixed(2).replace('.', ''))}" 
-                                   class="w-full p-4 text-right text-3xl font-black border-2 border-indigo-100 rounded-xl focus:border-indigo-600 focus:ring-4 focus:ring-indigo-50 transition-all">
-                        </div>
-
-                        <div id="info-distribucion" class="p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm">
-                            <div class="flex justify-between mb-1">
-                                <span class="text-gray-500 font-medium italic">Se aplicará a <span id="nombre-factura-actual" class="font-bold text-gray-700">---</span>:</span>
-                                <span id="abono-principal" class="font-black text-indigo-700">Bs. 0.00</span>
-                            </div>
-                            <div id="fila-restante" class="flex justify-between text-green-600 hidden border-t border-dashed border-gray-300 mt-2 pt-2">
-                                <span class="font-medium italic">Restante para <span id="nombre-factura-siguiente" class="font-bold">---</span>:</span>
-                                <span id="abono-restante" class="font-black">Bs. 0.00</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="p-4 bg-gray-100 border-t rounded-b-2xl flex gap-3">
-                        <button onclick="document.getElementById('modal-prompt-pago').remove()" class="flex-1 bg-white hover:bg-gray-200 text-gray-600 font-black py-3 rounded-xl border border-gray-300 transition">CANCELAR</button>
-                        <button id="btn-confirmar-abono" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-3 rounded-xl shadow-lg transition transform active:scale-95">ACEPTAR</button>
-                    </div>
-                </div>
-            </div>`;
-
-            document.body.insertAdjacentHTML('beforeend', promptHTML);
-
-            const input = document.getElementById('prompt-abono-input');
-            const select = document.getElementById('select-factura-abono');
-            const displayPrincipal = document.getElementById('abono-principal');
-            const displayRestante = document.getElementById('abono-restante');
-            const displayNombreActual = document.getElementById('nombre-factura-actual');
-            const displayNombreSiguiente = document.getElementById('nombre-factura-siguiente');
-            const filaRestante = document.getElementById('fila-restante');
-
-            const actualizarVistaDistribucion = () => {
-                const montoIngresado = parseLocalNumber(input.value) || 0;
-                const index = parseInt(select.value);
-                const factura = facturasPendientes[index];
-                const restaBs = ((parseFloat(factura.monto_usd) || 0) - (parseFloat(factura.monto_pagado) || 0)) * tasa;
-
-                displayNombreActual.innerText = factura.factura_nro;
-
-                if (montoIngresado > restaBs) {
-                    // Hay excedente
-                    displayPrincipal.innerText = `Bs. ${restaBs.toFixed(2)}`;
-                    const excedente = montoIngresado - restaBs;
-                    displayRestante.innerText = `Bs. ${excedente.toFixed(2)}`;
-                    
-                    // Identificar la siguiente factura (la anterior en el array por el DESC)
-                    const siguienteFactura = facturasPendientes[index - 1];
-                    displayNombreSiguiente.innerText = siguienteFactura ? siguienteFactura.factura_nro : "Saldo a Favor";
-                    
-                    filaRestante.classList.remove('hidden');
-                } else {
-                    // No hay excedente o es exacto
-                    displayPrincipal.innerText = `Bs. ${montoIngresado.toFixed(2)}`;
-                    filaRestante.classList.add('hidden');
-                }
-            };
-
-            input.addEventListener('input', (e) => {
-                e.target.value = formatNumberToLocal(e.target.value);
-                actualizarVistaDistribucion();
-            });
-            select.addEventListener('change', actualizarVistaDistribucion);
-            
-            actualizarVistaDistribucion();
-
-            setTimeout(() => {
-                input.focus();
-                input.select();
-            }, 100);
-
-            // LOGICA ADAPTADA PARA ENVÍO EN TIEMPO REAL AL MAESTRO
-            document.getElementById('btn-confirmar-abono').onclick = async function() {
-                const montoFinalBs = parseLocalNumber(input.value);
-                if (isNaN(montoFinalBs) || montoFinalBs <= 0) {
-                    alert("Debe ingresar un monto válido mayor a cero.");
-                    return;
-                }
-
-                const btn = this;
-                btn.disabled = true;
-                btn.innerText = "PROCESANDO...";
-
-                const indexSel = parseInt(select.value);
-                const facSel = facturasPendientes[indexSel];
-
-                try {
-                    const responseAbono = await window.nexusAPI.registrarAbonoMaestro({
-                        cliente_id: rif,
-                        factura_nro: facSel ? facSel.factura_nro : null,
-                        monto_bs: montoFinalBs,
-                        company_id: userCompanyId || null,
-                        tasa: tasa
-                    });
-
-                    if (responseAbono && responseAbono.exito) {
-                        document.getElementById('modal-prompt-pago').remove();
-                        await cargarDatosCuentasCobrar(); // Recarga la tabla de atrás primero
-                        if (window.nexusAPI.sincronizarCuentasCobrar) {
-                            window.nexusAPI.sincronizarCuentasCobrar(userCompanyId).catch(() => {});
-                        }
-                    } else {
-                        alert("Error del Maestro: " + (responseAbono.mensaje || "Rechazado por el núcleo de base de datos."));
-                        btn.disabled = false;
-                        btn.innerText = "ACEPTAR";
-                    }
-                } catch (error) {
-                    console.error("Error procesando abono:", error);
-                    alert("Fallo crítico de conexión con el Servidor Maestro Central.");
-                    btn.disabled = false;
-                    btn.innerText = "ACEPTAR";
-                }
-            };
-
-        } catch (error) {
-            console.error("Error consultando deudas:", error);
-            document.getElementById(loadingId)?.remove();
-            alert("Error al conectar con la base de datos maestra.");
-        }
-    }
-
-    function calcularConversionPago(tipo) {
-        var inputBs = document.getElementById('pago-monto-bs');
-        var inputUsd = document.getElementById('pago-monto-usd');
-
-        if (tipo === 'BS') {
-            var valBs = parseFloat(inputBs.value || 0);
-            inputUsd.value = valBs > 0 ? (valBs / tasaCambioActiva).toFixed(2) : '';
-        } else {
-            var valUsd = parseFloat(inputUsd.value || 0);
-            inputBs.value = valUsd > 0 ? (valUsd * tasaCambioActiva).toFixed(2) : '';
-        }
-    }
-
-    async function procesarAbonoDeuda() {
-        var montoBs = parseLocalNumber(document.getElementById('pago-monto-bs').value);
-        var rif = document.getElementById('pago-cliente-rif').innerText;
-        var btn = document.getElementById('btn-confirmar-pago');
-
-        if (montoBs <= 0 || isNaN(montoBs)) {
-            alert("Debe ingresar un monto válido de abono mayor a cero.");
-            return;
-        }
-
-        btn.disabled = true;
-        btn.innerText = "Procesando abono...";
-
-        try {
-            if (window.nexusAPI && window.nexusAPI.registrarAbonoMaestro) {
-                // Ejecución directa en tiempo real al Servidor Maestro Central
-                var response = await window.nexusAPI.registrarAbonoMaestro({
-                    cliente_id: rif,
-                    monto_bs: montoBs,
-                    company_id: userCompanyId || null,
-                    tasa: tasaCambioActiva
-                });
-
-                if (response && response.exito) {
-                    alert("¡Abono liquidado y aplicado con éxito en tiempo real!");
-                    cerrarModalPago();
-                    await cargarDatosCuentasCobrar(); // Recarga inmediata
-                    if (window.nexusAPI.sincronizarCuentasCobrar) {
-                        window.nexusAPI.sincronizarCuentasCobrar(userCompanyId).catch(() => {});
-                    }
-                } else {
-                    alert("Error del Maestro: " + (response.mensaje || "Rechazado por el núcleo de base de datos."));
-                }
-            } else {
-                alert("La API local de comunicación híbrida no está lista.");
-            }
-        } catch (error) {
-            console.error("Error procesando abono cascada:", error);
-            alert("Fallo crítico de conexión con el Servidor Maestro Central.");
-        } finally {
-            btn.disabled = false;
-            btn.innerText = "Confirmar Pago";
-        }
-    }
-
-    function cerrarModalPago() {
-        document.getElementById('modal-registrar-pago').classList.add('hidden');
-    }
-
-    async function abrirModalDetalles(comprobante, clienteNombre) {
-        var modal = document.getElementById('modal-detalles-venta');
-        var modalContent = document.getElementById('modal-detalles-content');
-        
-        modal.classList.remove('hidden');
-        modalContent.innerHTML = `<div class="flex flex-col items-center justify-center py-10"><div class="spinner inline-block mb-3 border-blue-500"></div><p class="text-gray-500 text-sm">Buscando comprobante maestro...</p></div>`;
-
-        var modalContainer = modal.querySelector('.rounded-2xl');
-        if (modalContainer) {
-            modalContainer.classList.remove('max-w-md');
-            modalContainer.classList.add('max-w-4xl');
-        }
-
-        try {
-            var venta = null;
-
-            if (window.nexusAPI && window.nexusAPI.obtenerFacturaLocal) {
-                var response = await window.nexusAPI.obtenerFacturaLocal(comprobante);
-
-                if (response && response.error) {
-                    throw new Error(response.mensaje || "Error al buscar en el servidor maestro.");
-                }
-
-                if (response && response.data && response.data.length > 0) {
-                    venta = response.data[0];
-
-                    var coincidenciaExacta = response.data.find(v => 
-                        v.numero_factura === comprobante && 
-                        (v.cliente_nombre || '').toLowerCase().includes((clienteNombre || '').toLowerCase())
-                    );
-
-                    if (coincidenciaExacta) {
-                        venta = coincidenciaExacta;
-                    }
-                }
-            } else {
-                throw new Error("La API del sistema (nexusAPI) no está disponible.");
-            }
-
-            if (!venta) {
-                modalContent.innerHTML = `<p class="text-red-500 text-center py-6">No se encontró información detallada para el comprobante <strong>${comprobante}</strong> en el Servidor Maestro.</p>`;
-                return;
-            }
-
-            renderizarContenidoVenta(venta);
-
-        } catch (error) {
-            console.error("Error cargando detalles:", error);
-            modalContent.innerHTML = `<p class="text-red-500 text-center py-6">Ocurrió un error al buscar los detalles de la factura.<br><span class="text-xs text-gray-500">${error.message}</span></p>`;
-        }
-    }
-
-    function renderizarContenidoVenta(venta) {
-        var modalContent = document.getElementById('modal-detalles-content');
-
-        var fecha = new Date();
-        if (venta.fecha_emision) fecha = new Date(venta.fecha_emision);
-        else if (venta.createdAt) fecha = new Date(venta.createdAt);
-        var fechaStr = fecha.toLocaleString('es-VE');
-
-        var totalBs = parseFloat(venta.monto_total || 0);
-        var tasaBcv = parseFloat(venta.tasa_bcv || 1);
-        var totalUsd = totalBs / (tasaBcv > 0 ? tasaBcv : 1);
-
-        var metodosPagoHtml = '';
-        try {
-            var pagos = JSON.parse(venta.metodo_pago || '{}');
-            var paymentLabels = {
-                'efectivo': 'Efectivo (Bs)', 'pagomovil': 'Pago Móvil', 'debito': 'Débito', 
-                'biopago': 'Biopago', 'dolar': 'Efectivo ($)', 'transferencia': 'Transferencia',
-                'deposito': 'Depósito', 'credito': 'A Crédito', 'tarjetacredito': 'T. Crédito'
-            };
-
-            for (var [key, amount] of Object.entries(pagos)) {
-                var val = parseFloat(amount);
-                if (!isNaN(val) && val > 0 && !key.startsWith('vuelto_')) {
-                    var isDollar = key === 'dolar';
-                    var symbol = isDollar ? '$' : 'Bs';
-                    var colorClass = isDollar ? 'text-green-600 font-bold' : 'text-gray-700';
-                    metodosPagoHtml += `
-                        <div class="flex justify-between items-center py-1 border-b border-gray-100 last:border-0">
-                            <span class="text-gray-500 text-sm">${paymentLabels[key] || key}</span>
-                            <span class="text-sm ${colorClass}">${symbol} ${val.toFixed(2)}</span>
-                        </div>
-                    `;
-                }
-            }
-        } catch (e) {
-            console.error("Error parseando métodos de pago", e);
-        }
-
-        if (!metodosPagoHtml) metodosPagoHtml = '<p class="text-sm text-gray-400 italic">Sin pagos registrados</p>';
-
-        var itemsArray = [];
-        try {
-            var datosJson = JSON.parse(venta.datos_json || '{}');
-            itemsArray = datosJson.productos || [];
-        } catch (e) {
-            console.error("Error parseando datos_json para extraer productos", e);
-        }
-
-        var productosHtml = '';
-        if (itemsArray.length > 0) {
-            itemsArray.forEach(item => {
-                var nombreItem = item.nombre || item.name || 'Producto N/A';
-                var cantItem = item.cantidad || item.quantity || 0;
-                var precioItem = item.precio || item.price || 0;
-                var subtotalItem = item.subtotal || (cantItem * precioItem);
-                
-                productosHtml += `
-                    <div class="inline-block w-full mb-2 p-2 bg-gray-50 border border-gray-100 rounded-lg break-inside-avoid shadow-sm">
-                        <div class="font-medium text-gray-800 text-xs truncate" title="${nombreItem}">${nombreItem}</div>
-                        <div class="flex justify-between text-[11px] text-gray-500 mt-0.5">
-                            <span>Cant: ${cantItem} ${item.unit || 'UN'} x Bs ${parseFloat(precioItem).toFixed(2)}</span>
-                            <span class="font-semibold text-gray-700">Bs ${parseFloat(subtotalItem).toFixed(2)}</span>
-                        </div>
-                    </div>
-                `;
-            });
-        } else {
-            productosHtml = '<p class="text-xs text-gray-400 italic py-3 text-center col-span-full">No hay detalles de productos disponibles.</p>';
-        }
-
-        modalContent.innerHTML = `
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                <div class="flex flex-col gap-4">
-                    <div class="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                        <div>
-                            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">N° Factura</p>
-                            <p class="text-sm font-bold text-blue-600">${venta.numero_factura || 'N/A'}</p>
-                        </div>
-                        <div>
-                            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">Fecha de Emisión</p>
-                            <p class="text-sm font-medium text-gray-800">${fechaStr}</p>
-                        </div>
-                        <div class="col-span-2 pt-2 border-t border-gray-200">
-                            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">Cliente</p>
-                            <p class="text-sm font-semibold text-gray-800">${venta.cliente_nombre || 'Desconocido'} <span class="font-normal text-gray-500 ml-1">(${venta.cliente_rif || 'S/ID'})</span></p>
-                        </div>
-                    </div>
-
+    function renderInstrumentos() {
+        const ants = ESTADO.cartera.anticipos || [];
+        $('tabla-cxc-anticipos-body').innerHTML = ants.length === 0
+            ? `<tr><td colspan="4" class="p-4 text-center text-gray-400">No hay anticipos ni saldos a favor activos.</td></tr>`
+            : ants.map(a => `
+                <tr>
+                    <td class="px-3 py-2">
+                        <div class="font-semibold text-gray-800">${esc(a.tercero_nombre || a.tercero_rif)}</div>
+                        <div class="text-[11px] text-gray-400">${esc(a.fecha)} · ${esc(a.tipo_registro)}</div>
+                    </td>
+                    <td class="px-3 py-2"><span class="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold">${esc(a.modalidad_contrato)}</span></td>
+                    <td class="px-3 py-2 text-right font-mono font-bold text-emerald-700">${fmtUsd(a.saldo_disponible_usd)}<div class="text-[10px] text-gray-400">${fmtBs(a.saldo_disponible_bs)}</div></td>
+                    <td class="px-3 py-2 text-center"><span class="px-2 py-0.5 rounded bg-gray-100 text-gray-700 font-semibold">${esc(a.estado)}</span></td>
+                </tr>
+            `).join('');
+
+        const casheas = (ESTADO.cartera.cuentas || []).filter(r => String(r.tipo_documento || '').toUpperCase().includes('CASHEA'));
+        $('lista-cashea-resumen').innerHTML = casheas.length === 0
+            ? `<div class="p-4 text-center text-gray-400">No hay liquidaciones Cashea registradas.</div>`
+            : casheas.map(c => `
+                <div class="p-3 rounded-lg border border-yellow-200 bg-yellow-50/40 flex justify-between items-center">
                     <div>
-                        <h4 class="text-xs font-bold text-gray-800 uppercase tracking-wider mb-2 flex items-center">
-                            <i class="material-icons text-[16px] text-gray-400 mr-1">analytics</i> Desglose de Factura
-                        </h4>
-                        <div class="bg-white border border-gray-200 rounded-lg p-3">
-                            <div class="grid grid-cols-1 gap-1.5 text-sm">
-                                <div class="flex justify-between"><span class="text-gray-500">Monto Exento:</span> <span class="font-medium text-gray-700">Bs ${parseFloat(venta.monto_exento || 0).toFixed(2)}</span></div>
-                                <div class="flex justify-between"><span class="text-gray-500">Base Imponible:</span> <span class="font-medium text-gray-700">Bs ${parseFloat(venta.base_imponible || 0).toFixed(2)}</span></div>
-                                <div class="flex justify-between"><span class="text-gray-500">IVA (16%):</span> <span class="font-medium text-gray-700">Bs ${parseFloat(venta.monto_iva || 0).toFixed(2)}</span></div>
-                                <div class="flex justify-between"><span class="text-gray-500">IGTF (3%):</span> <span class="font-medium text-gray-700">Bs ${parseFloat(venta.monto_igtf || 0).toFixed(2)}</span></div>
-                            </div>
-                            
-                            <div class="mt-2.5 pt-2.5 border-t border-gray-200">
-                                <div class="flex justify-between items-center mb-0.5">
-                                    <span class="font-bold text-gray-800">Total Facturado (Bs):</span>
-                                    <span class="font-bold text-red-600 text-base">Bs ${totalBs.toFixed(2)}</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="font-bold text-gray-800">Equivalente (USD):</span>
-                                    <span class="font-bold text-green-600 text-base">$ ${totalUsd.toFixed(2)}</span>
-                                </div>
-                                <p class="text-right text-[10px] text-gray-400 mt-0.5">Tasa BCV Aplicada: Bs ${tasaBcv.toFixed(2)}</p>
-                            </div>
-                        </div>
+                        <div class="font-bold text-gray-800">${esc(c.factura_nro)} · ${esc(c.cliente_nombre)}</div>
+                        <div class="text-[11px] text-gray-500">Vence: ${esc(c.fecha_vencimiento || c.fecha)} · Estado: ${esc(c.estado)}</div>
                     </div>
-
-                    <div>
-                        <h4 class="text-xs font-bold text-gray-800 uppercase tracking-wider mb-2 flex items-center">
-                            <i class="material-icons text-[16px] text-gray-400 mr-1">account_balance_wallet</i> Pagos Realizados
-                        </h4>
-                        <div class="bg-white border border-gray-200 rounded-lg px-3 py-1">
-                            ${metodosPagoHtml}
-                        </div>
-                    </div>
+                    <div class="text-right font-mono font-bold text-gray-900">${fmtUsd(c.saldo_pendiente_usd ?? c.monto_usd)}</div>
                 </div>
+            `).join('');
 
-                <div class="flex flex-col h-full">
-                    <h4 class="text-xs font-bold text-gray-800 uppercase tracking-wider mb-2 flex items-center">
-                        <i class="material-icons text-[16px] text-gray-400 mr-1">inventory_2</i> Productos Comprados (${itemsArray.length})
-                    </h4>
-                    <div class="bg-white border border-gray-200 rounded-xl p-3 h-full max-h-[420px] overflow-y-auto columns-1 sm:columns-2 gap-3 block">
-                        ${productosHtml}
-                    </div>
+        const giros = ESTADO.cartera.giros || [];
+        $('tabla-cxc-giros-body').innerHTML = giros.length === 0
+            ? `<tr><td colspan="6" class="p-4 text-center text-gray-400">Sin giros ni cheques registrados.</td></tr>`
+            : giros.map(g => `
+                <tr>
+                    <td class="px-3 py-2"><span class="font-bold">${esc(g.tipo_instrumento)} #${esc(g.numero_instrumento)}</span><div class="text-[11px] text-gray-400">${esc(g.banco_emisor)}</div></td>
+                    <td class="px-3 py-2">${esc(g.cliente_nombre || g.cliente_rif)}<div class="text-[11px] text-gray-400">Fac: ${esc(g.factura_nro || '—')}</div></td>
+                    <td class="px-3 py-2">${esc(g.fecha_vencimiento)}</td>
+                    <td class="px-3 py-2 text-right font-mono font-bold">${fmtUsd(g.monto_usd)}</td>
+                    <td class="px-3 py-2 text-center"><span class="px-2 py-0.5 rounded font-bold ${g.estado === 'DEVUELTO' ? 'bg-red-100 text-red-700' : (g.estado === 'COBRADO' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800')}">${esc(g.estado)}</span></td>
+                    <td class="px-3 py-2 text-right space-x-1">
+                        ${g.estado === 'EN_CARTERA' ? `<button type="button" onclick="window.cxcAccionGiro('${esc(g.id)}','COBRAR')" class="px-2 py-1 bg-emerald-600 text-white rounded text-[11px] font-bold">Cobrar</button><button type="button" onclick="window.cxcAccionGiro('${esc(g.id)}','DEVUELTO')" class="px-2 py-1 bg-red-600 text-white rounded text-[11px] font-bold">Devuelto</button>` : '—'}
+                    </td>
+                </tr>
+            `).join('');
+    }
+
+    function renderFiscalCierres() {
+        const cierres = ESTADO.cartera.cierres_cambiarios || [];
+        $('tabla-cxc-cierres-body').innerHTML = cierres.length === 0
+            ? `<tr><td colspan="7" class="p-4 text-center text-gray-400">Aún no se han ejecutado cierres cambiarios mensuales.</td></tr>`
+            : cierres.map(ci => `
+                <tr>
+                    <td class="px-3 py-2 font-mono font-bold">${esc(ci.periodo_aaaamm)} <span class="text-gray-400 font-normal">(${esc(ci.fecha_cierre)})</span></td>
+                    <td class="px-3 py-2 text-right font-mono">${Number(ci.tasa_cierre_bcv || 0).toFixed(4)}</td>
+                    <td class="px-3 py-2 text-right font-mono">${fmtUsd(ci.saldo_abierto_usd)}</td>
+                    <td class="px-3 py-2 text-right font-mono font-bold ${Number(ci.diferencial_no_realizado_bs) >= 0 ? 'text-indigo-700' : 'text-red-600'}">${fmtBs(ci.diferencial_no_realizado_bs)}</td>
+                    <td class="px-3 py-2 text-right font-mono">${fmtBs(ci.diferencial_realizado_mes_bs)}</td>
+                    <td class="px-3 py-2 text-center"><span class="px-2 py-0.5 rounded font-bold ${ci.estado === 'REVERTIDO' ? 'bg-gray-200 text-gray-700' : 'bg-indigo-100 text-indigo-800'}">${esc(ci.estado)}</span></td>
+                    <td class="px-3 py-2 text-right">
+                        ${ci.estado === 'ACTIVO' ? `<button type="button" onclick="window.cxcRevertirCierre('${esc(ci.id)}')" class="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded font-bold">Revertir Día 1</button>` : esc(ci.fecha_reverso || 'Revertido')}
+                    </td>
+                </tr>
+            `).join('');
+
+        const nts = ESTADO.cartera.notas_ajuste || [];
+        $('tabla-cxc-nd-body').innerHTML = nts.length === 0
+            ? `<tr><td colspan="6" class="p-4 text-center text-gray-400">Sin variaciones de diferencial cambiario registradas.</td></tr>`
+            : nts.map(n => `
+                <tr>
+                    <td class="px-3 py-2">${esc(n.fecha_operacion)}</td>
+                    <td class="px-3 py-2"><div class="font-bold">${esc(n.documento_origen_nro)}</div><div class="text-[11px] text-gray-400">${esc(n.tercero_nombre)}</div></td>
+                    <td class="px-3 py-2"><span class="px-2 py-0.5 rounded bg-indigo-50 text-indigo-800 font-bold">${esc(n.tipo_ajuste)}</span> ${esc(n.numero_nd_nc || '')}</td>
+                    <td class="px-3 py-2 text-right font-mono">${Number(n.tasa_original || 0).toFixed(2)} → ${Number(n.tasa_liquidacion || 0).toFixed(2)}</td>
+                    <td class="px-3 py-2 text-right font-mono font-bold">${fmtBs(n.variacion_bruta_bs)}</td>
+                    <td class="px-3 py-2 text-right font-mono">${fmtBs(n.base_imponible_nd_bs)} / <span class="text-indigo-700">${fmtBs(n.iva_nd_bs)}</span></td>
+                </tr>
+            `).join('');
+    }
+
+    function renderTesoreria() {
+        const cuentas = ESTADO.tesoreria.cuentas || [];
+        $('grid-cxc-cuentas-tesoreria').innerHTML = cuentas.map(ct => `
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold text-gray-800">${esc(ct.nombre)}</span>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold ${ct.moneda === 'USD' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'}">${esc(ct.moneda)}</span>
                 </div>
+                <div class="mt-2 text-xl font-black font-mono text-gray-900">${ct.moneda === 'USD' ? fmtUsd(ct.saldo_actual) : fmtBs(ct.saldo_actual)}</div>
+                <div class="text-[11px] text-gray-400 mt-1">${esc(ct.tipo_cuenta)} ${ct.numero_cuenta ? '· ••••' + esc(String(ct.numero_cuenta).slice(-4)) : ''}</div>
             </div>
+        `).join('');
+
+        const movs = ESTADO.tesoreria.movimientos || [];
+        $('tabla-cxc-tesoreria-movs').innerHTML = movs.length === 0
+            ? `<tr><td colspan="5" class="p-4 text-center text-gray-400">Sin movimientos registrados en tesorería.</td></tr>`
+            : movs.map(m => `
+                <tr>
+                    <td class="px-3 py-2">${esc(m.fecha)}</td>
+                    <td class="px-3 py-2 font-semibold">${esc(m.cuenta_nombre || m.cuenta_id)}</td>
+                    <td class="px-3 py-2"><span class="font-bold ${m.tipo === 'INGRESO' ? 'text-emerald-700' : 'text-red-700'}">${esc(m.tipo)}</span> · ${esc(m.concepto)}</td>
+                    <td class="px-3 py-2 text-right font-mono font-bold">${m.moneda === 'USD' ? fmtUsd(m.monto) : fmtBs(m.monto)}</td>
+                    <td class="px-3 py-2 text-center">
+                        <button type="button" onclick="window.cxcToggleConciliar('${esc(m.id)}',${m.conciliado ? 0 : 1})"
+                            class="px-2 py-0.5 rounded text-[11px] font-bold ${m.conciliado ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'}">
+                            ${m.conciliado ? 'Conciliado' : 'Pendiente'}
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+        const sel = $('abono-cxc-cuenta-tesoreria');
+        if (sel) {
+            sel.innerHTML = `<option value="">-- Automático según moneda --</option>` + cuentas.map(ct => `<option value="${esc(ct.id)}">${esc(ct.nombre)} (${esc(ct.moneda)})</option>`).join('');
+        }
+    }
+
+    function actualizarPreviewAbono() {
+        const saldoPend = Number($('abono-cxc-saldo-pendiente').value || 0);
+        const tasaOrig = Number($('abono-cxc-tasa-orig').value || 1) || 1;
+        const tasaCobro = Math.max(0.01, Number($('abono-cxc-tasa').value || ESTADO.tasaBcv || 1));
+        const retIvaBs = Math.max(0, Number($('abono-cxc-ret-iva').value || 0));
+        const retIslrBs = Math.max(0, Number($('abono-cxc-ret-islr').value || 0));
+        const prontoUsd = Math.max(0, Number($('abono-cxc-pronto-pago').value || 0));
+        const favorUsd = Math.max(0, Number($('abono-cxc-usar-favor').value || 0));
+        const montoBs = Math.max(0, Number($('abono-cxc-monto-bs').value || 0));
+        const montoUsd = Math.max(0, Number($('abono-cxc-monto-usd').value || 0));
+        const aplicaIgtf = $('abono-cxc-aplicar-igtf').checked;
+        const divIncl = $('abono-cxc-divisa-incluye-igtf').checked;
+
+        let netDivUsd = montoUsd;
+        let igtfUsd = 0;
+        if (aplicaIgtf && montoUsd > 0) {
+            if (divIncl) {
+                netDivUsd = montoUsd / 1.03;
+                igtfUsd = montoUsd - netDivUsd;
+            } else {
+                igtfUsd = montoUsd * 0.03;
+            }
+        }
+        const totExtUsd = ((retIvaBs + retIslrBs) / tasaCobro) + prontoUsd + favorUsd + (montoBs / tasaCobro) + netDivUsd;
+        const aplicado = Math.min(saldoPend, totExtUsd);
+        const sobrante = Math.max(0, totExtUsd - saldoPend);
+        const diffBs = aplicado * (tasaCobro - tasaOrig);
+
+        $('abono-cxc-preview-box').innerHTML = `
+            <div>Base deuda: $${saldoPend.toFixed(2)} · Ret/Desc/Favor: $${(((retIvaBs + retIslrBs) / tasaCobro) + prontoUsd + favorUsd).toFixed(2)}</div>
+            <div>Efectivo Bs→USD: $${(montoBs / tasaCobro).toFixed(2)} · Divisas Netas: $${netDivUsd.toFixed(2)} · <span class="text-amber-300">IGTF 3%: $${igtfUsd.toFixed(2)} (${fmtBs(igtfUsd * tasaCobro)})</span></div>
+            <div>Total aplicado a factura: <span class="text-emerald-300 font-bold">$${aplicado.toFixed(2)}</span> · Nuevo saldo factura: $${Math.max(0, saldoPend - aplicado).toFixed(2)}</div>
+            <div>Diferencial cambiario: <span class="${diffBs >= 0 ? 'text-sky-300' : 'text-red-300'}">${fmtBs(diffBs)}</span>${sobrante > 0.01 ? ` · <span class="text-emerald-300">Sobrepago a Saldo a Favor: $${sobrante.toFixed(2)}</span>` : ''}</div>
         `;
     }
 
-    function cerrarModalDetalles() {
-        var modal = document.getElementById('modal-detalles-venta');
-        modal.classList.add('hidden');
+    window.cxcAbrirModalAbono = function (cuentaId) {
+        const fac = (ESTADO.cartera.cuentas || []).find(r => String(r.id) === String(cuentaId));
+        if (!fac) return;
+        const saldoPend = Number(fac.saldo_pendiente_usd ?? Math.max(0, Number(fac.monto_usd || 0) - Number(fac.monto_pagado || 0)));
+        const rifClean = String(fac.cliente_id || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const cli = ESTADO.clientes.find(c => String(c.rif || '').toUpperCase().replace(/[^A-Z0-9]/g, '') === rifClean);
+        const favorDisp = Number((cli && cli.saldo_a_favor_usd) || 0);
+        const tasaOrig = Number(fac.tasa_bcv || ESTADO.tasaBcv || 1) || 1;
 
-        var modalContainer = modal.querySelector('.rounded-2xl');
-        if (modalContainer) {
-            modalContainer.classList.remove('max-w-4xl');
-            modalContainer.classList.add('max-w-md');
+        $('abono-cxc-id').value = fac.id;
+        $('abono-cxc-factura').value = fac.factura_nro || '';
+        $('abono-cxc-cliente-rif').value = fac.cliente_id || '';
+        $('abono-cxc-cliente-nombre').value = fac.cliente_nombre || '';
+        $('abono-cxc-tasa-orig').value = tasaOrig;
+        $('abono-cxc-saldo-pendiente').value = saldoPend.toFixed(2);
+        $('abono-cxc-subtitulo').textContent = `Factura ${fac.factura_nro || fac.id} · ${fac.cliente_nombre}`;
+        $('abono-cxc-lbl-saldo').textContent = fmtUsd(saldoPend);
+        $('abono-cxc-lbl-tasas').textContent = `${tasaOrig.toFixed(2)} → ${ESTADO.tasaBcv.toFixed(2)}`;
+        $('abono-cxc-lbl-favor').textContent = fmtUsd(favorDisp);
+
+        $('abono-cxc-fecha').value = hoyISO();
+        $('abono-cxc-tasa').value = ESTADO.tasaBcv.toFixed(4);
+        $('abono-cxc-ret-iva').value = '0';
+        $('abono-cxc-ret-islr').value = '0';
+        $('abono-cxc-pronto-pago').value = '0';
+        $('abono-cxc-usar-favor').value = '0';
+        $('abono-cxc-usar-favor').max = String(favorDisp);
+        $('abono-cxc-monto-bs').value = '0';
+        $('abono-cxc-monto-usd').value = saldoPend.toFixed(2);
+        $('abono-cxc-comp-ret').value = '';
+        $('abono-cxc-referencia').value = '';
+        $('abono-cxc-nota').value = '';
+        $('abono-cxc-aplicar-igtf').checked = Boolean(ESTADO.cartera.parametros?.is_sujeto_especial);
+        $('abono-cxc-divisa-incluye-igtf').checked = false;
+
+        actualizarPreviewAbono();
+        $('modal-abono-cxc').classList.remove('hidden');
+    };
+
+    window.cerrarModalAbonoCxc = () => $('modal-abono-cxc').classList.add('hidden');
+
+    $('form-abono-cxc').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+            const payload = {
+                company_id: ESTADO.companyId,
+                cuenta_id: $('abono-cxc-id').value,
+                factura_nro: $('abono-cxc-factura').value,
+                cliente_id: $('abono-cxc-cliente-rif').value,
+                cliente_nombre: $('abono-cxc-cliente-nombre').value,
+                fecha: $('abono-cxc-fecha').value,
+                tasa_bcv: Number($('abono-cxc-tasa').value || ESTADO.tasaBcv),
+                metodo_pago: $('abono-cxc-metodo').value,
+                retencion_iva_bs: Number($('abono-cxc-ret-iva').value || 0),
+                comprobante_retencion_iva: $('abono-cxc-comp-ret').value.trim(),
+                retencion_islr_bs: Number($('abono-cxc-ret-islr').value || 0),
+                descuento_pronto_pago_usd: Number($('abono-cxc-pronto-pago').value || 0),
+                usar_saldo_a_favor_usd: Number($('abono-cxc-usar-favor').value || 0),
+                monto_bs: Number($('abono-cxc-monto-bs').value || 0),
+                monto_divisas_usd: Number($('abono-cxc-monto-usd').value || 0),
+                aplicar_igtf: $('abono-cxc-aplicar-igtf').checked,
+                divisa_incluye_igtf: $('abono-cxc-divisa-incluye-igtf').checked,
+                cuenta_tesoreria_id: $('abono-cxc-cuenta-tesoreria').value || null,
+                referencia: $('abono-cxc-referencia').value.trim(),
+                nota: $('abono-cxc-nota').value.trim(),
+                usuario: ESTADO.usuario
+            };
+            const res = await window.nexusAPI.registrarAbonoCxcAvanzado(payload);
+            if (!res || !res.exito) throw new Error(res?.error || 'No se pudo procesar el abono');
+            toast(`✅ Cobro registrado (${fmtUsd(res.resumen?.abonado_neto_usd || 0)} aplicado)`);
+            window.cerrarModalAbonoCxc();
+            await cargarDatosCuentasCobrar();
+        } catch (err) {
+            toast('Error al cobrar: ' + err.message, 'error');
         }
+    });
+
+    document.querySelectorAll('.cxc-calc-input, #abono-cxc-tasa').forEach(el => {
+        el.addEventListener('input', actualizarPreviewAbono);
+        el.addEventListener('change', actualizarPreviewAbono);
+    });
+
+    window.cxcVerDetallesFactura = async function (facturaNro) {
+        const modal = $('modal-detalles-venta');
+        const body = $('cuerpo-modal-detalles');
+        body.innerHTML = `<div class="p-6 text-center text-gray-400">Cargando detalles...</div>`;
+        modal.classList.remove('hidden');
+        try {
+            const respFac = await window.nexusAPI.obtenerFacturaLocal(facturaNro);
+            const fac = (respFac && Array.isArray(respFac.data)) ? (respFac.data[0] || null) : respFac;
+            const abonos = (ESTADO.cartera.abonos || []).filter(a => String(a.factura_nro) === String(facturaNro));
+            let items = [];
+            try {
+                let parsed = null;
+                if (fac?.datos_json) {
+                    parsed = typeof fac.datos_json === 'string' ? JSON.parse(fac.datos_json) : fac.datos_json;
+                }
+                const rawItems = parsed?.productos || parsed?.items || fac?.items || fac?.productos || [];
+                items = typeof rawItems === 'string' ? JSON.parse(rawItems) : (Array.isArray(rawItems) ? rawItems : []);
+            } catch (_) {}
+            const tasaFac = Number(fac?.tasa_bcv || ESTADO.tasaBcv) || 1;
+            const totalUsdFac = Number(fac?.total_usd || (fac?.monto_total ? (Number(fac.monto_total) / tasaFac) : 0)) || 0;
+            body.innerHTML = `
+                <div class="text-xs space-y-3">
+                    <div class="p-3 bg-gray-50 rounded-xl border border-gray-200 flex justify-between">
+                        <div><strong>Factura:</strong> ${esc(facturaNro)}<br><strong>Cliente:</strong> ${esc(fac?.cliente_nombre || 'N/A')}</div>
+                        <div class="text-right"><strong>Total:</strong> ${fmtUsd(totalUsdFac)}<br><strong>Tasa:</strong> ${tasaFac.toFixed(2)}</div>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-gray-700 uppercase mb-1">Abonos Aplicados (${abonos.length})</h4>
+                        ${abonos.length ? abonos.map(a => `<div class="flex justify-between py-1 border-b border-gray-100"><span>${esc(String(a.fecha).slice(0,10))} · ${esc(a.metodo_pago)}</span><span class="font-mono font-bold">${fmtUsd(a.monto_usd)}</span></div>`).join('') : '<p class="text-gray-400">Sin abonos aún</p>'}
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-gray-700 uppercase mb-1">Productos (${items.length})</h4>
+                        ${items.length ? items.map(it => `<div class="flex justify-between py-1 border-b border-gray-100"><span>${esc(it.nombre || it.descripcion)} x${it.cantidad || 1}</span><span class="font-mono">${fmtUsd(it.subtotal || it.precio || 0)}</span></div>`).join('') : '<p class="text-gray-400">Detalle de productos disponible solo en caja emisora o ya archivado.</p>'}
+                    </div>
+                </div>
+            `;
+        } catch (err) {
+            body.innerHTML = `<p class="text-red-600 text-xs">Error: ${esc(err.message)}</p>`;
+        }
+    };
+    window.cerrarModalDetalles = () => $('modal-detalles-venta').classList.add('hidden');
+
+    window.cxcExportarEstadoCuentaPdf = async function (rif, nombre) {
+        try {
+            const res = await window.nexusAPI.generarPdfDocumentoCxcCxp({
+                company_id: ESTADO.companyId,
+                tipo: 'ESTADO_CUENTA',
+                modulo: 'CXC',
+                tercero_rif: rif,
+                tercero_nombre: nombre,
+                fecha_corte: hoyISO()
+            });
+            if (res && !res.canceled) {
+                if (!res.exito) throw new Error(res.error);
+                toast('📄 Estado de Cuenta PDF generado');
+            }
+        } catch (err) {
+            toast('PDF Estado de Cuenta: ' + err.message, 'error');
+        }
+    };
+
+    window.cxcEnviarWhatsApp = function (rif, nombre, facturaNro, saldoUsd) {
+        const rifClean = String(rif || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const cli = ESTADO.clientes.find(c => String(c.rif || '').toUpperCase().replace(/[^A-Z0-9]/g, '') === rifClean);
+        let tel = String(cli?.telefono || '').replace(/\D/g, '');
+        if (tel.startsWith('0')) tel = '58' + tel.slice(1);
+        const bs = (Number(saldoUsd || 0) * (ESTADO.tasaBcv || 1)).toFixed(2);
+        const txt = encodeURIComponent(`Estimado(a) ${nombre}, le recordamos su saldo pendiente de factura ${facturaNro}: $${Number(saldoUsd).toFixed(2)} (Bs. ${bs} a tasa BCV ${ESTADO.tasaBcv.toFixed(2)}). Gracias por su pago.`);
+        window.open(`https://wa.me/${tel}?text=${txt}`, '_blank');
+    };
+
+    // Aux Modals (Anticipo, Cashea, Giro, Tesoreria)
+    function abrirAuxModal(titulo, html, onSubmit) {
+        $('modal-cxc-aux-titulo').textContent = titulo;
+        $('modal-cxc-aux-body').innerHTML = html;
+        $('modal-cxc-aux').classList.remove('hidden');
+        const form = $('modal-cxc-aux-body').querySelector('form');
+        if (form) form.onsubmit = onSubmit;
     }
 
-    initCuentasCobrar();
+    window.cxcAbrirModalAnticipo = () => {
+        const opts = ESTADO.clientes.map(c => `<option value="${esc(c.rif)}">${esc(c.nombre)} (${esc(c.rif)})</option>`).join('');
+        abrirAuxModal('Registrar Anticipo Bimonetario de Cliente', `
+            <form class="space-y-3">
+                <div><label class="font-bold block mb-1">Cliente</label><select id="aux-ant-rif" class="w-full border border-gray-300 rounded-lg p-2 bg-white" required>${opts}</select></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="font-bold block mb-1">Modalidad Contrato</label><select id="aux-ant-mod" class="w-full border border-gray-300 rounded-lg p-2 bg-white"><option value="INDEXADO_USD">Indexado USD (Mantiene Divisa)</option><option value="NOMINAL_BS">Nominal Bs (Congela Bolívares)</option></select></div>
+                    <div><label class="font-bold block mb-1">Tasa BCV</label><input id="aux-ant-tasa" type="number" step="0.0001" value="${ESTADO.tasaBcv.toFixed(4)}" class="w-full border border-gray-300 rounded-lg p-2 font-mono" required></div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="font-bold block mb-1">Monto USD (si aplica)</label><input id="aux-ant-usd" type="number" step="0.01" value="0" class="w-full border border-gray-300 rounded-lg p-2 font-mono"></div>
+                    <div><label class="font-bold block mb-1">Monto Bs (si aplica)</label><input id="aux-ant-bs" type="number" step="0.01" value="0" class="w-full border border-gray-300 rounded-lg p-2 font-mono"></div>
+                </div>
+                <div><label class="font-bold block mb-1">Referencia / Nota</label><input id="aux-ant-ref" type="text" class="w-full border border-gray-300 rounded-lg p-2" placeholder="Transferencia / Pago Móvil / Efectivo"></div>
+                <div class="flex justify-end gap-2 pt-2"><button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold">Guardar Anticipo</button></div>
+            </form>
+        `, async (e) => {
+            e.preventDefault();
+            try {
+                const sel = $('aux-ant-rif');
+                const res = await window.nexusAPI.registrarAnticipoSaldoFavor({
+                    company_id: ESTADO.companyId, modulo: 'CXC', tipo_registro: 'ANTICIPO',
+                    tercero_rif: sel.value, tercero_nombre: sel.options[sel.selectedIndex]?.text || sel.value,
+                    modalidad_contrato: $('aux-ant-mod').value, tasa_bcv: Number($('aux-ant-tasa').value),
+                    monto_usd: Number($('aux-ant-usd').value || 0), monto_bs: Number($('aux-ant-bs').value || 0),
+                    referencia: $('aux-ant-ref').value.trim(), fecha: hoyISO()
+                });
+                if (!res?.exito) throw new Error(res?.error || 'Error guardando anticipo');
+                toast('✅ Anticipo registrado');
+                $('modal-cxc-aux').classList.add('hidden');
+                await cargarDatosCuentasCobrar();
+            } catch (err) { toast(err.message, 'error'); }
+        });
+    };
+
+    window.cxcAbrirModalCashea = () => {
+        const opts = ESTADO.clientes.map(c => `<option value="${esc(c.rif)}">${esc(c.nombre)} (${esc(c.rif)})</option>`).join('');
+        abrirAuxModal('Registrar Venta Cashea BNPL', `
+            <form class="space-y-3">
+                <div><label class="font-bold block mb-1">Cliente</label><select id="aux-cas-rif" class="w-full border border-gray-300 rounded-lg p-2 bg-white" required>${opts}</select></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="font-bold block mb-1">N° Factura</label><input id="aux-cas-fac" type="text" required class="w-full border border-gray-300 rounded-lg p-2 font-mono" placeholder="FAC-0001"></div>
+                    <div><label class="font-bold block mb-1">Total Venta ($)</label><input id="aux-cas-tot" type="number" step="0.01" required class="w-full border border-gray-300 rounded-lg p-2 font-mono"></div>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <div><label class="font-bold block mb-1">Inicial Pagada ($)</label><input id="aux-cas-ini" type="number" step="0.01" required class="w-full border border-gray-300 rounded-lg p-2 font-mono"></div>
+                    <div><label class="font-bold block mb-1">Comisión %</label><input id="aux-cas-com" type="number" step="0.01" value="${ESTADO.cartera.parametros?.comision_cashea_default_pct ?? 4.5}" class="w-full border border-gray-300 rounded-lg p-2 font-mono"></div>
+                    <div><label class="font-bold block mb-1">Liquidación (días)</label><input id="aux-cas-dias" type="number" value="14" class="w-full border border-gray-300 rounded-lg p-2 font-mono"></div>
+                </div>
+                <div class="flex justify-end pt-2"><button type="submit" class="px-4 py-2 bg-yellow-500 text-gray-900 rounded-lg font-bold">Registrar Liquidación Cashea</button></div>
+            </form>
+        `, async (e) => {
+            e.preventDefault();
+            try {
+                const sel = $('aux-cas-rif');
+                const res = await window.nexusAPI.registrarCasheaVentaCxc({
+                    company_id: ESTADO.companyId, cliente_id: sel.value,
+                    cliente_nombre: sel.options[sel.selectedIndex]?.text || sel.value,
+                    factura_nro: $('aux-cas-fac').value.trim(),
+                    monto_total_usd: Number($('aux-cas-tot').value),
+                    monto_inicial_usd: Number($('aux-cas-ini').value),
+                    comision_pct: Number($('aux-cas-com').value),
+                    dias_liquidacion: Number($('aux-cas-dias').value),
+                    tasa_bcv: ESTADO.tasaBcv, fecha: hoyISO()
+                });
+                if (!res?.exito) throw new Error(res?.error || 'Error registrando Cashea');
+                toast('✅ Venta Cashea registrada en CxC');
+                $('modal-cxc-aux').classList.add('hidden');
+                await cargarDatosCuentasCobrar();
+            } catch (err) { toast(err.message, 'error'); }
+        });
+    };
+
+    window.cxcAbrirModalGiro = () => {
+        const opts = ESTADO.clientes.map(c => `<option value="${esc(c.rif)}">${esc(c.nombre)} (${esc(c.rif)})</option>`).join('');
+        abrirAuxModal('Registrar Giro o Cheque Postdatado', `
+            <form class="space-y-3">
+                <div><label class="font-bold block mb-1">Cliente</label><select id="aux-gir-rif" class="w-full border border-gray-300 rounded-lg p-2 bg-white" required>${opts}</select></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="font-bold block mb-1">Tipo</label><select id="aux-gir-tipo" class="w-full border border-gray-300 rounded-lg p-2 bg-white"><option value="CHEQUE">Cheque</option><option value="GIRO">Giro / Letra</option></select></div>
+                    <div><label class="font-bold block mb-1">N° Instrumento</label><input id="aux-gir-num" type="text" required class="w-full border border-gray-300 rounded-lg p-2 font-mono"></div>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <div><label class="font-bold block mb-1">Banco Emisor</label><input id="aux-gir-banco" type="text" class="w-full border border-gray-300 rounded-lg p-2"></div>
+                    <div><label class="font-bold block mb-1">Monto ($)</label><input id="aux-gir-usd" type="number" step="0.01" required class="w-full border border-gray-300 rounded-lg p-2 font-mono"></div>
+                    <div><label class="font-bold block mb-1">Vencimiento</label><input id="aux-gir-vence" type="date" value="${hoyISO()}" class="w-full border border-gray-300 rounded-lg p-2" required></div>
+                </div>
+                <div><label class="font-bold block mb-1">Factura Asociada (Opcional)</label><input id="aux-gir-fac" type="text" class="w-full border border-gray-300 rounded-lg p-2 font-mono"></div>
+                <div class="flex justify-end pt-2"><button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold">Registrar Instrumento</button></div>
+            </form>
+        `, async (e) => {
+            e.preventDefault();
+            try {
+                const sel = $('aux-gir-rif');
+                const res = await window.nexusAPI.registrarGiroChequeCxc({
+                    company_id: ESTADO.companyId, accion: 'CREAR',
+                    cliente_rif: sel.value, cliente_nombre: sel.options[sel.selectedIndex]?.text || sel.value,
+                    tipo_instrumento: $('aux-gir-tipo').value, numero_instrumento: $('aux-gir-num').value.trim(),
+                    banco_emisor: $('aux-gir-banco').value.trim(), monto_usd: Number($('aux-gir-usd').value),
+                    fecha_vencimiento: $('aux-gir-vence').value, factura_nro: $('aux-gir-fac').value.trim(),
+                    tasa_bcv: ESTADO.tasaBcv
+                });
+                if (!res?.exito) throw new Error(res?.error || 'Error creando giro');
+                toast('✅ Giro / Cheque en custodia');
+                $('modal-cxc-aux').classList.add('hidden');
+                await cargarDatosCuentasCobrar();
+            } catch (err) { toast(err.message, 'error'); }
+        });
+    };
+
+    window.cxcAccionGiro = async function (id, accion) {
+        try {
+            let comision = 0;
+            if (accion === 'DEVUELTO') {
+                const val = prompt('Indique comisión por devolución bancaria ($ USD):', '10');
+                if (val === null) return;
+                comision = Number(val || 0);
+            }
+            const res = await window.nexusAPI.registrarGiroChequeCxc({
+                company_id: ESTADO.companyId, accion, id, comision_devolucion_usd: comision, tasa_bcv: ESTADO.tasaBcv
+            });
+            if (!res?.exito) throw new Error(res?.error || 'Error procesando giro');
+            toast(accion === 'COBRAR' ? '✅ Giro cobrado' : '⚠️ Cheque devuelto revertido a cartera');
+            await cargarDatosCuentasCobrar();
+        } catch (err) { toast(err.message, 'error'); }
+    };
+
+    window.cxcEjecutarCierreMensual = async function () {
+        try {
+            const per = $('cxc-cierre-periodo').value.trim();
+            const tasa = Number($('cxc-cierre-tasa').value || ESTADO.tasaBcv);
+            const res = await window.nexusAPI.ejecutarCierreCambiarioMensual({
+                companyId: ESTADO.companyId, modulo: 'CXC', periodoAAAAMM: per, tasaCierreBcv: tasa, usuario: ESTADO.usuario
+            });
+            if (!res?.exito) throw new Error(res?.error || 'Error ejecutando cierre');
+            toast(`✅ Cierre NIC 21 (${per}) generado`);
+            await cargarDatosCuentasCobrar();
+        } catch (err) { toast(err.message, 'error'); }
+    };
+
+    window.cxcRevertirCierre = async function (cierreId) {
+        try {
+            const res = await window.nexusAPI.revertirCierreCambiarioDiaUno({ companyId: ESTADO.companyId, cierreId });
+            if (!res?.exito) throw new Error(res?.error || 'No se pudo revertir');
+            toast('✅ Asiento NIC 21 revertido al Día 1');
+            await cargarDatosCuentasCobrar();
+        } catch (err) { toast(err.message, 'error'); }
+    };
+
+    window.cxcAbrirModalCuentaTesoreria = () => {
+        abrirAuxModal('Crear Cuenta de Caja / Banco', `
+            <form class="space-y-3">
+                <div><label class="font-bold block mb-1">Nombre</label><input id="aux-cta-nom" type="text" required class="w-full border border-gray-300 rounded-lg p-2" placeholder="Ej. Banco Banesco Bs"></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="font-bold block mb-1">Moneda</label><select id="aux-cta-mon" class="w-full border border-gray-300 rounded-lg p-2 bg-white"><option value="BS">Bolívares (Bs)</option><option value="USD">Divisas (USD)</option></select></div>
+                    <div><label class="font-bold block mb-1">Tipo</label><select id="aux-cta-tip" class="w-full border border-gray-300 rounded-lg p-2 bg-white"><option value="BANCO_BS">Banco Nacional</option><option value="CAJA_BS">Caja Bs</option><option value="CAJA_USD">Caja Divisas</option><option value="ZELLE">Zelle / Digital</option></select></div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="font-bold block mb-1">N° Cuenta (20 díg. opc.)</label><input id="aux-cta-num" type="text" class="w-full border border-gray-300 rounded-lg p-2 font-mono"></div>
+                    <div><label class="font-bold block mb-1">Saldo Inicial</label><input id="aux-cta-sal" type="number" step="0.01" value="0" class="w-full border border-gray-300 rounded-lg p-2 font-mono"></div>
+                </div>
+                <div class="flex justify-end pt-2"><button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold">Crear Cuenta</button></div>
+            </form>
+        `, async (e) => {
+            e.preventDefault();
+            try {
+                const res = await window.nexusAPI.gestionarTesoreriaBimonetaria({
+                    company_id: ESTADO.companyId, accion: 'CREAR_CUENTA',
+                    nombre: $('aux-cta-nom').value.trim(), moneda: $('aux-cta-mon').value,
+                    tipo_cuenta: $('aux-cta-tip').value, numero_cuenta: $('aux-cta-num').value.trim(),
+                    saldo_inicial: Number($('aux-cta-sal').value || 0)
+                });
+                if (!res?.exito) throw new Error(res?.error || 'Error creando cuenta');
+                toast('✅ Cuenta de tesorería creada');
+                $('modal-cxc-aux').classList.add('hidden');
+                await cargarDatosCuentasCobrar();
+            } catch (err) { toast(err.message, 'error'); }
+        });
+    };
+
+    window.cxcAbrirModalMovTesoreria = () => {
+        const opts = (ESTADO.tesoreria.cuentas || []).map(c => `<option value="${esc(c.id)}" data-mon="${esc(c.moneda)}">${esc(c.nombre)} (${esc(c.moneda)})</option>`).join('');
+        abrirAuxModal('Registrar Ajuste Manual en Tesorería', `
+            <form class="space-y-3">
+                <div><label class="font-bold block mb-1">Cuenta</label><select id="aux-mov-cta" class="w-full border border-gray-300 rounded-lg p-2 bg-white">${opts}</select></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="font-bold block mb-1">Tipo</label><select id="aux-mov-tip" class="w-full border border-gray-300 rounded-lg p-2 bg-white"><option value="INGRESO">Ingreso</option><option value="EGRESO">Egreso</option></select></div>
+                    <div><label class="font-bold block mb-1">Monto</label><input id="aux-mov-mto" type="number" step="0.01" required class="w-full border border-gray-300 rounded-lg p-2 font-mono"></div>
+                </div>
+                <div><label class="font-bold block mb-1">Concepto</label><input id="aux-mov-con" type="text" required class="w-full border border-gray-300 rounded-lg p-2" placeholder="Depósito, reposición o ajuste..."></div>
+                <div class="flex justify-end pt-2"><button type="submit" class="px-4 py-2 bg-gray-800 text-white rounded-lg font-bold">Registrar Movimiento</button></div>
+            </form>
+        `, async (e) => {
+            e.preventDefault();
+            try {
+                const sel = $('aux-mov-cta');
+                const mon = sel.options[sel.selectedIndex]?.dataset?.mon || 'BS';
+                const res = await window.nexusAPI.gestionarTesoreriaBimonetaria({
+                    company_id: ESTADO.companyId, accion: 'MOVIMIENTO_MANUAL',
+                    cuenta_id: sel.value, moneda: mon, tipo: $('aux-mov-tip').value,
+                    monto: Number($('aux-mov-mto').value), concepto: $('aux-mov-con').value.trim(),
+                    tasa_bcv: ESTADO.tasaBcv, fecha: hoyISO(), usuario: ESTADO.usuario
+                });
+                if (!res?.exito) throw new Error(res?.error || 'Error registrando movimiento');
+                toast('✅ Movimiento de tesorería aplicado');
+                $('modal-cxc-aux').classList.add('hidden');
+                await cargarDatosCuentasCobrar();
+            } catch (err) { toast(err.message, 'error'); }
+        });
+    };
+
+    window.cxcToggleConciliar = async function (movId, val) {
+        try {
+            const res = await window.nexusAPI.gestionarTesoreriaBimonetaria({
+                company_id: ESTADO.companyId, accion: 'CONCILIAR', movimiento_id: movId, conciliado: val
+            });
+            if (!res?.exito) throw new Error(res?.error || 'Error conciliando');
+            await cargarDatosCuentasCobrar();
+        } catch (err) { toast(err.message, 'error'); }
+    };
+
+    // Wiring Tabs, Buckets & Buscadores
+    document.querySelectorAll('.cxc-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            ESTADO.tabActual = btn.dataset.cxcTab;
+            document.querySelectorAll('.cxc-tab-btn').forEach(b => {
+                b.className = b === btn
+                    ? 'cxc-tab-btn cxc-tab-active px-4 py-2 rounded-lg text-xs font-semibold transition'
+                    : 'cxc-tab-btn cxc-tab-inactive px-4 py-2 rounded-lg text-xs font-semibold transition';
+            });
+            document.querySelectorAll('.cxc-tab-panel').forEach(p => {
+                const match = p.id === `cxc-panel-${ESTADO.tabActual}`;
+                p.classList.toggle('hidden', !match);
+                p.classList.toggle('flex', match);
+            });
+        });
+    });
+
+    document.querySelectorAll('.cxc-bucket-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            ESTADO.bucketActual = btn.dataset.bucket;
+            document.querySelectorAll('.cxc-bucket-btn').forEach(b => {
+                b.className = b === btn
+                    ? 'cxc-bucket-btn cxc-bucket-active px-3 py-1.5 rounded-lg text-xs transition'
+                    : 'cxc-bucket-btn cxc-bucket-inactive px-3 py-1.5 rounded-lg text-xs transition';
+            });
+            renderCarteraTable();
+        });
+    });
+
+    $('buscador-cuentas')?.addEventListener('input', renderCarteraTable);
+    $('buscador-abonos-cxc')?.addEventListener('input', renderAbonosTable);
+
+    window.cargarDatosCuentasCobrar = cargarDatosCuentasCobrar;
+    window.initCuentasCobrar = cargarDatosCuentasCobrar;
+    cargarDatosCuentasCobrar();
+})();
 </script>

@@ -65,6 +65,89 @@
                     <input type="text" id="prov-address" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm placeholder-gray-400" placeholder="Dirección detallada del proveedor...">
                 </div>
 
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Correo Electrónico</label>
+                    <input type="email" id="prov-email" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm placeholder-gray-400" placeholder="pagos@proveedor.com">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Tipo Contribuyente</label>
+                    <select id="prov-tax-type" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm bg-white">
+                        <option value="ORDINARIO">Ordinario (IVA)</option>
+                        <option value="ESPECIAL">Contribuyente Especial</option>
+                        <option value="FORMAL">Contribuyente Formal / Exento</option>
+                        <option value="NO_DOMICILIADO">No Domiciliado</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">% Retención IVA</label>
+                    <select id="prov-ret-iva" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm bg-white">
+                        <option value="75">75% (Estándar RIF)</option>
+                        <option value="100">100% (Sin RIF / Especial)</option>
+                        <option value="0">0% (Exento / No Aplica)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Concepto ISLR Default (D. 1808)</label>
+                    <select id="prov-islr-code" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm bg-white">
+                        <option value="">Ninguno / Manual</option>
+                        <option value="001">001 - Honorarios Profesionales (PN 3% / PJ 5%)</option>
+                        <option value="053">053 - Contratistas / Obras y Servicios (PN 1% / PJ 2%)</option>
+                        <option value="011">011 - Fletes y Transporte Nacional (PN 1% / PJ 3%)</option>
+                        <option value="015">015 - Arrendamiento Inmuebles (PN 3% / PJ 5%)</option>
+                        <option value="016">016 - Arrendamiento Muebles/Equipos (PN 3% / PJ 5%)</option>
+                        <option value="022">022 - Publicidad y Mercadeo (PN 3% / PJ 5%)</option>
+                        <option value="026">026 - Comisiones Mercantiles (PN 1% / PJ 2%)</option>
+                        <option value="030">030 - Mantenimiento y Reparación (PN 1% / PJ 2%)</option>
+                        <option value="008">008 - Seguros y Reaseguros (PN 1% / PJ 3%)</option>
+                        <option value="055">055 - Tecnología y Consultoría (PN 3% / PJ 5%)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Días de Crédito Default</label>
+                    <input type="number" id="prov-credit-days" min="0" value="15" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Banco Receptor</label>
+                    <select id="prov-bank" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm bg-white">
+                        <option value="">-- Seleccionar --</option>
+                        <option value="BANESCO">Banesco</option>
+                        <option value="MERCANTIL">Mercantil</option>
+                        <option value="PROVINCIAL">BBVA Provincial</option>
+                        <option value="BDV">Banco de Venezuela</option>
+                        <option value="BNC">BNC</option>
+                        <option value="BANCARIBE">Bancaribe</option>
+                        <option value="EXTERIOR">Banco Exterior</option>
+                        <option value="OTRO">Otro Banco Nacional</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Cuenta Bancaria (20 dígitos)</label>
+                    <input type="text" id="prov-bank-account" maxlength="20" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm font-mono placeholder-gray-400" placeholder="01340000000000000000">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">RIF Titular Cuenta</label>
+                    <input type="text" id="prov-account-rif" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm uppercase placeholder-gray-400" placeholder="J-00000000-0">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Teléfono Pago Móvil</label>
+                    <input type="text" id="prov-pago-movil" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm placeholder-gray-400" placeholder="04140000000">
+                </div>
+
+                <div class="flex items-center pt-5">
+                    <label class="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 cursor-pointer">
+                        <input type="checkbox" id="prov-aplica-islr" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <span>Aplica Retención ISLR por Defecto</span>
+                    </label>
+                </div>
+
                 <div class="md:col-span-4 flex justify-end gap-3 mt-2">
                     <button type="button" id="btn-cancelar" class="hidden bg-gray-500 text-white py-2 px-6 rounded-md hover:bg-gray-600 font-bold transition duration-150">
                         <span class="material-icons align-middle text-sm mr-1">close</span> Cancelar
@@ -94,9 +177,9 @@
                         <thead>
                             <tr>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">RIF / C.I.</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Razón Social</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teléfono</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contacto</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Razón Social / Fiscal</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Banco / Retenciones</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contacto & Crédito</th>
                                 <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                             </tr>
                         </thead>
@@ -133,11 +216,25 @@
         }
     
         let companyId = null;
+        let isEditing = false;
+
+        const BANCOS_CODIGO_VE = {
+            BANESCO: '0134',
+            MERCANTIL: '0105',
+            PROVINCIAL: '0108',
+            BDV: '0102',
+            BNC: '0191',
+            BANCARIBE: '0114',
+            EXTERIOR: '0115',
+            OTRO: ''
+        };
 
         const rifInput = document.getElementById('prov-rif');
         const form = document.getElementById('provider-form');
         const tableBody = document.getElementById('prov-table-body');
         const searchInput = document.getElementById('search-prov');
+        const btnGuardar = document.getElementById('btn-guardar');
+        const btnCancelar = document.getElementById('btn-cancelar');
 
         async function init() {
             const sesion = await window.nexusAPI.obtenerSesionLocal();
@@ -166,7 +263,8 @@
 
         async function fetchProveedores() {
             try {
-                const proveedores = await window.nexusAPI.obtenerProveedoresLocal();
+                const proveedoresRaw = await window.nexusAPI.obtenerProveedoresLocal(companyId);
+                const proveedores = (proveedoresRaw || []).filter(p => !companyId || p.company_id === companyId);
                 renderTable(proveedores);
             } catch (err) {
                 console.error("Error obteniendo proveedores:", err);
@@ -194,42 +292,121 @@
             const filtered = proveedores.filter(p => 
                 p.rif.toLowerCase().includes(filterText) ||
                 p.nombre.toLowerCase().includes(filterText) ||
-                (p.contacto && p.contacto.toLowerCase().includes(filterText))
+                (p.contacto && p.contacto.toLowerCase().includes(filterText)) ||
+                (p.banco_nombre && p.banco_nombre.toLowerCase().includes(filterText))
             );
 
             filtered.forEach(p => {
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-blue-50 border-b border-gray-100 transition-colors";
+                const taxBadge = p.tipo_contribuyente === 'ESPECIAL'
+                    ? `<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-purple-100 text-purple-800">Especial</span>`
+                    : (p.tipo_contribuyente === 'FORMAL'
+                        ? `<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-gray-100 text-gray-700">Formal</span>`
+                        : `<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-100 text-blue-700">${p.tipo_contribuyente || 'Ordinario'}</span>`);
+                const retPct = p.porcentaje_retencion_iva != null ? Number(p.porcentaje_retencion_iva) : 75;
+                const islrBadge = p.aplica_islr_default ? `<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-800">ISLR ${p.codigo_islr_default || 'Sí'}</span>` : '';
+                const bankInfo = p.banco_nombre
+                    ? `<div class="text-xs font-semibold text-gray-700">${p.banco_nombre}</div><div class="text-[11px] text-gray-500 font-mono">${p.cuenta_bancaria ? '••••' + String(p.cuenta_bancaria).slice(-4) : (p.telefono_pago_movil || '')}</div>`
+                    : `<span class="text-xs text-gray-400">Sin cuenta bancaria</span>`;
+                const saldoFavor = Number(p.saldo_a_favor_usd || 0);
+                const saldoBadge = saldoFavor > 0.009
+                    ? `<div class="inline-flex items-center mt-1 px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-700">Saldo a favor $${saldoFavor.toFixed(2)}</div>`
+                    : '';
+
                 tr.innerHTML = `
-                    <td class="px-6 py-4 text-sm font-medium text-blue-700">${p.rif}</td>
-                    <td class="px-6 py-4 text-sm font-medium text-gray-900">${p.nombre}</td>
-                    <td class="px-6 py-4 text-sm text-gray-600">${p.telefono || 'N/A'}</td>
-                    <td class="px-6 py-4 text-sm text-gray-500">${p.contacto || 'N/A'}</td>
-                    <td class="px-6 py-4 text-right space-x-3">
-                        <button class="delete-btn bg-red-600 hover:bg-red-700 text-white py-1.5 px-3 rounded-md text-xs font-bold transition-colors shadow-sm"><i class="fas fa-trash-alt"></i> Borrar</button>
+                    <td class="px-6 py-4 text-sm font-medium text-blue-700 font-mono">${p.rif}</td>
+                    <td class="px-6 py-4 text-sm">
+                        <div class="font-medium text-gray-900">${p.nombre}</div>
+                        <div class="flex flex-wrap gap-1 mt-1">${taxBadge} <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-sky-100 text-sky-800">Ret. IVA ${retPct}%</span> ${islrBadge}</div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600">${bankInfo}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">
+                        <div>${p.telefono || 'N/A'} · <span class="text-gray-500">${p.contacto || 'N/A'}</span></div>
+                        <div class="text-xs text-gray-500">Crédito: ${p.dias_credito_default ?? 15}d</div>
+                        ${saldoBadge}
+                    </td>
+                    <td class="px-6 py-4 text-right space-x-2 whitespace-nowrap">
+                        <button type="button" class="edit-btn bg-amber-500 hover:bg-amber-600 text-white py-1.5 px-3 rounded-md text-xs font-bold transition-colors shadow-sm"><span class="material-icons text-xs align-middle mr-0.5">edit</span> Editar</button>
+                        <button type="button" class="delete-btn bg-red-600 hover:bg-red-700 text-white py-1.5 px-3 rounded-md text-xs font-bold transition-colors shadow-sm"><i class="fas fa-trash-alt"></i> Borrar</button>
                     </td>
                 `;
 
+                tr.querySelector('.edit-btn').onclick = () => editProveedor(p);
                 tr.querySelector('.delete-btn').onclick = () => deleteProveedor(p.rif, p.nombre);
                 tableBody.appendChild(tr);
             });
         }
 
+        function editProveedor(p) {
+            isEditing = true;
+            document.getElementById('prov-rif').value = p.rif || '';
+            document.getElementById('prov-rif').readOnly = true;
+            document.getElementById('prov-rif').classList.add('bg-gray-100');
+            document.getElementById('prov-name').value = p.nombre || '';
+            document.getElementById('prov-phone').value = p.telefono || '';
+            document.getElementById('prov-contact').value = p.contacto || '';
+            document.getElementById('prov-address').value = p.direccion || '';
+            document.getElementById('prov-email').value = p.correo || '';
+            document.getElementById('prov-tax-type').value = p.tipo_contribuyente || 'ORDINARIO';
+            document.getElementById('prov-ret-iva').value = String(p.porcentaje_retencion_iva ?? 75);
+            document.getElementById('prov-islr-code').value = p.codigo_islr_default || '';
+            document.getElementById('prov-credit-days').value = p.dias_credito_default ?? 15;
+            document.getElementById('prov-bank').value = p.banco_nombre || '';
+            document.getElementById('prov-bank-account').value = p.cuenta_bancaria || '';
+            document.getElementById('prov-account-rif').value = p.rif_titular_cuenta || '';
+            document.getElementById('prov-pago-movil').value = p.telefono_pago_movil || '';
+            document.getElementById('prov-aplica-islr').checked = Boolean(Number(p.aplica_islr_default));
+            btnGuardar.innerHTML = '<span class="material-icons align-middle text-sm mr-1">save</span> Actualizar Proveedor';
+            btnCancelar.classList.remove('hidden');
+            form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function cancelEditProveedor() {
+            isEditing = false;
+            form.reset();
+            document.getElementById('prov-rif').readOnly = false;
+            document.getElementById('prov-rif').classList.remove('bg-gray-100');
+            document.getElementById('prov-ret-iva').value = '75';
+            document.getElementById('prov-credit-days').value = '15';
+            btnGuardar.innerHTML = '<span class="material-icons align-middle text-sm mr-1">save</span> Guardar Proveedor';
+            btnCancelar.classList.add('hidden');
+        }
+
+        btnCancelar.addEventListener('click', cancelEditProveedor);
+
         async function saveProveedor(e) {
             e.preventDefault();
+            const bancoNombre = document.getElementById('prov-bank').value.trim();
+            const cuenta = document.getElementById('prov-bank-account').value.replace(/\D/g, '').slice(0, 20);
+            if (cuenta && cuenta.length !== 20) {
+                showCustomAlert("La cuenta bancaria debe tener exactamente 20 dígitos o quedar vacía", "warning");
+                return;
+            }
             const provData = {
                 company_id: companyId,
                 rif: document.getElementById('prov-rif').value.trim(),
                 nombre: document.getElementById('prov-name').value.trim().toUpperCase(),
                 telefono: document.getElementById('prov-phone').value.trim(),
                 contacto: document.getElementById('prov-contact').value.trim(),
-                direccion: document.getElementById('prov-address').value.trim()
+                direccion: document.getElementById('prov-address').value.trim(),
+                correo: document.getElementById('prov-email').value.trim(),
+                tipo_contribuyente: document.getElementById('prov-tax-type').value,
+                porcentaje_retencion_iva: parseFloat(document.getElementById('prov-ret-iva').value || 75),
+                aplica_islr_default: document.getElementById('prov-aplica-islr').checked ? 1 : 0,
+                codigo_islr_default: document.getElementById('prov-islr-code').value.trim(),
+                banco_codigo: cuenta ? cuenta.slice(0, 4) : (BANCOS_CODIGO_VE[bancoNombre] || ''),
+                banco_nombre: bancoNombre,
+                cuenta_bancaria: cuenta,
+                rif_titular_cuenta: document.getElementById('prov-account-rif').value.trim().toUpperCase(),
+                telefono_pago_movil: document.getElementById('prov-pago-movil').value.trim(),
+                dias_credito_default: Math.max(0, parseInt(document.getElementById('prov-credit-days').value || 15, 10))
             };
 
             const res = await window.nexusAPI.guardarProveedorLocal(provData);
             if (res.success) {
-                showCustomAlert("Proveedor guardado correctamente", "success");
-                form.reset();
+                showCustomAlert(isEditing ? "Proveedor actualizado correctamente" : "Proveedor guardado correctamente", "success");
+                cancelEditProveedor();
                 fetchProveedores();
             } else {
                 showCustomAlert("Error al guardar: " + res.error, "error");
@@ -238,7 +415,7 @@
 
         async function deleteProveedor(rif, nombre) {
             if (confirm(`¿Seguro que deseas eliminar al proveedor ${nombre} (${rif})?`)) {
-                const res = await window.nexusAPI.eliminarProveedorLocal(rif);
+                const res = await window.nexusAPI.eliminarProveedorLocal(rif, companyId);
                 if (res.success) {
                     fetchProveedores();
                 } else {

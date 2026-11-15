@@ -8,12 +8,12 @@
             const params = new URLSearchParams(window.location.search);
             const companyId = params.get('company');
 
-            if (companyId) {
+            if (companyId && /^[A-Za-z0-9_-]{1,128}$/.test(companyId)) {
                 // Definimos la URL absoluta de la tienda para evitar errores de ruta
                 const storeBaseUrl = 'https://tienda.nexusposgobal.com/';
                 
-                // Construimos la redirección final
-                const finalUrl = `${storeBaseUrl}?company=${companyId}`;
+                // Construimos la redirección final de forma segura
+                const finalUrl = `${storeBaseUrl}?company=${encodeURIComponent(companyId)}`;
                 
                 console.log("🚀 Redirigiendo a:", finalUrl);
                 window.location.replace(finalUrl);

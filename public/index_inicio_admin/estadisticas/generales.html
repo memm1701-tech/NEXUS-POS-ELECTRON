@@ -17,22 +17,14 @@
             --teal-accent: #14b8a6;
         }
 
-        /* Reset y Base */
-        html, body { 
-            height: 100%; 
-            margin: 0; 
-            padding: 0; 
-            overflow: hidden; 
-            background-color: var(--gray-bg);
-            font-family: 'Roboto', sans-serif;
-        }
-
+        /* Base aislada al contenedor del módulo (no altera html/body del menú padre) */
         .stats-container { 
             width: 100%; 
-            height: 100vh; 
+            min-height: 100%; 
             padding: 24px; 
             box-sizing: border-box; 
-            overflow-y: auto;
+            background-color: var(--gray-bg);
+            font-family: 'Roboto', sans-serif;
         }
         
         /* Dashboard Principal */
@@ -172,19 +164,143 @@
             z-index: 20;
         }
         .total-bar td { border-bottom: none; font-size: 1rem; padding: 15px 10px; }
+        @keyframes guiaBlinkRed {
+            0%, 100% {
+                background-color: #dc2626;
+                color: #ffffff;
+                border-color: #b91c1c;
+                box-shadow: 0 0 14px rgba(220, 38, 38, 0.42);
+            }
+            50% {
+                background-color: #fee2e2;
+                color: #991b1b;
+                border-color: #f87171;
+                box-shadow: 0 0 3px rgba(220, 38, 38, 0.12);
+            }
+        }
+        .btn-guia-uso {
+            border: 2px solid #dc2626;
+            border-radius: 2px;
+            padding: 8px 12px;
+            font-size: 0.74rem;
+            font-weight: 800;
+            line-height: 1.25;
+            max-width: 175px;
+            text-align: center;
+            cursor: pointer;
+            background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(0, 0, 0, 0.08));
+            animation: guiaBlinkRed 2.8s ease-in-out infinite;
+            flex-shrink: 0;
+        }
+        .guia-modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.65);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .guia-modal-backdrop.open { display: flex; }
+        .guia-modal-card {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            max-width: 800px;
+            width: 100%;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.25);
+        }
+        .guia-modal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 20px;
+            border-bottom: 1px solid #e2e8f0;
+            background: #f8fafc;
+        }
+        .guia-modal-head h2 { margin: 0; font-size: 1.05rem; color: #0f172a; }
+        .guia-modal-close {
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: #334155;
+            border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .guia-modal-body {
+            padding: 18px 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .guia-sec {
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px 14px;
+            background: #ffffff;
+        }
+        .guia-sec h3 { margin: 0 0 6px 0; font-size: 0.92rem; color: #0f172a; }
+        .guia-sec p { margin: 4px 0; font-size: 0.82rem; color: #334155; line-height: 1.45; }
+        .guia-sec strong { color: #0f172a; }
     </style>
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
 <body>
 
     <div id="view-dashboard" class="stats-container">
         
-        <div class="stats-header">
+        <div class="stats-header" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
             <div>
                 <h1>Resumen de Inventario (Nivel Empresa)</h1>
                 <p>Consolidado de todas las sucursales en tiempo real.</p>
             </div>
+            <button type="button" class="btn-guia-uso" id="gen-btn-guia">Cómo utilizar a favor esta información</button>
         </div>
+
+        <div class="guia-modal-backdrop" id="gen-modal-guia" role="dialog" aria-modal="true" aria-labelledby="gen-modal-titulo">
+            <div class="guia-modal-card">
+                <div class="guia-modal-head">
+                    <h2 id="gen-modal-titulo">Guía de uso estratégico: Estadísticas Generales</h2>
+                    <button type="button" class="guia-modal-close" id="gen-btn-cerrar-guia">Cerrar</button>
+                </div>
+                <div class="guia-modal-body">
+                    <div class="guia-sec">
+                        <h3>1. Resumen Ejecutivo de Inventario (Capital, Valor de Venta y Ganancia Proyectada)</h3>
+                        <p><strong>Qué mide:</strong> Calcula en USD la cantidad total de artículos registrados, cuánto capital invertiste a costo, cuánto valdría vender todo el stock actual a precio de lista y la ganancia bruta potencial, además de los ítems en stock crítico (&le; 10 unidades).</p>
+                        <p><strong>Cómo usarlo a favor:</strong> Revisa diariamente el balance entre costo y valor de venta para validar que el inventario cubre holgadamente tus compromisos, y ataca primero la lista de stock crítico en productos de alta salida.</p>
+                    </div>
+                    <div class="guia-sec">
+                        <h3>2. Desglose de Pagos y Cierres por Moneda (USD vs. Bs)</h3>
+                        <p><strong>Qué mide:</strong> Consolida los cierres de caja y el ingreso real recibido en divisas vs. moneda local (Bolívares convertidos a tasa BCV) dentro del período seleccionado (Semana, Mes, Año).</p>
+                        <p><strong>Cómo usarlo a favor:</strong> Te muestra exactamente cuánto efectivo real quedó en caja fuerte/banco en cada moneda para planificar reposición de mercancía, pago a proveedores y reserva de divisas sin mezclar totales.</p>
+                    </div>
+                    <div class="guia-sec">
+                        <h3>3. Salud Financiera y Operativa Integrada</h3>
+                        <p><strong>Qué mide:</strong> Presenta indicadores clave de respaldo del negocio: liquidez disponible vs. deudas, margen global, exposición operativa y comportamiento consolidado de las distintas áreas.</p>
+                        <p><strong>Cómo usarlo a favor:</strong> Úsalo como tablero de alerta temprana cada mañana: si algún indicador cae fuera de rango sano, navega al submenú especializado correspondiente (Tesorería, Inventario, Rentabilidad o Protección Cambiaria) para ubicar la causa exacta.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+        (function() {
+            const btnOpen = document.getElementById('gen-btn-guia');
+            const modal = document.getElementById('gen-modal-guia');
+            const btnClose = document.getElementById('gen-btn-cerrar-guia');
+            if (btnOpen && modal) {
+                btnOpen.addEventListener('click', () => modal.classList.add('open'));
+                if (btnClose) btnClose.addEventListener('click', () => modal.classList.remove('open'));
+                modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('open'); });
+            }
+        })();
+        </script>
 
         <div class="kpi-grid">
             <div class="kpi-card">
@@ -318,7 +434,7 @@
                 </table>
             </div>
 
-            <div class="total-bar">
+        <div class="total-bar">
                 <table class="detail-table">
                     <tfoot>
                         <tr>

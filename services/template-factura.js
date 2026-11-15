@@ -20,8 +20,30 @@ function getBase64Logo() {
     return '';
 }
 
+function escapeHtml(val) {
+    if (val === null || val === undefined) return '';
+    return String(val)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function sanitizeImageUrl(url) {
+    if (!url || typeof url !== 'string') return '';
+    const trimmed = url.trim();
+    if (/^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$/i.test(trimmed)) {
+        return trimmed;
+    }
+    if (/^https?:\/\//i.test(trimmed) || /^file:\/\//i.test(trimmed)) {
+        return escapeHtml(trimmed);
+    }
+    return '';
+}
+
 function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
-    const logoDataUrl = datos.logoBase64 || getBase64Logo();
+    const logoDataUrl = sanitizeImageUrl(datos.logoBase64 || getBase64Logo());
      // Dimensiones y configuraciones calibradas al 100% por formato
     const configFormatos = {
         'MEDIA_CARTA': {
@@ -131,19 +153,24 @@ function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
     const items = datos.items || [];
 
     // Cálculos de totales
+    const toFiniteNum = (v, fb = 0) => {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : fb;
+    };
     let subtotalUSD = 0;
     items.forEach(it => {
-        const precio = parseFloat(it.precio || it.price || 0);
-        const cant = parseFloat(it.cantidad || it.qty || 1);
-        const tot = it.total !== undefined ? parseFloat(it.total) : (cant * precio);
+        const precio = toFiniteNum(it.precio !== undefined ? it.precio : it.price, 0);
+        const cant = toFiniteNum(it.cantidad !== undefined ? it.cantidad : it.qty, 1);
+        const tot = it.total !== undefined ? toFiniteNum(it.total, cant * precio) : (cant * precio);
         subtotalUSD += tot;
     });
 
-    const ivaUSD = datos.montoIvaUSD || 0;
-    const totalUSD = (datos.totalUSD !== undefined) ? parseFloat(datos.totalUSD) : (subtotalUSD + ivaUSD);
-    const tasaCambio = parseFloat(factura.tasaCambio || 1);
+    const ivaUSD = toFiniteNum(datos.montoIvaUSD, 0);
+    const totalUSD = (datos.totalUSD !== undefined) ? toFiniteNum(datos.totalUSD, subtotalUSD + ivaUSD) : (subtotalUSD + ivaUSD);
+    const rawTasa = toFiniteNum(factura.tasaCambio, 1);
+    const tasaCambio = rawTasa > 0 ? rawTasa : 1;
     const subtotalBS = subtotalUSD * tasaCambio;
-    const totalBS = (datos.totalBS !== undefined) ? parseFloat(datos.totalBS) : (totalUSD * tasaCambio);
+    const totalBS = (datos.totalBS !== undefined) ? toFiniteNum(datos.totalBS, totalUSD * tasaCambio) : (totalUSD * tasaCambio);
 
     // Generar filas de tabla
     let filasHTML = "";
@@ -166,16 +193,16 @@ function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
             filasHTML += `
                 <tr style="background-color: ${bgRow}; border-bottom: 1px solid #e2e8f0;">
                     <td style="padding: ${cfg.tableRowPadding}; font-weight: 700; color: #1e293b; text-align: left; text-transform: uppercase;">
-                        ${concepto}
+                        ${escapeHtml(concepto)}
                     </td>
                     <td style="padding: ${cfg.tableRowPadding}; text-align: center; color: #334155; font-weight: 600;">
-                        ${cantidad}
+                        ${Number.isFinite(cantidad) ? cantidad : 0}
                     </td>
                     <td style="padding: ${cfg.tableRowPadding}; text-align: right; color: #334155; font-family: 'Consolas', monospace;">
-                        ${precio.toFixed(2)}$
+                        ${(Number.isFinite(precio) ? precio : 0).toFixed(2)}$
                     </td>
                     <td style="padding: ${cfg.tableRowPadding}; text-align: right; font-weight: 800; color: #0f172a; font-family: 'Consolas', monospace;">
-                        ${totalFila.toFixed(2)}$
+                        ${(Number.isFinite(totalFila) ? totalFila : 0).toFixed(2)}$
                     </td>
                 </tr>
             `;
@@ -190,7 +217,7 @@ function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>${tipoDocumento} ${factura.numero}</title>
+    <title>${escapeHtml(tipoDocumento)} ${escapeHtml(factura.numero)}</title>
     <style>
         @page {
             size: ${cfg.pageWidth} ${cfg.pageHeight};
@@ -548,21 +575,21 @@ function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
         <div class="company-info-col">
             ${logoDataUrl ? `<img src="${logoDataUrl}" class="logo-img" alt="Logo Empresa" />` : ''}
             <div class="company-text">
-                ${razonSocial ? `<div class="empresa-nombre-grande">${razonSocial}</div>` : ''}
-                ${rifEmpresa ? `<div class="empresa-detalle"><strong>RIF:</strong> ${rifEmpresa}</div>` : ''}
-                ${domicilioFiscal ? `<div class="empresa-detalle">${domicilioFiscal}</div>` : ''}
-                ${contactoEmpresa ? `<div class="empresa-detalle"><strong>Teléf:</strong> ${contactoEmpresa}</div>` : ''}
-                ${sucursal ? `<div class="empresa-sucursal">📍 ${sucursal}</div>` : ''}
+                ${razonSocial ? `<div class="empresa-nombre-grande">${escapeHtml(razonSocial)}</div>` : ''}
+                ${rifEmpresa ? `<div class="empresa-detalle"><strong>RIF:</strong> ${escapeHtml(rifEmpresa)}</div>` : ''}
+                ${domicilioFiscal ? `<div class="empresa-detalle">${escapeHtml(domicilioFiscal)}</div>` : ''}
+                ${contactoEmpresa ? `<div class="empresa-detalle"><strong>Teléf:</strong> ${escapeHtml(contactoEmpresa)}</div>` : ''}
+                ${sucursal ? `<div class="empresa-sucursal">📍 ${escapeHtml(sucursal)}</div>` : ''}
             </div>
         </div>
 
         <div class="doc-meta-col">
-            <div class="title-doc">${tipoDocumento}</div>
-            <div class="subtitle-software">${subtituloSoftware}</div>
+            <div class="title-doc">${escapeHtml(tipoDocumento)}</div>
+            <div class="subtitle-software">${escapeHtml(subtituloSoftware)}</div>
             <div class="meta-badge-box">
-                <div class="meta-num-row">N° <span class="meta-num-val">${factura.numero}</span></div>
-                <div class="meta-date">Fecha: ${factura.fecha} ${factura.hora ? factura.hora : ''}</div>
-                <div class="meta-control">Control: ${factura.control}</div>
+                <div class="meta-num-row">N° <span class="meta-num-val">${escapeHtml(factura.numero)}</span></div>
+                <div class="meta-date">Fecha: ${escapeHtml(factura.fecha)} ${factura.hora ? escapeHtml(factura.hora) : ''}</div>
+                <div class="meta-control">Control: ${escapeHtml(factura.control)}</div>
             </div>
         </div>
     </div>
@@ -572,21 +599,21 @@ function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
         <div class="client-card-col">
             <div class="client-row">
                 <span class="client-label">Cliente:</span>
-                <span class="client-value" style="color: #2563eb; text-transform: uppercase;">${cliente.nombre}</span>
+                <span class="client-value" style="color: #2563eb; text-transform: uppercase;">${escapeHtml(cliente.nombre)}</span>
             </div>
             <div class="client-row">
                 <span class="client-label">RIF / CI:</span>
-                <span class="client-value">${cliente.rif || 'V-00000000'}</span>
+                <span class="client-value">${escapeHtml(cliente.rif || 'V-00000000')}</span>
             </div>
         </div>
         <div class="client-card-col">
             <div class="client-row">
                 <span class="client-label">Domicilio:</span>
-                <span class="client-value">${cliente.direccion || 'No registrado'}</span>
+                <span class="client-value">${escapeHtml(cliente.direccion || 'No registrado')}</span>
             </div>
             <div class="client-row">
                 <span class="client-label">Contacto:</span>
-                <span class="client-value">${[cliente.telefono, cliente.correo].filter(Boolean).join(' / ') || 'No registrado'}</span>
+                <span class="client-value">${escapeHtml([cliente.telefono, cliente.correo].filter(Boolean).join(' / ') || 'No registrado')}</span>
             </div>
         </div>
     </div>
@@ -616,11 +643,11 @@ function generarHTMLFactura(datos = {}, formatoPapel = 'MEDIA_CARTA') {
                 <span>${esPresupuesto ? 'CONDICIÓN / VALIDEZ' : 'FORMA DE PAGO'}</span>
             </div>
             <div class="payment-box-content">
-                ${esPresupuesto ? 'COTIZACIÓN INFORMATIVA (VÁLIDA POR 1 DÍA)' : factura.condicion}
+                ${esPresupuesto ? 'COTIZACIÓN INFORMATIVA (VÁLIDA POR 1 DÍA)' : escapeHtml(factura.condicion)}
             </div>
-            ${factura.tasaCambio && factura.tasaCambio > 1 ? `
+            ${tasaCambio && tasaCambio > 1 ? `
             <div class="payment-box-details">
-                Tasa Oficial BCV: Bs. ${factura.tasaCambio.toFixed(2)} por 1.00 USD
+                Tasa Oficial BCV: Bs. ${tasaCambio.toFixed(2)} por 1.00 USD
             </div>` : ''}
             ${esPresupuesto ? `
             <div style="font-size: 8px; color: #64748b; margin-top: 3px; font-style: italic; line-height: 1.15;">

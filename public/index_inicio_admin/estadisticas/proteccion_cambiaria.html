@@ -1,0 +1,515 @@
+<style>
+    .estadisticas-container {
+        --color-primary: #0284c7;
+        --color-primary-hover: #0369a1;
+        --color-success: #059669;
+        --color-danger: #dc2626;
+        --color-warning: #d97706;
+        --color-background: #f8fafc;
+        --color-text: #1f2937;
+        --color-card-bg: #ffffff;
+        --color-border: #e2e8f0;
+        --radius: 12px;
+        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        color: var(--color-text);
+        padding: 24px;
+        background: var(--color-background);
+        min-height: 100%;
+        box-sizing: border-box;
+    }
+    .stats-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+    .stats-header h1 { margin: 0; font-size: 1.55rem; font-weight: 700; color: #0f172a; }
+    .stats-header p { margin: 4px 0 0 0; font-size: 0.9rem; color: #64748b; }
+    .card {
+        background: var(--color-card-bg);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius);
+        padding: 20px;
+        box-shadow: var(--shadow);
+        margin-bottom: 20px;
+    }
+    .card-head {
+        display: flex; justify-content: space-between; align-items: center; gap: 12px;
+        flex-wrap: wrap; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9;
+    }
+    .card-head h2, .card-head h3 { margin: 0; font-size: 1.05rem; font-weight: 700; color: #0f172a; }
+    .controls-bar {
+        display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+        gap: 14px; background: #ffffff; border: 1px solid var(--color-border);
+        border-radius: var(--radius); padding: 14px 18px; margin-bottom: 20px; box-shadow: var(--shadow);
+    }
+    .control-group { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+    .bi-field { display: flex; flex-direction: column; gap: 4px; }
+    .bi-field label { font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em; }
+    .bi-field input {
+        padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px;
+        font-size: 0.85rem; color: #0f172a; background: #f8fafc; outline: none; font-family: inherit;
+    }
+    .bi-field input:focus { border-color: var(--color-primary); background: #ffffff; }
+    .selector-periodo { display: flex; gap: 4px; background: #f1f5f9; padding: 4px; border-radius: 8px; }
+    .selector-periodo button {
+        border: none; background: transparent; padding: 6px 12px; border-radius: 6px;
+        font-size: 0.82rem; font-weight: 600; color: #475569; cursor: pointer; transition: all 0.15s;
+    }
+    .selector-periodo button.active { background: #ffffff; color: var(--color-primary); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+    .btn-primary {
+        background: var(--color-primary); color: #ffffff; border: none; border-radius: 6px;
+        padding: 7px 14px; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+    }
+    .btn-primary:hover { background: var(--color-primary-hover); }
+    .btn-outline {
+        background: #ffffff; color: #334155; border: 1px solid #cbd5e1; border-radius: 6px;
+        padding: 6px 12px; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+    }
+    .btn-outline:hover { background: #f1f5f9; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .kpi-card {
+        background: #ffffff; border: 1px solid var(--color-border); border-radius: var(--radius);
+        padding: 16px 18px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 4px;
+    }
+    .kpi-card.clickable { cursor: pointer; transition: border-color 0.15s; }
+    .kpi-card.clickable:hover { border-color: var(--color-primary); }
+    .kpi-title { margin: 0; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em; }
+    .kpi-value { margin: 2px 0; font-size: 1.45rem; font-weight: 800; color: #0f172a; }
+    .kpi-subtext { margin: 0; font-size: 0.78rem; color: #475569; line-height: 1.35; }
+    .status-tag {
+        display: inline-block; align-self: flex-start; margin-top: 2px; padding: 3px 8px; border-radius: 4px;
+        font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+    }
+    .tag-verde { background: #d1fae5; color: #065f46; }
+    .tag-amarillo { background: #fef3c7; color: #92400e; }
+    .tag-rojo { background: #fee2e2; color: #991b1b; }
+    .tag-neutro { background: #f1f5f9; color: #475569; }
+    .two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px; margin-bottom: 20px; }
+    .table-wrap { width: 100%; overflow-x: auto; }
+    .bi-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .bi-table th {
+        text-align: left; padding: 8px 10px; font-size: 0.72rem; color: #475569;
+        text-transform: uppercase; border-bottom: 1px solid var(--color-border); background: #f8fafc; font-weight: 700;
+    }
+    .bi-table td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; color: #0f172a; }
+    .bi-num { text-align: right; font-variant-numeric: tabular-nums; }
+    .bi-modal-backdrop {
+        display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55);
+        z-index: 9999; align-items: center; justify-content: center; padding: 20px;
+    }
+    .bi-modal-backdrop.open { display: flex; }
+    .bi-modal-dialog {
+        background: #ffffff; border-radius: 12px; width: 100%; max-width: 960px;
+        max-height: 85vh; display: flex; flex-direction: column;
+        box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15); border: 1px solid var(--color-border);
+    }
+    .bi-modal-head {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 16px 20px; border-bottom: 1px solid var(--color-border);
+    }
+    .bi-modal-head h3 { margin: 0; font-size: 1.05rem; color: #0f172a; }
+    .bi-modal-close { border: none; background: transparent; font-size: 1.4rem; line-height: 1; color: #64748b; cursor: pointer; }
+    .bi-modal-search { padding: 12px 20px; border-bottom: 1px solid #f1f5f9; }
+    .bi-modal-search input {
+        width: 100%; box-sizing: border-box; padding: 8px 12px; border: 1px solid #cbd5e1;
+        border-radius: 6px; font-size: 0.85rem; outline: none;
+    }
+    .bi-modal-body { padding: 16px 20px; overflow-y: auto; flex: 1; }
+    .empty-msg { text-align: center; padding: 24px; color: #64748b; font-size: 0.85rem; }
+</style>
+
+<style>
+@keyframes guiaBlinkRed {
+    0%, 100% {
+        background-color: #dc2626;
+        color: #ffffff;
+        border-color: #b91c1c;
+        box-shadow: 0 0 14px rgba(220, 38, 38, 0.42);
+    }
+    50% {
+        background-color: #fee2e2;
+        color: #991b1b;
+        border-color: #f87171;
+        box-shadow: 0 0 3px rgba(220, 38, 38, 0.12);
+    }
+}
+.btn-guia-uso {
+    border: 2px solid #dc2626;
+    border-radius: 2px;
+    padding: 8px 12px;
+    font-size: 0.74rem;
+    font-weight: 800;
+    line-height: 1.25;
+    max-width: 175px;
+    text-align: center;
+    cursor: pointer;
+    background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(0, 0, 0, 0.08));
+    animation: guiaBlinkRed 2.8s ease-in-out infinite;
+    flex-shrink: 0;
+}
+.guia-modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.65);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.guia-modal-backdrop.open { display: flex; }
+.guia-modal-card {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    max-width: 800px;
+    width: 100%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.25);
+}
+.guia-modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+.guia-modal-head h2 { margin: 0; font-size: 1.05rem; color: #0f172a; }
+.guia-modal-close {
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+.guia-modal-body {
+    padding: 18px 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.guia-sec {
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px 14px;
+    background: #ffffff;
+}
+.guia-sec h3 { margin: 0 0 6px 0; font-size: 0.92rem; color: #0f172a; }
+.guia-sec p { margin: 4px 0; font-size: 0.82rem; color: #334155; line-height: 1.45; }
+.guia-sec strong { color: #0f172a; }
+</style>
+<div class="estadisticas-container">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+        <button type="button" class="btn-guia-uso" id="pc-btn-guia">Cómo utilizar a favor esta información</button>
+    </div>
+    <div class="guia-modal-backdrop" id="pc-modal-guia" role="dialog" aria-modal="true" aria-labelledby="pc-modal-titulo">
+        <div class="guia-modal-card">
+            <div class="guia-modal-head">
+                <h2 id="pc-modal-titulo">Guía de uso estratégico: Protección Cambiaria y Canales</h2>
+                <button type="button" class="guia-modal-close" id="pc-btn-cerrar-guia">Cerrar</button>
+            </div>
+            <div class="guia-modal-body">
+                <div class="guia-sec">
+                    <h3>1. Termómetro de Exposición Cambiaria y Brecha BCV vs. Referencia</h3>
+                    <p><strong>Qué mide:</strong> Evalúa qué porcentaje de tu flujo ingresa en moneda local frente a divisas estables y calcula la pérdida potencial en poder de reposición causada por el diferencial cambiario entre la tasa de cobro y la tasa de reposición.</p>
+                    <p><strong>Cómo usarlo a favor:</strong> Cuando la brecha supera el 5%, ajusta tus márgenes en precios de lista o incentiva el pago en divisas / pago inmediato para no reponer mercancía a pérdida.</p>
+                </div>
+                <div class="guia-sec">
+                    <h3>2. Margen Real Ajustado vs. Tasa de Reposición e Impacto IGTF</h3>
+                    <p><strong>Qué mide:</strong> Contrasta tu margen nominal contra el margen real después de convertir cobranzas diferidas en bolívares y descontar el peso tributario del IGTF (3%) en operaciones en divisas.</p>
+                    <p><strong>Cómo usarlo a favor:</strong> Revisa diariamente que tu margen ajustado no caiga debajo de tus gastos operativos. Si un canal absorbe demasiado descuento o comisión financiera, trasládalo al precio o limita cuotas.</p>
+                </div>
+                <div class="guia-sec">
+                    <h3>3. Participación y Rentabilidad por Canal de Venta (Contado, Crédito, Cashea)</h3>
+                    <p><strong>Qué mide:</strong> Agrupa automáticamente tus ventas reales entre canales <strong>CONTADO</strong>, <strong>CRÉDITO</strong> y <strong>CASHEA</strong> leyendo la <em>Naturaleza</em> configurada en <em>Datos Básicos &rarr; Métodos de Pago</em> (no requiere cambiar cómo facturas en caja).</p>
+                    <p><strong>Cómo usarlo a favor:</strong> Verifica si los canales financiados (Crédito / Cashea) te generan más ventas con margen sano o si solo te descapitalizan. Si creas un nuevo método de pago o usas Cashea, asigna su Naturaleza exacta en Métodos de Pago para que aparezca clasificado aquí de inmediato.</p>
+                </div>
+                <div class="guia-sec">
+                    <h3>4. Velocidad de Conversión de Caja (Bolívares a Divisas / Mercancía)</h3>
+                    <p><strong>Qué mide:</strong> Mide cuánto dinero en moneda local queda expuesto al cierre sin reconvertirse en inventario o activo protegido.</p>
+                    <p><strong>Cómo usarlo a favor:</strong> Usa este indicador al final del día para decidir cuánto saldo de Pago Móvil o Punto de Venta convertir de inmediato en compras de reposición o divisas antes de nuevas variaciones de tasa.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    (function() {
+        const btnOpen = document.getElementById('pc-btn-guia');
+        const modal = document.getElementById('pc-modal-guia');
+        const btnClose = document.getElementById('pc-btn-cerrar-guia');
+        if (btnOpen && modal) {
+            btnOpen.addEventListener('click', () => modal.classList.add('open'));
+            if (btnClose) btnClose.addEventListener('click', () => modal.classList.remove('open'));
+            modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('open'); });
+        }
+    })();
+    </script>
+    <div class="stats-header">
+        <div>
+            <h1>Protección Cambiaria y Canales</h1>
+            <p>Margen Bruto de Reposición Real (MBRR), Cashea Net Yield, embudo de presupuestos y desempeño por canal</p>
+        </div>
+    </div>
+
+    <div class="controls-bar">
+        <div class="selector-periodo" id="pc-selector-periodo">
+            <button type="button" data-periodo="hoy">Hoy</button>
+            <button type="button" data-periodo="semana">Esta Semana</button>
+            <button type="button" data-periodo="mes" class="active">Este Mes</button>
+            <button type="button" data-periodo="anual">Anual</button>
+        </div>
+        <div class="control-group">
+            <div class="bi-field">
+                <label for="pc-fecha-inicio">Desde</label>
+                <input type="date" id="pc-fecha-inicio">
+            </div>
+            <div class="bi-field">
+                <label for="pc-fecha-fin">Hasta</label>
+                <input type="date" id="pc-fecha-fin">
+            </div>
+            <button type="button" class="btn-primary" id="pc-btn-filtrar">Aplicar</button>
+        </div>
+    </div>
+
+    <div class="kpi-grid">
+        <div class="kpi-card clickable" id="pc-card-mbrr">
+            <p class="kpi-title">MBRR % vs Margen Nominal %</p>
+            <h3 class="kpi-value" id="pc-kpi-mbrr">0.0% / 0.0%</h3>
+            <span class="status-tag tag-neutro" id="pc-tag-mbrr">IECCM: 0.0 p.p.</span>
+            <p class="kpi-subtext" id="pc-sub-mbrr">Déficit de reposición: $0.00</p>
+        </div>
+        <div class="kpi-card">
+            <p class="kpi-title">Cashea Net Yield % vs Contado</p>
+            <h3 class="kpi-value" id="pc-kpi-cashea">0.0% / 0.0%</h3>
+            <p class="kpi-subtext" id="pc-sub-cashea">0 operaciones · Comisión: $0.00</p>
+        </div>
+        <div class="kpi-card">
+            <p class="kpi-title">Embudo de Presupuestos</p>
+            <h3 class="kpi-value" id="pc-kpi-embudo">0.0%</h3>
+            <p class="kpi-subtext" id="pc-sub-embudo">0 de 0 convertidos · Perdido: $0.00</p>
+        </div>
+        <div class="kpi-card">
+            <p class="kpi-title">Brecha Yield Cashea vs Contado</p>
+            <h3 class="kpi-value" id="pc-kpi-brecha">0.0 p.p.</h3>
+            <p class="kpi-subtext" id="pc-sub-brecha">Bruto Cashea: $0.00 · Inicial: $0.00</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-head">
+            <h3>Participación y Rentabilidad por Canal de Venta</h3>
+        </div>
+        <div class="table-wrap">
+            <table class="bi-table">
+                <thead>
+                    <tr>
+                        <th>Canal</th>
+                        <th class="bi-num">Facturas</th>
+                        <th class="bi-num">Ingresos (USD)</th>
+                        <th class="bi-num">Participación</th>
+                        <th class="bi-num">Ticket Promedio</th>
+                        <th class="bi-num">Margen %</th>
+                    </tr>
+                </thead>
+                <tbody id="pc-tbody-canales"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-head">
+            <h3>SKUs con Mayor Erosión de Margen por Reposición (IECCM)</h3>
+            <button type="button" class="btn-outline" id="pc-btn-ver-mbrr">Buscar / Ver todos</button>
+        </div>
+        <div class="table-wrap">
+            <table class="bi-table">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th class="bi-num">Ingresos USD</th>
+                        <th class="bi-num">Margen Nominal</th>
+                        <th class="bi-num">MBRR %</th>
+                        <th class="bi-num">Erosión (p.p.)</th>
+                        <th class="bi-num">Déficit Reposición</th>
+                        <th>Fuente</th>
+                    </tr>
+                </thead>
+                <tbody id="pc-tbody-mbrr"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="bi-modal-backdrop" id="pc-modal">
+    <div class="bi-modal-dialog">
+        <div class="bi-modal-head">
+            <h3>Detalle Completo de Erosión por Reposición (MBRR)</h3>
+            <button type="button" class="bi-modal-close" id="pc-modal-close">&times;</button>
+        </div>
+        <div class="bi-modal-search">
+            <input type="text" id="pc-modal-search" placeholder="Filtrar por producto o fuente de costo...">
+        </div>
+        <div class="bi-modal-body" id="pc-modal-body"></div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var servidorIP = localStorage.getItem('servidorIP') || '127.0.0.1';
+    var companyId = localStorage.getItem('companyId') || '1';
+    var erosionCache = [];
+
+    function escHtml(val) {
+        return String(val == null ? '' : val)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function fmtUsd(n) {
+        var v = Number(n || 0);
+        return '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function getFechasPeriodo(periodo) {
+        var hoy = new Date();
+        var fin = hoy.toISOString().split('T')[0];
+        var ini = new Date(hoy);
+        if (periodo === 'semana') {
+            var day = ini.getDay() || 7;
+            ini.setDate(ini.getDate() - day + 1);
+        } else if (periodo === 'mes') {
+            ini.setDate(1);
+        } else if (periodo === 'anual') {
+            ini.setMonth(0, 1);
+        }
+        return { inicio: ini.toISOString().split('T')[0], fin: fin };
+    }
+
+    function renderModalTabla() {
+        var q = (document.getElementById('pc-modal-search').value || '').toLowerCase().trim();
+        var rows = erosionCache.filter(function (r) {
+            if (!q) return true;
+            return JSON.stringify(r).toLowerCase().indexOf(q) !== -1;
+        });
+        var body = document.getElementById('pc-modal-body');
+        if (!rows.length) {
+            body.innerHTML = '<div class="empty-msg">Sin productos que coincidan con la búsqueda.</div>';
+            return;
+        }
+        var html = '<div class="table-wrap"><table class="bi-table"><thead><tr><th>Producto</th><th class="bi-num">Ingresos</th><th class="bi-num">Nominal</th><th class="bi-num">MBRR</th><th class="bi-num">Erosión</th><th class="bi-num">Déficit</th><th>Fuente</th></tr></thead><tbody>';
+        rows.forEach(function (r) {
+            html += '<tr><td>' + escHtml(r.nombre) + '</td><td class="bi-num">' + fmtUsd(r.ingresos_usd) + '</td>' +
+                '<td class="bi-num">' + Number(r.margen_nominal_pct || 0).toFixed(1) + '%</td>' +
+                '<td class="bi-num">' + Number(r.mbrr_pct || 0).toFixed(1) + '%</td>' +
+                '<td class="bi-num">' + Number(r.erosion_pp || 0).toFixed(1) + ' p.p.</td>' +
+                '<td class="bi-num">' + fmtUsd(r.deficit_reposicion_usd) + '</td><td>' + escHtml(r.fuente) + '</td></tr>';
+        });
+        html += '</tbody></table></div>';
+        body.innerHTML = html;
+    }
+
+    function renderData(pc) {
+        if (!pc) return;
+        var mbrr = pc.mbrr || {};
+        document.getElementById('pc-kpi-mbrr').textContent =
+            Number(mbrr.mbrr_pct || 0).toFixed(1) + '% / ' + Number(mbrr.margen_nominal_pct || 0).toFixed(1) + '%';
+        var er = Number(mbrr.ieccm_erosion_pp || 0);
+        var tagEl = document.getElementById('pc-tag-mbrr');
+        tagEl.className = 'status-tag ' + (er > 5 ? 'tag-rojo' : (er > 1.5 ? 'tag-amarillo' : 'tag-verde'));
+        tagEl.textContent = 'IECCM: ' + er.toFixed(1) + ' p.p.';
+        document.getElementById('pc-sub-mbrr').textContent =
+            'Déficit reposición: ' + fmtUsd(mbrr.deficit_reposicion_usd) + ' · ' + Number(mbrr.skus_con_compra_real || 0) + '/' + Number(mbrr.total_skus_evaluados || 0) + ' SKUs con compra real';
+
+        var cashea = pc.cashea_net_yield || {};
+        document.getElementById('pc-kpi-cashea').textContent =
+            Number(cashea.yield_neto_pct || 0).toFixed(1) + '% / ' + Number(cashea.margen_contado_pct || 0).toFixed(1) + '%';
+        document.getElementById('pc-sub-cashea').textContent =
+            Number(cashea.operaciones_count || 0) + ' ops · Comisión: ' + fmtUsd(cashea.comision_usd) + ' · Cobrado: ' + fmtUsd(cashea.cobrado_liquidado_usd);
+
+        var dif = Number(cashea.diferencial_yield_pp || 0);
+        document.getElementById('pc-kpi-brecha').textContent = (dif > 0 ? '+' : '') + dif.toFixed(1) + ' p.p.';
+        document.getElementById('pc-sub-brecha').textContent =
+            'Bruto Cashea: ' + fmtUsd(cashea.bruto_facturado_usd) + ' · Inicial: ' + fmtUsd(cashea.inicial_usd);
+
+        var embudo = pc.embudo_presupuestos || {};
+        document.getElementById('pc-kpi-embudo').textContent = Number(embudo.tasa_conversion_pct || 0).toFixed(1) + '%';
+        document.getElementById('pc-sub-embudo').textContent =
+            Number(embudo.convertidos_count || 0) + ' de ' + Number(embudo.emitidos_count || 0) + ' convertidos · Perdido: ' + fmtUsd(embudo.valor_perdido_usd);
+
+        var canales = pc.canales_venta || [];
+        document.getElementById('pc-tbody-canales').innerHTML = canales.length ? canales.map(function (c) {
+            return '<tr><td><strong>' + escHtml(c.canal) + '</strong></td><td class="bi-num">' + Number(c.facturas || 0) + '</td>' +
+                '<td class="bi-num">' + fmtUsd(c.ingresos_usd) + '</td><td class="bi-num">' + Number(c.participacion_pct || 0).toFixed(1) + '%</td>' +
+                '<td class="bi-num">' + fmtUsd(c.ticket_promedio_usd) + '</td><td class="bi-num">' + Number(c.margen_pct || 0).toFixed(1) + '%</td></tr>';
+        }).join('') : '<tr><td colspan="6" class="empty-msg">Sin ventas registradas por canal en el período.</td></tr>';
+
+        erosionCache = mbrr.top_erosionados || [];
+        document.getElementById('pc-tbody-mbrr').innerHTML = erosionCache.length ? erosionCache.slice(0, 10).map(function (r) {
+            return '<tr><td>' + escHtml(r.nombre) + '</td><td class="bi-num">' + fmtUsd(r.ingresos_usd) + '</td>' +
+                '<td class="bi-num">' + Number(r.margen_nominal_pct || 0).toFixed(1) + '%</td>' +
+                '<td class="bi-num">' + Number(r.mbrr_pct || 0).toFixed(1) + '%</td>' +
+                '<td class="bi-num">' + Number(r.erosion_pp || 0).toFixed(1) + '</td>' +
+                '<td class="bi-num">' + fmtUsd(r.deficit_reposicion_usd) + '</td><td>' + escHtml(r.fuente) + '</td></tr>';
+        }).join('') : '<tr><td colspan="7" class="empty-msg">Sin erosión significativa detectada en el período.</td></tr>';
+    }
+
+    async function cargarDatos(periodo) {
+        var ini = document.getElementById('pc-fecha-inicio').value;
+        var fin = document.getElementById('pc-fecha-fin').value;
+        try {
+            var url = 'http://' + servidorIP + ':3000/api/maestro/estadisticas/especificas-bi?companyId=' +
+                encodeURIComponent(companyId) + '&fecha_inicio=' + encodeURIComponent(ini) +
+                '&fecha_fin=' + encodeURIComponent(fin) + '&periodo=' + encodeURIComponent(periodo || 'mes');
+            var res = await fetch(url);
+            var json = await res.json();
+            if (json && json.exito && json.data) {
+                renderData(json.data.proteccion_cambiaria_y_canales);
+            }
+        } catch (err) {
+            console.error('Error cargando protección cambiaria y canales:', err);
+        }
+    }
+
+    document.getElementById('pc-selector-periodo').addEventListener('click', function (e) {
+        var btn = e.target.closest('button[data-periodo]');
+        if (!btn) return;
+        document.querySelectorAll('#pc-selector-periodo button').forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        var p = btn.getAttribute('data-periodo');
+        var f = getFechasPeriodo(p);
+        document.getElementById('pc-fecha-inicio').value = f.inicio;
+        document.getElementById('pc-fecha-fin').value = f.fin;
+        cargarDatos(p);
+    });
+
+    document.getElementById('pc-btn-filtrar').addEventListener('click', function () { cargarDatos('personalizado'); });
+
+    function abrirModal() {
+        document.getElementById('pc-modal-search').value = '';
+        renderModalTabla();
+        document.getElementById('pc-modal').classList.add('open');
+    }
+    document.getElementById('pc-card-mbrr').addEventListener('click', abrirModal);
+    document.getElementById('pc-btn-ver-mbrr').addEventListener('click', abrirModal);
+    document.getElementById('pc-modal-search').addEventListener('input', renderModalTabla);
+    document.getElementById('pc-modal-close').addEventListener('click', function () {
+        document.getElementById('pc-modal').classList.remove('open');
+    });
+    document.getElementById('pc-modal').addEventListener('click', function (e) {
+        if (e.target.id === 'pc-modal') document.getElementById('pc-modal').classList.remove('open');
+    });
+
+    var fInit = getFechasPeriodo('mes');
+    document.getElementById('pc-fecha-inicio').value = fInit.inicio;
+    document.getElementById('pc-fecha-fin').value = fInit.fin;
+    cargarDatos('mes');
+})();
+</script>

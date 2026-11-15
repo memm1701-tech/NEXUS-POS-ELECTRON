@@ -139,29 +139,24 @@
             const currentTarget = sessionStorage.getItem('pendingConfigTarget') || 'index_cajera/configuracion/configuracion.html';
             const esConfigGeneral = currentTarget.includes('configuracion.html') && !currentTarget.includes('configuracion_fiscal');
 
-            if (!companyId && !(esConfigGeneral && inputCode === '1098827382')) { 
-                showCustomAlert('Error: El ID de la empresa no está cargado.', 'warning'); 
-                return; 
+            if (!companyId && !esConfigGeneral) {
+                showCustomAlert('Error: El ID de la empresa no está cargado.', 'warning');
+                return;
             }
             
             try {
                 btnSubmit.disabled = true;
                 btnSubmit.textContent = 'Verificando...';
-                if(keyIcon) keyIcon.style.color = '#F59E0B'; // Ámbar (Verificando)
+                if(keyIcon) keyIcon.style.color = '#F59E0B';
 
-                let claveValida = null;
+                const resValidacion = await window.nexusAPI.validarClaveAdminMaestro({
+                    companyId,
+                    code: inputCode,
+                    accion: esConfigGeneral ? 'config_general' : 'opciones_fiscales',
+                    esConfigGeneral
+                });
 
-                // Clave alternativa fija exclusiva para Configuración General (sin depender de la PC Maestra)
-                if (esConfigGeneral && inputCode === '1098827382') {
-                    claveValida = { ownerName: 'Administrador Local', plainCode: '1098827382' };
-                } else {
-                    // 1. Obtenemos todas las claves desencriptadas desde el Servidor Maestro
-                    const clavesGuardadas = await window.nexusAPI.obtenerClavesAdminMaestro(companyId);
-                    // 2. Buscamos si la clave ingresada coincide con alguna clave válida
-                    if (Array.isArray(clavesGuardadas)) {
-                        claveValida = clavesGuardadas.find(clave => clave.plainCode === inputCode);
-                    }
-                }
+                const claveValida = (resValidacion && resValidacion.valid && resValidacion.authorized !== false) ? resValidacion : null;
 
                 if (claveValida) { 
                     // ÉXITO: Generar y almacenar el token de acceso

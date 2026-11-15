@@ -552,10 +552,12 @@
                 }
 
                 // --- 3. VALIDACIÓN LOCAL: ¿Ya existe este correo en la base de datos local SQLite? ---
-                if (window.nexusAPI && window.nexusAPI.loginLocal) {
+                if (window.nexusAPI && (typeof window.nexusAPI.existeUsuarioLocal === 'function' || window.nexusAPI.loginLocal)) {
                     try {
-                        const usuarioExistenteLocal = await window.nexusAPI.loginLocal(cashierEmail);
-                        if (usuarioExistenteLocal) {
+                        const usuarioExistenteLocal = typeof window.nexusAPI.existeUsuarioLocal === 'function'
+                            ? await window.nexusAPI.existeUsuarioLocal(cashierEmail)
+                            : await window.nexusAPI.loginLocal(cashierEmail);
+                        if (usuarioExistenteLocal && (usuarioExistenteLocal.exists || usuarioExistenteLocal.uid)) {
                             const rolDesc = usuarioExistenteLocal.role === 'admin' ? 'Administrador' : 'Cajera / Usuario';
                             showInfoMessage(`El correo "${cashierEmail}" ya está registrado en el sistema local como ${rolDesc}. Ingrese un correo diferente.`, 'error');
                             emailInput.focus();

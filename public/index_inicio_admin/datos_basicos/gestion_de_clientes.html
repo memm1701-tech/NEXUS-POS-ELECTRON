@@ -64,6 +64,40 @@
                     <input type="text" id="client-address" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm placeholder-gray-400" placeholder="Dirección detallada del cliente...">
                 </div>
 
+                <!-- Políticas de Crédito y Condición Fiscal SENIAT -->
+                <div class="md:col-span-4 grid grid-cols-2 md:grid-cols-6 gap-3 pt-3 mt-1 border-t border-gray-200 bg-gray-50/70 p-3 rounded-lg">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Tipo Contribuyente</label>
+                        <select id="client-tax-type" class="w-full border border-gray-300 rounded-md p-2 text-xs bg-white focus:border-blue-500 outline-none">
+                            <option value="ORDINARIO">Ordinario</option>
+                            <option value="ESPECIAL">Sujeto Pasivo Especial (SPE)</option>
+                            <option value="FORMAL">Formal / No Sujeto</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Límite Crédito ($)</label>
+                        <input type="number" step="0.01" min="0" id="client-credit-limit" value="0" class="w-full border border-gray-300 rounded-md p-2 text-xs bg-white focus:border-blue-500 outline-none" placeholder="0 = Sin límite">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Días Crédito</label>
+                        <input type="number" min="0" id="client-credit-days" value="15" class="w-full border border-gray-300 rounded-md p-2 text-xs bg-white focus:border-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Días Gracia Mora</label>
+                        <input type="number" min="0" id="client-grace-days" value="3" class="w-full border border-gray-300 rounded-md p-2 text-xs bg-white focus:border-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">% Pronto Pago</label>
+                        <input type="number" step="0.01" min="0" max="50" id="client-early-pct" value="0" class="w-full border border-gray-300 rounded-md p-2 text-xs bg-white focus:border-blue-500 outline-none">
+                    </div>
+                    <div class="flex items-end pb-1.5">
+                        <label class="inline-flex items-center gap-2 text-xs font-bold text-red-700 cursor-pointer">
+                            <input type="checkbox" id="client-credit-blocked" class="h-4 w-4 rounded border-gray-300 text-red-600">
+                            Bloquear Crédito
+                        </label>
+                    </div>
+                </div>
+
                 <div class="md:col-span-4 flex justify-end gap-3 mt-2">
                     <button type="button" id="btn-cancel-edit" class="hidden bg-gray-500 text-white py-2 px-6 rounded-md hover:bg-gray-600 font-bold transition duration-150 shadow-sm" title="Cancelar Edición">
                         <span class="material-icons align-middle text-sm mr-1">close</span> Cancelar
@@ -153,12 +187,20 @@
         async function saveClient(e) {
             e.preventDefault();
             
+            const taxType = document.getElementById('client-tax-type')?.value || 'ORDINARIO';
             const clientData = {
                 rif: document.getElementById('client-rif').value.trim().toUpperCase(),
                 nombre: document.getElementById('client-name').value.trim(),
                 direccion: document.getElementById('client-address').value.trim(),
                 telefono: document.getElementById('client-phone').value.trim(),
                 correo: (document.getElementById('client-email')?.value || '').trim(),
+                tipo_contribuyente: taxType,
+                es_contribuyente_especial: taxType === 'ESPECIAL' ? 1 : 0,
+                limite_credito_usd: parseFloat(document.getElementById('client-credit-limit')?.value) || 0,
+                dias_credito: parseInt(document.getElementById('client-credit-days')?.value || 15, 10),
+                dias_gracia: parseInt(document.getElementById('client-grace-days')?.value || 3, 10),
+                descuento_pronto_pago_pct: parseFloat(document.getElementById('client-early-pct')?.value) || 0,
+                bloqueado_credito: document.getElementById('client-credit-blocked')?.checked ? 1 : 0,
                 company_id: companyId
             };
 
@@ -205,6 +247,14 @@
             if (document.getElementById('client-email')) {
                 document.getElementById('client-email').value = client.correo && client.correo !== 'sin@correo.com' && client.correo !== 'S/C' ? client.correo : '';
             }
+            if (document.getElementById('client-tax-type')) {
+                document.getElementById('client-tax-type').value = client.tipo_contribuyente || (client.es_contribuyente_especial ? 'ESPECIAL' : 'ORDINARIO');
+            }
+            if (document.getElementById('client-credit-limit')) document.getElementById('client-credit-limit').value = parseFloat(client.limite_credito_usd || 0);
+            if (document.getElementById('client-credit-days')) document.getElementById('client-credit-days').value = parseInt(client.dias_credito || 15, 10);
+            if (document.getElementById('client-grace-days')) document.getElementById('client-grace-days').value = parseInt(client.dias_gracia !== undefined && client.dias_gracia !== null ? client.dias_gracia : 3, 10);
+            if (document.getElementById('client-early-pct')) document.getElementById('client-early-pct').value = parseFloat(client.descuento_pronto_pago_pct || 0);
+            if (document.getElementById('client-credit-blocked')) document.getElementById('client-credit-blocked').checked = Number(client.bloqueado_credito || 0) === 1;
             
             // Bloqueamos el input del RIF para que no pueda cambiar la clave primaria
             rifInput.disabled = true;
@@ -247,9 +297,17 @@
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-blue-50 border-b border-gray-100 transition-colors";
                 
+                const badgeCred = Number(c.bloqueado_credito || 0) === 1
+                    ? '<span class="ml-1.5 px-1.5 py-0.5 text-[10px] font-bold bg-red-100 text-red-700 rounded">BLOQUEADO</span>'
+                    : (Number(c.limite_credito_usd || 0) > 0
+                        ? `<span class="ml-1.5 px-1.5 py-0.5 text-[10px] font-bold bg-blue-50 text-blue-700 rounded border border-blue-200">Límite $${Number(c.limite_credito_usd).toFixed(0)} · ${c.dias_credito || 15}d</span>`
+                        : '');
+                const badgeFavor = Number(c.saldo_a_favor_usd || 0) > 0.01
+                    ? `<span class="ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-emerald-50 text-emerald-700 rounded border border-emerald-200">Favor $${Number(c.saldo_a_favor_usd).toFixed(2)}</span>`
+                    : '';
                 tr.innerHTML = `
                     <td class="px-6 py-4 text-sm font-medium text-blue-700">${c.rif}</td>
-                    <td class="px-6 py-4 text-sm font-medium text-gray-900">${c.nombre}</td>
+                    <td class="px-6 py-4 text-sm font-medium text-gray-900">${c.nombre}${badgeCred}${badgeFavor}</td>
                     <td class="px-6 py-4 text-sm text-gray-600">${c.telefono && c.telefono !== '00000000000' ? c.telefono : 'N/A'}</td>
                     <td class="px-6 py-4 text-sm text-gray-500 truncate max-w-xs">${c.direccion || 'N/A'}</td>
                     <td class="px-6 py-4 text-right space-x-3">

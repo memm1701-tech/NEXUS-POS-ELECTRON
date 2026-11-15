@@ -481,10 +481,13 @@ async function iniciarModuloCategorias() {
 
         if (api.obtenerConfigServer) {
             const config = await api.obtenerConfigServer();
-            respaldoActivo = config.respaldo_datos === "true" || config.respaldo_datos === true;
+            const esServidorMaestro = (config.isServer === true || config.isServer === "true");
+            respaldoActivo = esServidorMaestro && (config.respaldo_datos === "true" || config.respaldo_datos === true);
             
             if (respaldoActivo) {
                 SERVER_URL = `http://${config.serverIp || config.SERVER_IP}:${config.serverPort || config.SERVER_PORT}`;
+            } else {
+                SERVER_URL = null;
             }
         }
 
@@ -896,23 +899,25 @@ confirmDeleteBtn.addEventListener('click', async () => {
         // 🔥 MODIFICACIÓN: Eliminar en Servidor VPS (Protegido por el plan premium)
         if (navigator.onLine && respaldoActivo && SERVER_URL) {
             try {
-                const response = await fetch(`${SERVER_URL}/api/maestro/categorias/${id}`, {
+                const response = await fetch(`${SERVER_URL}/api/maestro/categorias/${encodeURIComponent(id)}?company_id=${encodeURIComponent(companyId || '')}`, {
                     method: 'DELETE'
                 });
-                if (!response.ok) throw new Error("Fallo al borrar en VPS");
+                if (!response.ok && response.status !== 404) throw new Error("Fallo al borrar en VPS");
             } catch (srvErr) {
                 console.warn("Servidor VPS offline/rechazó, encolando DELETE.");
                 await api.encolarSincronizacion({
                     operacion: 'DELETE',
                     tabla: 'categorias',
-                    id_registro: id
+                    id_registro: id,
+                    datos: { id, company_id: companyId }
                 });
             }
         } else if (respaldoActivo) {
             await api.encolarSincronizacion({
                 operacion: 'DELETE',
                 tabla: 'categorias',
-                id_registro: id
+                id_registro: id,
+                datos: { id, company_id: companyId }
             });
         }
 
@@ -962,11 +967,13 @@ addButton.addEventListener('click', async () => {
                 });
                 
                 if (!response.ok) throw new Error("Bad Request VPS");
+                if (api.marcarComoSincronizado) await api.marcarComoSincronizado('categorias', catId).catch(() => {});
             } catch (srvErr) {
                 console.warn("Servidor VPS rechazó o está offline, encolando.");
                 await api.encolarSincronizacion({
                     operacion: isEdit ? 'UPDATE' : 'INSERT',
                     tabla: 'categorias',
+                    id_registro: catId,
                     datos: categoriaPayload
                 });
             }
@@ -974,6 +981,7 @@ addButton.addEventListener('click', async () => {
             await api.encolarSincronizacion({
                 operacion: isEdit ? 'UPDATE' : 'INSERT',
                 tabla: 'categorias',
+                id_registro: catId,
                 datos: categoriaPayload
             });
         }

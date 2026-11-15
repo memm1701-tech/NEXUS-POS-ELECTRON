@@ -58,11 +58,12 @@
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID Interno</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre del Método</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo Moneda</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Naturaleza</th>
                                 <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="tabla-pagos" class="bg-white divide-y divide-gray-200">
-                            <tr><td colspan="4" class="text-center py-10"><div class="flex justify-center"><div class="spinner"></div></div></td></tr>
+                            <tr><td colspan="5" class="text-center py-10"><div class="flex justify-center"><div class="spinner"></div></div></td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -83,11 +84,19 @@
                     <label class="block text-sm font-bold text-gray-700 mb-2">Nombre del Método</label>
                     <input type="text" id="pago-nombre" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none uppercase sm:text-sm placeholder-gray-400" required placeholder="Ej. TARJETA, ZELLE, EFECTIVO">
                 </div>
-                <div class="mb-8">
+                <div class="mb-5">
                     <label class="block text-sm font-bold text-gray-700 mb-2">Tipo de Moneda</label>
                     <select id="pago-moneda" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm text-gray-700">
                         <option value="BS">Bolívares (BS)</option>
                         <option value="USD">Dólares (USD)</option>
+                    </select>
+                </div>
+                <div class="mb-8">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Naturaleza del Método</label>
+                    <select id="pago-naturaleza" class="w-full border border-gray-300 rounded-md p-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none sm:text-sm text-gray-700">
+                        <option value="CONTADO">Contado (Pago Inmediato)</option>
+                        <option value="CREDITO">Crédito (Cuentas por Cobrar)</option>
+                        <option value="CASHEA">Cashea (Cuotas / BNPL)</option>
                     </select>
                 </div>
                 <div class="flex items-center justify-end gap-3">
@@ -128,11 +137,15 @@
                 if (result.exito) {
                     window.metodosData = result.data;
                     if(window.metodosData.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-10 text-center text-gray-500"><div class="flex flex-col items-center justify-center"><span class="material-icons text-4xl mb-2 text-gray-300">payments</span><p>No hay métodos registrados aún.</p></div></td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-10 text-center text-gray-500"><div class="flex flex-col items-center justify-center"><span class="material-icons text-4xl mb-2 text-gray-300">payments</span><p>No hay métodos registrados aún.</p></div></td></tr>';
                         return;
                     }
                     
                     window.metodosData.forEach(pago => {
+                        const nat = String(pago.naturaleza || 'CONTADO').toUpperCase();
+                        const natClase = nat === 'CREDITO'
+                            ? 'text-amber-900 bg-amber-200'
+                            : (nat === 'CASHEA' ? 'text-purple-900 bg-purple-200' : 'text-emerald-900 bg-emerald-100');
                         tbody.innerHTML += `
                             <tr class="hover:bg-blue-50 border-b border-gray-100 transition-colors">
                                 <td class="px-6 py-4 text-sm font-medium text-blue-700 whitespace-no-wrap">#${pago.id}</td>
@@ -140,6 +153,11 @@
                                 <td class="px-6 py-4 text-sm font-medium text-gray-600">
                                     <span class="relative inline-block px-3 py-1 font-semibold ${pago.tipo_moneda === 'USD' ? 'text-green-900 bg-green-200' : 'text-blue-900 bg-blue-200'} rounded-full">
                                         ${pago.tipo_moneda}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-sm font-medium text-gray-600">
+                                    <span class="relative inline-block px-3 py-1 font-semibold ${natClase} rounded-full">
+                                        ${nat}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 text-right">
@@ -168,6 +186,7 @@
             const inputId = document.getElementById('pago-id');
             const inputNombre = document.getElementById('pago-nombre');
             const inputMoneda = document.getElementById('pago-moneda');
+            const inputNaturaleza = document.getElementById('pago-naturaleza');
 
             if (id) {
                 const pago = window.metodosData.find(m => m.id === id);
@@ -175,11 +194,13 @@
                 if(inputId) inputId.value = pago.id;
                 if(inputNombre) inputNombre.value = pago.nombre;
                 if(inputMoneda) inputMoneda.value = pago.tipo_moneda;
+                if(inputNaturaleza) inputNaturaleza.value = String(pago.naturaleza || 'CONTADO').toUpperCase();
             } else {
                 if(titulo) titulo.innerHTML = '<span class="material-icons mr-2 text-blue-600">add_circle</span> Nuevo Método de Pago';
                 if(inputId) inputId.value = "";
                 if(inputNombre) inputNombre.value = "";
                 if(inputMoneda) inputMoneda.value = "BS";
+                if(inputNaturaleza) inputNaturaleza.value = "CONTADO";
             }
             if(modal) modal.classList.remove('hidden');
         };
@@ -194,19 +215,21 @@
             const inputId = document.getElementById('pago-id');
             const inputNombre = document.getElementById('pago-nombre');
             const inputMoneda = document.getElementById('pago-moneda');
+            const inputNaturaleza = document.getElementById('pago-naturaleza');
             
             if(!inputNombre || !inputMoneda) return;
 
             const id = inputId ? inputId.value : '';
             const nombre = inputNombre.value.toUpperCase(); // Forzar mayúscula
             const moneda = inputMoneda.value;
+            const naturaleza = inputNaturaleza ? String(inputNaturaleza.value || 'CONTADO').toUpperCase() : 'CONTADO';
 
             try {
                 const baseUrl = await getBaseUrlMaster();
                 const response = await fetch(`${baseUrl}/api/maestro/metodos-pago`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: id || undefined, nombre, tipo_moneda: moneda, activo: 1 })
+                    body: JSON.stringify({ id: id || undefined, nombre, tipo_moneda: moneda, naturaleza, activo: 1 })
                 });
                 
                 const result = await response.json();

@@ -354,14 +354,15 @@
             // --- OBTENER CONFIGURACIÓN DEL SERVIDOR MAESTRO ---
             if (window.nexusAPI && window.nexusAPI.obtenerConfigServer) {
                 const config = await window.nexusAPI.obtenerConfigServer();
-                respaldoActivo = config.respaldo_datos === 'true' || config.respaldo_datos === true;
+                const esServidorMaestro = (config.isServer === true || config.isServer === 'true');
+                respaldoActivo = esServidorMaestro && (config.respaldo_datos === 'true' || config.respaldo_datos === true);
 
                 if (respaldoActivo) {
                     SERVER_URL = `http://${config.serverIp || config.SERVER_IP}:${config.serverPort || config.SERVER_PORT}`;
                     console.log("🧠 Cerebro PostgreSQL detectado en:", SERVER_URL);
                 } else {
                     SERVER_URL = null;
-                    console.log("🔒 Respaldo en la nube desactivado (Plan de Datos Local).");
+                    console.log(esServidorMaestro ? "🔒 Respaldo en la nube desactivado (Plan de Datos Local)." : "ℹ️ Caja hija: sincronización directa al VPS desactivada.");
                 }
             }
 
@@ -440,22 +441,32 @@
     }
 
     // --- 4. Comunicación con Servidor Xeon (Maestro) ---
-    async function subirAXeon(datos) {
-        if (!SERVER_URL) return;
-        try {
-            const res = await fetch(`${SERVER_URL}/api/maestro/sucursales/sincronizar`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(datos)
-            });
-            if (res.ok) {
-                
-                datos.estado_sync = 1;
-                await window.nexusAPI.guardarSucursalLocal(datos);
+    async function subirAXeon(datos, esEdicion = false) {
+        if (!respaldoActivo) return;
+        let subido = false;
+        if (SERVER_URL && navigator.onLine) {
+            try {
+                const res = await fetch(`${SERVER_URL}/api/maestro/sucursales/sincronizar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(datos)
+                });
+                if (res.ok) {
+                    datos.estado_sync = 1;
+                    await window.nexusAPI.guardarSucursalLocal(datos);
+                    subido = true;
+                }
+            } catch (e) {
+                console.error("[SUCURSALES] Error subiendo sucursal al VPS:", e.message);
             }
-        } catch (e) {
-            console.error("[SUCURSALES] Error subiendo sucursal al VPS:", e.message);
-            
+        }
+        if (!subido && window.nexusAPI && window.nexusAPI.encolarSincronizacion) {
+            await window.nexusAPI.encolarSincronizacion({
+                operacion: esEdicion ? 'UPDATE' : 'INSERT',
+                tabla: 'sucursales',
+                id_registro: datos.id,
+                datos
+            }).catch(() => {});
         }
     }
 
@@ -561,8 +572,8 @@
 
             await window.nexusAPI.guardarSucursalLocal(sucursalData);
             
-            if (navigator.onLine && respaldoActivo && SERVER_URL) {
-                await subirAXeon(sucursalData);
+            if (respaldoActivo) {
+                await subirAXeon(sucursalData, Boolean(editingBranchId));
             }
 
             showModal('¡Éxito!', editingBranchId ? 'Sucursal actualizada.' : 'Sucursal registrada.', true);
@@ -614,14 +625,31 @@
         try {
             console.log(`🗑️ [DEBUG] Solicitando eliminación de ID: ${id}`);
             
-            // Intentar borrar en la nube si hay conexión
+            // Intentar borrar en la nube si hay conexión y es servidor maestro
+            let borradoVpsOk = false;
             if (navigator.onLine && respaldoActivo && SERVER_URL) {
-                await fetch(`${SERVER_URL}/api/maestro/sucursales/${id}`, { method: 'DELETE' }).catch(() => console.warn("Servidor maestro offline durante borrado"));
+                try {
+                    const resDel = await fetch(`${SERVER_URL}/api/maestro/sucursales/${encodeURIComponent(id)}?company_id=${encodeURIComponent(userCompanyId || '')}`, { method: 'DELETE' });
+                    if (resDel.ok || resDel.status === 404) borradoVpsOk = true;
+                } catch (_) {
+                    console.warn("Servidor maestro/VPS offline durante borrado");
+                }
+            }
+            if (!borradoVpsOk && respaldoActivo && window.nexusAPI && window.nexusAPI.encolarSincronizacion) {
+                await window.nexusAPI.encolarSincronizacion({
+                    operacion: 'DELETE',
+                    tabla: 'sucursales',
+                    id_registro: id,
+                    datos: { id, company_id: userCompanyId }
+                }).catch(() => {});
             }
 
-            // Borrado local en SQLite
+            // Borrado local en SQLite (baja lógica status = -1)
             if (window.nexusAPI.eliminarSucursalLocal) {
                 await window.nexusAPI.eliminarSucursalLocal(id);
+                if (borradoVpsOk && window.nexusAPI.marcarComoSincronizado) {
+                    await window.nexusAPI.marcarComoSincronizado('sucursales', id).catch(() => {});
+                }
                 showModal('¡Éxito!', 'Sucursal eliminada permanentemente.', true);
                 await cargarSucursalesLocales();
             } else {

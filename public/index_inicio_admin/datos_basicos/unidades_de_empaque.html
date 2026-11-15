@@ -422,14 +422,15 @@
             try {
                 if (api.obtenerConfigServer) {
                     const config = await api.obtenerConfigServer();
-                    respaldoActivo = config.respaldo_datos === 'true' || config.respaldo_datos === true;
+                    const esServidorMaestro = (config.isServer === true || config.isServer === 'true');
+                    respaldoActivo = esServidorMaestro && (config.respaldo_datos === 'true' || config.respaldo_datos === true);
 
                     if (respaldoActivo) {
                         SERVER_URL = `http://${config.serverIp || config.SERVER_IP}:${config.serverPort || config.SERVER_PORT}`;
                         console.log("🧠 Cerebro PostgreSQL detectado para Empaques en:", SERVER_URL);
                     } else {
                         SERVER_URL = null;
-                        console.log("🔒 Respaldo en la nube desactivado (Plan Local).");
+                        console.log(esServidorMaestro ? "🔒 Respaldo en la nube desactivado (Plan Local)." : "ℹ️ Caja hija: sincronización directa de empaques al VPS desactivada.");
                     }
                 }
             } catch (configError) {
@@ -863,11 +864,14 @@
             datosEmpaque.estado_sync = 0;
             await api.guardarUnidadEmpaqueLocal(datosEmpaque);
 
-            await api.encolarSincronizacion({
-                operacion: 'INSERT',
-                tabla: 'unidades_empaque',
-                datos: datosEmpaque
-            });
+            if (respaldoActivo && api.encolarSincronizacion) {
+                await api.encolarSincronizacion({
+                    operacion: 'INSERT',
+                    tabla: 'unidades_empaque',
+                    id_registro: datosEmpaque.id,
+                    datos: datosEmpaque
+                });
+            }
             mostrarToastEmpaque("⚠️ Guardado localmente. Se subirá al reconectar.", "warning");
         } finally {
             formularioEmpaque.reset();
@@ -898,13 +902,14 @@
 
         try {
             if (navigator.onLine && respaldoActivo && SERVER_URL) {
-                const response = await fetch(`${SERVER_URL}/api/maestro/empaque/${idItemAEliminar}`, {
+                const response = await fetch(`${SERVER_URL}/api/maestro/empaque/${encodeURIComponent(idItemAEliminar)}?company_id=${encodeURIComponent(idEmpresa || '')}`, {
                     method: 'DELETE'
                 });
 
-                if (!response.ok) throw new Error("Fallo en la nube al eliminar");
+                if (!response.ok && response.status !== 404) throw new Error("Fallo en la nube al eliminar");
 
                 await api.eliminarUnidadEmpaqueLocal(idItemAEliminar);
+                if (api.marcarComoSincronizado) await api.marcarComoSincronizado('unidades_empaque', idItemAEliminar).catch(() => {});
                 mostrarToastEmpaque("🗑️ Unidad eliminada de la nube y localmente", "success");
             } else {
                 throw new Error("Offline o sin plan activo");
@@ -912,11 +917,14 @@
         } catch (error) {
             console.warn("⚠️ Eliminación en cola local:", error.message);
             await api.eliminarUnidadEmpaqueLocal(idItemAEliminar);
-            await api.encolarSincronizacion({
-                operacion: 'DELETE',
-                tabla: 'unidades_empaque',
-                datos: payloadEliminar
-            });
+            if (respaldoActivo && api.encolarSincronizacion) {
+                await api.encolarSincronizacion({
+                    operacion: 'DELETE',
+                    tabla: 'unidades_empaque',
+                    id_registro: idItemAEliminar,
+                    datos: payloadEliminar
+                });
+            }
             mostrarToastEmpaque("⚠️ Eliminado localmente (Pendiente de sincronizar)", "warning");
         } finally {
             modalEliminar.style.display = 'none';

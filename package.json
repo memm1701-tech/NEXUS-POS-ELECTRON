@@ -1,6 +1,6 @@
 {
   "name": "nexus-pos-global",
-  "version": "2.0.8",
+  "version": "2.0.9",
   "description": "Sistema de Facturacion Nexus Pos Global",
   "main": "main.js",
   "scripts": {
@@ -8,7 +8,9 @@
     "postinstall": "electron-builder install-app-deps",
     "dist": "electron-builder",
     "rebuild": "electron-rebuild -f -w better-sqlite3",
-    "video": "npm --prefix video run dev"
+    "video": "npm --prefix video run dev",
+    "validate": "node scripts/validar-proyecto.js",
+    "test": "node --test tests/*.test.js"
   },
   "keywords": [],
   "author": "Nexus Company C.A",
@@ -39,6 +41,8 @@
       "**/*",
       "!data/*",
       "!dist/*",
+      "!scripts/*",
+      "!tests/*",
       "!web-nexus/*",
       "!.git/**/*"
     ],

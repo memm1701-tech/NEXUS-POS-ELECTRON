@@ -1237,11 +1237,25 @@
 
             <div id="seccion-factura-proveedor" class="p-4 bg-gray-50 border border-gray-200 rounded-xl flex flex-col gap-4 mt-3" style="display: none;">
 
-                <div class="flex items-center justify-between pb-2 border-b border-gray-200 mb-1">
+                <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-gray-200 mb-1">
 
                     <span class="text-xs font-bold text-gray-600 uppercase tracking-wide">📦 Datos de Documento / Factura de Proveedor</span>
 
-                    <span class="text-xs text-gray-500">Puedes dejarlo en blanco si es compra informal</span>
+                    <div class="flex items-center gap-2">
+
+                        <span id="badge-prov-saldo-favor" style="display: none; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;"></span>
+
+                        <input type="file" id="ocr-factura-file" accept="image/*,.pdf" style="display: none;">
+
+                        <button type="button" id="btn-ocr-factura-ia" style="background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
+
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Escanear Factura (IA)
+
+                        </button>
+
+                        <span class="text-xs text-gray-500 hidden sm:inline">Puedes dejarlo en blanco si es compra informal</span>
+
+                    </div>
 
                 </div>
 
@@ -1297,6 +1311,43 @@
 
                     </div>
 
+                </div>
+
+                <!-- Fila Opcional: Datos Fiscales para Libro de Compras SENIAT / Gerencial -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 pt-3 border-t border-gray-200 mt-1">
+                    <div class="input-group-item">
+                        <label for="factura-control-input">N° Control Fiscal (Opcional):</label>
+                        <input type="text" id="factura-control-input" placeholder="Ej: 00-001452" autocomplete="off">
+                    </div>
+
+                    <div class="input-group-item">
+                        <label for="factura-alicuota-select">Impuesto / IVA:</label>
+                        <select id="factura-alicuota-select" class="w-full text-left">
+                            <option value="0">Exento / Sin IVA (0%)</option>
+                            <option value="16" selected>IVA General (16% incl.)</option>
+                            <option value="8">IVA Reducido (8% incl.)</option>
+                            <option value="31">IVA Suntuario (31% incl.)</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group-item">
+                        <label for="factura-tasa-input">Tasa BCV Factura (Bs/$):</label>
+                        <input type="number" id="factura-tasa-input" placeholder="Tasa BCV" step="0.0001" min="0">
+                    </div>
+
+                    <div class="input-group-item">
+                        <label for="factura-retencion-select">% Retención IVA:</label>
+                        <select id="factura-retencion-select" class="w-full text-left">
+                            <option value="0" selected>Sin Retención (0%)</option>
+                            <option value="75">Retención 75% IVA</option>
+                            <option value="100">Retención 100% IVA</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group-item">
+                        <label for="factura-comp-retencion-input">N° Comprobante Retención:</label>
+                        <input type="text" id="factura-comp-retencion-input" placeholder="Ej: 20261100001234" autocomplete="off">
+                    </div>
                 </div>
 
             </div>
@@ -1705,6 +1756,18 @@
 
     const selectorCondicionPago = document.getElementById('condicion-pago-select');
 
+    const entradaFacturaControl = document.getElementById('factura-control-input');
+
+    const selectorFacturaAlicuota = document.getElementById('factura-alicuota-select');
+
+    const entradaFacturaTasa = document.getElementById('factura-tasa-input');
+
+    const selectorFacturaRetencion = document.getElementById('factura-retencion-select');
+
+    const entradaFacturaCompRet = document.getElementById('factura-comp-retencion-input');
+
+    let tasaBcvSistema = 1;
+
         let productoSeleccionadoObj = null;
 
     let itemsLote = [];
@@ -1806,6 +1869,18 @@
                 const categorias = await api.obtenerCategoriasLocal();
 
                 if (Array.isArray(categorias)) categorias.forEach(cat => { mapaCategorias[cat.id] = cat.nombre; });
+
+                try {
+                    const tCfg = api.obtenerConfiguracion ? await api.obtenerConfiguracion('TASA_BCV') : null;
+                    if (tCfg && parseFloat(tCfg) > 0) tasaBcvSistema = parseFloat(tCfg);
+                    else if (api.obtenerHistorialTasas) {
+                        const hist = await api.obtenerHistorialTasas();
+                        if (Array.isArray(hist) && hist.length > 0 && parseFloat(hist[0].valor) > 0) {
+                            tasaBcvSistema = parseFloat(hist[0].valor);
+                        }
+                    }
+                    if (entradaFacturaTasa && tasaBcvSistema > 0) entradaFacturaTasa.value = tasaBcvSistema.toFixed(4);
+                } catch (_) {}
 
 
 
@@ -2844,7 +2919,18 @@
 
                 const montoAbonadoDoc = esCredito ? 0 : totalMontoFactura;
 
-
+                const numControlDoc = entradaFacturaControl ? entradaFacturaControl.value.trim() : '';
+                const alicuotaDoc = selectorFacturaAlicuota ? (parseFloat(selectorFacturaAlicuota.value) || 0) : 0;
+                const tasaDoc = (entradaFacturaTasa && parseFloat(entradaFacturaTasa.value) > 0) ? parseFloat(entradaFacturaTasa.value) : (tasaBcvSistema > 0 ? tasaBcvSistema : 1);
+                const montoBsDoc = parseFloat((totalMontoFactura * tasaDoc).toFixed(2));
+                const aplicaIvaFiscal = Boolean(numControlDoc) && alicuotaDoc > 0;
+                const baseImponibleDoc = aplicaIvaFiscal ? parseFloat((montoBsDoc / (1 + alicuotaDoc / 100)).toFixed(2)) : 0;
+                const montoIvaDoc = aplicaIvaFiscal ? parseFloat((montoBsDoc - baseImponibleDoc).toFixed(2)) : 0;
+                const montoExentoDoc = aplicaIvaFiscal ? 0 : montoBsDoc;
+                const pctRetDoc = selectorFacturaRetencion ? (parseFloat(selectorFacturaRetencion.value) || 0) : 0;
+                const ivaRetDoc = (montoIvaDoc > 0 && pctRetDoc > 0) ? parseFloat((montoIvaDoc * (pctRetDoc / 100)).toFixed(2)) : 0;
+                const compRetDoc = entradaFacturaCompRet ? entradaFacturaCompRet.value.trim() : '';
+                const hoyIso = new Date(Date.now() - (4 * 3600 * 1000)).toISOString().slice(0, 10);
 
                 const payloadCxp = {
 
@@ -2853,6 +2939,8 @@
                     company_id: idEmpresa,
 
                     proveedor_rif: proveedorRifVal,
+
+                    razon: selectedProveedorNombre || '',
 
                     motivo: 'FACTURA',
 
@@ -2868,7 +2956,33 @@
 
                     condicionPago: condicionPagoVal,
 
-                    contenido_fac: JSON.stringify(contenidoFactura)
+                    contenido_fac: JSON.stringify(contenidoFactura),
+
+                    numero_control: numControlDoc,
+
+                    tipo_documento: 'FACTURA',
+
+                    tipo_transaccion: '01-REGISTRO',
+
+                    tasa_bcv: tasaDoc,
+
+                    monto_bs: montoBsDoc,
+
+                    monto_exento: montoExentoDoc,
+
+                    base_imponible: baseImponibleDoc,
+
+                    alicuota_iva: aplicaIvaFiscal ? alicuotaDoc : 0,
+
+                    monto_iva: montoIvaDoc,
+
+                    iva_retenido: ivaRetDoc,
+
+                    porcentaje_retencion: pctRetDoc,
+
+                    comprobante_retencion: compRetDoc,
+
+                    fecha_retencion: (ivaRetDoc > 0 || compRetDoc) ? hoyIso : ''
 
                 };
 
@@ -2879,6 +2993,12 @@
                     const resCxp = await window.nexusAPI.guardarMovimientoCxpLocal(payloadCxp);
 
                     console.log("📄 [CXP ENTRADA] Movimiento de cuenta por pagar guardado con contenido_fac:", resCxp);
+
+                    if (resCxp && resCxp.success === false) {
+
+                        mostrarAlerta(`⚠️ Atención CxP: ${resCxp.error || 'No se pudo registrar el documento fiscal en CxP'}`, 'warning');
+
+                    }
 
                 } catch (errCxp) {
 
@@ -3381,7 +3501,8 @@
 
             if (window.nexusAPI && window.nexusAPI.obtenerProveedoresLocal) {
 
-                proveedoresList = await window.nexusAPI.obtenerProveedoresLocal() || [];
+                const provRaw = await window.nexusAPI.obtenerProveedoresLocal(idEmpresa) || [];
+                proveedoresList = provRaw.filter(p => !idEmpresa || p.company_id === idEmpresa);
 
             }
 
@@ -3431,6 +3552,16 @@
 
                 }
 
+                const badgeSaldo = document.getElementById('badge-prov-saldo-favor');
+
+                if (badgeSaldo) {
+
+                    badgeSaldo.textContent = '';
+
+                    badgeSaldo.style.display = 'none';
+
+                }
+
                 return; 
 
             }
@@ -3459,7 +3590,9 @@
 
                     b.className = "autocomplete-item text-sm";
 
-                    b.innerHTML = "<strong>" + p.nombre + "</strong> (" + (p.rif || 'Sin RIF') + ")<br><span class='text-xs text-gray-500'>Deuda: $" + (p.saldo_deuda || 0).toFixed(2) + "</span>";
+                    const sfUsd = Number(p.saldo_a_favor_usd || 0);
+
+                    b.innerHTML = "<strong>" + p.nombre + "</strong> (" + (p.rif || 'Sin RIF') + ")<br><span class='text-xs text-gray-500'>Deuda: $" + (p.saldo_deuda || 0).toFixed(2) + (sfUsd > 0.009 ? " · <span class='text-emerald-700 font-bold'>Saldo a favor: $" + sfUsd.toFixed(2) + "</span>" : "") + "</span>";
 
                     b.addEventListener("click", function() {
 
@@ -3474,6 +3607,34 @@
                             badgeProvSeleccionado.textContent = '✓ ' + p.nombre + ' (' + (p.rif || 'Sin RIF') + ')';
 
                             badgeProvSeleccionado.style.display = 'inline-block';
+
+                        }
+
+                        const badgeSaldo = document.getElementById('badge-prov-saldo-favor');
+
+                        if (badgeSaldo) {
+
+                            if (sfUsd > 0.009) {
+
+                                badgeSaldo.textContent = 'Saldo a favor: $' + sfUsd.toFixed(2);
+
+                                badgeSaldo.style.display = 'inline-block';
+
+                            } else {
+
+                                badgeSaldo.textContent = '';
+
+                                badgeSaldo.style.display = 'none';
+
+                            }
+
+                        }
+
+                        if (selectorFacturaRetencion && p.porcentaje_retencion_iva && String(selectorFacturaRetencion.value) === '0') {
+
+                            const pctOpt = String(Number(p.porcentaje_retencion_iva));
+
+                            if (['75', '100'].includes(pctOpt)) selectorFacturaRetencion.value = pctOpt;
 
                         }
 
@@ -3775,6 +3936,16 @@
 
         if (entradaFacturaRef) entradaFacturaRef.value = '';
 
+        if (entradaFacturaControl) entradaFacturaControl.value = '';
+
+        if (entradaFacturaCompRet) entradaFacturaCompRet.value = '';
+
+        if (selectorFacturaRetencion) selectorFacturaRetencion.value = '0';
+
+        if (selectorFacturaAlicuota) selectorFacturaAlicuota.value = '16';
+
+        if (entradaFacturaTasa && tasaBcvSistema > 0) entradaFacturaTasa.value = tasaBcvSistema.toFixed(4);
+
         if (provSearch) provSearch.value = '';
 
         selectedProveedorRif = null;
@@ -3858,6 +4029,74 @@
     window.addEventListener('stock-actualizado-vps', refrescarTablaDebounced);
 
 
+
+    // Escáner OCR IA para facturas de compra
+    const btnOcrFacturaIa = document.getElementById('btn-ocr-factura-ia');
+    const ocrFacturaFile = document.getElementById('ocr-factura-file');
+    if (btnOcrFacturaIa && ocrFacturaFile) {
+        btnOcrFacturaIa.addEventListener('click', () => ocrFacturaFile.click());
+        ocrFacturaFile.addEventListener('change', async (ev) => {
+            const file = ev.target.files?.[0];
+            ev.target.value = '';
+            if (!file) return;
+            if (!window.nexusAPI?.escanearFacturaCompraIa) {
+                mostrarAlerta('El escáner OCR IA no está disponible en esta versión.', 'warning');
+                return;
+            }
+            const originalHtml = btnOcrFacturaIa.innerHTML;
+            btnOcrFacturaIa.disabled = true;
+            btnOcrFacturaIa.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analizando...';
+            try {
+                const dataUrl = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+                    reader.readAsDataURL(file);
+                });
+                const resOcr = await window.nexusAPI.escanearFacturaCompraIa({
+                    companyId: idEmpresa,
+                    imageBase64: dataUrl,
+                    mimeType: file.type || 'image/jpeg'
+                });
+                if (!resOcr || !resOcr.exito || !resOcr.datos) {
+                    throw new Error(resOcr?.error || 'No se pudieron extraer datos de la factura');
+                }
+                const d = resOcr.datos;
+                if (entradaFacturaRef && d.numero_factura) entradaFacturaRef.value = d.numero_factura;
+                if (entradaFacturaControl && d.numero_control) entradaFacturaControl.value = d.numero_control;
+                if (entradaFacturaTasa && Number(d.tasa_bcv_sugerida) > 0) entradaFacturaTasa.value = d.tasa_bcv_sugerida;
+                if (selectorFacturaAlicuota && d.alicuota_iva != null) {
+                    const alic = String(Math.round(Number(d.alicuota_iva)));
+                    if (['0', '8', '16', '31'].includes(alic)) selectorFacturaAlicuota.value = alic;
+                }
+                if (d.proveedor_rif && proveedoresList.length > 0) {
+                    const norm = String(d.proveedor_rif).toUpperCase().replace(/[^A-Z0-9]/g, '');
+                    const match = proveedoresList.find(p => String(p.rif || '').toUpperCase().replace(/[^A-Z0-9]/g, '') === norm);
+                    if (match && provSearch) {
+                        provSearch.value = match.nombre;
+                        selectedProveedorRif = match.rif;
+                        selectedProveedorNombre = match.nombre;
+                        if (badgeProvSeleccionado) {
+                            badgeProvSeleccionado.textContent = '✓ ' + match.nombre + ' (' + match.rif + ')';
+                            badgeProvSeleccionado.style.display = 'inline-block';
+                        }
+                        const badgeSaldo = document.getElementById('badge-prov-saldo-favor');
+                        const sfUsd = Number(match.saldo_a_favor_usd || 0);
+                        if (badgeSaldo) {
+                            badgeSaldo.textContent = sfUsd > 0.009 ? ('Saldo a favor: $' + sfUsd.toFixed(2)) : '';
+                            badgeSaldo.style.display = sfUsd > 0.009 ? 'inline-block' : 'none';
+                        }
+                    }
+                }
+                mostrarAlerta(`✨ OCR completado: Factura ${d.numero_factura || 'S/N'} (${d.proveedor_nombre || d.proveedor_rif || 'Proveedor'}). Verifica los campos antes de guardar.`, 'success');
+            } catch (errOcr) {
+                mostrarAlerta('❌ OCR Factura: ' + errOcr.message, 'error');
+            } finally {
+                btnOcrFacturaIa.disabled = false;
+                btnOcrFacturaIa.innerHTML = originalHtml;
+            }
+        });
+    }
 
     inicializarModulo();
 

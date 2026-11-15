@@ -1,0 +1,588 @@
+<style>
+    .estadisticas-container {
+        --color-primary: #0284c7;
+        --color-primary-hover: #0369a1;
+        --color-success: #059669;
+        --color-danger: #dc2626;
+        --color-warning: #d97706;
+        --color-background: #f8fafc;
+        --color-text: #1f2937;
+        --color-card-bg: #ffffff;
+        --color-border: #e2e8f0;
+        --radius: 12px;
+        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        color: var(--color-text);
+        padding: 24px;
+        background: var(--color-background);
+        min-height: 100%;
+        box-sizing: border-box;
+    }
+    .stats-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+    .stats-header h1 { margin: 0; font-size: 1.55rem; font-weight: 700; color: #0f172a; }
+    .stats-header p { margin: 4px 0 0 0; font-size: 0.9rem; color: #64748b; }
+    .card {
+        background: var(--color-card-bg);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius);
+        padding: 20px;
+        box-shadow: var(--shadow);
+        margin-bottom: 20px;
+    }
+    .card-head {
+        display: flex; justify-content: space-between; align-items: center; gap: 12px;
+        flex-wrap: wrap; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9;
+    }
+    .card-head h2, .card-head h3 { margin: 0; font-size: 1.05rem; font-weight: 700; color: #0f172a; }
+    .controls-bar {
+        display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+        gap: 14px; background: #ffffff; border: 1px solid var(--color-border);
+        border-radius: var(--radius); padding: 14px 18px; margin-bottom: 20px; box-shadow: var(--shadow);
+    }
+    .control-group { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+    .bi-field { display: flex; flex-direction: column; gap: 4px; }
+    .bi-field label { font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em; }
+    .bi-field input {
+        padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px;
+        font-size: 0.85rem; color: #0f172a; background: #f8fafc; outline: none; font-family: inherit;
+    }
+    .bi-field input:focus { border-color: var(--color-primary); background: #ffffff; }
+    .selector-periodo { display: flex; gap: 4px; background: #f1f5f9; padding: 4px; border-radius: 8px; }
+    .selector-periodo button {
+        border: none; background: transparent; padding: 6px 12px; border-radius: 6px;
+        font-size: 0.82rem; font-weight: 600; color: #475569; cursor: pointer; transition: all 0.15s;
+    }
+    .selector-periodo button.active { background: #ffffff; color: var(--color-primary); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+    .btn-primary {
+        background: var(--color-primary); color: #ffffff; border: none; border-radius: 6px;
+        padding: 7px 14px; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+    }
+    .btn-primary:hover { background: var(--color-primary-hover); }
+    .btn-outline {
+        background: #ffffff; color: #334155; border: 1px solid #cbd5e1; border-radius: 6px;
+        padding: 6px 12px; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+    }
+    .btn-outline:hover { background: #f1f5f9; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .kpi-card {
+        background: #ffffff; border: 1px solid var(--color-border); border-radius: var(--radius);
+        padding: 16px 18px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 4px;
+    }
+    .kpi-card.clickable { cursor: pointer; transition: border-color 0.15s; }
+    .kpi-card.clickable:hover { border-color: var(--color-primary); }
+    .kpi-title { margin: 0; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em; }
+    .kpi-value { margin: 2px 0; font-size: 1.45rem; font-weight: 800; color: #0f172a; }
+    .kpi-subtext { margin: 0; font-size: 0.78rem; color: #475569; line-height: 1.35; }
+    .status-tag {
+        display: inline-block; align-self: flex-start; margin-top: 2px; padding: 3px 8px; border-radius: 4px;
+        font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+    }
+    .tag-verde { background: #d1fae5; color: #065f46; }
+    .tag-amarillo { background: #fef3c7; color: #92400e; }
+    .tag-rojo { background: #fee2e2; color: #991b1b; }
+    .tag-neutro { background: #f1f5f9; color: #475569; }
+    .two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 20px; margin-bottom: 20px; }
+    .table-wrap { width: 100%; overflow-x: auto; }
+    .bi-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .bi-table th {
+        text-align: left; padding: 8px 10px; font-size: 0.72rem; color: #475569;
+        text-transform: uppercase; border-bottom: 1px solid var(--color-border); background: #f8fafc; font-weight: 700;
+    }
+    .bi-table td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; color: #0f172a; }
+    .bi-num { text-align: right; font-variant-numeric: tabular-nums; }
+    .bi-modal-backdrop {
+        display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55);
+        z-index: 9999; align-items: center; justify-content: center; padding: 20px;
+    }
+    .bi-modal-backdrop.open { display: flex; }
+    .bi-modal-dialog {
+        background: #ffffff; border-radius: 12px; width: 100%; max-width: 980px;
+        max-height: 85vh; display: flex; flex-direction: column;
+        box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15); border: 1px solid var(--color-border);
+    }
+    .bi-modal-head {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 16px 20px; border-bottom: 1px solid var(--color-border);
+    }
+    .bi-modal-head h3 { margin: 0; font-size: 1.05rem; color: #0f172a; }
+    .bi-modal-close { border: none; background: transparent; font-size: 1.4rem; line-height: 1; color: #64748b; cursor: pointer; }
+    .bi-modal-search { padding: 12px 20px; border-bottom: 1px solid #f1f5f9; }
+    .bi-modal-search input {
+        width: 100%; box-sizing: border-box; padding: 8px 12px; border: 1px solid #cbd5e1;
+        border-radius: 6px; font-size: 0.85rem; outline: none;
+    }
+    .bi-modal-body { padding: 16px 20px; overflow-y: auto; flex: 1; }
+    .empty-msg { text-align: center; padding: 24px; color: #64748b; font-size: 0.85rem; }
+</style>
+
+<style>
+@keyframes guiaBlinkRed {
+    0%, 100% {
+        background-color: #dc2626;
+        color: #ffffff;
+        border-color: #b91c1c;
+        box-shadow: 0 0 14px rgba(220, 38, 38, 0.42);
+    }
+    50% {
+        background-color: #fee2e2;
+        color: #991b1b;
+        border-color: #f87171;
+        box-shadow: 0 0 3px rgba(220, 38, 38, 0.12);
+    }
+}
+.btn-guia-uso {
+    border: 2px solid #dc2626;
+    border-radius: 2px;
+    padding: 8px 12px;
+    font-size: 0.74rem;
+    font-weight: 800;
+    line-height: 1.25;
+    max-width: 175px;
+    text-align: center;
+    cursor: pointer;
+    background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(0, 0, 0, 0.08));
+    animation: guiaBlinkRed 2.8s ease-in-out infinite;
+    flex-shrink: 0;
+}
+.guia-modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.65);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.guia-modal-backdrop.open { display: flex; }
+.guia-modal-card {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    max-width: 800px;
+    width: 100%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.25);
+}
+.guia-modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+.guia-modal-head h2 { margin: 0; font-size: 1.05rem; color: #0f172a; }
+.guia-modal-close {
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+.guia-modal-body {
+    padding: 18px 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.guia-sec {
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px 14px;
+    background: #ffffff;
+}
+.guia-sec h3 { margin: 0 0 6px 0; font-size: 0.92rem; color: #0f172a; }
+.guia-sec p { margin: 4px 0; font-size: 0.82rem; color: #334155; line-height: 1.45; }
+.guia-sec strong { color: #0f172a; }
+</style>
+<div class="estadisticas-container">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+        <button type="button" class="btn-guia-uso" id="ic-btn-guia">Cómo utilizar a favor esta información</button>
+    </div>
+    <div class="guia-modal-backdrop" id="ic-modal-guia" role="dialog" aria-modal="true" aria-labelledby="ic-modal-titulo">
+        <div class="guia-modal-card">
+            <div class="guia-modal-head">
+                <h2 id="ic-modal-titulo">Guía de uso estratégico: Inteligencia Comercial y Clientes</h2>
+                <button type="button" class="guia-modal-close" id="ic-btn-cerrar-guia">Cerrar</button>
+            </div>
+            <div class="guia-modal-body">
+                <div class="guia-sec">
+                    <h3>1. Retención, Clientes Recurrentes y Concentración de Ingresos</h3>
+                    <p><strong>Qué mide:</strong> Identifica cuántos clientes compran repetidamente en el período, tu ticket promedio por cliente y qué porcentaje de tu facturación depende de tus mayores compradores (riesgo Pareto).</p>
+                    <p><strong>Cómo usarlo a favor:</strong> Si pocos clientes concentran más del 40% de tus ventas, protege esa relación con atención prioritaria mientras captas nuevos compradores para diversificar el riesgo.</p>
+                </div>
+                <div class="guia-sec">
+                    <h3>2. Ranking Pareto de Clientes VIP</h3>
+                    <p><strong>Qué mide:</strong> Ordena a tus mejores clientes por volumen facturado, ganancia bruta real que dejan y frecuencia de compra.</p>
+                    <p><strong>Cómo usarlo a favor:</strong> Un cliente que compra mucho volumen pero con margen mínimo puede estar exigiendo demasiados descuentos. Usa el ranking para ofrecer beneficios por volumen solo a quienes dejan utilidad neta real.</p>
+                </div>
+                <div class="guia-sec">
+                    <h3>3. Productos Estrella y Rentabilidad Comercial por Categoría</h3>
+                    <p><strong>Qué mide:</strong> Cruza unidades vendidas contra margen unitario y aporte total al beneficio bruto del negocio.</p>
+                    <p><strong>Cómo usarlo a favor:</strong> Impulsa en exhibición y promociones los ítems de alto margen (productos gancho + complemento), y revisa costos o precios en artículos muy vendidos que casi no dejan utilidad.</p>
+                </div>
+                <div class="guia-sec">
+                    <h3>4. Comportamiento de Compra por Canal y Horario / Frecuencia</h3>
+                    <p><strong>Qué mide:</strong> Resume cómo cambia el ticket y el margen según el canal de pago (<em>Contado</em>, <em>Crédito</em>, <em>Cashea</em>) y el ritmo comercial del período.</p>
+                    <p><strong>Cómo usarlo a favor:</strong> Ajusta turnos de caja y campañas de oferta según los canales que mejor combinan volumen con ganancia real.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    (function() {
+        const btnOpen = document.getElementById('ic-btn-guia');
+        const modal = document.getElementById('ic-modal-guia');
+        const btnClose = document.getElementById('ic-btn-cerrar-guia');
+        if (btnOpen && modal) {
+            btnOpen.addEventListener('click', () => modal.classList.add('open'));
+            if (btnClose) btnClose.addEventListener('click', () => modal.classList.remove('open'));
+            modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('open'); });
+        }
+    })();
+    </script>
+    <div class="stats-header">
+        <div>
+            <h1>Inteligencia Comercial y Clientes</h1>
+            <p>Concentración de cartera TTM, afinidad de canasta (Market Basket), cohortes de retención, riesgo TEHC y elasticidad</p>
+        </div>
+    </div>
+
+    <div class="controls-bar">
+        <div class="selector-periodo" id="ic-selector-periodo">
+            <button type="button" data-periodo="hoy">Hoy</button>
+            <button type="button" data-periodo="semana">Esta Semana</button>
+            <button type="button" data-periodo="mes" class="active">Este Mes</button>
+            <button type="button" data-periodo="anual">Anual</button>
+        </div>
+        <div class="control-group">
+            <div class="bi-field">
+                <label for="ic-fecha-inicio">Desde</label>
+                <input type="date" id="ic-fecha-inicio">
+            </div>
+            <div class="bi-field">
+                <label for="ic-fecha-fin">Hasta</label>
+                <input type="date" id="ic-fecha-fin">
+            </div>
+            <button type="button" class="btn-primary" id="ic-btn-filtrar">Aplicar</button>
+        </div>
+    </div>
+
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <p class="kpi-title">Concentración Top 1 / Top 3 (TTM)</p>
+            <h3 class="kpi-value" id="ic-kpi-conc">0.0% / 0.0%</h3>
+            <span class="status-tag tag-neutro" id="ic-tag-conc">DIVERSIFICADO</span>
+            <p class="kpi-subtext" id="ic-sub-conc">Total 12 meses: $0.00</p>
+        </div>
+        <div class="kpi-card clickable" id="ic-card-basket">
+            <p class="kpi-title">Canastas Analizadas (Market Basket)</p>
+            <h3 class="kpi-value" id="ic-kpi-basket">0</h3>
+            <p class="kpi-subtext" id="ic-sub-basket">0 pares frecuentes detectados</p>
+        </div>
+        <div class="kpi-card clickable" id="ic-card-tehc">
+            <p class="kpi-title">Clientes Evaluados en Score TEHC</p>
+            <h3 class="kpi-value" id="ic-kpi-tehc">0</h3>
+            <p class="kpi-subtext" id="ic-sub-tehc">Riesgo alto de arbitraje cambiario: 0</p>
+        </div>
+        <div class="kpi-card clickable" id="ic-card-elasticidad">
+            <p class="kpi-title">SKUs con Elasticidad Medida</p>
+            <h3 class="kpi-value" id="ic-kpi-elasticidad">0</h3>
+            <p class="kpi-subtext">Clic para revisar recomendaciones de precio</p>
+        </div>
+    </div>
+
+    <div class="two-col">
+        <div class="card" style="margin-bottom:0;">
+            <div class="card-head">
+                <h3>Market Basket (Pares con Mayor Lift)</h3>
+                <button type="button" class="btn-outline" id="ic-btn-ver-basket">Ver pares y tríos</button>
+            </div>
+            <div class="table-wrap">
+                <table class="bi-table">
+                    <thead>
+                        <tr><th>Combinación de Productos</th><th class="bi-num">Soporte</th><th class="bi-num">Confianza</th><th class="bi-num">Lift</th></tr>
+                    </thead>
+                    <tbody id="ic-tbody-basket"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card" style="margin-bottom:0;">
+            <div class="card-head">
+                <h3>Retención por Cohortes Mensuales</h3>
+            </div>
+            <div class="table-wrap">
+                <table class="bi-table">
+                    <thead>
+                        <tr><th>Cohorte</th><th class="bi-num">Clientes</th><th class="bi-num">Mes 0</th><th class="bi-num">Mes +1</th><th class="bi-num">Mes +2</th><th class="bi-num">Mes +3</th></tr>
+                    </thead>
+                    <tbody id="ic-tbody-cohortes"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="two-col">
+        <div class="card" style="margin-bottom:0;">
+            <div class="card-head">
+                <h3>Score TEHC (Exposición Cambiaria por Cliente)</h3>
+                <button type="button" class="btn-outline" id="ic-btn-ver-tehc">Ver todos</button>
+            </div>
+            <div class="table-wrap">
+                <table class="bi-table">
+                    <thead>
+                        <tr><th>Cliente</th><th class="bi-num">Saldo USD</th><th class="bi-num">Mora Prom</th><th class="bi-num">Score</th><th>Riesgo</th></tr>
+                    </thead>
+                    <tbody id="ic-tbody-tehc"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card" style="margin-bottom:0;">
+            <div class="card-head">
+                <h3>Elasticidad Precio-Demanda (Ed)</h3>
+                <button type="button" class="btn-outline" id="ic-btn-ver-elasticidad">Ver todos</button>
+            </div>
+            <div class="table-wrap">
+                <table class="bi-table">
+                    <thead>
+                        <tr><th>Producto</th><th class="bi-num">Ed</th><th>Clasificación</th><th>Recomendación</th></tr>
+                    </thead>
+                    <tbody id="ic-tbody-elasticidad"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="bi-modal-backdrop" id="ic-modal">
+    <div class="bi-modal-dialog">
+        <div class="bi-modal-head">
+            <h3 id="ic-modal-title">Detalle</h3>
+            <button type="button" class="bi-modal-close" id="ic-modal-close">&times;</button>
+        </div>
+        <div class="bi-modal-search">
+            <input type="text" id="ic-modal-search" placeholder="Filtrar resultados...">
+        </div>
+        <div class="bi-modal-body" id="ic-modal-body"></div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var servidorIP = localStorage.getItem('servidorIP') || '127.0.0.1';
+    var companyId = localStorage.getItem('companyId') || '1';
+    var biCache = null;
+    var modalRowsCache = [];
+    var modalMode = '';
+
+    function escHtml(val) {
+        return String(val == null ? '' : val)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function fmtUsd(n) {
+        var v = Number(n || 0);
+        return '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function getFechasPeriodo(periodo) {
+        var hoy = new Date();
+        var fin = hoy.toISOString().split('T')[0];
+        var ini = new Date(hoy);
+        if (periodo === 'semana') {
+            var day = ini.getDay() || 7;
+            ini.setDate(ini.getDate() - day + 1);
+        } else if (periodo === 'mes') {
+            ini.setDate(1);
+        } else if (periodo === 'anual') {
+            ini.setMonth(0, 1);
+        }
+        return { inicio: ini.toISOString().split('T')[0], fin: fin };
+    }
+
+    function renderModalTabla() {
+        var q = (document.getElementById('ic-modal-search').value || '').toLowerCase().trim();
+        var body = document.getElementById('ic-modal-body');
+        var rows = modalRowsCache.filter(function (r) {
+            if (!q) return true;
+            return JSON.stringify(r).toLowerCase().indexOf(q) !== -1;
+        });
+        if (!rows.length) {
+            body.innerHTML = '<div class="empty-msg">Sin registros que coincidan con la búsqueda.</div>';
+            return;
+        }
+        var html = '<div class="table-wrap"><table class="bi-table">';
+        if (modalMode === 'basket') {
+            html += '<thead><tr><th>Tipo</th><th>Productos</th><th class="bi-num">Frecuencia</th><th class="bi-num">Soporte %</th><th class="bi-num">Confianza %</th><th class="bi-num">Lift</th></tr></thead><tbody>';
+            rows.forEach(function (r) {
+                html += '<tr><td>' + escHtml(r._tipo || 'Par') + '</td><td>' + escHtml((r.nombres || []).join(' + ')) + '</td>' +
+                    '<td class="bi-num">' + Number(r.soporte_count || 0) + '</td><td class="bi-num">' + Number(r.soporte_pct || 0).toFixed(1) + '%</td>' +
+                    '<td class="bi-num">' + Number(r.confianza_pct || 0).toFixed(1) + '%</td><td class="bi-num">' + Number(r.lift || 0).toFixed(2) + 'x</td></tr>';
+            });
+        } else if (modalMode === 'tehc') {
+            html += '<thead><tr><th>Cliente</th><th>RIF</th><th class="bi-num">Cuentas</th><th class="bi-num">Saldo Abierto</th><th class="bi-num">Pagos Post-Dev %</th><th class="bi-num">Mora Prom</th><th class="bi-num">Score</th><th>Riesgo</th></tr></thead><tbody>';
+            rows.forEach(function (r) {
+                html += '<tr><td>' + escHtml(r.cliente_nombre) + '</td><td>' + escHtml(r.cliente_rif || '--') + '</td>' +
+                    '<td class="bi-num">' + Number(r.cuentas_count || 0) + '</td><td class="bi-num">' + fmtUsd(r.saldo_abierto_usd) + '</td>' +
+                    '<td class="bi-num">' + Number(r.pagos_post_devaluacion_pct || 0).toFixed(1) + '%</td><td class="bi-num">' + Number(r.dias_mora_prom || 0).toFixed(1) + ' d</td>' +
+                    '<td class="bi-num">' + Number(r.score_tehc || 0).toFixed(0) + '</td><td>' + escHtml(r.nivel_riesgo) + '</td></tr>';
+            });
+        } else if (modalMode === 'elasticidad') {
+            html += '<thead><tr><th>Producto</th><th class="bi-num">Obs.</th><th class="bi-num">Precio Min-Max</th><th class="bi-num">Ed</th><th>Clasificación</th><th>Recomendación</th></tr></thead><tbody>';
+            rows.forEach(function (r) {
+                html += '<tr><td>' + escHtml(r.nombre) + '</td><td class="bi-num">' + Number(r.observaciones || 0) + '</td>' +
+                    '<td class="bi-num">' + fmtUsd(r.precio_min_usd) + ' - ' + fmtUsd(r.precio_max_usd) + '</td>' +
+                    '<td class="bi-num">' + Number(r.ed || 0).toFixed(2) + '</td><td>' + escHtml(r.clasificacion) + '</td><td>' + escHtml(r.recomendacion) + '</td></tr>';
+            });
+        }
+        html += '</tbody></table></div>';
+        body.innerHTML = html;
+    }
+
+    function abrirModal(titulo, mode, rows) {
+        modalMode = mode;
+        modalRowsCache = Array.isArray(rows) ? rows : [];
+        document.getElementById('ic-modal-title').textContent = titulo;
+        document.getElementById('ic-modal-search').value = '';
+        renderModalTabla();
+        document.getElementById('ic-modal').classList.add('open');
+    }
+
+    function renderData(ic) {
+        if (!ic) return;
+        var conc = ic.concentracion_ttm || {};
+        document.getElementById('ic-kpi-conc').textContent =
+            Number(conc.top1_pct || 0).toFixed(1) + '% / ' + Number(conc.top3_pct || 0).toFixed(1) + '%';
+        var tagEl = document.getElementById('ic-tag-conc');
+        if (conc.alerta_concentracion) {
+            tagEl.className = 'status-tag tag-rojo';
+            tagEl.textContent = 'ALERTA CONCENTRACION (>=25%)';
+        } else {
+            tagEl.className = 'status-tag tag-verde';
+            tagEl.textContent = 'CARTERA DIVERSIFICADA';
+        }
+        document.getElementById('ic-sub-conc').textContent = 'Total TTM: ' + fmtUsd(conc.total_ttm_usd);
+
+        var mb = ic.market_basket || {};
+        var pares = mb.pares || [];
+        document.getElementById('ic-kpi-basket').textContent = Number(mb.total_canastas_analizadas || 0);
+        document.getElementById('ic-sub-basket').textContent = pares.length + ' pares · ' + ((mb.trios || []).length) + ' tríos';
+
+        var tehc = ic.score_tehc || [];
+        var altos = tehc.filter(function (t) { return t.nivel_riesgo === 'ALTO'; }).length;
+        document.getElementById('ic-kpi-tehc').textContent = tehc.length;
+        document.getElementById('ic-sub-tehc').textContent = 'Riesgo alto de arbitraje cambiario: ' + altos;
+
+        var elast = ic.elasticidad_precio || [];
+        document.getElementById('ic-kpi-elasticidad').textContent = elast.length;
+
+        document.getElementById('ic-tbody-basket').innerHTML = pares.length ? pares.slice(0, 6).map(function (p) {
+            return '<tr><td>' + escHtml((p.nombres || []).join(' + ')) + '</td>' +
+                '<td class="bi-num">' + Number(p.soporte_pct || 0).toFixed(1) + '%</td>' +
+                '<td class="bi-num">' + Number(p.confianza_pct || 0).toFixed(1) + '%</td>' +
+                '<td class="bi-num">' + Number(p.lift || 0).toFixed(2) + 'x</td></tr>';
+        }).join('') : '<tr><td colspan="4" class="empty-msg">Sin combinaciones frecuentes suficientes.</td></tr>';
+
+        var cohortes = ic.cohortes_mensuales || [];
+        document.getElementById('ic-tbody-cohortes').innerHTML = cohortes.length ? cohortes.map(function (c) {
+            var r = c.retenidos || [];
+            return '<tr><td><strong>' + escHtml(c.cohorte) + '</strong></td><td class="bi-num">' + Number(c.clientes_iniciales || 0) + '</td>' +
+                '<td class="bi-num">' + (r[0] != null ? Number(r[0]).toFixed(0) + '%' : '--') + '</td>' +
+                '<td class="bi-num">' + (r[1] != null ? Number(r[1]).toFixed(0) + '%' : '--') + '</td>' +
+                '<td class="bi-num">' + (r[2] != null ? Number(r[2]).toFixed(0) + '%' : '--') + '</td>' +
+                '<td class="bi-num">' + (r[3] != null ? Number(r[3]).toFixed(0) + '%' : '--') + '</td></tr>';
+        }).join('') : '<tr><td colspan="6" class="empty-msg">Sin historial suficiente de cohortes.</td></tr>';
+
+        document.getElementById('ic-tbody-tehc').innerHTML = tehc.length ? tehc.slice(0, 6).map(function (t) {
+            var cls = t.nivel_riesgo === 'ALTO' ? 'tag-rojo' : (t.nivel_riesgo === 'MEDIO' ? 'tag-amarillo' : 'tag-verde');
+            return '<tr><td>' + escHtml(t.cliente_nombre) + '</td><td class="bi-num">' + fmtUsd(t.saldo_abierto_usd) + '</td>' +
+                '<td class="bi-num">' + Number(t.dias_mora_prom || 0).toFixed(1) + ' d</td>' +
+                '<td class="bi-num">' + Number(t.score_tehc || 0).toFixed(0) + '</td>' +
+                '<td><span class="status-tag ' + cls + '">' + escHtml(t.nivel_riesgo) + '</span></td></tr>';
+        }).join('') : '<tr><td colspan="5" class="empty-msg">Sin clientes con historial crediticio TEHC.</td></tr>';
+
+        document.getElementById('ic-tbody-elasticidad').innerHTML = elast.length ? elast.slice(0, 6).map(function (e) {
+            return '<tr><td>' + escHtml(e.nombre) + '</td><td class="bi-num">' + Number(e.ed || 0).toFixed(2) + '</td>' +
+                '<td>' + escHtml(e.clasificacion) + '</td><td>' + escHtml(e.recomendacion) + '</td></tr>';
+        }).join('') : '<tr><td colspan="4" class="empty-msg">Sin variación de precios suficiente para estimar Ed.</td></tr>';
+    }
+
+    async function cargarDatos(periodo) {
+        var ini = document.getElementById('ic-fecha-inicio').value;
+        var fin = document.getElementById('ic-fecha-fin').value;
+        try {
+            var url = 'http://' + servidorIP + ':3000/api/maestro/estadisticas/especificas-bi?companyId=' +
+                encodeURIComponent(companyId) + '&fecha_inicio=' + encodeURIComponent(ini) +
+                '&fecha_fin=' + encodeURIComponent(fin) + '&periodo=' + encodeURIComponent(periodo || 'mes');
+            var res = await fetch(url);
+            var json = await res.json();
+            if (json && json.exito && json.data) {
+                biCache = json.data.comercial_clientes_cajeros;
+                renderData(biCache);
+            }
+        } catch (err) {
+            console.error('Error cargando inteligencia comercial:', err);
+        }
+    }
+
+    document.getElementById('ic-selector-periodo').addEventListener('click', function (e) {
+        var btn = e.target.closest('button[data-periodo]');
+        if (!btn) return;
+        document.querySelectorAll('#ic-selector-periodo button').forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        var p = btn.getAttribute('data-periodo');
+        var f = getFechasPeriodo(p);
+        document.getElementById('ic-fecha-inicio').value = f.inicio;
+        document.getElementById('ic-fecha-fin').value = f.fin;
+        cargarDatos(p);
+    });
+
+    document.getElementById('ic-btn-filtrar').addEventListener('click', function () { cargarDatos('personalizado'); });
+
+    function abrirBasket() {
+        var mb = (biCache && biCache.market_basket) || {};
+        var pares = (mb.pares || []).map(function (p) { return Object.assign({ _tipo: 'Par' }, p); });
+        var trios = (mb.trios || []).map(function (t) { return Object.assign({ _tipo: 'Trío' }, t); });
+        abrirModal('Market Basket Completo (Pares y Tríos)', 'basket', pares.concat(trios));
+    }
+    document.getElementById('ic-card-basket').addEventListener('click', abrirBasket);
+    document.getElementById('ic-btn-ver-basket').addEventListener('click', abrirBasket);
+    document.getElementById('ic-card-tehc').addEventListener('click', function () {
+        abrirModal('Score TEHC Completo por Cliente', 'tehc', (biCache && biCache.score_tehc) || []);
+    });
+    document.getElementById('ic-btn-ver-tehc').addEventListener('click', function () {
+        abrirModal('Score TEHC Completo por Cliente', 'tehc', (biCache && biCache.score_tehc) || []);
+    });
+    document.getElementById('ic-card-elasticidad').addEventListener('click', function () {
+        abrirModal('Elasticidad Precio-Demanda (Ed)', 'elasticidad', (biCache && biCache.elasticidad_precio) || []);
+    });
+    document.getElementById('ic-btn-ver-elasticidad').addEventListener('click', function () {
+        abrirModal('Elasticidad Precio-Demanda (Ed)', 'elasticidad', (biCache && biCache.elasticidad_precio) || []);
+    });
+
+    document.getElementById('ic-modal-search').addEventListener('input', renderModalTabla);
+    document.getElementById('ic-modal-close').addEventListener('click', function () {
+        document.getElementById('ic-modal').classList.remove('open');
+    });
+    document.getElementById('ic-modal').addEventListener('click', function (e) {
+        if (e.target.id === 'ic-modal') document.getElementById('ic-modal').classList.remove('open');
+    });
+
+    var fInit = getFechasPeriodo('mes');
+    document.getElementById('ic-fecha-inicio').value = fInit.inicio;
+    document.getElementById('ic-fecha-fin').value = fInit.fin;
+    cargarDatos('mes');
+})();
+</script>

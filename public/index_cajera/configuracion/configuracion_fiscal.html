@@ -934,15 +934,38 @@
         const tbody = document.getElementById('tabla-mapeo-pagos');
         if (!tbody) return;
         try {
-            const ip = (window.nexusAPI && typeof window.nexusAPI.obtenerIpMaestro === 'function')
-                ? (await window.nexusAPI.obtenerIpMaestro() || '127.0.0.1')
-                : '127.0.0.1';
-            const resp = await fetch(`http://${ip}:3000/api/maestro/metodos-pago`);
-            if (!resp.ok) throw new Error("Error HTTP " + resp.status);
-            const metodos = await resp.json();
-            
+            let listaMetodos = null;
+            try {
+                const ip = (window.nexusAPI && typeof window.nexusAPI.obtenerIpMaestro === 'function')
+                    ? (await window.nexusAPI.obtenerIpMaestro() || '127.0.0.1')
+                    : '127.0.0.1';
+                const resp = await fetch(`http://${ip}:3000/api/maestro/metodos-pago`);
+                if (!resp.ok) throw new Error("Error HTTP " + resp.status);
+                const rawText = await resp.text();
+                let metodos = null;
+                try {
+                    metodos = JSON.parse(rawText);
+                } catch (_) {
+                    throw new Error(`Respuesta no es JSON válido desde http://${ip}:3000/api/maestro/metodos-pago`);
+                }
+                if (Array.isArray(metodos)) {
+                    listaMetodos = metodos;
+                } else if (metodos && Array.isArray(metodos.data)) {
+                    listaMetodos = metodos.data;
+                }
+            } catch (errHttp) {
+                console.warn("⚠️ [MAPEO PAGOS] Falló consulta HTTP al maestro, usando respaldo local:", errHttp.message);
+            }
+
+            if (!listaMetodos && window.nexusAPI && typeof window.nexusAPI.obtenerMetodosPagoLocal === 'function') {
+                const locales = await window.nexusAPI.obtenerMetodosPagoLocal();
+                if (Array.isArray(locales)) {
+                    listaMetodos = locales;
+                }
+            }
+
             tbody.innerHTML = '';
-            window.metodosMaestros = metodos.data || [];
+            window.metodosMaestros = Array.isArray(listaMetodos) ? listaMetodos : [];
 
             if (window.metodosMaestros.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">No hay métodos configurados</td></tr>';

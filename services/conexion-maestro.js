@@ -69,7 +69,8 @@ function crearGestorConexion({ getIpMaestro, esMaestro, escanear, ping, persisti
             r.on('socket', (s) => { try { s.setKeepAlive(true, 10000); s.setNoDelay(true); } catch (_) {} });
 
             r.on('response', (res) => {
-                if (res.statusCode !== 200) { res.resume(); return fin(false); }
+                const ct = String(res.headers['content-type'] || '').toLowerCase();
+                if (res.statusCode !== 200 || !ct.includes('text/event-stream')) { res.resume(); return fin(false); }
                 r.setTimeout(0);
                 ipActual = ip;
                 armarWatchdog();

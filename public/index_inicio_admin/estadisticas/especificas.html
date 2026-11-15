@@ -1,7 +1,5 @@
 <style>
     /* VARIABLES CSS Y CONTENEDOR PRINCIPAL */
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap');
-
     .estadisticas-container {
         --color-primary: #0284c7; /* Azul Nexus */
         --color-primary-hover: #0369a1;
@@ -841,7 +839,135 @@
     }
 </style>
 
+<style>
+@keyframes guiaBlinkRed {
+    0%, 100% {
+        background-color: #dc2626;
+        color: #ffffff;
+        border-color: #b91c1c;
+        box-shadow: 0 0 14px rgba(220, 38, 38, 0.42);
+    }
+    50% {
+        background-color: #fee2e2;
+        color: #991b1b;
+        border-color: #f87171;
+        box-shadow: 0 0 3px rgba(220, 38, 38, 0.12);
+    }
+}
+.btn-guia-uso {
+    border: 2px solid #dc2626;
+    border-radius: 2px;
+    padding: 8px 12px;
+    font-size: 0.74rem;
+    font-weight: 800;
+    line-height: 1.25;
+    max-width: 175px;
+    text-align: center;
+    cursor: pointer;
+    background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(0, 0, 0, 0.08));
+    animation: guiaBlinkRed 2.8s ease-in-out infinite;
+    flex-shrink: 0;
+}
+.guia-modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.65);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.guia-modal-backdrop.open { display: flex; }
+.guia-modal-card {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    max-width: 800px;
+    width: 100%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.25);
+}
+.guia-modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+.guia-modal-head h2 { margin: 0; font-size: 1.05rem; color: #0f172a; }
+.guia-modal-close {
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+.guia-modal-body {
+    padding: 18px 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.guia-sec {
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px 14px;
+    background: #ffffff;
+}
+.guia-sec h3 { margin: 0 0 6px 0; font-size: 0.92rem; color: #0f172a; }
+.guia-sec p { margin: 4px 0; font-size: 0.82rem; color: #334155; line-height: 1.45; }
+.guia-sec strong { color: #0f172a; }
+</style>
 <div class="estadisticas-container">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+        <button type="button" class="btn-guia-uso" id="esp-btn-guia">Cómo utilizar a favor esta información</button>
+    </div>
+    <div class="guia-modal-backdrop" id="esp-modal-guia" role="dialog" aria-modal="true" aria-labelledby="esp-modal-titulo">
+        <div class="guia-modal-card">
+            <div class="guia-modal-head">
+                <h2 id="esp-modal-titulo">Guía de uso estratégico: Estadísticas Específicas</h2>
+                <button type="button" class="guia-modal-close" id="esp-btn-cerrar-guia">Cerrar</button>
+            </div>
+            <div class="guia-modal-body">
+                <div class="guia-sec">
+                    <h3>1. Gráficas Históricas de Ganancias y Ventas por Período</h3>
+                    <p><strong>Qué mide:</strong> Traza en el tiempo tus ingresos totales y ganancias netas por día, semana o mes según el filtro seleccionado.</p>
+                    <p><strong>Cómo usarlo a favor:</strong> Detecta rápidamente días pico de facturación y valles de baja afluencia para programar turnos de personal, recargas de mercancía y promociones puntuales en días flojos.</p>
+                </div>
+                <div class="guia-sec">
+                    <h3>2. Top Productos, Top Clientes y Rendimiento por Sucursal</h3>
+                    <p><strong>Qué mide:</strong> Identifica los artículos más vendidos, los clientes con mayor compra acumulada y qué sucursal aporta mayor volumen y rentabilidad.</p>
+                    <p><strong>Cómo usarlo a favor:</strong> Garantiza inventario permanente en tus productos líderes, fideliza a tus mejores compradores con atención preferencial y compara prácticas entre sucursales para replicar las de mejor desempeño.</p>
+                </div>
+                <div class="guia-sec">
+                    <h3>3. Rotación de Inventario y Análisis de Rentabilidad Profunda</h3>
+                    <p><strong>Qué mide:</strong> Evalúa la velocidad con la que sale cada producto respecto a su stock y consolida los márgenes, canales (<em>Contado</em>, <em>Crédito</em>, <em>Cashea</em>) y métricas detalladas del negocio.</p>
+                    <p><strong>Cómo usarlo a favor:</strong> Libera capital de los productos de baja rotación y enfoca compras en el 20% de artículos que generan el 80% de tu utilidad real.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    (function() {
+        const btnOpen = document.getElementById('esp-btn-guia');
+        const modal = document.getElementById('esp-modal-guia');
+        const btnClose = document.getElementById('esp-btn-cerrar-guia');
+        if (btnOpen && modal) {
+            btnOpen.addEventListener('click', () => modal.classList.add('open'));
+            if (btnClose) btnClose.addEventListener('click', () => modal.classList.remove('open'));
+            modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('open'); });
+        }
+    })();
+    </script>
     <div id="kpi-tooltip" class="custom-tooltip"></div>
     
     <div class="stats-header">
@@ -1153,6 +1279,10 @@
         let topClientesCached = [];
         let topSucursalesCached = [];
         let currentTasaBcv = 1;
+        let datosBiEspCached = null;
+        let abcFilterActivo = '';
+
+        const escHtml = (v) => String(v ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
         // Formato YYYY-MM-DD local
         const getLocalISODate = (d) => {
@@ -2103,6 +2233,7 @@
 
             if (modalTipoActivo === 'producto') {
                 if (modalIcon) {
+                    modalIcon.style.display = 'flex';
                     modalIcon.textContent = '🥇';
                     modalIcon.style.background = '#fef3c7';
                     modalIcon.style.color = '#d97706';
@@ -2122,6 +2253,7 @@
                 if (modalSearchInput) modalSearchInput.placeholder = 'Buscar producto por nombre...';
             } else if (modalTipoActivo === 'cliente') {
                 if (modalIcon) {
+                    modalIcon.style.display = 'flex';
                     modalIcon.textContent = '👤';
                     modalIcon.style.background = '#e0f2fe';
                     modalIcon.style.color = '#0284c7';
@@ -2143,6 +2275,7 @@
                 if (modalSearchInput) modalSearchInput.placeholder = 'Buscar por nombre o RIF...';
             } else if (modalTipoActivo === 'sucursal') {
                 if (modalIcon) {
+                    modalIcon.style.display = 'flex';
                     modalIcon.textContent = '📍';
                     modalIcon.style.background = '#d1fae5';
                     modalIcon.style.color = '#059669';
@@ -2442,6 +2575,9 @@
             if (btnActivoVentas) {
                 const periodo = btnActivoVentas.getAttribute('data-periodo');
                 actualizarVentas(periodo);
+            }
+            if (datosBiEspCached && datosBiEspCached.tendencia_90d) {
+                renderGraficoTendencia90d(datosBiEspCached.tendencia_90d);
             }
         });
 

@@ -473,7 +473,7 @@
                     <span class="text-xs text-gray-500">Opcional para devoluciones o garantías</span>
                 </div>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
                     <div class="input-group-item">
                         <label for="cxp-prov-search" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                             <span>Proveedor Destino / Devolución:</span>
@@ -488,6 +488,16 @@
                     <div class="input-group-item">
                         <label for="factura-referencia-input">N° Factura / Documento Afectado:</label>
                         <input type="text" id="factura-referencia-input" placeholder="Ej: 150, FACT-0012, NC-05..." autocomplete="off">
+                    </div>
+
+                    <div class="input-group-item" title="Según Art. 75 Reglamento Ley de IVA / Prov. SNAT 0071, el Crédito Fiscal solo se deduce cuando el proveedor emite Nota de Crédito con N° Control.">
+                        <label for="dev-nc-proveedor-input">N° Nota Crédito Proveedor (Opc.):</label>
+                        <input type="text" id="dev-nc-proveedor-input" placeholder="Ej: NC-0045 (SENIAT)" autocomplete="off">
+                    </div>
+
+                    <div class="input-group-item" title="Según Art. 75 Reglamento Ley de IVA / Prov. SNAT 0071, el Crédito Fiscal solo se deduce cuando el proveedor emite Nota de Crédito con N° Control.">
+                        <label for="dev-control-nc-input">N° Control Nota Crédito (Opc.):</label>
+                        <input type="text" id="dev-control-nc-input" placeholder="Ej: 00-001452 (SENIAT)" autocomplete="off">
                     </div>
                 </div>
 
@@ -699,6 +709,8 @@
     const badgeEstadoValorCompra = document.getElementById('badge-estado-valor-compra');
     const descChkDescontarValorCompra = document.getElementById('desc-chk-descontar-valor-compra');
     const previewDescuentoFactura = document.getElementById('preview-descuento-factura');
+    const devNcProveedorInput = document.getElementById('dev-nc-proveedor-input');
+    const devControlNcInput = document.getElementById('dev-control-nc-input');
 
     // Referencias Lote Temporal
     const btnAgregarAlLote = document.getElementById('btn-agregar-al-lote');
@@ -723,9 +735,12 @@
                 try {
                     if (window.nexusAPI.obtenerConfigServer) {
                         const config = await window.nexusAPI.obtenerConfigServer();
-                        respaldoActivo = config.respaldo_datos === 'true' || config.respaldo_datos === true;
+                        const esServidorMaestro = (config.isServer === true || config.isServer === 'true');
+                        respaldoActivo = esServidorMaestro && (config.respaldo_datos === 'true' || config.respaldo_datos === true);
                         if (respaldoActivo) {
                             SERVER_URL = `http://${config.serverIp || config.SERVER_IP}:${config.serverPort || config.SERVER_PORT}`;
+                        } else {
+                            SERVER_URL = null;
                         }
                     }
                 } catch (configError) {}
@@ -774,7 +789,8 @@
     async function cargarProveedoresLocal() {
         try {
             if (window.nexusAPI && window.nexusAPI.obtenerProveedoresLocal) {
-                proveedoresList = await window.nexusAPI.obtenerProveedoresLocal() || [];
+                const provRaw = await window.nexusAPI.obtenerProveedoresLocal(idEmpresa) || [];
+                proveedoresList = provRaw.filter(p => !idEmpresa || p.company_id === idEmpresa);
             }
         } catch (e) {
             console.warn("No se pudieron cargar los proveedores:", e.message);
@@ -982,14 +998,15 @@
         try {
             let todosMovs = [];
             if (window.nexusAPI && window.nexusAPI.obtenerMovimientosCxpLocal) {
-                todosMovs = await window.nexusAPI.obtenerMovimientosCxpLocal() || [];
+                todosMovs = await window.nexusAPI.obtenerMovimientosCxpLocal(idEmpresa) || [];
             }
             
             facturasPendientesProveedor = todosMovs.filter(m => {
                 const rifMatch = String(m.proveedor_rif || '').trim().toUpperCase() === String(rif || '').trim().toUpperCase();
                 const esFactura = (m.motivo || '').toUpperCase() === 'FACTURA' || (m.motivo || '').toUpperCase() === 'COMPRA';
                 const saldo = parseFloat(m.monto || 0) - parseFloat(m.monto_abonado || 0);
-                return rifMatch && esFactura && (m.estado === 'PENDIENTE' || saldo > 0.01);
+                const compMatch = !idEmpresa || m.company_id === idEmpresa;
+                return compMatch && rifMatch && esFactura && (m.estado === 'PENDIENTE' || saldo > 0.01);
             });
 
             if (facturasPendientesProveedor.length === 0) {
@@ -1722,9 +1739,13 @@
                     await window.nexusAPI.encolarSincronizacion({ 
                         operacion: 'UPSERT', 
                         tabla: 'movimientos_stock', 
+                        id_registro: datosSalidaHistorial.id,
                         datos: payloadVPS 
                     });
                 }
+            }
+            if (navigator.onLine && respaldoActivo && window.nexusAPI && window.nexusAPI.sincronizarSalidasVps) {
+                window.nexusAPI.sincronizarSalidasVps(idEmpresa).catch(() => {});
             }
 
             // 4. Procesar Descuento de Cuentas por Pagar por el Valor de Compra (si está habilitado y marcado)
@@ -1741,8 +1762,12 @@
                 }
 
                 if (totalDescuento > 0) {
-                    const saldoActual = Math.max(0, parseFloat(facturaSeleccionadaObj.monto || 0) - parseFloat(facturaSeleccionadaObj.monto_abonado || 0));
-                    const montoAbono = Math.min(totalDescuento, saldoActual > 0 ? saldoActual : totalDescuento);
+                    const baseNetoFactura = parseFloat(facturaSeleccionadaObj.neto_a_pagar_usd || 0) > 0
+                        ? parseFloat(facturaSeleccionadaObj.neto_a_pagar_usd)
+                        : parseFloat(facturaSeleccionadaObj.monto || 0);
+                    const saldoActual = Math.max(0, baseNetoFactura - parseFloat(facturaSeleccionadaObj.monto_abonado || 0));
+                    const montoAbono = Math.min(totalDescuento, saldoActual);
+                    const excedenteSaldoFavor = Math.max(0, parseFloat((totalDescuento - montoAbono).toFixed(2)));
                     descuentoAplicadoCxp = montoAbono;
 
                     const datosAbono = {
@@ -1755,9 +1780,75 @@
                     };
 
                     try {
-                        const resAbono = await window.nexusAPI.registrarAbonoCxpLocal(datosAbono);
+                        let resAbono = { exito: true };
+                        if (montoAbono > 0.01) {
+                            resAbono = await window.nexusAPI.registrarAbonoCxpLocal(datosAbono);
+                        }
+                        if (excedenteSaldoFavor > 0.01 && window.nexusAPI.registrarAnticipoSaldoFavor) {
+                            await window.nexusAPI.registrarAnticipoSaldoFavor({
+                                company_id: idEmpresa,
+                                modulo: 'CXP',
+                                tercero_rif: facturaSeleccionadaObj.proveedor_rif || proveedorRifVal || '',
+                                tercero_nombre: selectedProveedorNombre || facturaSeleccionadaObj.proveedor_nombre || '',
+                                tipo_registro: 'SALDO_FAVOR',
+                                modalidad_contrato: 'INDEXADO_USD',
+                                monto_usd: excedenteSaldoFavor,
+                                tasa_bcv: parseFloat(facturaSeleccionadaObj.tasa_bcv || 1),
+                                metodo_pago: 'DEVOLUCION_MERCANCIA',
+                                documento_origen: facturaSeleccionadaObj.comprobante || facturaSeleccionadaObj.id,
+                                nota: `Crédito por devolución sobre factura pagada/parcial #${facturaSeleccionadaObj.comprobante}`,
+                                afectar_tesoreria: false
+                            });
+                            descuentoAplicadoCxp = parseFloat((montoAbono + excedenteSaldoFavor).toFixed(2));
+                        }
                         if (resAbono && resAbono.exito) {
                             console.log(`✅ [DEV CXP] Descuento de $${montoAbono} aplicado a Factura #${facturaSeleccionadaObj.comprobante}`);
+                            // Registrar movimiento 04-AJUSTE para Libro de Compras (Gerencial inmediato; Fiscal SENIAT cuando tenga N° NC y Control del proveedor)
+                            if (window.nexusAPI.guardarMovimientoCxpLocal) {
+                                try {
+                                    let tasaDev = parseFloat(facturaSeleccionadaObj.tasa_bcv) || 0;
+                                    if (tasaDev <= 1 && window.nexusAPI.obtenerConfiguracion) {
+                                        const tCfg = await window.nexusAPI.obtenerConfiguracion('TASA_BCV');
+                                        if (tCfg && parseFloat(tCfg) > 0) tasaDev = parseFloat(tCfg);
+                                    }
+                                    if (tasaDev <= 0) tasaDev = 1;
+
+                                    const ncNro = devNcProveedorInput ? devNcProveedorInput.value.trim() : '';
+                                    const ctrlNc = devControlNcInput ? devControlNcInput.value.trim() : '';
+                                    const alicuotaOrig = (facturaSeleccionadaObj.alicuota_iva !== undefined && facturaSeleccionadaObj.alicuota_iva !== null) ? parseFloat(facturaSeleccionadaObj.alicuota_iva) : 16;
+                                    const tieneDesgloseOrig = parseFloat(facturaSeleccionadaObj.monto_iva || 0) > 0;
+                                    const montoBsDev = parseFloat((montoAbono * tasaDev).toFixed(2));
+                                    const baseDev = tieneDesgloseOrig && alicuotaOrig > 0 ? parseFloat((montoBsDev / (1 + alicuotaOrig / 100)).toFixed(2)) : 0;
+                                    const ivaDev = tieneDesgloseOrig && alicuotaOrig > 0 ? parseFloat((montoBsDev - baseDev).toFixed(2)) : 0;
+                                    const exentoDev = (baseDev === 0 && ivaDev === 0) ? montoBsDev : 0;
+
+                                    await window.nexusAPI.guardarMovimientoCxpLocal({
+                                        id: `NC-DEV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                                        company_id: idEmpresa,
+                                        proveedor_rif: facturaSeleccionadaObj.proveedor_rif || proveedorRifVal || '',
+                                        razon: selectedProveedorNombre || facturaSeleccionadaObj.proveedor_nombre || '',
+                                        motivo: 'DEVOLUCION_PROVEEDOR',
+                                        tipo_documento: 'NOTA_CREDITO',
+                                        tipo_transaccion: '04-AJUSTE',
+                                        comprobante: ncNro || `DEV-${Date.now()}`,
+                                        nota_credito_nro: ncNro,
+                                        numero_control: ctrlNc,
+                                        factura_afectada: facturaSeleccionadaObj.comprobante || '',
+                                        nota: `Devolución a proveedor (${itemsAProcesar.length} ítem(s)) sobre Factura #${facturaSeleccionadaObj.comprobante}${ncNro ? '' : ' [Pendiente NC Fiscal del proveedor]'}`,
+                                        monto: parseFloat(montoAbono.toFixed(2)),
+                                        estado: 'PAGADO',
+                                        monto_abonado: parseFloat(montoAbono.toFixed(2)),
+                                        tasa_bcv: tasaDev,
+                                        monto_bs: montoBsDev,
+                                        monto_exento: exentoDev,
+                                        base_imponible: baseDev,
+                                        alicuota_iva: tieneDesgloseOrig ? alicuotaOrig : 0,
+                                        monto_iva: ivaDev
+                                    });
+                                } catch (errMovDev) {
+                                    console.warn("⚠️ No se pudo registrar movimiento 04-AJUSTE para Libro de Compras:", errMovDev);
+                                }
+                            }
                             if (window.nexusAPI.sincronizarCuentasPagar) {
                                 window.nexusAPI.sincronizarCuentasPagar(idEmpresa).catch(() => {});
                             }
@@ -1794,6 +1885,8 @@
                 badgeProvSeleccionado.style.display = 'none';
             }
             if (inputFacturaRef) inputFacturaRef.value = '';
+            if (devNcProveedorInput) devNcProveedorInput.value = '';
+            if (devControlNcInput) devControlNcInput.value = '';
             if (listaCardsFacturas) {
                 listaCardsFacturas.innerHTML = '<div class="text-xs text-gray-400 italic py-4 text-center w-full">Busca y selecciona un proveedor arriba para listar sus facturas pendientes.</div>';
             }

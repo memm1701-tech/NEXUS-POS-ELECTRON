@@ -1,0 +1,457 @@
+<style>
+    .estadisticas-container {
+        --color-primary: #0284c7;
+        --color-primary-hover: #0369a1;
+        --color-background: #f8fafc;
+        --color-text: #1f2937;
+        --color-card-bg: #ffffff;
+        --color-border: #e2e8f0;
+        --radius: 12px;
+        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        color: var(--color-text);
+        padding: 24px;
+        background: var(--color-background);
+        min-height: 100%;
+        box-sizing: border-box;
+    }
+    .stats-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+    .stats-header h1 { margin: 0; font-size: 1.55rem; font-weight: 700; color: #0f172a; }
+    .stats-header p { margin: 4px 0 0 0; font-size: 0.9rem; color: #64748b; }
+    .card { background: var(--color-card-bg); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .card-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9; }
+    .card-head h2, .card-head h3 { margin: 0; font-size: 1.02rem; font-weight: 700; color: #0f172a; }
+    .selector-periodo { display: flex; gap: 4px; background: #f1f5f9; padding: 4px; border-radius: 8px; }
+    .selector-periodo button { border: none; background: transparent; padding: 6px 12px; border-radius: 6px; font-size: 0.82rem; font-weight: 600; color: #475569; cursor: pointer; }
+    .selector-periodo button.active { background: #ffffff; color: var(--color-primary); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+    .custom-date-bar { display: none; gap: 12px; align-items: flex-end; background: #f8fafc; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--color-border); margin-bottom: 16px; flex-wrap: wrap; }
+    .custom-date-bar.activo { display: flex; }
+    .date-input-group { display: flex; flex-direction: column; gap: 4px; }
+    .date-input-group label { font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; }
+    .date-input-group input { padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; }
+    .btn-primary { background: var(--color-primary); color: #ffffff; border: none; border-radius: 6px; padding: 7px 14px; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
+    .btn-primary:hover { background: var(--color-primary-hover); }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .kpi-card { background: #ffffff; border: 1px solid var(--color-border); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 4px; }
+    .kpi-title { margin: 0; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em; }
+    .kpi-value { margin: 2px 0; font-size: 1.45rem; font-weight: 800; color: #0f172a; }
+    .kpi-subtext { margin: 0; font-size: 0.78rem; color: #475569; }
+    .alert-box { display: none; padding: 11px 14px; border-radius: 8px; border: 1px solid #fecaca; background: #fef2f2; color: #991b1b; font-size: 0.85rem; font-weight: 600; margin-bottom: 18px; }
+    .two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 20px; margin-bottom: 20px; }
+    .table-wrap { width: 100%; overflow-x: auto; }
+    .bi-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .bi-table th { text-align: left; padding: 8px 10px; font-size: 0.72rem; color: #475569; text-transform: uppercase; border-bottom: 1px solid var(--color-border); background: #f8fafc; font-weight: 700; }
+    .bi-table td { padding: 9px 10px; border-bottom: 1px solid #f1f5f9; color: #0f172a; }
+    .bi-num { text-align: right !important; font-variant-numeric: tabular-nums; font-weight: 600; }
+    .svg-box { width: 100%; height: 245px; position: relative; }
+</style>
+
+<style>
+@keyframes guiaBlinkRed {
+    0%, 100% {
+        background-color: #dc2626;
+        color: #ffffff;
+        border-color: #b91c1c;
+        box-shadow: 0 0 14px rgba(220, 38, 38, 0.42);
+    }
+    50% {
+        background-color: #fee2e2;
+        color: #991b1b;
+        border-color: #f87171;
+        box-shadow: 0 0 3px rgba(220, 38, 38, 0.12);
+    }
+}
+.btn-guia-uso {
+    border: 2px solid #dc2626;
+    border-radius: 2px;
+    padding: 8px 12px;
+    font-size: 0.74rem;
+    font-weight: 800;
+    line-height: 1.25;
+    max-width: 175px;
+    text-align: center;
+    cursor: pointer;
+    background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(0, 0, 0, 0.08));
+    animation: guiaBlinkRed 2.8s ease-in-out infinite;
+    flex-shrink: 0;
+}
+.guia-modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.65);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.guia-modal-backdrop.open { display: flex; }
+.guia-modal-card {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    max-width: 780px;
+    width: 100%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.25);
+}
+.guia-modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+.guia-modal-head h2 { margin: 0; font-size: 1.05rem; color: #0f172a; }
+.guia-modal-close {
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+.guia-modal-body {
+    padding: 18px 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.guia-sec {
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px 14px;
+    background: #ffffff;
+}
+.guia-sec h3 { margin: 0 0 6px 0; font-size: 0.92rem; color: #0f172a; }
+.guia-sec p { margin: 4px 0; font-size: 0.82rem; color: #334155; line-height: 1.45; }
+.guia-sec strong { color: #0f172a; }
+</style>
+
+<div class="estadisticas-container">
+    <div class="stats-header">
+        <div>
+            <h1>Rentabilidad y Costos (P&amp;G)</h1>
+            <p>Cascada de márgenes, control de gastos operativos (Efecto Tijera), tendencia móvil de 90 días y productividad de caja.</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end;">
+            <div class="selector-periodo" id="rc-selector-periodo">
+                <button type="button" class="rc-btn-periodo" data-periodo="semana">Semana</button>
+                <button type="button" class="rc-btn-periodo active" data-periodo="mes">Mes (30d)</button>
+                <button type="button" class="rc-btn-periodo" data-periodo="trimestre">90 Días</button>
+                <button type="button" class="rc-btn-periodo" data-periodo="anual">Año</button>
+                <button type="button" class="rc-btn-periodo" data-periodo="personalizado">Rango</button>
+            </div>
+            <button type="button" class="btn-guia-uso" id="rc-btn-guia">Cómo utilizar a favor esta información</button>
+        </div>
+    </div>
+
+    <div class="guia-modal-backdrop" id="rc-modal-guia" role="dialog" aria-modal="true" aria-labelledby="rc-modal-titulo">
+        <div class="guia-modal-card">
+            <div class="guia-modal-head">
+                <h2 id="rc-modal-titulo">Guía de uso estratégico: Rentabilidad y Costos (P&amp;G)</h2>
+                <button type="button" class="guia-modal-close" id="rc-btn-cerrar-guia">Cerrar</button>
+            </div>
+            <div class="guia-modal-body">
+                <div class="guia-sec">
+                    <h3>1. Cascada de Márgenes (P&amp;G): Margen Bruto, Operativo y Neto</h3>
+                    <p><strong>Qué mide:</strong> Descompone tus ventas en USD paso a paso: resta el costo de la mercancía vendida (Margen Bruto), luego los gastos operativos del negocio (Margen Operativo) y finalmente impuestos o cargas financieras (Margen Neto).</p>
+                    <p><strong>Cómo usarlo a favor:</strong> Si el Margen Bruto es sano pero el Margen Neto cae cerca de cero o negativo, el problema no es el precio de venta ni los proveedores, sino la estructura de gastos fijos. Si el Margen Bruto ya es bajo (&lt; 20%), revisa reposición y lista de precios frente al costo real.</p>
+                </div>
+                <div class="guia-sec">
+                    <h3>2. Efecto Tijera (Ingresos vs. Gastos Operativos)</h3>
+                    <p><strong>Qué mide:</strong> Compara el porcentaje de crecimiento de los ingresos frente al crecimiento de tus gastos en el período actual versus el período anterior equivalente.</p>
+                    <p><strong>Cómo usarlo a favor:</strong> El escenario ideal es <em>Tijera Positiva</em> (ingresos crecen más rápido que los gastos). Si aparece alerta de gastos subiendo más rápido que las ventas, audita de inmediato nómina, alquileres, servicios o compras menores antes de que consuman el flujo de caja.</p>
+                </div>
+                <div class="guia-sec">
+                    <h3>3. Tendencia Diaria 90 Días vs. Media Móvil (MA30)</h3>
+                    <p><strong>Qué mide:</strong> Grafica la evolución diaria de ventas y utilidad contra el promedio móvil de los últimos 30 días para eliminar el ruido de un día atípico.</p>
+                    <p><strong>Cómo usarlo a favor:</strong> Cuando la línea diaria permanece varios días debajo de la MA30, detectas desaceleración comercial temprana y puedes lanzar promociones de rotación o combos antes de cerrar el mes en pérdidas.</p>
+                </div>
+                <div class="guia-sec">
+                    <h3>4. Rendimiento y Rentabilidad por Cajero</h3>
+                    <p><strong>Qué mide:</strong> Muestra cuántas facturas emitió cada cajero (Nombre e ID), los ingresos totales que procesó, su ganancia generada, porcentaje de margen promedio y ticket promedio por factura.</p>
+                    <p><strong>Cómo usarlo a favor:</strong> Permite detectar qué cajeros impulsan productos de mayor margen o venden combos (ticket promedio más alto), identificar necesidades de capacitación en vendedores con margen bajo por exceso de descuentos, y reconocer objetivamente al personal más rentable.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    (function() {
+        const btnOpen = document.getElementById('rc-btn-guia');
+        const modal = document.getElementById('rc-modal-guia');
+        const btnClose = document.getElementById('rc-btn-cerrar-guia');
+        if (btnOpen && modal) {
+            btnOpen.addEventListener('click', () => modal.classList.add('open'));
+            if (btnClose) btnClose.addEventListener('click', () => modal.classList.remove('open'));
+            modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('open'); });
+        }
+    })();
+    </script>
+
+    <div class="custom-date-bar" id="rc-datebar">
+        <div class="date-input-group"><label>Desde</label><input type="date" id="rc-desde"></div>
+        <div class="date-input-group"><label>Hasta</label><input type="date" id="rc-hasta"></div>
+        <button type="button" class="btn-primary" id="rc-btn-aplicar">Aplicar</button>
+    </div>
+
+    <div id="rc-tijera-alerta" class="alert-box"></div>
+
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <p class="kpi-title">Ingresos Netos (sin imp.)</p>
+            <h3 class="kpi-value" id="rc-ingresos">$0.00</h3>
+            <p class="kpi-subtext" id="rc-ingresos-sub">Con impuestos: $0.00</p>
+        </div>
+        <div class="kpi-card">
+            <p class="kpi-title">Utilidad y Margen Bruto</p>
+            <h3 class="kpi-value" id="rc-bruto">$0.00</h3>
+            <p class="kpi-subtext" id="rc-bruto-sub">Margen bruto: 0.0% | COGS: $0.00</p>
+        </div>
+        <div class="kpi-card">
+            <p class="kpi-title">OpEx Operativo Total</p>
+            <h3 class="kpi-value" id="rc-opex">$0.00</h3>
+            <p class="kpi-subtext" id="rc-opex-sub">CxP · Caja · Nómina</p>
+        </div>
+        <div class="kpi-card">
+            <p class="kpi-title">EBIT / Margen Neto Estimado</p>
+            <h3 class="kpi-value" id="rc-neto">$0.00</h3>
+            <p class="kpi-subtext" id="rc-neto-sub">Operativo: 0.0% | Neto: 0.0%</p>
+        </div>
+    </div>
+
+    <div class="two-col">
+        <div class="card" style="margin-bottom:0;">
+            <div class="card-head">
+                <h3>Tendencia Diaria 90 Días vs Media Móvil 30d (USD)</h3>
+            </div>
+            <div class="svg-box" id="rc-grafico-90d"></div>
+        </div>
+        <div class="card" style="margin-bottom:0;">
+            <div class="card-head">
+                <h3>Cascada de Resultados y Desglose OpEx</h3>
+            </div>
+            <div class="table-wrap">
+                <table class="bi-table">
+                    <thead><tr><th>Concepto</th><th class="bi-num">Monto (USD)</th><th class="bi-num">% Ingresos</th></tr></thead>
+                    <tbody id="rc-tbody-cascada"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+        <div class="card-head">
+            <h3>Rendimiento y Rentabilidad por Cajero</h3>
+        </div>
+        <div class="table-wrap">
+            <table class="bi-table">
+                <thead>
+                    <tr><th>Cajero</th><th class="bi-num">Facturas</th><th class="bi-num">Ingresos Netos (USD)</th><th class="bi-num">Ganancia Bruta (USD)</th><th class="bi-num">Margen %</th><th class="bi-num">Ticket Promedio (USD)</th></tr>
+                </thead>
+                <tbody id="rc-tbody-cajeros"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    (async function() {
+        const api = window.nexusAPI || (window.parent ? window.parent.nexusAPI : null);
+        if (!api) return;
+
+        const fmtUsd = (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(v) || 0);
+        const escHtml = (v) => String(v ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+        const getLocalISODate = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+
+        function calcularRango(periodo) {
+            const hoy = new Date();
+            const ini = new Date();
+            if (periodo === 'semana') ini.setDate(hoy.getDate() - 7);
+            else if (periodo === 'mes') ini.setDate(hoy.getDate() - 30);
+            else if (periodo === 'trimestre') ini.setDate(hoy.getDate() - 89);
+            else if (periodo === 'anual') ini.setFullYear(hoy.getFullYear() - 1);
+            else if (periodo === 'personalizado') {
+                return {
+                    fecha_inicio: document.getElementById('rc-desde').value || getLocalISODate(ini),
+                    fecha_fin: document.getElementById('rc-hasta').value || getLocalISODate(hoy)
+                };
+            }
+            return { fecha_inicio: getLocalISODate(ini), fecha_fin: getLocalISODate(hoy) };
+        }
+
+        const defR = calcularRango('mes');
+        document.getElementById('rc-desde').value = defR.fecha_inicio;
+        document.getElementById('rc-hasta').value = defR.fecha_fin;
+
+        const sesion = await api.obtenerSesionLocal();
+        const companyId = sesion?.companyId || '';
+        let servidorIP = 'localhost';
+        try {
+            const ip = await api.obtenerIpMaestro();
+            if (ip && ip !== 'null' && ip.trim() !== '') servidorIP = ip.trim();
+        } catch (_) {}
+
+        let ultimosDatos = null;
+
+        function renderGrafico90d(serie) {
+            const box = document.getElementById('rc-grafico-90d');
+            if (!box) return;
+            box.innerHTML = '';
+            if (!Array.isArray(serie) || serie.length === 0) {
+                box.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;font-size:0.85rem;">Sin actividad en los últimos 90 días.</div>';
+                return;
+            }
+            const w = box.clientWidth || 540;
+            const h = box.clientHeight || 245;
+            const pad = { top: 18, right: 14, bottom: 26, left: 54 };
+            const innerW = Math.max(40, w - pad.left - pad.right);
+            const innerH = Math.max(40, h - pad.top - pad.bottom);
+
+            let maxVal = 0;
+            serie.forEach((d) => { maxVal = Math.max(maxVal, Number(d.ingresos_usd) || 0, Number(d.ma30_ingresos_usd) || 0, Number(d.opex_usd) || 0); });
+            if (maxVal <= 0) maxVal = 100;
+
+            const xAt = (i) => pad.left + (serie.length > 1 ? (i / (serie.length - 1)) * innerW : innerW / 2);
+            const yAt = (v) => pad.top + innerH - ((Math.max(0, Number(v) || 0) / maxVal) * innerH);
+            const pathFrom = (k) => serie.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i).toFixed(1)} ${yAt(d[k]).toFixed(1)}`).join(' ');
+
+            const grid = [0, 0.5, 1].map((f) => {
+                const y = pad.top + (1 - f) * innerH;
+                return `<line x1="${pad.left}" y1="${y.toFixed(1)}" x2="${w - pad.right}" y2="${y.toFixed(1)}" stroke="#e2e8f0" stroke-dasharray="3,3" /><text x="${pad.left - 6}" y="${y + 4}" text-anchor="end" font-size="10" fill="#64748b">${fmtUsd(maxVal * f)}</text>`;
+            }).join('');
+            const xIdx = [0, Math.floor((serie.length - 1) / 2), serie.length - 1];
+            const xLabels = xIdx.map((i) => `<text x="${xAt(i).toFixed(1)}" y="${h - 6}" text-anchor="${i === 0 ? 'start' : (i === serie.length - 1 ? 'end' : 'middle')}" font-size="10" fill="#64748b">${escHtml(serie[i].fecha)}</text>`).join('');
+
+            box.innerHTML = `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block;overflow:visible;">${grid}<path d="${pathFrom('ingresos_usd')}" fill="none" stroke="#93c5fd" stroke-width="1.5" /><path d="${pathFrom('ma30_ingresos_usd')}" fill="none" stroke="#0284c7" stroke-width="2.5" /><path d="${pathFrom('ma30_ganancia_usd')}" fill="none" stroke="#059669" stroke-width="2" /><path d="${pathFrom('opex_usd')}" fill="none" stroke="#d97706" stroke-width="1.2" stroke-dasharray="4,3" />${xLabels}</svg>
+            <div style="display:flex;gap:14px;justify-content:center;font-size:0.72rem;color:#475569;margin-top:4px;flex-wrap:wrap;"><span><strong style="color:#93c5fd;">—</strong> Venta Diaria</span><span><strong style="color:#0284c7;">—</strong> Media Móvil 30d Ingresos</span><span><strong style="color:#059669;">—</strong> Media Móvil 30d Ganancia</span><span><strong style="color:#d97706;">--</strong> OpEx Diario</span></div>`;
+        }
+
+        function render(d) {
+            ultimosDatos = d;
+            const casc = d.cascada_y_tijera || {};
+            const comp = casc.comparativo_anterior || {};
+            const alEl = document.getElementById('rc-tijera-alerta');
+            if (comp.tijera_alerta) { alEl.textContent = comp.tijera_mensaje; alEl.style.display = 'block'; }
+            else alEl.style.display = 'none';
+
+            document.getElementById('rc-ingresos').textContent = fmtUsd(casc.ingresos_netos_sin_impuesto_usd);
+            document.getElementById('rc-ingresos-sub').textContent = `Con impuestos: ${fmtUsd(casc.ingresos_brutos_usd)}`;
+            document.getElementById('rc-bruto').textContent = fmtUsd(casc.utilidad_bruta_usd);
+            document.getElementById('rc-bruto-sub').textContent = `Margen bruto: ${Number(casc.margen_bruto_pct || 0).toFixed(1)}% | COGS: ${fmtUsd(casc.cogs_usd)}`;
+            const opDes = casc.opex_desglose || {};
+            document.getElementById('rc-opex').textContent = fmtUsd(casc.opex_total_usd);
+            document.getElementById('rc-opex-sub').textContent = `CxP: ${fmtUsd(opDes.cxpGastosUsd)} · Caja: ${fmtUsd(opDes.cajaEgresosUsd)} · Nómina: ${fmtUsd(opDes.nominaUsd)}`;
+            document.getElementById('rc-neto').textContent = fmtUsd(casc.utilidad_neta_estimada_usd);
+            document.getElementById('rc-neto-sub').textContent = `Operativo: ${Number(casc.margen_operativo_pct || 0).toFixed(1)}% | Neto: ${Number(casc.margen_neto_pct || 0).toFixed(1)}%`;
+
+            renderGrafico90d(d.tendencia_90d || []);
+
+            const ingBase = casc.ingresos_netos_sin_impuesto_usd || 0;
+            const pctOf = (v) => ingBase > 0 ? `${((v / ingBase) * 100).toFixed(1)}%` : '0.0%';
+            const filas = [
+                ['Ingresos Netos (sin IVA/IGTF)', casc.ingresos_netos_sin_impuesto_usd, ingBase > 0 ? '100.0%' : '0.0%', false],
+                ['(-) Costo de Mercancía Vendida (COGS)', -(casc.cogs_usd || 0), pctOf(casc.cogs_usd || 0), false],
+                ['(=) Utilidad Bruta Comercial', casc.utilidad_bruta_usd, `${Number(casc.margen_bruto_pct || 0).toFixed(1)}%`, true],
+                ['(-) OpEx: Gastos Operativos CxP', -(opDes.cxpGastosUsd || 0), pctOf(opDes.cxpGastosUsd || 0), false],
+                ['(-) OpEx: Egresos Caja Chica POS', -(opDes.cajaEgresosUsd || 0), pctOf(opDes.cajaEgresosUsd || 0), false],
+                ['(-) OpEx: Nómina y Personal', -(opDes.nominaUsd || 0), pctOf(opDes.nominaUsd || 0), false],
+                ['(=) EBIT (Utilidad Operativa)', casc.ebit_usd, `${Number(casc.margen_operativo_pct || 0).toFixed(1)}%`, true],
+                ['(-) Comisiones Cashea BNPL', -(casc.comisiones_cashea_usd || 0), pctOf(casc.comisiones_cashea_usd || 0), false],
+                ['(=) Utilidad Neta Estimada', casc.utilidad_neta_estimada_usd, `${Number(casc.margen_neto_pct || 0).toFixed(1)}%`, true]
+            ];
+            document.getElementById('rc-tbody-cascada').innerHTML = filas.map(([lbl, val, pct, bold]) => `<tr style="${bold ? 'background:#f8fafc;font-weight:700;' : ''}"><td>${escHtml(lbl)}</td><td class="bi-num" style="color:${val < 0 ? '#dc2626' : '#0f172a'};">${fmtUsd(val)}</td><td class="bi-num">${escHtml(pct)}</td></tr>`).join('');
+
+            const caj = d.comercial_clientes_cajeros?.rendimiento_cajeros || [];
+            const renderFilasCajeros = (lista, mapaNombres) => {
+                const tbodyCaj = document.getElementById('rc-tbody-cajeros');
+                if (!tbodyCaj) return;
+                tbodyCaj.innerHTML = lista.length
+                    ? lista.map((c) => {
+                        const cid = String(c.cashier_id || 'SIN_CAJERO');
+                        const nombreBackend = c.cajero_nombre && c.cajero_nombre !== cid && c.cajero_nombre !== 'Sin asignar' ? c.cajero_nombre : '';
+                        const nombreFinal = mapaNombres[cid] || nombreBackend || (cid === 'SIN_CAJERO' ? 'Sin asignar' : 'Cajero sin nombre');
+                        return `<tr><td><strong>${escHtml(nombreFinal)}</strong><div style="font-size:0.74rem;color:#64748b;font-family:monospace;">ID: ${escHtml(cid)}</div></td><td class="bi-num">${c.facturas}</td><td class="bi-num">${fmtUsd(c.ingresos_usd)}</td><td class="bi-num" style="color:#059669;">${fmtUsd(c.ganancia_usd)}</td><td class="bi-num">${Number(c.margen_pct).toFixed(1)}%</td><td class="bi-num">${fmtUsd(c.ticket_promedio_usd)}</td></tr>`;
+                    }).join('')
+                    : '<tr><td colspan="6" style="text-align:center;color:#64748b;padding:14px;">Sin ventas registradas en este periodo.</td></tr>';
+            };
+            let mapaLocalCajeros = {};
+            try { mapaLocalCajeros = JSON.parse(localStorage.getItem('nexus_cajeras_map') || '{}') || {}; } catch (_) {}
+            renderFilasCajeros(caj, mapaLocalCajeros);
+            if (caj.length && typeof window !== 'undefined') {
+                Promise.resolve().then(async () => {
+                    let cambio = false;
+                    if (window.nexusAPI && typeof window.nexusAPI.obtenerUsuariosLocales === 'function') {
+                        try {
+                            const usuarios = await window.nexusAPI.obtenerUsuariosLocales();
+                            if (Array.isArray(usuarios)) {
+                                for (const u of usuarios) {
+                                    const uid = String(u.uid || u.id || '').trim();
+                                    const label = String(u.nombre || u.displayName || (u.email ? u.email.split('@')[0] : '') || u.role || '').trim();
+                                    if (uid && label && !mapaLocalCajeros[uid]) {
+                                        mapaLocalCajeros[uid] = label;
+                                        cambio = true;
+                                    }
+                                }
+                            }
+                        } catch (_) {}
+                    }
+                    const missingIds = caj.map((c) => String(c.cashier_id || '')).filter((cid) => cid && cid !== 'SIN_CAJERO' && !mapaLocalCajeros[cid]);
+                    if (missingIds.length && window.firebase && typeof window.firebase.firestore === 'function') {
+                        try {
+                            const fsDb = window.firebase.firestore();
+                            const cidCompany = localStorage.getItem('nexus_company_id') || '';
+                            if (cidCompany) {
+                                const snap = await fsDb.collection('companies').doc(cidCompany).collection('cashiers').get();
+                                snap.forEach((doc) => {
+                                    const data = doc.data() || {};
+                                    const n = String(data.name || data.nombre || data.fullName || '').trim();
+                                    if (n && !mapaLocalCajeros[doc.id]) {
+                                        mapaLocalCajeros[doc.id] = n;
+                                        cambio = true;
+                                    }
+                                });
+                            }
+                        } catch (_) {}
+                    }
+                    if (cambio) {
+                        try { localStorage.setItem('nexus_cajeras_map', JSON.stringify(mapaLocalCajeros)); } catch (_) {}
+                        renderFilasCajeros(caj, mapaLocalCajeros);
+                    }
+                });
+            }
+        }
+
+        async function cargar(periodo) {
+            const { fecha_inicio, fecha_fin } = calcularRango(periodo);
+            try {
+                const url = `http://${servidorIP}:3000/api/maestro/estadisticas/especificas-bi?fecha_inicio=${encodeURIComponent(fecha_inicio)}&fecha_fin=${encodeURIComponent(fecha_fin)}&companyId=${encodeURIComponent(companyId)}&periodo=${encodeURIComponent(periodo)}`;
+                const res = await fetch(url);
+                const json = await res.json();
+                if (json && json.exito && json.data) render(json.data);
+            } catch (e) { console.warn('Error cargando Rentabilidad y Costos:', e.message); }
+        }
+
+        document.querySelectorAll('.rc-btn-periodo').forEach((btn) => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.rc-btn-periodo').forEach((b) => b.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+                const p = e.currentTarget.getAttribute('data-periodo');
+                const bar = document.getElementById('rc-datebar');
+                if (p === 'personalizado') bar.classList.add('activo');
+                else { bar.classList.remove('activo'); cargar(p); }
+            });
+        });
+        document.getElementById('rc-btn-aplicar')?.addEventListener('click', () => cargar('personalizado'));
+        window.addEventListener('resize', () => { if (ultimosDatos?.tendencia_90d) renderGrafico90d(ultimosDatos.tendencia_90d); });
+
+        cargar('mes');
+    })();
+</script>

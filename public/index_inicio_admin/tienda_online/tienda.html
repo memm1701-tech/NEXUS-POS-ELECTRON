@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' https: data: blob:; connect-src 'self' https://tienda.nexusposgobal.com https:; object-src 'none'; base-uri 'self';">
     <title>Tienda Online NEXUS POS</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="icon" type="image/png" href="../../logo_nexus.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
     <style>
@@ -339,6 +340,25 @@
 
     const API_BASE_URL = "https://tienda.nexusposgobal.com/api";
 
+    function escapeHtml(val) {
+        if (val === null || val === undefined) return '';
+        return String(val)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function sanitizeImageUrl(url) {
+        if (!url || typeof url !== 'string') return 'https://placehold.co/400x300?text=Sin+Imagen';
+        const trimmed = url.trim();
+        if (/^https?:\/\//i.test(trimmed) || /^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$/i.test(trimmed)) {
+            return trimmed;
+        }
+        return 'https://placehold.co/400x300?text=Sin+Imagen';
+    }
+
     const tiendaConfig = {
         whatsappNumber: "584120000000",
         storeName: "Tu Tienda Online",
@@ -369,9 +389,11 @@
             
             // 1. Prioridad: Buscar en la URL (?company=xxx)
             if(urlParams.has('company')) {
-                const id = urlParams.get('company');
-                localStorage.setItem('companyId', id); // Lo guardamos para persistencia local
-                return id; 
+                const rawId = urlParams.get('company');
+                if (rawId && /^[A-Za-z0-9_-]{1,128}$/.test(rawId)) {
+                    localStorage.setItem('companyId', rawId);
+                    return rawId;
+                }
             }
             
             // 2. Respaldo: Buscar en el almacenamiento local
@@ -385,8 +407,8 @@
     async function fetchBcvRate(companyId) {
         if (!companyId) return 1;
         try {
-            // 🔥 AHORA SÍ: Consulta la tasa directamente a tu PostgreSQL
-            const response = await fetch(`${API_BASE_URL}/maestro/tasa/${companyId}`);
+            const safeComp = encodeURIComponent(companyId);
+            const response = await fetch(`${API_BASE_URL}/maestro/tasa/${safeComp}`);
             if (!response.ok) return 1;
             
             const data = await response.json();
@@ -406,9 +428,9 @@
     async function loadTiendaConfig(companyId) {
         if (!companyId) return;
 
-        // 🔥 CORRECCIÓN VITAL: Ahora buscamos 'config_tienda_online' tal como lo guarda configuracion.html
-        const URL_IDENTIDAD = `${API_BASE_URL}/maestro/configuracion_tienda/${companyId}/config_tienda_online`;
-        const URL_VITRINA = `${API_BASE_URL}/maestro/configuracion_tienda/${companyId}/config_vitrina_digital`;
+        const safeComp = encodeURIComponent(companyId);
+        const URL_IDENTIDAD = `${API_BASE_URL}/maestro/configuracion_tienda/${safeComp}/config_tienda_online`;
+        const URL_VITRINA = `${API_BASE_URL}/maestro/configuracion_tienda/${safeComp}/config_vitrina_digital`;
 
         try {
             const [resIdentidad, resVitrina] = await Promise.all([
@@ -467,9 +489,9 @@ async function loadStoreData(companyId) {
             return;
         }
 
-        // 🔥 CORRECCIÓN: Eliminamos URLs viejas y apuntamos al router 'maestro'
-        const URL_CATEGORIAS = `${API_BASE_URL}/maestro/categorias/${companyId}`;
-        const URL_PRODUCTOS = `${API_BASE_URL}/maestro/inventario/${companyId}`;
+        const safeComp = encodeURIComponent(companyId);
+        const URL_CATEGORIAS = `${API_BASE_URL}/maestro/categorias/${safeComp}`;
+        const URL_PRODUCTOS = `${API_BASE_URL}/maestro/inventario/${safeComp}`;
 
         try {
             const [resCat, resProd] = await Promise.all([
@@ -688,64 +710,71 @@ async function loadStoreData(companyId) {
             referencePrice = parseFloat(config.referencePrice);
         }
 
+        const safeId = escapeHtml(String(productId));
+        const safeImg = escapeHtml(sanitizeImageUrl(product.imageUrl));
+        const safeName = escapeHtml(product.name);
+        const safeCollection = escapeHtml(product.collection);
+        const safeUnit = escapeHtml(product.unit || 'UN');
+        const safeTag = config.tag ? escapeHtml(config.tag) : '';
+
         const cardHtml = `
-            <div id="product-card-${productId}" class="product-card bg-white p-4 rounded-xl shadow-md flex flex-col justify-between border border-gray-100 hover:shadow-xl transition h-full relative">
+            <div id="product-card-${safeId}" class="product-card bg-white p-4 rounded-xl shadow-md flex flex-col justify-between border border-gray-100 hover:shadow-xl transition h-full relative">
                 
-                ${config.tag ? `
+                ${safeTag ? `
                     <span class="absolute top-2 left-2 z-10 bg-red-600 text-white text-[10px] font-black px-2 py-1 rounded-md shadow-sm uppercase tracking-tighter">
-                        ${config.tag}
+                        ${safeTag}
                     </span>
                 ` : ''}
 
                 <div>
                     <div class="aspect-square w-full mb-3 overflow-hidden rounded-lg bg-gray-50 relative cursor-pointer" 
-                         onclick="window.openProductDetail('${productId}')">
-                         <img src="${product.imageUrl}" class="w-full h-full object-cover" alt="${product.name}" onerror="this.src='https://placehold.co/400x300?text=Sin+Imagen'">
+                         data-detail-id="${safeId}" onclick="window.openProductDetail(this.dataset.detailId)">
+                         <img src="${safeImg}" class="w-full h-full object-cover" alt="${safeName}" onerror="this.src='https://placehold.co/400x300?text=Sin+Imagen'">
                          <span class="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-[10px] px-2 py-1 rounded-full font-bold">
-                            ${product.unit || 'UN'}
+                            ${safeUnit}
                          </span>
                     </div>
-                    <h3 class="text-lg font-bold text-gray-900 leading-tight mb-1 break-words">${product.name}</h3>
-                    <p class="text-[10px] font-bold text-blue-600 bg-blue-50 py-1 px-2 rounded inline-block mb-3 uppercase tracking-wider">${product.collection}</p>
+                    <h3 class="text-lg font-bold text-gray-900 leading-tight mb-1 break-words">${safeName}</h3>
+                    <p class="text-[10px] font-bold text-blue-600 bg-blue-50 py-1 px-2 rounded inline-block mb-3 uppercase tracking-wider">${safeCollection}</p>
                 </div>
 
                 <div class="mt-4 pt-4 border-t border-gray-100">
-                    <div id="action-default-${productId}" class="flex flex-col gap-3">
+                    <div id="action-default-${safeId}" class="flex flex-col gap-3">
                         <div class="flex flex-col gap-1">
                             ${referencePrice ? `
                                 <span class="text-xs text-gray-400 line-through font-medium">
-                                    ${formatPrice(referencePrice, product.currency)}
+                                    ${escapeHtml(formatPrice(referencePrice, product.currency))}
                                 </span>
                             ` : ''}
 
                             <div class="text-2xl font-black ${referencePrice ? 'text-red-600' : 'text-primary'} leading-none break-all">
-                                ${formatPrice(finalPrice, product.currency)} 
+                                ${escapeHtml(formatPrice(finalPrice, product.currency))} 
                             </div>
 
                             ${product.taxRate > 0 ? `
                                 <span class="text-[10px] text-gray-500 font-bold uppercase tracking-tighter leading-none">
-                                    Total (+IVA): ${formatPrice(finalPrice * (1 + (product.taxRate / 100)), product.currency)}
+                                    Total (+IVA): ${escapeHtml(formatPrice(finalPrice * (1 + (product.taxRate / 100)), product.currency))}
                                     <span class="ml-1 text-[9px] bg-blue-100 text-blue-700 px-1 py-0.5 rounded-md align-middle uppercase font-black">IVA</span>
                                 </span>
                             ` : ''}
                         </div>
 
-                        <button onclick="window.toggleQuantityInput('${productId}')" class="w-full flex justify-center items-center px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition">
+                        <button data-prod-id="${safeId}" onclick="window.toggleQuantityInput(this.dataset.prodId)" class="w-full flex justify-center items-center px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition">
                             <svg class="icon w-4 h-4 mr-2" viewBox="0 0 24 24" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                             AÑADIR
                         </button>
                     </div>
 
-                    <div id="action-quantity-${productId}" class="hidden flex flex-col gap-2">
+                    <div id="action-quantity-${safeId}" class="hidden flex flex-col gap-2">
                         <div class="flex items-center bg-gray-100 rounded-lg p-1">
-                            <input id="quantity-input-${productId}" type="number" value="1" step="0.001" min="0.001" 
+                            <input id="quantity-input-${safeId}" type="number" value="1" step="0.001" min="0.001" 
                                 class="w-full bg-transparent text-center font-bold text-gray-800 outline-none p-1">
                         </div>
                         <div class="flex gap-2">
-                            <button onclick="window.confirmAddToCart('${productId}')" class="flex-1 bg-green-500 text-white text-xs font-bold py-2 rounded-lg hover:bg-green-600 transition">
+                            <button data-prod-id="${safeId}" onclick="window.confirmAddToCart(this.dataset.prodId)" class="flex-1 bg-green-500 text-white text-xs font-bold py-2 rounded-lg hover:bg-green-600 transition">
                                 CONFIRMAR
                             </button>
-                            <button onclick="window.toggleQuantityInput('${productId}', true)" class="bg-gray-200 text-gray-600 p-2 rounded-lg hover:bg-gray-300 transition">
+                            <button data-prod-id="${safeId}" onclick="window.toggleQuantityInput(this.dataset.prodId, true)" class="bg-gray-200 text-gray-600 p-2 rounded-lg hover:bg-gray-300 transition">
                                 <svg class="icon w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                             </button>
                         </div>
@@ -954,16 +983,16 @@ async function loadStoreData(companyId) {
             itemsHtml += `
                 <div class="flex justify-between items-center py-2 border-b border-gray-200">
                     <div class="flex flex-col flex-grow pr-4">
-                        <span class="font-semibold text-gray-900">${item.name}</span>
+                        <span class="font-semibold text-gray-900">${escapeHtml(item.name)}</span>
                         <span class="text-sm text-gray-500">
-                            ${formatPrice(item.price, item.currency)} x <strong class="text-gray-700">${quantityDisplay}</strong>
+                            ${escapeHtml(formatPrice(item.price, item.currency))} x <strong class="text-gray-700">${escapeHtml(quantityDisplay)}</strong>
                         </span>
                     </div>
                     <div class="flex items-center space-x-3 flex-shrink-0">
                         <span class="font-bold text-gray-800 text-lg">
-                            ${displayAsUSD ? '$' : 'Bs '}${itemTotal.toLocaleString(displayAsUSD ? 'en-US' : 'es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            ${displayAsUSD ? '$' : 'Bs '}${escapeHtml(itemTotal.toLocaleString(displayAsUSD ? 'en-US' : 'es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}
                         </span>
-                        <button onclick="window.removeItemFromCart('${item.id}')" class="text-red-500 hover:text-red-700 p-1 rounded transition duration-150">
+                        <button data-prod-id="${escapeHtml(String(item.id))}" onclick="window.removeItemFromCart(this.dataset.prodId)" class="text-red-500 hover:text-red-700 p-1 rounded transition duration-150">
                             <svg class="icon w-5 h-5" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="3 6 5 6 21 6"></polyline>
                                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -1105,26 +1134,24 @@ async function loadStoreData(companyId) {
         storeNameHeader.textContent = tiendaConfig.storeName;
             }
 
-            // 2. Lógica del logo (Mantener lo que ya tienes)
             if (tiendaConfig.logoUrl) {
-                logoDisplay.innerHTML = `<img src="${tiendaConfig.logoUrl}" alt="${tiendaConfig.storeName}" class="h-full w-full object-cover rounded-full">`;
+                const safeLogoUrl = sanitizeImageUrl(tiendaConfig.logoUrl);
+                logoDisplay.innerHTML = '';
+                const imgEl = document.createElement('img');
+                imgEl.src = safeLogoUrl;
+                imgEl.alt = tiendaConfig.storeName || '';
+                imgEl.className = 'h-full w-full object-cover rounded-full';
+                logoDisplay.appendChild(imgEl);
                 logoDisplay.classList.remove('logo-placeholder', 'bg-e5e7eb', 'text-4b5563', 'border', 'border-dashed');
-                logoDisplay.classList.add('h-10', 'w-10', 'p-0'); 
+                logoDisplay.classList.add('h-10', 'w-10', 'p-0');
             } else {
-                const storeInitial = tiendaConfig.storeName.charAt(0).toUpperCase() || 'L';
-                logoDisplay.innerHTML = `<span>${storeInitial}</span>`;
-                logoDisplay.classList.remove('p-0'); 
+                const storeInitial = (tiendaConfig.storeName || 'L').charAt(0).toUpperCase();
+                logoDisplay.innerHTML = '';
+                const spanEl = document.createElement('span');
+                spanEl.textContent = storeInitial;
+                logoDisplay.appendChild(spanEl);
+                logoDisplay.classList.remove('p-0');
             }
-
-        if (tiendaConfig.logoUrl) {
-             logoDisplay.innerHTML = `<img src="${tiendaConfig.logoUrl}" alt="${tiendaConfig.storeName}" class="h-full w-full object-cover rounded-full">`;
-             logoDisplay.classList.remove('logo-placeholder', 'bg-e5e7eb', 'text-4b5563', 'border', 'border-dashed');
-             logoDisplay.classList.add('h-10', 'w-10', 'p-0'); 
-        } else {
-             const storeInitial = tiendaConfig.storeName.charAt(0).toUpperCase() || 'L';
-             logoDisplay.innerHTML = `<span>${storeInitial}</span>`;
-             logoDisplay.classList.remove('p-0'); 
-        }
         
         if (!tiendaConfig.deliveryEnabled) {
             deliveryContainer.style.display = 'none';
@@ -1195,7 +1222,7 @@ function openProductDetail(productId) {
         finalPrice = parseFloat(config.offerPrice);
     }
 
-    document.getElementById('detail-image').src = product.imageUrl;
+    document.getElementById('detail-image').src = sanitizeImageUrl(product.imageUrl);
     document.getElementById('detail-name').textContent = product.name;
     document.getElementById('detail-category').textContent = product.collection;
     

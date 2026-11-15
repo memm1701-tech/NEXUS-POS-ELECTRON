@@ -1,0 +1,1088 @@
+<style>
+    .nexus-libro-table {
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    .nexus-libro-table th,
+    .nexus-libro-table td {
+        border-right: 1px solid #e5e7eb;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .nexus-libro-table th {
+        border-top: 1px solid #e5e7eb;
+    }
+    .nexus-libro-table tr th:first-child,
+    .nexus-libro-table tr td:first-child {
+        border-left: 1px solid #e5e7eb;
+    }
+</style>
+
+<div class="w-full min-h-screen p-4 md:p-6 bg-gray-50 flex flex-col">
+    <!-- HEADER -->
+    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 flex items-center">
+                <i class="material-icons mr-2 text-blue-600">menu_book</i>
+                Libro de Compras
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">Control operativo gerencial y registro fiscal SENIAT (Providencia SNAT/2011/0071)</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+            <!-- SWITCH MODO -->
+            <div class="bg-white border border-gray-300 rounded-lg p-1 flex items-center gap-1 shadow-sm" role="group">
+                <button type="button" id="lc-btn-modo-fiscal" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer flex items-center gap-1.5 bg-blue-600 text-white">
+                    <i class="material-icons text-sm">account_balance</i>
+                    Modo Contador (SENIAT)
+                </button>
+                <button type="button" id="lc-btn-modo-gerencial" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer flex items-center gap-1.5 text-gray-600 hover:bg-gray-100">
+                    <i class="material-icons text-sm">analytics</i>
+                    Modo Gerencial (No Fiscal)
+                </button>
+            </div>
+
+            <button type="button" id="lc-btn-nuevo-doc" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors flex items-center gap-1.5 text-sm cursor-pointer">
+                <i class="material-icons text-base">add_circle</i>
+                Registrar Compra / Gasto / NC
+            </button>
+
+            <button type="button" id="lc-btn-exportar-excel" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors flex items-center gap-1.5 text-sm cursor-pointer">
+                <i class="material-icons text-base">table_view</i>
+                Exportar Excel
+            </button>
+
+            <button type="button" id="lc-btn-refrescar" class="bg-gray-200 hover:bg-gray-300 text-gray-700 p-2 rounded-full transition-colors flex items-center justify-center shadow-sm cursor-pointer" title="Actualizar datos">
+                <i class="material-icons text-xl">refresh</i>
+            </button>
+        </div>
+    </div>
+
+    <!-- AVISO LEGAL SENIAT SOBRE DEVOLUCIONES / DOCUMENTOS PENDIENTES -->
+    <div id="lc-alerta-legal" class="hidden p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-r-lg text-xs text-yellow-900 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div class="flex items-start gap-2.5">
+            <i class="material-icons text-yellow-600 text-lg mt-0.5">info</i>
+            <div class="leading-relaxed">
+                <p class="font-bold text-sm text-yellow-800">Validación Legal SENIAT (Art. 75 Regl. Ley IVA):</p>
+                <p id="lc-alerta-legal-texto">
+                    Existen documentos o devoluciones a proveedor pendientes de <strong>N° Control Fiscal o N° Nota de Crédito del proveedor</strong>. En Modo Contador (SENIAT), las devoluciones sin Nota de Crédito oficial no deducen Crédito Fiscal hasta completar los datos.
+                </p>
+            </div>
+        </div>
+        <button type="button" id="lc-btn-ver-pendientes" class="shrink-0 px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer">
+            Filtrar Pendientes
+        </button>
+    </div>
+
+    <!-- FILTROS -->
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 mb-6 flex flex-col w-full gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-gray-100">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-xs font-semibold uppercase text-gray-500 mr-1">Período Rápido:</span>
+                <button type="button" data-rango="mes_actual" class="lc-rango-btn px-3 py-1 text-xs font-semibold rounded-lg bg-blue-50 text-blue-700 border border-blue-300 cursor-pointer">Este Mes</button>
+                <button type="button" data-rango="mes_anterior" class="lc-rango-btn px-3 py-1 text-xs font-semibold rounded-lg bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 cursor-pointer">Mes Anterior</button>
+                <button type="button" data-rango="hoy" class="lc-rango-btn px-3 py-1 text-xs font-semibold rounded-lg bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 cursor-pointer">Hoy</button>
+                <button type="button" data-rango="ultimos_30" class="lc-rango-btn px-3 py-1 text-xs font-semibold rounded-lg bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 cursor-pointer">Últimos 30 Días</button>
+            </div>
+            <div class="text-xs text-gray-500">
+                Tasa BCV Referencial Activa: <strong id="lc-tasa-activa-lbl" class="text-gray-800">Bs 1.00</strong>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+            <div class="md:col-span-4">
+                <label class="block text-[15px] font-semibold text-gray-500 mb-1">Buscar Proveedor, Factura o Control</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                        <i class="material-icons text-gray-400">search</i>
+                    </span>
+                    <input type="text" id="lc-buscador" placeholder="Ej: J-300..., Polar, FAC-0012, Cantv..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm">
+                </div>
+            </div>
+
+            <div class="md:col-span-2">
+                <label class="block text-[15px] font-semibold text-gray-500 mb-1">Desde</label>
+                <input type="date" id="lc-fecha-desde" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm">
+            </div>
+
+            <div class="md:col-span-2">
+                <label class="block text-[15px] font-semibold text-gray-500 mb-1">Hasta</label>
+                <input type="date" id="lc-fecha-hasta" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm">
+            </div>
+
+            <div class="md:col-span-2">
+                <label class="block text-[15px] font-semibold text-gray-500 mb-1">Tipo Documento</label>
+                <select id="lc-filtro-tipo" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm bg-white">
+                    <option value="TODOS">Todos</option>
+                    <option value="FACTURA">Facturas Compra</option>
+                    <option value="NOTA_CREDITO">Notas Crédito / Dev.</option>
+                    <option value="GASTO">Gastos Operativos</option>
+                    <option value="CON_AFECTADA">Con Factura Afectada (NC/ND)</option>
+                </select>
+            </div>
+
+            <div class="md:col-span-2">
+                <label class="block text-[15px] font-semibold text-gray-500 mb-1">Estado Fiscal</label>
+                <select id="lc-filtro-estado-fiscal" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm bg-white">
+                    <option value="TODOS">Todos</option>
+                    <option value="VALIDO">Solo Válidos SENIAT</option>
+                    <option value="PENDIENTE">Pendientes Datos</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- TARJETAS KPI -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6 w-full">
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+            <p class="text-sm text-gray-500 font-medium">Total Compras Netas</p>
+            <h3 class="text-2xl font-bold text-gray-800 mt-0.5" id="lc-kpi-total-bs">Bs 0,00</h3>
+            <p class="text-xs text-gray-500 mt-1" id="lc-kpi-total-usd">Ref: $ 0.00</p>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+            <p class="text-sm text-gray-500 font-medium">Base Imponible Gravada</p>
+            <h3 class="text-2xl font-bold text-blue-600 mt-0.5" id="lc-kpi-base-bs">Bs 0,00</h3>
+            <p class="text-xs text-gray-500 mt-1" id="lc-kpi-docs-count">0 documentos</p>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+            <p class="text-sm text-gray-500 font-medium">Crédito Fiscal (IVA)</p>
+            <h3 class="text-2xl font-bold text-green-600 mt-0.5" id="lc-kpi-iva-bs">Bs 0,00</h3>
+            <p class="text-xs text-gray-500 mt-1" id="lc-kpi-iva-sub">Deducible en Declaración IVA</p>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+            <p class="text-sm text-gray-500 font-medium">IVA Retenido a Proveedores</p>
+            <h3 class="text-2xl font-bold text-gray-800 mt-0.5" id="lc-kpi-retenido-bs">Bs 0,00</h3>
+            <p class="text-xs text-gray-500 mt-1">Por enterar quincenalmente SENIAT</p>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+            <p class="text-sm text-gray-500 font-medium">Exentas / No Gravadas</p>
+            <h3 class="text-2xl font-bold text-gray-800 mt-0.5" id="lc-kpi-exento-bs">Bs 0,00</h3>
+            <p class="text-xs text-red-600 mt-1 font-medium" id="lc-kpi-pendientes-lbl">0 pendientes datos fiscales</p>
+        </div>
+    </div>
+
+    <!-- TABLA PRINCIPAL -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex-1 flex flex-col w-full">
+        <div class="px-5 py-3 border-b border-gray-200 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 bg-white">
+            <div class="flex flex-wrap items-center gap-3">
+                <h3 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                    <span class="material-icons text-blue-600 text-lg">receipt_long</span>
+                    <span id="lc-titulo-tabla">Registro Reglamentario — Libro de Compras SENIAT</span>
+                </h3>
+                <span id="lc-contador-tabla" class="text-xs text-gray-600 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-full font-semibold">0 registros</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+                <span class="text-xs text-gray-500 hidden xl:inline" id="lc-subtitulo-tabla">Cifras expresadas en Bolívares (Bs) según tasa BCV histórica de cada documento</span>
+                <div class="flex items-center gap-2">
+                    <label for="lc-limit-select" class="text-xs font-semibold text-gray-600 whitespace-nowrap">Cantidad de filas a mostrar:</label>
+                    <select id="lc-limit-select" class="px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold text-gray-700 bg-white focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer">
+                        <option value="50">50 filas</option>
+                        <option value="100" selected>100 filas</option>
+                        <option value="200">200 filas</option>
+                        <option value="0">Todas las filas</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-auto">
+            <table id="lc-tabla-principal" class="nexus-libro-table w-full text-sm text-left relative">
+                <thead class="text-xs text-gray-600 uppercase bg-gray-100 sticky top-0 z-10 shadow-sm">
+                    <tr>
+                        <th class="px-3 py-3 whitespace-nowrap">#</th>
+                        <th class="px-3 py-3 whitespace-nowrap">Fecha</th>
+                        <th class="px-3 py-3 whitespace-nowrap">RIF</th>
+                        <th class="px-3 py-3 min-w-[180px]">Proveedor / Razón Social</th>
+                        <th class="px-3 py-3 whitespace-nowrap">Tipo / Trans.</th>
+                        <th class="px-3 py-3 whitespace-nowrap">N° Factura</th>
+                        <th class="px-3 py-3 whitespace-nowrap">N° Control</th>
+                        <th class="px-3 py-3 whitespace-nowrap">N° Nota Créd.</th>
+                        <th class="px-3 py-3 whitespace-nowrap">Fac. Afectada</th>
+                        <th class="px-3 py-3 text-right whitespace-nowrap">Tasa BCV</th>
+                        <th class="px-3 py-3 text-right whitespace-nowrap">Total (Bs)</th>
+                        <th class="px-3 py-3 text-right whitespace-nowrap">Total ($)</th>
+                        <th class="px-3 py-3 text-right whitespace-nowrap">Exento (Bs)</th>
+                        <th class="px-3 py-3 text-right whitespace-nowrap">Base Imp. (Bs)</th>
+                        <th class="px-3 py-3 text-center whitespace-nowrap">% IVA</th>
+                        <th class="px-3 py-3 text-right whitespace-nowrap">Crédito IVA</th>
+                        <th class="px-3 py-3 text-right whitespace-nowrap">IVA Retenido</th>
+                        <th class="px-3 py-3 whitespace-nowrap">Comprob. Ret.</th>
+                        <th class="px-3 py-3 whitespace-nowrap">Estado Fiscal</th>
+                        <th class="px-3 py-3 text-center whitespace-nowrap">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="lc-tbody" class="bg-white">
+                    <tr>
+                        <td colspan="20" class="px-4 py-8 text-center text-gray-500">Cargando Libro de Compras...</td>
+                    </tr>
+                </tbody>
+                <tfoot id="lc-tfoot" class="bg-gray-50 font-bold text-gray-800 border-t border-gray-200 text-xs"></tfoot>
+            </table>
+        </div>
+        <div class="flex justify-center p-3 border-t border-gray-200 bg-gray-50 hidden" id="lc-load-more-container">
+            <button type="button" id="lc-btn-load-more" class="bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 font-semibold py-2 px-6 rounded-lg transition-colors text-xs shadow-sm cursor-pointer inline-flex items-center">
+                Ver más registros <i class="material-icons text-sm ml-1">expand_more</i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL REGISTRAR / EDITAR COMPRA FISCAL, GASTO OPERATIVO O NOTA DE CRÉDITO -->
+<div id="lc-modal-fiscal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex justify-center items-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[92vh]">
+        <div class="bg-blue-600 p-4 flex justify-between items-center">
+            <h3 class="text-white font-bold text-lg flex items-center">
+                <i class="material-icons mr-2">edit_document</i>
+                <span id="lc-modal-titulo">Registrar / Editar Documento Fiscal</span>
+            </h3>
+            <button type="button" id="lc-modal-cerrar-x" class="text-blue-100 hover:text-white transition-colors cursor-pointer">
+                <i class="material-icons text-xl">close</i>
+            </button>
+        </div>
+
+        <form id="lc-form-fiscal" class="p-5 overflow-y-auto flex-1 flex flex-col gap-4">
+            <input type="hidden" id="lc-m-id">
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">Tipo de Documento</label>
+                    <select id="lc-m-tipo-doc" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-sm font-semibold text-gray-700 outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="FACTURA">Factura de Compra</option>
+                        <option value="GASTO">Gasto Operativo / Servicio</option>
+                        <option value="NOTA_CREDITO">Nota de Crédito (04-AJUSTE)</option>
+                        <option value="NOTA_DEBITO">Nota de Débito (02-COMPLEMENTO)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">Fecha Documento</label>
+                    <input type="date" id="lc-m-fecha" required class="w-full p-2.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">Condición de Pago</label>
+                    <select id="lc-m-condicion" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-sm text-gray-700 outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="CONTADO">Contado / Pagado</option>
+                        <option value="CREDITO">A Crédito (Cuentas por Pagar)</option>
+                    </select>
+                </div>
+
+                <div id="lc-m-cat-gasto-wrap" class="hidden">
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">Categoría Gasto</label>
+                    <input type="text" id="lc-m-categoria-gasto" list="lc-lista-categorias-gasto" placeholder="Ej: Electricidad, Alquiler..." class="w-full p-2.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                    <datalist id="lc-lista-categorias-gasto">
+                        <option value="Electricidad / Corpoelec">
+                        <option value="Internet / Telefonía">
+                        <option value="Alquiler / Condominio">
+                        <option value="Flete / Transporte">
+                        <option value="Mantenimiento / Reparaciones">
+                        <option value="Papelería / Insumos">
+                    </datalist>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">RIF Proveedor *</label>
+                    <input type="text" id="lc-m-rif" list="lc-datalist-proveedores-rif" required placeholder="Ej: J-30123456-7" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm uppercase bg-white outline-none focus:ring-2 focus:ring-blue-500">
+                    <datalist id="lc-datalist-proveedores-rif"></datalist>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">Nombre / Razón Social Proveedor *</label>
+                    <input type="text" id="lc-m-nombre" required placeholder="Nombre o Razón Social del Proveedor" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">N° Factura / Comprobante</label>
+                    <input type="text" id="lc-m-comprobante" placeholder="Ej: 0004521" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm font-mono outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">N° Control Fiscal *</label>
+                    <input type="text" id="lc-m-control" placeholder="Ej: 00-0014528" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm font-mono outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">N° Nota Crédito / Débito</label>
+                    <input type="text" id="lc-m-nc" placeholder="Solo si aplica NC/ND" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm font-mono outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">Factura Afectada</label>
+                    <input type="text" id="lc-m-afectada" placeholder="Requerido para NC/ND" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm font-mono outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+
+            <!-- MONTOS E IMPUESTOS -->
+            <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 flex flex-col gap-3">
+                <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-gray-200">
+                    <span class="text-xs font-bold text-gray-700 uppercase tracking-wider">Desglose Monetario y Fiscal (Bs / USD)</span>
+                    <button type="button" id="lc-btn-desglosar-total" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-xs transition-colors cursor-pointer">
+                        Calcular Base + IVA desde Total Bs
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">Tasa BCV (Bs/$)</label>
+                        <input type="number" id="lc-m-tasa" step="0.0001" min="0.0001" value="1" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">Total USD ($)</label>
+                        <input type="number" id="lc-m-total-usd" step="0.01" min="0" value="0" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">Alícuota % IVA</label>
+                        <select id="lc-m-alicuota" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-sm font-semibold text-gray-700 outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="16">16% General</option>
+                            <option value="8">8% Reducida</option>
+                            <option value="31">31% Suntuaria</option>
+                            <option value="0">0% Exento</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">Monto Exento (Bs)</label>
+                        <input type="number" id="lc-m-exento-bs" step="0.01" min="0" value="0" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">Base Imponible (Bs)</label>
+                        <input type="number" id="lc-m-base-bs" step="0.01" min="0" value="0" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">Impuesto IVA (Bs)</label>
+                        <input type="number" id="lc-m-iva-bs" step="0.01" min="0" value="0" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-sm font-semibold text-green-600 outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">Total Compra c/IVA (Bs)</label>
+                        <input type="number" id="lc-m-total-bs" step="0.01" min="0" value="0" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-sm font-bold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">% Retención IVA</label>
+                        <select id="lc-m-pct-ret" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-sm text-gray-700 outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="0">0% (Sin Retención)</option>
+                            <option value="75">75% IVA</option>
+                            <option value="100">100% IVA</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">IVA Retenido (Bs)</label>
+                        <input type="number" id="lc-m-iva-ret" step="0.01" min="0" value="0" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-sm font-semibold text-red-600 outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">N° Comprobante Retención</label>
+                        <input type="text" id="lc-m-comp-ret" placeholder="Ej: 20261100001234" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-sm font-mono outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">Fecha Retención</label>
+                        <input type="date" id="lc-m-fecha-ret" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">Observación / Nota</label>
+                        <input type="text" id="lc-m-nota" placeholder="Detalle adicional..." class="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-gray-100 bg-gray-50 -mx-5 -mb-5 mt-2 flex justify-end gap-2">
+                <button type="button" id="lc-modal-cancelar" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors cursor-pointer">Cancelar</button>
+                <button type="submit" id="lc-modal-guardar" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-5 rounded-lg transition-colors cursor-pointer">Guardar Registro Fiscal</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+(function () {
+    const state = {
+        companyId: null,
+        modo: 'FISCAL', // 'FISCAL' | 'GERENCIAL'
+        tasaActiva: 1,
+        comprasRaw: [],
+        comprasFiltradas: [],
+        proveedores: [],
+        pageLimit: 100,
+        visibleCount: 100
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const esc = (v) => String(v === null || v === undefined ? '' : v)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const fmt = (n) => Number(n || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    function notificar(msg, tipo = 'success') {
+        const div = document.createElement('div');
+        div.textContent = msg;
+        div.style.cssText = `position:fixed;top:20px;right:20px;z-index:99999;padding:12px 18px;border-radius:10px;color:#fff;font-size:13px;font-weight:700;box-shadow:0 8px 20px rgba(0,0,0,.18);background:${tipo === 'error' ? '#dc2626' : tipo === 'warning' ? '#d97706' : '#059669'}`;
+        document.body.appendChild(div);
+        setTimeout(() => div.remove(), 3800);
+    }
+
+    function obtenerHoyCaracas() {
+        return new Date(Date.now() - (4 * 3600 * 1000)).toISOString().slice(0, 10);
+    }
+
+    function aplicarRangoRapido(tipo) {
+        const hoy = obtenerHoyCaracas();
+        const [anio, mes] = hoy.split('-').map(Number);
+        let desde = hoy;
+        let hasta = hoy;
+        if (tipo === 'mes_actual') {
+            desde = `${anio}-${String(mes).padStart(2, '0')}-01`;
+        } else if (tipo === 'mes_anterior') {
+            const dIni = new Date(Date.UTC(anio, mes - 2, 1));
+            const dFin = new Date(Date.UTC(anio, mes - 1, 0));
+            desde = dIni.toISOString().slice(0, 10);
+            hasta = dFin.toISOString().slice(0, 10);
+        } else if (tipo === 'ultimos_30') {
+            const d30 = new Date(Date.now() - (4 * 3600 * 1000) - (29 * 86400000));
+            desde = d30.toISOString().slice(0, 10);
+        }
+        if ($('lc-fecha-desde')) $('lc-fecha-desde').value = desde;
+        if ($('lc-fecha-hasta')) $('lc-fecha-hasta').value = hasta;
+
+        document.querySelectorAll('.lc-rango-btn').forEach(btn => {
+            const activo = btn.getAttribute('data-rango') === tipo;
+            btn.className = activo
+                ? 'lc-rango-btn px-3 py-1 text-xs font-semibold rounded-lg bg-blue-50 text-blue-700 border border-blue-300 cursor-pointer'
+                : 'lc-rango-btn px-3 py-1 text-xs font-semibold rounded-lg bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 cursor-pointer';
+        });
+    }
+
+    function actualizarUiModo() {
+        const btnF = $('lc-btn-modo-fiscal');
+        const btnG = $('lc-btn-modo-gerencial');
+        const tit = $('lc-titulo-tabla');
+        const sub = $('lc-subtitulo-tabla');
+        if (!btnF || !btnG) return;
+
+        if (state.modo === 'FISCAL') {
+            btnF.className = 'px-3 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer flex items-center gap-1.5 bg-blue-600 text-white';
+            btnG.className = 'px-3 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer flex items-center gap-1.5 text-gray-600 hover:bg-gray-100';
+            if (tit) tit.textContent = 'Registro Reglamentario — Libro de Compras SENIAT';
+            if (sub) sub.textContent = 'Modo Fiscal estricto en Bs: devoluciones 04-AJUSTE solo deducen Crédito Fiscal si tienen N° Nota de Crédito y N° Control del proveedor.';
+        } else {
+            btnG.className = 'px-3 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer flex items-center gap-1.5 bg-blue-600 text-white';
+            btnF.className = 'px-3 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer flex items-center gap-1.5 text-gray-600 hover:bg-gray-100';
+            if (tit) tit.textContent = 'Auditoría Operativa — Compras y Devoluciones (Modo Gerencial)';
+            if (sub) sub.textContent = 'Incluye compras informales, Notas de Entrega y devoluciones internas inmediatas de almacén en Bs y USD.';
+        }
+        renderizarTabla();
+    }
+
+    async function cargarProveedoresCatalogo() {
+        try {
+            if (!window.nexusAPI || !window.nexusAPI.obtenerProveedoresLocal) return;
+            const list = await window.nexusAPI.obtenerProveedoresLocal(state.companyId);
+            state.proveedores = Array.isArray(list) ? list : [];
+            const dl = $('lc-datalist-proveedores-rif');
+            if (dl) {
+                dl.innerHTML = state.proveedores.map(p => `<option value="${esc(p.rif)}">${esc(p.nombre)}</option>`).join('');
+            }
+        } catch (_) {}
+    }
+
+    async function cargarLibroCompras() {
+        const tbody = $('lc-tbody');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="20" class="px-4 py-8 text-center text-gray-500">Consultando registros contables...</td></tr>';
+        try {
+            if (!window.nexusAPI || !window.nexusAPI.obtenerLibroCompras) {
+                throw new Error('Puente nexusAPI.obtenerLibroCompras no disponible');
+            }
+            const res = await window.nexusAPI.obtenerLibroCompras({
+                companyId: state.companyId,
+                desde: $('lc-fecha-desde')?.value,
+                hasta: $('lc-fecha-hasta')?.value,
+                tipo: 'TODOS'
+            });
+            if (!res || res.exito === false) {
+                throw new Error((res && res.error) || 'Error consultando Libro de Compras');
+            }
+            state.comprasRaw = Array.isArray(res.compras) ? res.compras : [];
+            if (res.tasa_activa > 0) state.tasaActiva = res.tasa_activa;
+            if ($('lc-tasa-activa-lbl')) $('lc-tasa-activa-lbl').textContent = `Bs ${fmt(state.tasaActiva)}`;
+            renderizarTabla();
+        } catch (err) {
+            console.error(err);
+            if (tbody) tbody.innerHTML = `<tr><td colspan="20" class="px-4 py-8 text-center text-red-600 font-bold">Error cargando datos: ${esc(err.message)}</td></tr>`;
+        }
+    }
+
+    function obtenerRegistrosFiltrados() {
+        const q = ($('lc-buscador')?.value || '').trim().toUpperCase();
+        const tipo = $('lc-filtro-tipo')?.value || 'TODOS';
+        const estFiscal = $('lc-filtro-estado-fiscal')?.value || 'TODOS';
+
+        return state.comprasRaw.filter(c => {
+            if (tipo === 'FACTURA' && c.tipo_documento !== 'FACTURA') return false;
+            if (tipo === 'NOTA_CREDITO' && c.tipo_documento !== 'NOTA_CREDITO') return false;
+            if (tipo === 'GASTO' && c.es_gasto_operativo !== 1 && c.tipo_documento !== 'GASTO') return false;
+            if (tipo === 'CON_AFECTADA' && !String(c.factura_afectada || '').trim()) return false;
+
+            if (estFiscal === 'VALIDO' && !c.es_fiscal_valido) return false;
+            if (estFiscal === 'PENDIENTE' && c.es_fiscal_valido) return false;
+
+            if (q) {
+                const hay = [
+                    c.proveedor_rif, c.proveedor_nombre, c.comprobante,
+                    c.numero_control, c.nota_credito_nro, c.factura_afectada, c.nota
+                ].some(val => String(val || '').toUpperCase().includes(q));
+                if (!hay) return false;
+            }
+            return true;
+        });
+    }
+
+    function renderizarTabla(mantenerLimite = false) {
+        if (!mantenerLimite) {
+            state.visibleCount = state.pageLimit > 0 ? state.pageLimit : 0;
+        }
+        const rows = obtenerRegistrosFiltrados();
+        state.comprasFiltradas = rows;
+
+        const tbody = $('lc-tbody');
+        const tfoot = $('lc-tfoot');
+        const loadMoreWrap = $('lc-load-more-container');
+        const btnLoadMore = $('lc-btn-load-more');
+        if (!tbody) return;
+
+        const pendientes = state.comprasRaw.filter(c => !c.es_fiscal_valido);
+        const validos = state.comprasRaw.filter(c => c.es_fiscal_valido);
+        const alerta = $('lc-alerta-legal');
+        if (alerta) {
+            if (pendientes.length > 0) {
+                const devsPend = pendientes.filter(c => c.tipo_documento === 'NOTA_CREDITO').length;
+                $('lc-alerta-legal-texto').innerHTML = `Hay <strong>${pendientes.length}</strong> registro(s) sin respaldo fiscal completo (<strong>falta N° Control</strong>; ${devsPend} devolución(es) sin Nota de Crédito oficial). En <strong>Modo Contador (SENIAT)</strong>, esos documentos se muestran atenuados en Bs 0,00 para los totales fiscales y en Excel pasan a la pestaña <strong>"2. Control Gerencial"</strong> hasta usar <strong>Completar</strong>.`;
+                alerta.classList.remove('hidden');
+            } else {
+                alerta.classList.add('hidden');
+            }
+        }
+
+        let sumBs = 0, sumUsd = 0, sumExento = 0, sumBase = 0, sumIva = 0, sumRet = 0;
+        let docsComputados = 0;
+
+        rows.forEach(c => {
+            const excluyeEnFiscal = state.modo === 'FISCAL' && !c.es_fiscal_valido;
+            if (!excluyeEnFiscal) {
+                sumBs += Number(c.monto_bs || 0);
+                sumUsd += Number(c.monto_usd || 0);
+                sumExento += Number(c.monto_exento_bs || 0);
+                sumBase += Number(c.base_imponible_bs || 0);
+                sumIva += Number(c.monto_iva_bs || 0);
+                sumRet += Number(c.iva_retenido_bs || 0);
+                docsComputados++;
+            }
+        });
+
+        const rowsVisibles = (state.pageLimit > 0 && state.visibleCount > 0)
+            ? rows.slice(0, state.visibleCount)
+            : rows;
+
+        if (rowsVisibles.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="20" class="px-4 py-8 text-center text-gray-500">No se encontraron compras, gastos ni ajustes en el rango seleccionado.</td></tr>';
+            if (tfoot) tfoot.innerHTML = '';
+            if (loadMoreWrap) loadMoreWrap.classList.add('hidden');
+        } else {
+            tbody.innerHTML = rowsVisibles.map((c, idx) => {
+                const esNcPendiente = c.tipo_documento === 'NOTA_CREDITO' && !c.es_fiscal_valido;
+                const excluyeEnFiscal = state.modo === 'FISCAL' && !c.es_fiscal_valido;
+
+                const badgeTipo = c.tipo_documento === 'NOTA_CREDITO'
+                    ? '<span class="px-2 py-0.5 text-xs font-semibold rounded-full border bg-red-100 text-red-800 border-red-200">04-AJUSTE (NC)</span>'
+                    : (c.es_gasto_operativo === 1 || c.tipo_documento === 'GASTO'
+                        ? '<span class="px-2 py-0.5 text-xs font-semibold rounded-full border bg-gray-100 text-gray-800 border-gray-200">GASTO OP.</span>'
+                        : '<span class="px-2 py-0.5 text-xs font-semibold rounded-full border bg-blue-100 text-blue-800 border-blue-200">01-FACTURA</span>');
+
+                const badgeFiscal = c.es_fiscal_valido
+                    ? '<span class="px-2 py-0.5 text-xs font-semibold rounded-full border bg-green-100 text-green-800 border-green-200">SENIAT OK</span>'
+                    : (esNcPendiente
+                        ? '<span class="px-2 py-0.5 text-xs font-semibold rounded-full border bg-yellow-100 text-yellow-800 border-yellow-200" title="Falta N° Nota Crédito y Control del proveedor">Pendiente NC Prov.</span>'
+                        : '<span class="px-2 py-0.5 text-xs font-semibold rounded-full border bg-gray-100 text-gray-700 border-gray-200">No Fiscal / Sin Control</span>');
+
+                const celdaControl = c.numero_control
+                    ? `<span class="font-mono text-xs font-semibold text-gray-700">${esc(c.numero_control)}</span>`
+                    : `<button type="button" data-edit-id="${esc(c.id)}" class="lc-btn-editar-inline px-2 py-0.5 rounded bg-yellow-50 text-yellow-800 border border-yellow-300 text-xs font-semibold hover:bg-yellow-100 cursor-pointer" title="Sin N° Control Fiscal — clic para completar">Falta Control</button>`;
+
+                const rowClass = excluyeEnFiscal
+                    ? 'bg-gray-50 text-gray-500 hover:bg-yellow-50/60'
+                    : (c.tipo_documento === 'NOTA_CREDITO' ? 'bg-red-50/30 hover:bg-red-50/60' : 'hover:bg-blue-50');
+
+                return `
+                    <tr class="${rowClass} transition-colors group">
+                        <td class="px-3 py-3 font-mono text-xs text-gray-500">${idx + 1}</td>
+                        <td class="px-3 py-3 whitespace-nowrap text-xs text-gray-600">${esc(String(c.fecha || '').slice(0, 10))}</td>
+                        <td class="px-3 py-3 whitespace-nowrap font-mono text-xs text-gray-700">${esc(c.proveedor_rif || '—')}</td>
+                        <td class="px-3 py-3 font-semibold text-gray-800">${esc(c.proveedor_nombre)}</td>
+                        <td class="px-3 py-3 whitespace-nowrap">${badgeTipo}</td>
+                        <td class="px-3 py-3 whitespace-nowrap"><span class="font-mono text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">${esc(c.tipo_documento === 'NOTA_CREDITO' ? '—' : (c.comprobante || '—'))}</span></td>
+                        <td class="px-3 py-3 whitespace-nowrap text-center">${celdaControl}</td>
+                        <td class="px-3 py-3 whitespace-nowrap font-mono text-xs text-red-600 font-semibold">${esc(c.nota_credito_nro || (c.tipo_documento === 'NOTA_CREDITO' ? c.comprobante : '—'))}</td>
+                        <td class="px-3 py-3 whitespace-nowrap font-mono text-xs text-gray-600">${esc(c.factura_afectada || '—')}</td>
+                        <td class="px-3 py-3 text-right font-mono text-xs text-gray-600">${fmt(c.tasa_bcv)}</td>
+                        <td class="px-3 py-3 text-right font-medium text-gray-800">${fmt(c.monto_bs)}</td>
+                        <td class="px-3 py-3 text-right font-medium text-green-600">$${fmt(c.monto_usd)}</td>
+                        <td class="px-3 py-3 text-right text-gray-600">${fmt(c.monto_exento_bs)}</td>
+                        <td class="px-3 py-3 text-right font-medium text-gray-800">${fmt(c.base_imponible_bs)}</td>
+                        <td class="px-3 py-3 text-center text-gray-600">${c.alicuota_iva || 0}%</td>
+                        <td class="px-3 py-3 text-right font-semibold text-blue-600">${fmt(c.monto_iva_bs)}</td>
+                        <td class="px-3 py-3 text-right font-semibold text-red-600">${fmt(c.iva_retenido_bs)}</td>
+                        <td class="px-3 py-3 whitespace-nowrap font-mono text-xs text-gray-600">${esc(c.comprobante_retencion || '—')}</td>
+                        <td class="px-3 py-3 whitespace-nowrap">${badgeFiscal}</td>
+                        <td class="px-3 py-3 text-center whitespace-nowrap">
+                            <button type="button" data-edit-id="${esc(c.id)}" class="lc-btn-editar px-2.5 py-1 text-blue-600 hover:bg-blue-100 rounded-lg text-xs font-semibold border border-blue-200 transition-colors cursor-pointer">
+                                ${c.es_fiscal_valido ? 'Editar / Ret.' : 'Completar Fiscal'}
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            if (tfoot) {
+                tfoot.innerHTML = `
+                    <tr>
+                        <td colspan="10" class="px-3 py-3 text-right uppercase text-xs text-gray-600">
+                            TOTALES ${state.modo === 'FISCAL' ? '(DEDUCIBLES SENIAT EN Bs)' : '(GERENCIAL OPERATIVO)'}:
+                        </td>
+                        <td class="px-3 py-3 text-right font-bold text-gray-800">${fmt(sumBs)}</td>
+                        <td class="px-3 py-3 text-right font-bold text-green-600">$${fmt(sumUsd)}</td>
+                        <td class="px-3 py-3 text-right font-bold text-gray-700">${fmt(sumExento)}</td>
+                        <td class="px-3 py-3 text-right font-bold text-blue-600">${fmt(sumBase)}</td>
+                        <td class="px-3 py-3 text-center">—</td>
+                        <td class="px-3 py-3 text-right font-bold text-blue-600">${fmt(sumIva)}</td>
+                        <td class="px-3 py-3 text-right font-bold text-red-600">${fmt(sumRet)}</td>
+                        <td colspan="3" class="px-3 py-3 text-left text-xs text-gray-500">
+                            ${docsComputados} de ${rows.length} doc(s) sumados (${validos.length} fiscales en período)
+                        </td>
+                    </tr>
+                `;
+            }
+
+            tbody.querySelectorAll('.lc-btn-editar, .lc-btn-editar-inline').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.getAttribute('data-edit-id');
+                    const doc = state.comprasRaw.find(x => String(x.id) === String(id));
+                    if (doc) abrirModalFiscal(doc);
+                });
+            });
+
+            if (loadMoreWrap && btnLoadMore) {
+                if (state.pageLimit > 0 && rowsVisibles.length < rows.length) {
+                    const restantes = rows.length - rowsVisibles.length;
+                    const siguientes = Math.min(state.pageLimit, restantes);
+                    btnLoadMore.innerHTML = `Ver más compras (+${siguientes} de ${restantes} restantes) <i class="material-icons text-sm ml-1">expand_more</i>`;
+                    loadMoreWrap.classList.remove('hidden');
+                } else {
+                    loadMoreWrap.classList.add('hidden');
+                }
+            }
+        }
+
+        if ($('lc-contador-tabla')) {
+            $('lc-contador-tabla').textContent = (rowsVisibles.length < rows.length)
+                ? `Mostrando ${rowsVisibles.length} de ${rows.length} registros`
+                : `${rows.length} registros`;
+        }
+        if ($('lc-kpi-total-bs')) $('lc-kpi-total-bs').textContent = `Bs ${fmt(sumBs)}`;
+        if ($('lc-kpi-total-usd')) $('lc-kpi-total-usd').textContent = `Ref: $ ${fmt(sumUsd)}`;
+        if ($('lc-kpi-base-bs')) $('lc-kpi-base-bs').textContent = `Bs ${fmt(sumBase)}`;
+        if ($('lc-kpi-docs-count')) $('lc-kpi-docs-count').textContent = `${docsComputados} doc(s) contabilizados`;
+        if ($('lc-kpi-iva-bs')) $('lc-kpi-iva-bs').textContent = `Bs ${fmt(sumIva)}`;
+        if ($('lc-kpi-iva-sub')) $('lc-kpi-iva-sub').textContent = state.modo === 'FISCAL' ? 'Crédito Fiscal Deducible SENIAT' : 'IVA Operativo Acumulado';
+        if ($('lc-kpi-retenido-bs')) $('lc-kpi-retenido-bs').textContent = `Bs ${fmt(sumRet)}`;
+        if ($('lc-kpi-exento-bs')) $('lc-kpi-exento-bs').textContent = `Bs ${fmt(sumExento)}`;
+        if ($('lc-kpi-pendientes-lbl')) $('lc-kpi-pendientes-lbl').textContent = `${pendientes.length} pendientes de respaldo fiscal`;
+    }
+
+    function recalcularDesdeMontosModal(origen = 'BASE') {
+        const tasa = parseFloat($('lc-m-tasa')?.value) || state.tasaActiva || 1;
+        const alic = parseFloat($('lc-m-alicuota')?.value) || 0;
+        const pctRet = parseFloat($('lc-m-pct-ret')?.value) || 0;
+        let exento = parseFloat($('lc-m-exento-bs')?.value) || 0;
+        let base = parseFloat($('lc-m-base-bs')?.value) || 0;
+        let iva = parseFloat($('lc-m-iva-bs')?.value) || 0;
+        let totalBs = parseFloat($('lc-m-total-bs')?.value) || 0;
+        let totalUsd = parseFloat($('lc-m-total-usd')?.value) || 0;
+
+        if (origen === 'USD') {
+            totalBs = parseFloat((totalUsd * tasa).toFixed(2));
+            if (alic > 0) {
+                base = parseFloat(((totalBs - exento) / (1 + alic / 100)).toFixed(2));
+                if (base < 0) base = 0;
+                iva = parseFloat((totalBs - exento - base).toFixed(2));
+            } else {
+                base = 0; iva = 0; exento = totalBs;
+            }
+        } else if (origen === 'DESGLOSAR_BS') {
+            if (alic > 0) {
+                base = parseFloat((Math.max(0, totalBs - exento) / (1 + alic / 100)).toFixed(2));
+                iva = parseFloat((Math.max(0, totalBs - exento) - base).toFixed(2));
+            } else {
+                base = 0; iva = 0; exento = totalBs;
+            }
+            totalUsd = parseFloat((totalBs / (tasa || 1)).toFixed(2));
+        } else {
+            if (origen === 'BASE' || origen === 'ALICUOTA') {
+                iva = parseFloat((base * (alic / 100)).toFixed(2));
+            }
+            totalBs = parseFloat((exento + base + iva).toFixed(2));
+            totalUsd = parseFloat((totalBs / (tasa || 1)).toFixed(2));
+        }
+
+        if ($('lc-m-exento-bs')) $('lc-m-exento-bs').value = exento.toFixed(2);
+        if ($('lc-m-base-bs')) $('lc-m-base-bs').value = base.toFixed(2);
+        if ($('lc-m-iva-bs')) $('lc-m-iva-bs').value = iva.toFixed(2);
+        if ($('lc-m-total-bs')) $('lc-m-total-bs').value = totalBs.toFixed(2);
+        if ($('lc-m-total-usd') && origen !== 'USD') $('lc-m-total-usd').value = totalUsd.toFixed(2);
+
+        if ($('lc-m-iva-ret') && (origen !== 'RET_MANUAL')) {
+            $('lc-m-iva-ret').value = pctRet > 0 ? (iva * (pctRet / 100)).toFixed(2) : '0.00';
+        }
+    }
+
+    function abrirModalFiscal(doc = null) {
+        const modal = $('lc-modal-fiscal');
+        if (!modal) return;
+        const hoy = obtenerHoyCaracas();
+
+        $('lc-modal-titulo').textContent = doc
+            ? `Completar / Editar Datos Fiscales (${doc.comprobante || doc.id})`
+            : 'Registrar Factura de Compra, Gasto Operativo o Nota de Crédito';
+
+        $('lc-m-id').value = doc ? doc.id : '';
+        $('lc-m-tipo-doc').value = doc ? doc.tipo_documento : 'FACTURA';
+        $('lc-m-fecha').value = doc ? String(doc.fecha || hoy).slice(0, 10) : hoy;
+        $('lc-m-condicion').value = (doc && doc.estado === 'PENDIENTE') ? 'CREDITO' : 'CONTADO';
+        $('lc-m-categoria-gasto').value = doc ? (doc.categoria_gasto || '') : '';
+        $('lc-m-rif').value = doc ? (doc.proveedor_rif || '') : '';
+        $('lc-m-nombre').value = doc ? (doc.proveedor_nombre || '') : '';
+        $('lc-m-comprobante').value = doc ? (doc.comprobante || '') : '';
+        $('lc-m-control').value = doc ? (doc.numero_control || '') : '';
+        $('lc-m-nc').value = doc ? (doc.nota_credito_nro || '') : '';
+        $('lc-m-afectada').value = doc ? (doc.factura_afectada || '') : '';
+        $('lc-m-tasa').value = doc ? (doc.tasa_bcv || state.tasaActiva || 1) : (state.tasaActiva || 1);
+        $('lc-m-total-usd').value = doc ? Math.abs(doc.monto_usd || 0).toFixed(2) : '0.00';
+        $('lc-m-alicuota').value = doc ? String(doc.alicuota_iva !== undefined ? doc.alicuota_iva : 16) : '16';
+        $('lc-m-exento-bs').value = doc ? Math.abs(doc.monto_exento_bs || 0).toFixed(2) : '0.00';
+        $('lc-m-base-bs').value = doc ? Math.abs(doc.base_imponible_bs || 0).toFixed(2) : '0.00';
+        $('lc-m-iva-bs').value = doc ? Math.abs(doc.monto_iva_bs || 0).toFixed(2) : '0.00';
+        $('lc-m-total-bs').value = doc ? Math.abs(doc.monto_bs || 0).toFixed(2) : '0.00';
+        $('lc-m-pct-ret').value = doc ? String(doc.porcentaje_retencion || 0) : '0';
+        $('lc-m-iva-ret').value = doc ? Math.abs(doc.iva_retenido_bs || 0).toFixed(2) : '0.00';
+        $('lc-m-comp-ret').value = doc ? (doc.comprobante_retencion || '') : '';
+        $('lc-m-fecha-ret').value = doc ? (doc.fecha_retencion || '') : '';
+        $('lc-m-nota').value = doc ? (doc.nota || '') : '';
+
+        $('lc-m-cat-gasto-wrap').classList.toggle('hidden', $('lc-m-tipo-doc').value !== 'GASTO');
+        modal.classList.remove('hidden');
+    }
+
+    async function guardarFormularioFiscal(e) {
+        e.preventDefault();
+        const btn = $('lc-modal-guardar');
+        if (btn) btn.disabled = true;
+        try {
+            const tipoDoc = $('lc-m-tipo-doc').value;
+            const payload = {
+                id: $('lc-m-id').value || undefined,
+                company_id: state.companyId,
+                tipo_documento: tipoDoc,
+                es_gasto_operativo: tipoDoc === 'GASTO' ? 1 : 0,
+                categoria_gasto: $('lc-m-categoria-gasto').value.trim(),
+                fecha: $('lc-m-fecha').value,
+                condicion: $('lc-m-condicion').value,
+                proveedor_rif: $('lc-m-rif').value.trim().toUpperCase(),
+                proveedor_nombre: $('lc-m-nombre').value.trim(),
+                comprobante: $('lc-m-comprobante').value.trim() || $('lc-m-nc').value.trim(),
+                numero_control: $('lc-m-control').value.trim(),
+                nota_credito_nro: $('lc-m-nc').value.trim(),
+                factura_afectada: $('lc-m-afectada').value.trim(),
+                tasa_bcv: parseFloat($('lc-m-tasa').value) || state.tasaActiva || 1,
+                monto: parseFloat($('lc-m-total-usd').value) || 0,
+                monto_bs: parseFloat($('lc-m-total-bs').value) || 0,
+                monto_exento: parseFloat($('lc-m-exento-bs').value) || 0,
+                base_imponible: parseFloat($('lc-m-base-bs').value) || 0,
+                alicuota_iva: parseFloat($('lc-m-alicuota').value) || 0,
+                monto_iva: parseFloat($('lc-m-iva-bs').value) || 0,
+                porcentaje_retencion: parseFloat($('lc-m-pct-ret').value) || 0,
+                iva_retenido: parseFloat($('lc-m-iva-ret').value) || 0,
+                comprobante_retencion: $('lc-m-comp-ret').value.trim(),
+                fecha_retencion: $('lc-m-fecha-ret').value,
+                nota: $('lc-m-nota').value.trim()
+            };
+
+            const res = await window.nexusAPI.guardarCompraFiscalLocal(payload);
+            if (!res || !res.exito) throw new Error((res && res.error) || 'No se pudo guardar');
+
+            notificar('Registro fiscal guardado correctamente');
+            $('lc-modal-fiscal').classList.add('hidden');
+            await cargarProveedoresCatalogo();
+            await cargarLibroCompras();
+        } catch (err) {
+            notificar('Error guardando: ' + err.message, 'error');
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    async function exportarExcelLibroCompras() {
+        try {
+            const desde = $('lc-fecha-desde')?.value || '';
+            const hasta = $('lc-fecha-hasta')?.value || '';
+            const docsSeniat = state.comprasRaw.filter(c => c.es_fiscal_valido);
+            const docsGerencial = state.comprasFiltradas;
+
+            const seniatTot = docsSeniat.reduce((acc, c) => ({
+                totalBs: acc.totalBs + Number(c.monto_bs || 0),
+                exentoBs: acc.exentoBs + Number(c.monto_exento_bs || 0),
+                baseBs: acc.baseBs + Number(c.base_imponible_bs || 0),
+                ivaBs: acc.ivaBs + Number(c.monto_iva_bs || 0),
+                retBs: acc.retBs + Number(c.iva_retenido_bs || 0)
+            }), { totalBs: 0, exentoBs: 0, baseBs: 0, ivaBs: 0, retBs: 0 });
+
+            const gerTot = docsGerencial.reduce((acc, c) => ({
+                usd: acc.usd + Number(c.monto_usd || 0),
+                totalBs: acc.totalBs + Number(c.monto_bs || 0),
+                exentoBs: acc.exentoBs + Number(c.monto_exento_bs || 0),
+                baseBs: acc.baseBs + Number(c.base_imponible_bs || 0),
+                ivaBs: acc.ivaBs + Number(c.monto_iva_bs || 0),
+                retBs: acc.retBs + Number(c.iva_retenido_bs || 0)
+            }), { usd: 0, totalBs: 0, exentoBs: 0, baseBs: 0, ivaBs: 0, retBs: 0 });
+
+            const encabezadosSeniat = [
+                'Nro Op.', 'Fecha Factura', 'RIF Proveedor', 'Nombre / Razón Social', 'Tipo Doc',
+                'Tipo Transacción', 'N° Factura', 'N° Control', 'N° Nota Crédito', 'Factura Afectada',
+                'Tasa BCV', 'Total Compras c/IVA (Bs)', 'Exentas / No Grav. (Bs)', 'Base Imponible (Bs)',
+                '% Alícuota', 'Crédito Fiscal IVA (Bs)', 'IVA Retenido Prov. (Bs)', 'N° Comprobante Retención'
+            ];
+            const filasSeniatAoa = docsSeniat.map((c, idx) => ([
+                idx + 1,
+                String(c.fecha || '').slice(0, 10),
+                c.proveedor_rif || '',
+                c.proveedor_nombre || '',
+                c.tipo_documento || '',
+                c.tipo_transaccion || '',
+                c.tipo_documento === 'NOTA_CREDITO' ? '' : (c.comprobante || ''),
+                c.numero_control || '',
+                c.nota_credito_nro || '',
+                c.factura_afectada || '',
+                Number(c.tasa_bcv || 0),
+                Number(c.monto_bs || 0),
+                Number(c.monto_exento_bs || 0),
+                Number(c.base_imponible_bs || 0),
+                Number(c.alicuota_iva || 0),
+                Number(c.monto_iva_bs || 0),
+                Number(c.iva_retenido_bs || 0),
+                c.comprobante_retencion || ''
+            ]));
+            const rowFlagsSeniat = docsSeniat.map(c => c.tipo_documento === 'NOTA_CREDITO' ? 'NC' : 'OK');
+            const totalesSeniatRow = docsSeniat.length > 0 ? [
+                'TOTALES SENIAT', '', '', `${docsSeniat.length} documento(s) válidos`, '', '', '', '', '', '', '',
+                Number(seniatTot.totalBs.toFixed(2)),
+                Number(seniatTot.exentoBs.toFixed(2)),
+                Number(seniatTot.baseBs.toFixed(2)),
+                '',
+                Number(seniatTot.ivaBs.toFixed(2)),
+                Number(seniatTot.retBs.toFixed(2)),
+                ''
+            ] : null;
+
+            const encabezadosGer = [
+                'Nro', 'Fecha', 'RIF', 'Proveedor / Razón Social', 'Tipo', 'Documento', 'N° Control',
+                'Válido SENIAT', 'Tasa BCV', 'Total USD ($)', 'Total (Bs)', 'Exento (Bs)',
+                'Base Imp. (Bs)', 'IVA (Bs)', 'IVA Retenido (Bs)', 'Nota'
+            ];
+            const filasGerAoa = docsGerencial.map((c, idx) => ([
+                idx + 1,
+                String(c.fecha || '').slice(0, 10),
+                c.proveedor_rif || '',
+                c.proveedor_nombre || '',
+                c.tipo_documento || '',
+                c.comprobante || '',
+                c.numero_control || 'SIN CONTROL',
+                c.es_fiscal_valido ? 'SI' : 'NO',
+                Number(c.tasa_bcv || 0),
+                Number(c.monto_usd || 0),
+                Number(c.monto_bs || 0),
+                Number(c.monto_exento_bs || 0),
+                Number(c.base_imponible_bs || 0),
+                Number(c.monto_iva_bs || 0),
+                Number(c.iva_retenido_bs || 0),
+                c.nota || ''
+            ]));
+            const rowFlagsGer = docsGerencial.map(c => c.tipo_documento === 'NOTA_CREDITO' ? 'NC' : (!c.es_fiscal_valido ? 'PENDIENTE' : 'OK'));
+            const totalesGerRow = docsGerencial.length > 0 ? [
+                'TOTALES GERENCIAL', '', '', `${docsGerencial.length} registro(s)`, '', '', '', '', '',
+                Number(gerTot.usd.toFixed(2)),
+                Number(gerTot.totalBs.toFixed(2)),
+                Number(gerTot.exentoBs.toFixed(2)),
+                Number(gerTot.baseBs.toFixed(2)),
+                Number(gerTot.ivaBs.toFixed(2)),
+                Number(gerTot.retBs.toFixed(2)),
+                ''
+            ] : null;
+
+            const datosExportacion = {
+                tipoReporte: 'LIBRO_COMPRAS',
+                tituloDialogo: 'Exportar Libro de Compras a Excel',
+                activeTab: (docsSeniat.length === 0 && docsGerencial.length > 0) ? 1 : 0,
+                hojas: [
+                    {
+                        nombreHoja: '1. Libro Compras SENIAT',
+                        titulo: 'NEXUS POS — LIBRO DE COMPRAS FISCAL (PROVEDURÍA Y CRÉDITO FISCAL)',
+                        subtitulo: `Período: ${desde} al ${hasta} | Providencia SENIAT SNAT/2011/0071 | Tasa BCV: Bs ${fmt(state.tasaActiva)}`,
+                        kpis: [
+                            `🧾 Docs SENIAT: ${docsSeniat.length}`,
+                            `💰 Total Compras: Bs ${fmt(seniatTot.totalBs)}`,
+                            `📘 Crédito IVA: Bs ${fmt(seniatTot.ivaBs)}`,
+                            `✂️ Retenido: Bs ${fmt(seniatTot.retBs)}`
+                        ],
+                        encabezados: encabezadosSeniat,
+                        headerStyles: ['slate', 'slate', 'slate', 'slate', 'slate', 'slate', 'slate', 'slate', 'slate', 'slate', 'slate', 'emerald', 'slate', 'emeraldLight', 'slate', 'emerald', 'emeraldLight', 'slate'],
+                        colTypes: ['int', 'date', 'center', 'text', 'center', 'center', 'center', 'center', 'center', 'center', 'currency', 'currency', 'currency', 'currency', 'percent', 'currency', 'currency', 'center'],
+                        colWidths: [10, 15, 16, 32, 15, 16, 15, 16, 16, 16, 13, 20, 18, 18, 11, 20, 18, 22],
+                        filas: filasSeniatAoa,
+                        rowFlags: rowFlagsSeniat,
+                        totalesRow: totalesSeniatRow,
+                        avisoVacio: docsGerencial.length > 0
+                            ? `ATENCIÓN: 0 documentos válidos para Libro SENIAT en este período porque falta el N° Control Fiscal. Sus ${docsGerencial.length} compra(s) completas se exportaron en la pestaña "2. Control Gerencial".`
+                            : 'No hay compras ni documentos fiscales registrados en el período seleccionado.'
+                    },
+                    {
+                        nombreHoja: '2. Control Gerencial',
+                        titulo: 'NEXUS POS — AUDITORÍA OPERATIVA DE COMPRAS Y GASTOS (CONTROL GERENCIAL)',
+                        subtitulo: `Período: ${desde} al ${hasta} | Incluye compras con y sin N° Control Fiscal`,
+                        kpis: [
+                            `📋 Registros: ${docsGerencial.length}`,
+                            `💵 Total USD: $ ${fmt(gerTot.usd)}`,
+                            `💰 Total Bs: Bs ${fmt(gerTot.totalBs)}`,
+                            `⏳ Sin Control: ${docsGerencial.filter(d => !d.es_fiscal_valido).length}`
+                        ],
+                        encabezados: encabezadosGer,
+                        headerStyles: ['slate', 'slate', 'slate', 'slate', 'slate', 'slate', 'slate', 'slate', 'slate', 'emerald', 'emeraldLight', 'slate', 'slate', 'emeraldLight', 'slate', 'slate'],
+                        colTypes: ['int', 'date', 'center', 'text', 'center', 'center', 'center', 'center', 'currency', 'usd', 'currency', 'currency', 'currency', 'currency', 'currency', 'text'],
+                        colWidths: [10, 15, 16, 32, 14, 15, 16, 14, 13, 16, 18, 16, 16, 16, 16, 28],
+                        filas: filasGerAoa,
+                        rowFlags: rowFlagsGer,
+                        totalesRow: totalesGerRow,
+                        avisoVacio: 'No hay compras ni gastos registrados en el rango de fechas y filtros actuales.'
+                    }
+                ]
+            };
+
+            let base64Data = null;
+            try {
+                if (typeof XLSX !== 'undefined') {
+                    const wb = XLSX.utils.book_new();
+                    const aoa1 = [encabezadosSeniat, ...(filasSeniatAoa.length ? filasSeniatAoa : [[datosExportacion.hojas[0].avisoVacio]])];
+                    const aoa2 = [encabezadosGer, ...(filasGerAoa.length ? filasGerAoa : [[datosExportacion.hojas[1].avisoVacio]])];
+                    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa1), '1. Libro Compras SENIAT');
+                    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa2), '2. Control Gerencial');
+                    base64Data = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+                }
+            } catch (_) {}
+
+            const res = await window.nexusAPI.guardarArchivoExcel({
+                datosExportacion,
+                base64Data,
+                nombreArchivoSugerido: `Libro_Compras_${desde}_al_${hasta}.xlsx`
+            });
+            if (res && res.success) {
+                if (docsSeniat.length === 0 && docsGerencial.length > 0) {
+                    notificar(`Excel exportado (${docsGerencial.length} reg. en "2. Control Gerencial"). Hoja SENIAT en 0 por faltar N° Control.`, 'warning');
+                } else {
+                    notificar('Excel de Libro de Compras exportado con éxito');
+                }
+            } else if (res && !res.canceled) {
+                throw new Error(res.error || 'Error al guardar archivo Excel');
+            }
+        } catch (err) {
+            notificar('Error al exportar: ' + err.message, 'error');
+        }
+    }
+
+    async function initLibroCompras() {
+        try {
+            if (window.nexusAPI) {
+                const sesion = await window.nexusAPI.obtenerSesionLocal();
+                if (sesion && sesion.companyId) state.companyId = sesion.companyId;
+                const tCfg = await window.nexusAPI.obtenerConfiguracion('TASA_BCV');
+                if (tCfg && parseFloat(tCfg) > 0) state.tasaActiva = parseFloat(tCfg);
+            }
+        } catch (e) {
+            console.warn('Aviso cargando sesión en Libro Compras:', e);
+        }
+
+        aplicarRangoRapido('mes_actual');
+
+        $('lc-btn-modo-fiscal')?.addEventListener('click', () => { state.modo = 'FISCAL'; actualizarUiModo(); });
+        $('lc-btn-modo-gerencial')?.addEventListener('click', () => { state.modo = 'GERENCIAL'; actualizarUiModo(); });
+        $('lc-btn-refrescar')?.addEventListener('click', cargarLibroCompras);
+        $('lc-btn-nuevo-doc')?.addEventListener('click', () => abrirModalFiscal(null));
+        $('lc-btn-exportar-excel')?.addEventListener('click', exportarExcelLibroCompras);
+        $('lc-btn-ver-pendientes')?.addEventListener('click', () => {
+            if ($('lc-filtro-estado-fiscal')) $('lc-filtro-estado-fiscal').value = 'PENDIENTE';
+            renderizarTabla();
+        });
+
+        document.querySelectorAll('.lc-rango-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                aplicarRangoRapido(btn.getAttribute('data-rango'));
+                cargarLibroCompras();
+            });
+        });
+
+        ['lc-fecha-desde', 'lc-fecha-hasta'].forEach(id => $(id)?.addEventListener('change', cargarLibroCompras));
+        $('lc-buscador')?.addEventListener('input', () => renderizarTabla(false));
+        ['lc-filtro-tipo', 'lc-filtro-estado-fiscal'].forEach(id => $(id)?.addEventListener('change', () => renderizarTabla(false)));
+        $('lc-limit-select')?.addEventListener('change', () => {
+            const val = parseInt($('lc-limit-select').value, 10);
+            state.pageLimit = isNaN(val) ? 100 : val;
+            renderizarTabla(false);
+        });
+        $('lc-btn-load-more')?.addEventListener('click', () => {
+            if (state.pageLimit > 0) {
+                state.visibleCount += state.pageLimit;
+                renderizarTabla(true);
+            }
+        });
+
+        // Eventos del modal fiscal
+        $('lc-modal-cerrar-x')?.addEventListener('click', () => $('lc-modal-fiscal')?.classList.add('hidden'));
+        $('lc-modal-cancelar')?.addEventListener('click', () => $('lc-modal-fiscal')?.classList.add('hidden'));
+        $('lc-form-fiscal')?.addEventListener('submit', guardarFormularioFiscal);
+        $('lc-m-tipo-doc')?.addEventListener('change', () => {
+            $('lc-m-cat-gasto-wrap')?.classList.toggle('hidden', $('lc-m-tipo-doc').value !== 'GASTO');
+        });
+        $('lc-m-rif')?.addEventListener('change', () => {
+            const rifVal = ($('lc-m-rif')?.value || '').trim().toUpperCase();
+            const match = state.proveedores.find(p => String(p.rif || '').toUpperCase() === rifVal);
+            if (match && $('lc-m-nombre') && !$('lc-m-nombre').value.trim()) {
+                $('lc-m-nombre').value = match.nombre || '';
+            }
+        });
+
+        $('lc-m-total-usd')?.addEventListener('input', () => recalcularDesdeMontosModal('USD'));
+        $('lc-m-tasa')?.addEventListener('input', () => recalcularDesdeMontosModal('USD'));
+        $('lc-m-alicuota')?.addEventListener('change', () => recalcularDesdeMontosModal('ALICUOTA'));
+        $('lc-m-base-bs')?.addEventListener('input', () => recalcularDesdeMontosModal('BASE'));
+        $('lc-m-exento-bs')?.addEventListener('input', () => recalcularDesdeMontosModal('EXENTO'));
+        $('lc-m-iva-bs')?.addEventListener('input', () => recalcularDesdeMontosModal('IVA'));
+        $('lc-m-pct-ret')?.addEventListener('change', () => recalcularDesdeMontosModal('PCT_RET'));
+        $('lc-m-iva-ret')?.addEventListener('input', () => recalcularDesdeMontosModal('RET_MANUAL'));
+        $('lc-btn-desglosar-total')?.addEventListener('click', () => recalcularDesdeMontosModal('DESGLOSAR_BS'));
+
+        await cargarProveedoresCatalogo();
+        await cargarLibroCompras();
+    }
+
+    initLibroCompras();
+})();
+</script>

@@ -83,6 +83,57 @@
             </div>
         </div>
 
+        <!-- Módulo de Parámetros CxC / CxP / Diferencial Cambiario / Retenciones -->
+        <div class="nexus-card p-8 space-y-6">
+            <div class="border-b pb-4">
+                <h3 class="text-lg font-bold text-gray-800 flex items-center">
+                    <i class="material-icons mr-2 text-blue-600">balance</i>
+                    Régimen Fiscal CxC / CxP, U.T. y Diferencial Cambiario (VEN-NIF / SENIAT)
+                </h3>
+                <p class="text-sm text-gray-500 mt-1">Configura cómo Nexus gestiona las variaciones de tasa BCV al cobrar/pagar, Unidad Tributaria Decreto 1808 y comisiones BNPL.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tratamiento Diferencial Cambiario en CxC</label>
+                    <select id="modo-ajuste-cambiario" class="nexus-input bg-white">
+                        <option value="FISCAL_ND_ART51">Modo Fiscal Estricto (Nota de Débito + 16% IVA Art. 51 Regl. IVA)</option>
+                        <option value="VEN_NIF_RESULTADO">Modo Financiero VEN-NIF (NIC 21 — Ingreso/Gasto por Diferencial sin N/D)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Unidad Tributaria Vigente (Bs.) — SNAT/2025/000048</label>
+                    <input type="number" id="unidad-tributaria-bs" class="nexus-input" step="0.01" value="43.00" placeholder="43.00">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Comisión Cashea / BNPL por Defecto (%)</label>
+                    <input type="number" id="cashea-comision-pct" class="nexus-input" step="0.01" value="6.50" placeholder="6.50">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Plazo de Crédito Estándar CxC (Días / Gracia)</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="dias-credito-cxc-def" class="nexus-input" value="15" min="0" placeholder="Días">
+                        <input type="number" id="dias-gracia-cxc-def" class="nexus-input" value="3" min="0" placeholder="Gracia">
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                    <input type="checkbox" id="agente-retencion-iva" class="h-4 w-4">
+                    <span>Agente de Retención IVA (75%/100%)</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                    <input type="checkbox" id="agente-retencion-islr" class="h-4 w-4" checked>
+                    <span>Agente de Retención ISLR (D. 1808)</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                    <input type="checkbox" id="emitir-nd-auto-ventas" class="h-4 w-4" checked>
+                    <span>Asentar N/D Fiscal en Libro de Ventas</span>
+                </label>
+            </div>
+        </div>
+
         <button id="saveBtn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-none shadow-md transition-all flex items-center justify-center uppercase tracking-widest">
             <i class="material-icons mr-2">save</i> Guardar Configuración Fiscal
         </button>
@@ -130,6 +181,24 @@
                         ivaAnadidaInput.value = tasas.iva_anadida;
                         igtfInput.value = tasas.igtf_porcentaje;
                     }
+
+                    // 2b. Cargar Parámetros Fiscales Avanzados CxC/CxP
+                    try {
+                        if (window.nexusAPI.obtenerParametrosFiscalesAvanzados) {
+                            const resAdv = await window.nexusAPI.obtenerParametrosFiscalesAvanzados();
+                            const p = resAdv && resAdv.parametros ? resAdv.parametros : null;
+                            if (p) {
+                                if (document.getElementById('modo-ajuste-cambiario')) document.getElementById('modo-ajuste-cambiario').value = p.modo_ajuste_cambiario || 'FISCAL_ND_ART51';
+                                if (document.getElementById('unidad-tributaria-bs')) document.getElementById('unidad-tributaria-bs').value = p.unidad_tributaria_bs || 43.00;
+                                if (document.getElementById('cashea-comision-pct')) document.getElementById('cashea-comision-pct').value = p.comision_cashea_default_pct ?? 6.5;
+                                if (document.getElementById('dias-credito-cxc-def')) document.getElementById('dias-credito-cxc-def').value = p.dias_credito_cxc_default || 15;
+                                if (document.getElementById('dias-gracia-cxc-def')) document.getElementById('dias-gracia-cxc-def').value = p.dias_gracia_cxc_default ?? 3;
+                                if (document.getElementById('agente-retencion-iva')) document.getElementById('agente-retencion-iva').checked = Boolean(p.es_agente_retencion_iva);
+                                if (document.getElementById('agente-retencion-islr')) document.getElementById('agente-retencion-islr').checked = Boolean(p.es_agente_retencion_islr);
+                                if (document.getElementById('emitir-nd-auto-ventas')) document.getElementById('emitir-nd-auto-ventas').checked = Boolean(p.emitir_nd_automatica_libro_ventas);
+                            }
+                        }
+                    } catch (_) {}
 
                     // Guardar snapshot para la auditoría
                     configOriginal = {
@@ -182,6 +251,22 @@
                             console.warn("No se pudo sincronizar tasas fiscales con el maestro");
                         }
                     }
+
+                    // 3b. Guardar Parámetros CxC/CxP Avanzados
+                    try {
+                        if (window.nexusAPI.guardarParametrosFiscalesAvanzados) {
+                            await window.nexusAPI.guardarParametrosFiscalesAvanzados({
+                                modo_ajuste_cambiario: document.getElementById('modo-ajuste-cambiario')?.value || 'FISCAL_ND_ART51',
+                                unidad_tributaria_bs: parseFloat(document.getElementById('unidad-tributaria-bs')?.value) || 43.00,
+                                comision_cashea_default_pct: parseFloat(document.getElementById('cashea-comision-pct')?.value) || 6.5,
+                                dias_credito_cxc_default: parseInt(document.getElementById('dias-credito-cxc-def')?.value || 15, 10),
+                                dias_gracia_cxc_default: parseInt(document.getElementById('dias-gracia-cxc-def')?.value || 3, 10),
+                                es_agente_retencion_iva: document.getElementById('agente-retencion-iva')?.checked,
+                                es_agente_retencion_islr: document.getElementById('agente-retencion-islr')?.checked,
+                                emitir_nd_automatica_libro_ventas: document.getElementById('emitir-nd-auto-ventas')?.checked
+                            });
+                        }
+                    } catch (_) {}
 
                     // 4. Registrar en Auditoría Fiscal
                     if (guardadoTasas) {

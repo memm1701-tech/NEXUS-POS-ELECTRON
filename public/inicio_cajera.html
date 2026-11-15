@@ -13,7 +13,38 @@
     <script src="tailwindcss.js"></script>
     <style>
         /* === TUS ESTILOS ORIGINALES INTACTOS === */
-        body { font-family: 'Roboto', sans-serif; }
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0 !important;
+            padding: 0 !important;
+            display: block !important;
+        }
+        .sidebar,
+        .sidebar h3,
+        .sidebar p,
+        .sidebar span,
+        .sidebar a,
+        .sidebar label,
+        .sidebar input {
+            font-family: 'Roboto', sans-serif !important;
+        }
+        #sidebar-company-card {
+            padding: 8px 12px !important;
+            min-height: 36px;
+            box-sizing: border-box;
+        }
+        #sidebar-company-card i.fa-store {
+            font-size: 1.125rem !important;
+            line-height: 1 !important;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #sidebar-company-card p {
+            margin: 0 !important;
+            font-size: 0.75rem !important;
+            line-height: 1.25 !important;
+        }
         h1, h2, h3, p, span { font-family: inherit; }
         .spinner {
             border: 4px solid rgba(0, 0, 0, 0.1);
@@ -40,11 +71,12 @@
             min-width: 0; /* Previene que contenido ancho expanda este contenedor */
         }
         .sidebar {
-            width: 250px; background-color: #2d3748; 
+            font-family: 'Roboto', sans-serif !important;
+            width: 280px; background-color: #2d3748; 
             background-image: url('../assets/background_cajera.jpg'); 
             background-size: cover; 
             background-position: center; 
-            background-repeat: no-repeat; color: #fff; padding: 1rem;
+            background-repeat: no-repeat; color: #fff; padding: 1.5rem 1rem;
             display: flex; flex-direction: column; height: 100vh; max-height: 100vh; align-self: flex-start; box-shadow: 2px 0 5px rgba(0,0,0,0.2);
             position: sticky; top: 0; left: 0; overflow-y: auto;
             transition: transform 0.3s ease-in-out;
@@ -59,6 +91,36 @@
         .sidebar-header { text-align: center; margin-bottom: 2rem; }
         .sidebar-header h3 { font-size: 1.5rem; font-weight: bold; margin-bottom: 0.5rem; color: #fff; }
         .sidebar-header p { font-size: 0.875rem; color: #fff; }
+        .sidebar-meta-status {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem 0.45rem;
+            max-width: 100%;
+            white-space: normal;
+            text-align: center;
+        }
+        .sidebar-meta-status #rif-text {
+            font-size: 0.8125rem;
+            font-weight: 700;
+            line-height: 1.25;
+        }
+        .sidebar-meta-status .status-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            line-height: 1.25;
+            white-space: nowrap;
+        }
+        .sidebar-meta-status.stacked {
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+        .sidebar-meta-status.stacked .meta-sep {
+            display: none;
+        }
         .sidebar-dollar-rate-input { margin: 1.5rem 0; padding: 0 0.5rem; }
         .sidebar-dollar-rate-input label { color: #fff; font-size: 0.875rem; font-weight: bold; margin-bottom: 0.25rem; display: block; }
         .sidebar-dollar-rate-input input {
@@ -66,10 +128,10 @@
             background-color: #4a5568; color: #fff; font-size: 0.875rem; outline: none;
         }
         .sidebar-nav ul { list-style: none; padding: 0; }
-        .sidebar-nav li { margin-bottom: 0.5rem; }
+        .sidebar-nav li { margin-bottom: 0.25rem; }
         .sidebar-nav a {
             display: flex; align-items: center; padding: 0.75rem 1rem; color: #fff; text-decoration: none;
-            border-radius: 0.375rem; transition: background-color 0.2s ease; font-weight: 500;
+            border-radius: 0.375rem; transition: background-color 0.2s ease; font-weight: 500; font-size: 1rem;
         }
         
         .sidebar-nav > ul > li > a:hover { 
@@ -110,7 +172,7 @@
         .sidebar-nav .dropdown.open ul { max-height: 500px; }
         
         .sidebar-nav .dropdown ul li a { 
-            padding-left: 2.5rem; font-size: 0.9rem; color: #fff; 
+            padding: 0.5rem 1rem; padding-left: 2.5rem; font-size: 0.95rem; color: #fff; 
             background-color: transparent; border-left: none;
         }
         .sidebar-nav .dropdown ul li a:hover { background-color: #4a5568; color: #fff; }
@@ -159,15 +221,16 @@
         .sidebar.collapsed .sidebar-toggle-btn { left: 50%; transform: translateX(-50%); }
 
         /* Ocultar elementos suavemente */
-        .sidebar-header h3, #rif-text, .sidebar-header .flex, .sidebar-dollar-rate-input {
+        .sidebar-header h3, #rif-text, .sidebar-header .flex, #sidebar-company-card, .sidebar-dollar-rate-input {
             transition: opacity 0.3s ease; opacity: 1;
         }
         .sidebar.collapsed .sidebar-header h3,
         .sidebar.collapsed #rif-text,
         .sidebar.collapsed .sidebar-header .flex,
+        .sidebar.collapsed .sidebar-header #sidebar-company-card,
         .sidebar.collapsed .sidebar-dollar-rate-input,
         .sidebar.collapsed .dropdown ul {
-            opacity: 0; visibility: hidden; pointer-events: none; height: 0; margin: 0; padding: 0;
+            opacity: 0; visibility: hidden; pointer-events: none; height: 0; margin: 0; padding: 0; overflow: hidden;
         }
         
         /* Ajustar Logo e Iconos */
@@ -197,14 +260,25 @@
                     <i id="menu-icon-dynamic" class="material-icons">menu</i>
                 </button>
 
-                <img src="logo_nexus.png" alt="Logo NEXUS POS" class="rounded-full mx-auto mb-2" style="display: block; width: 120px; height: 120px; object-fit: cover; transition: all 0.3s ease;">
+                <img src="../assets/image_57357170-Photoroom-diciembre.png" alt="Logo NEXUS POS" class="rounded-full mx-auto mb-2" style="display: block; width: 120px; height: 120px; object-fit: cover; transition: all 0.3s ease;">
                 <h3>NEXUS POS</h3>
                 
-                <p id="rif-text" class="text-sm font-bold text-gray-400 mb-2">RIF: J-50807000-3</p>
+                <div id="sidebar-meta-status" class="sidebar-meta-status flex items-center justify-center gap-2 mb-2 text-xs font-medium text-gray-300">
+                    <span id="rif-text" class="font-bold text-gray-300">RIF: J-50807000-3</span>
+                    <span class="meta-sep text-gray-400">•</span>
+                    <div class="status-chip flex items-center">
+                        <span id="status-circle" class="w-2 h-2 rounded-full bg-green-500 mr-1.5 shadow-[0_0_5px_rgba(34,197,94,0.6)] transition-colors duration-300 inline-block"></span>
+                        <span id="status-text">Conectado (Online)</span>
+                    </div>
+                </div>
 
-                <div class="flex items-center justify-center ml-3 mt-1 text-xs font-medium text-gray-400">
-                    <span id="status-circle" class="w-2.5 h-2.5 rounded-full bg-green-500 mr-2 shadow-[0_0_5px_rgba(34,197,94,0.6)] transition-colors duration-300"></span>
-                    <span id="status-text">Conectado (Online)</span>
+                <div id="sidebar-company-card" class="sidebar-company-card flex items-center bg-white/90 border border-gray-200/90 rounded-xl px-3 py-2 shadow-sm text-left transition-all duration-300">
+                    <i class="fa-solid fa-store text-gray-400 text-lg mr-2.5 flex-shrink-0"></i>
+                    <div class="overflow-hidden min-w-0 flex-1">
+                        <p class="text-xs text-gray-800 truncate m-0 leading-tight">
+                            <span id="sidebar-company-name" class="font-bold text-gray-800">Cargando...</span>
+                        </p>
+                    </div>
                 </div>
             </div>
 
@@ -400,6 +474,18 @@ window.descargandoFondo = false;
             const docRef = doc(db, "companies", companyId);
 
             onSnapshot(docRef, async (docSnap) => {
+                if (docSnap.exists()) {
+                    const snapData = docSnap.data();
+                    if (snapData) {
+                        const nEmpresa = snapData.name || snapData.nombre_empresa || snapData.razon_social;
+                        if (nEmpresa) {
+                            const sc = document.getElementById('sidebar-company-name');
+                            if (sc) { sc.textContent = nEmpresa; sc.setAttribute('title', nEmpresa); }
+                            const cd = document.getElementById('company-name-display');
+                            if (cd) cd.textContent = nEmpresa;
+                        }
+                    }
+                }
                 if (docSnap.exists() && docSnap.data().plan) {
                     const planNube = docSnap.data().plan;
 
@@ -544,12 +630,33 @@ window.descargandoFondo = false;
         const dynamicContentArea = document.getElementById('dynamic-content-area');
         if (!dynamicContentArea) return;
 
+        // Limpiar recursos de la vista dinámica anterior (SSE, timers, listeners, toasts)
+        if (typeof window.__limpiarVistaActiva === 'function') {
+            try { window.__limpiarVistaActiva(); } catch (_) {}
+            window.__limpiarVistaActiva = null;
+        }
+        if (window.receptorActivoSSE) {
+            try { window.receptorActivoSSE.close(); } catch (_) {}
+            window.receptorActivoSSE = null;
+        }
+        if (window.__sseReconexionTimer) {
+            clearTimeout(window.__sseReconexionTimer);
+            window.__sseReconexionTimer = null;
+        }
+        if (window.__debounceCambioProductosSSE) {
+            clearTimeout(window.__debounceCambioProductosSSE);
+            window.__debounceCambioProductosSSE = null;
+        }
+        const staleMsgBox = document.getElementById('message-box');
+        if (staleMsgBox) staleMsgBox.remove();
+
         fetch(url)
             .then(response => {
                 if (!response.ok) throw new Error('Error HTTP: ' + response.status);
                 return response.text();
             })
             .then(html => {
+                html = html.replace(/<link[^>]*href=["'][^"']*node_modules[^"']*["'][^>]*>/gi, '');
                 dynamicContentArea.innerHTML = html;
                 dynamicContentArea.scrollTop = 0;
                 const scripts = dynamicContentArea.querySelectorAll('script');
@@ -582,14 +689,31 @@ window.descargandoFondo = false;
 
     let sincronizando = false;
     
-    // 🔥 RUTAS VPS PARA CAJERA: Solo ventas (descuento de stock por venta)
+    // 🔥 RUTAS VPS PARA CAJA MAESTRA (isServer === true): Respaldo silencioso Grupo A
     const RUTAS_VPS_CAJERA = {
+        'productos': '/api/maestro/inventario/sincronizar',
+        'categorias': '/api/maestro/categorias/sincronizar',
+        'sucursales': '/api/maestro/sucursales/sincronizar',
+        'configuracion_tienda': '/api/maestro/configuracion_tienda/sincronizar',
+        'movimientos_stock': '/api/maestro/inventario/registrar-entrada',
         'ventas_descuento_vps': '/api/maestro/inventario/descontar-stock-venta',
-        'movimientos_stock': '/api/maestro/inventario/registrar-entrada'
+        'unidades_empaque': '/api/maestro/empaque/sincronizar',
+        'empaques': '/api/maestro/empaque/sincronizar',
+        'salidas_inventario': '/api/maestro/inventario/salidas/sincronizar',
+        'historial_tasas': '/api/maestro/tasa/historial/sincronizar'
+    };
+
+    const RUTAS_DELETE_VPS_CAJERA = {
+        'productos': '/api/maestro/inventario',
+        'sucursales': '/api/maestro/sucursales',
+        'categorias': '/api/maestro/categorias',
+        'unidades_empaque': '/api/maestro/empaque',
+        'empaques': '/api/maestro/empaque'
     };
 
 async function iniciarSincronizacionSilenciosa() {
-        if (sincronizando || !estadoConexion || !respaldoActivo || !SERVER_URL) return;
+        // 🔒 REGLA IMPENETRABLE: Solo isServer === true (y nunca Caja Hija) sincroniza hacia el VPS
+        if (sincronizando || !window.esServidorLocal || window.esCajaHija || !navigator.onLine || !estadoConexion || !respaldoActivo || !SERVER_URL) return;
         sincronizando = true;
         try {
             const api = window.nexusAPI;
@@ -613,30 +737,83 @@ async function iniciarSincronizacionSilenciosa() {
 
                     if (ping) {
                         let procesadosConExito = 0;
+                        const ventasProcesadasEnCiclo = new Set();
 
                         for (const registro of cola) {
-                            const rutaParcial = RUTAS_VPS_CAJERA[registro.tabla];
-                            if (!rutaParcial) continue;
-
-                            // 🛡️ PROTECCIÓN ANTI-BUCLE LOCAL: Si SERVER_URL apunta al servidor local o si es la máquina maestra sin VPS remoto
+                            const accionCola = String(registro.accion || 'INSERT').toUpperCase();
                             const isLocalServerUrl = !SERVER_URL || SERVER_URL.includes('localhost') || SERVER_URL.includes('127.0.0.1') || SERVER_URL.includes(':3000');
-                            if (registro.tabla === 'ventas_descuento_vps' && isLocalServerUrl) {
-                                console.log(`🛡️ [CAJERA SYNC] Registro ${registro.id} omitido: SERVER_URL es local y el stock ya fue descontado directamente.`);
-                                await api.eliminarDeCola(registro.id);
-                                continue;
-                            }
-
-                            const endpointCompleto = `${SERVER_URL}${rutaParcial}`;
 
                             try {
-                                const datosJSON = typeof registro.datos === 'string' ? JSON.parse(registro.datos) : registro.datos;
+                                const datosJSON = typeof registro.datos === 'string' ? JSON.parse(registro.datos) : (registro.datos || {});
+                                const idReal = String(registro.id_registro || datosJSON.id || datosJSON.producto_ID || datosJSON.empresa_ID || (datosJSON.items && datosJSON.items.length > 0 ? datosJSON.items[0].id : '') || '');
+
+                                if (accionCola === 'DELETE') {
+                                    const rutaDelete = RUTAS_DELETE_VPS_CAJERA[registro.tabla];
+                                    if (!rutaDelete || !idReal) {
+                                        if (rutaDelete && !idReal) {
+                                            console.warn(`⚠️ [CAJERA SYNC] DELETE sin id_registro en cola (${registro.id}, ${registro.tabla}).`);
+                                        }
+                                        continue;
+                                    }
+                                    const cIdDel = datosJSON.company_id || datosJSON.companyId || currentCompanyId || '';
+                                    const urlDelete = cIdDel
+                                        ? `${SERVER_URL}${rutaDelete}/${encodeURIComponent(idReal)}?company_id=${encodeURIComponent(cIdDel)}`
+                                        : `${SERVER_URL}${rutaDelete}/${encodeURIComponent(idReal)}`;
+                                    const responseDel = await fetch(urlDelete, {
+                                        method: 'DELETE',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ id: idReal, company_id: cIdDel || undefined }),
+                                        signal: AbortSignal.timeout(15000)
+                                    });
+                                    if (responseDel.ok || responseDel.status === 404) {
+                                        await api.eliminarDeCola(registro.id);
+                                        if (api.marcarComoSincronizado) {
+                                            await api.marcarComoSincronizado(registro.tabla, idReal);
+                                        }
+                                        procesadosConExito++;
+                                        console.log(`✅ [CAJERA SYNC] DELETE ${registro.id} (${registro.tabla}) aplicado en VPS.`);
+                                    } else {
+                                        let errorTexto = 'HTTP ' + responseDel.status;
+                                        try {
+                                            const errJson = await responseDel.json();
+                                            if (errJson && errJson.error) errorTexto = responseDel.status + ': ' + errJson.error;
+                                        } catch (_) {}
+                                        console.warn('⚠️ [CAJERA SYNC] DELETE ' + registro.id + ' (' + registro.tabla + ') falló: ' + errorTexto);
+                                        if (api && typeof api.registrarFalloCola === 'function') {
+                                            await api.registrarFalloCola(registro.id, errorTexto);
+                                        }
+                                    }
+                                    continue;
+                                }
+
+                                const rutaParcial = RUTAS_VPS_CAJERA[registro.tabla];
+                                if (!rutaParcial) continue;
+
+                                // 🛡️ PROTECCIÓN ANTI-BUCLE LOCAL: Si SERVER_URL apunta al servidor local o si es la máquina maestra sin VPS remoto
+                                if ((registro.tabla === 'ventas_descuento_vps' || registro.tabla === 'movimientos_stock') && isLocalServerUrl) {
+                                    console.log(`🛡️ [CAJERA SYNC] Registro ${registro.id} (${registro.tabla}) omitido: SERVER_URL es local y el movimiento ya fue aplicado directamente.`);
+                                    await api.eliminarDeCola(registro.id, { omitidoSinSubir: true });
+                                    continue;
+                                }
+
+                                const endpointCompleto = `${SERVER_URL}${rutaParcial}`;
+
+                                if (registro.tabla === 'ventas_descuento_vps') {
+                                    const refVenta = String(datosJSON.ventaId || datosJSON.factura_ref || datosJSON.numero_factura || registro.id_registro || '');
+                                    if (refVenta && ventasProcesadasEnCiclo.has(refVenta)) {
+                                        await api.eliminarDeCola(registro.id, { omitidoSinSubir: true });
+                                        continue;
+                                    }
+                                    if (refVenta) ventasProcesadasEnCiclo.add(refVenta);
+                                }
 
                                 const response = await fetch(endpointCompleto, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
+                                    signal: AbortSignal.timeout(15000),
                                     body: JSON.stringify((function() {
                                         if (registro.tabla === 'movimientos_stock') {
-                                            const cId = datosJSON.companyId || datosJSON.company_id || window.companyId;
+                                            const cId = datosJSON.companyId || datosJSON.company_id || currentCompanyId || window.companyId;
                                             const sId = datosJSON.sucursalId || datosJSON.sucursal_id || window.branchId || 'principal';
 
                                             if (!datosJSON.items && (datosJSON.producto_id || datosJSON.id || datosJSON.productoId)) {
@@ -671,12 +848,27 @@ async function iniciarSincronizacionSilenciosa() {
                                                 };
                                             }
                                         }
+                                        if (registro.tabla === 'salidas_inventario') {
+                                            const cId = datosJSON.company_id || datosJSON.companyId || currentCompanyId || window.companyId;
+                                            if (!Array.isArray(datosJSON.items)) {
+                                                return { company_id: cId, items: [datosJSON] };
+                                            }
+                                        }
+                                        if (registro.tabla === 'historial_tasas') {
+                                            const cId = datosJSON.company_id || datosJSON.companyId || currentCompanyId || window.companyId;
+                                            if (!Array.isArray(datosJSON.items) && !Array.isArray(datosJSON.tasas)) {
+                                                return { company_id: cId, items: [datosJSON] };
+                                            }
+                                        }
                                         return datosJSON;
                                     })())
                                 });
 
                                 if (response.ok) {
                                     await api.eliminarDeCola(registro.id);
+                                    if (idReal && api.marcarComoSincronizado) {
+                                        await api.marcarComoSincronizado(registro.tabla, idReal);
+                                    }
                                     procesadosConExito++;
                                     console.log(`✅ [CAJERA SYNC] Registro ${registro.id} (${registro.tabla}) sincronizado con VPS.`);
                                 } else {
@@ -691,7 +883,7 @@ async function iniciarSincronizacionSilenciosa() {
                                     }
                                 }
                             } catch (uploadErr) {
-                                console.error(`❌ [CAJERA SYNC] Falló subida al VPS. Pausando.`);
+                                console.error(`❌ [CAJERA SYNC] Falló subida al VPS. Pausando:`, uploadErr && uploadErr.message ? uploadErr.message : '');
                                 break;
                             }
                         }
@@ -703,16 +895,65 @@ async function iniciarSincronizacionSilenciosa() {
                 }
             }
 
-            // ☁️ Sincronización continua de ventas al VPS
+            // ☁️ Sincronización continua de ventas al VPS por lotes (POST con aislamiento de errores)
+            let redVentasCaida = false;
             if (api && typeof api.sincronizarVentasServidor === 'function') {
-                await api.sincronizarVentasServidor(50, SERVER_URL);
+                const resVentas = await api.sincronizarVentasServidor(50, SERVER_URL, { maxLotes: 4 });
+                if (resVentas && resVentas.redCaida) {
+                    redVentasCaida = true;
+                } else if (resVentas && (resVentas.sincronizadas > 0 || resVentas.erroresCount > 0)) {
+                    console.log(`☁️ [CAJERA SYNC VENTAS] Subidas: ${resVentas.sincronizadas || 0}, Errores/Aisladas: ${resVentas.erroresCount || 0}, Restantes: ${resVentas.restantes || 0}`);
+                }
+            }
+            if (redVentasCaida) {
+                actualizarUIConexion(false);
             }
         } catch (error) {
             // Fallo silencioso - se reintentará en el próximo ciclo
         } finally {
             sincronizando = false;
+            if (window.esServidorLocal && !window.esCajaHija && currentCompanyId) {
+                if (window.stockDescargaEnStandby) {
+                    window.stockDescargaEnStandby = false;
+                    descargarYValidarStockGlobal(currentCompanyId);
+                }
+                if (window.ventasReconciliacionEnStandby) {
+                    window.ventasReconciliacionEnStandby = false;
+                    reconciliarYValidarVentasGlobal(currentCompanyId);
+                } else if (window.ventasDescargaEnStandby) {
+                    window.ventasDescargaEnStandby = false;
+                    descargarYValidarVentasGlobal(currentCompanyId);
+                }
+            }
         }
     }
+
+    function ajustarDistribucionMetaSidebar() {
+        const wrap = document.getElementById('sidebar-meta-status');
+        const rif = document.getElementById('rif-text');
+        const sep = wrap ? wrap.querySelector('.meta-sep') : null;
+        const chip = wrap ? wrap.querySelector('.status-chip') : null;
+        if (!wrap || !rif || !chip) return;
+        wrap.classList.remove('stacked');
+        if (wrap.clientWidth === 0) return;
+        const anchoNecesario = rif.scrollWidth + (sep ? sep.offsetWidth : 0) + chip.scrollWidth + 20;
+        if (anchoNecesario > wrap.clientWidth || chip.offsetTop > rif.offsetTop + 2) {
+            wrap.classList.add('stacked');
+        }
+    }
+    window.addEventListener('resize', ajustarDistribucionMetaSidebar);
+    (function iniciarObservadorMetaSidebar() {
+        const wrap = document.getElementById('sidebar-meta-status');
+        const header = document.querySelector('.sidebar-header');
+        if (wrap && typeof MutationObserver !== 'undefined') {
+            new MutationObserver(() => requestAnimationFrame(ajustarDistribucionMetaSidebar))
+                .observe(wrap, { childList: true, subtree: true, characterData: true });
+        }
+        if (header && typeof ResizeObserver !== 'undefined') {
+            new ResizeObserver(() => requestAnimationFrame(ajustarDistribucionMetaSidebar)).observe(header);
+        }
+        requestAnimationFrame(ajustarDistribucionMetaSidebar);
+    })();
 
     function actualizarUIConexion(isOnline) {
         estadoConexion = isOnline; // 🔥 VITAL: Le avisa al Ojeador el estado real
@@ -722,12 +963,13 @@ async function iniciarSincronizacionSilenciosa() {
         if (!statusCircle || !statusText) return;
 
         if (isOnline) {
-            statusCircle.className = "w-2.5 h-2.5 rounded-full bg-green-500 mr-2 shadow-[0_0_5px_rgba(34,197,94,0.6)]";
+            statusCircle.className = "w-2 h-2 rounded-full bg-green-500 mr-1.5 shadow-[0_0_5px_rgba(34,197,94,0.6)] transition-colors duration-300 inline-block";
             statusText.textContent = "Conectado (Online)";
         } else {
-            statusCircle.className = "w-2.5 h-2.5 rounded-full bg-red-500 mr-2 shadow-[0_0_5px_rgba(239,68,68,0.6)]";
+            statusCircle.className = "w-2 h-2 rounded-full bg-red-500 mr-1.5 shadow-[0_0_5px_rgba(239,68,68,0.6)] transition-colors duration-300 inline-block";
             statusText.textContent = "Modo Offline";
         }
+        requestAnimationFrame(ajustarDistribucionMetaSidebar);
     }
 
     async function fetchDollarRate() {
@@ -741,8 +983,8 @@ async function iniciarSincronizacionSilenciosa() {
         let esDeMaestro = false;
 
         try {
-            // 1. Intentar descargar desde el Servidor Maestro (LAN) o VPS si está disponible
-            const puedeConectar = (window.esCajaHija && SERVER_URL) || (navigator.onLine && SERVER_URL);
+            // 1. Intentar descargar desde el Servidor Maestro (LAN) o VPS (solo isServer === true con respaldo)
+            const puedeConectar = (window.esCajaHija && SERVER_URL) || (window.esServidorLocal && respaldoActivo && navigator.onLine && SERVER_URL);
             if (puedeConectar && currentCompanyId && !window.descargandoTasa) {
                 window.descargandoTasa = true;
                 try {
@@ -751,11 +993,29 @@ async function iniciarSincronizacionSilenciosa() {
                     });
                     if (response.ok) {
                         const dataTasa = await response.json();
-                        if (dataTasa && dataTasa.tasa) {
-                            tasaParaMostrar = parseFloat(dataTasa.tasa);
-                            await window.nexusAPI.guardarConfiguracion('TASA_BCV', tasaParaMostrar.toString());
-                            if (window.esCajaHija) esDeMaestro = true;
-                            else esDeNube = true;
+                        if (dataTasa) {
+                            let isAuto = false;
+                            if (!window.esCajaHija && dataTasa.confi_auto_tasa !== undefined && dataTasa.confi_auto_tasa !== null) {
+                                isAuto = Boolean(dataTasa.confi_auto_tasa);
+                                window.confiAutoTasa = isAuto;
+                                if (window.nexusAPI && window.nexusAPI.guardarEstadoAutoTasa) {
+                                    await window.nexusAPI.guardarEstadoAutoTasa(isAuto);
+                                }
+                            }
+                            if (dataTasa.tasa) {
+                                tasaParaMostrar = parseFloat(dataTasa.tasa);
+                                const tasaLocalStr = await window.nexusAPI.obtenerConfiguracion('TASA_BCV');
+                                const tasaLocalAntes = tasaLocalStr ? parseFloat(tasaLocalStr) : 0;
+                                const cambioRealTasa = Number.isFinite(tasaParaMostrar) && tasaParaMostrar > 0 && Math.abs(tasaParaMostrar - tasaLocalAntes) > 0.0001;
+                                if (cambioRealTasa) {
+                                    await window.nexusAPI.guardarConfiguracion('TASA_BCV', tasaParaMostrar.toString());
+                                    if (!window.esCajaHija && window.nexusAPI && window.nexusAPI.guardarTasaBCV) {
+                                        await window.nexusAPI.guardarTasaBCV(tasaParaMostrar, isAuto);
+                                    }
+                                }
+                                if (window.esCajaHija) esDeMaestro = true;
+                                else esDeNube = true;
+                            }
                         }
                     }
                 } catch (e) {
@@ -786,13 +1046,18 @@ async function iniciarSincronizacionSilenciosa() {
                     lastUpdatedTimestamp.textContent = `Sincronizada (DB Local): ${fechaHoy}`;
                 }
                 
+                const tasaAnteriorGlobal = parseFloat(window.dolarExchangeRate || 0);
+                const tasaCambioEnMemoria = Math.abs(tasaParaMostrar - tasaAnteriorGlobal) > 0.0001;
+
                 // Sincronizamos la variable global del entorno de ejecución
                 window.dolarExchangeRate = tasaParaMostrar;
 
-                // 🔥 ALARMA EN TIEMPO REAL: Notifica a facturacion.html para recalcular instantáneamente
-                window.dispatchEvent(new CustomEvent('tasaActualizadaBackground', { 
-                    detail: { tasa: tasaParaMostrar } 
-                }));
+                // 🔥 ALARMA EN TIEMPO REAL: Notifica a facturacion.html SOLO si la tasa cambió realmente
+                if (tasaCambioEnMemoria) {
+                    window.dispatchEvent(new CustomEvent('tasaActualizadaBackground', { 
+                        detail: { tasa: tasaParaMostrar } 
+                    }));
+                }
             } else {
                 dollarRateInput.value = "0.00";
                 lastUpdatedTimestamp.textContent = "Tasa no establecida";
@@ -803,38 +1068,43 @@ async function iniciarSincronizacionSilenciosa() {
             lastUpdatedTimestamp.textContent = "Error de lectura";
         }
     }
+    window.__cajeraFetchDollarRate = fetchDollarRate;
 
     async function descargarActualizacionesDeInventario() {
-        if ((!window.esCajaHija && !respaldoActivo) || !SERVER_URL || !currentCompanyId || window.descargandoFondo) return;
+        if ((!window.esCajaHija && (!window.esServidorLocal || !respaldoActivo)) || !SERVER_URL || !currentCompanyId || window.descargandoFondo) return;
 
         window.descargandoFondo = true;
         try {
             const claveStorage = `last_sync_inv_${currentCompanyId}_cajera`;
             const ultimaRevision = localStorage.getItem(claveStorage) || '2000-01-01T00:00:00.000Z';
+            const ahoraCaracas = (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})();
 
             const response = await fetch(`${SERVER_URL}/api/maestro/inventario/${currentCompanyId}?desde=${encodeURIComponent(ultimaRevision)}`, {
                 signal: AbortSignal.timeout(30000) 
             });
 
             if (response.ok) {
-                const productosServidor = await response.json();
+                const rawProductos = await response.json();
+                const productosServidor = Array.isArray(rawProductos) ? rawProductos : (rawProductos && (rawProductos.items || rawProductos.data) || []);
                 
                 if (productosServidor.length === 0) {
-                    localStorage.setItem(claveStorage, (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})());
+                    localStorage.setItem(claveStorage, ahoraCaracas);
                     return;
                 }
                 
-                const productosLocales = await window.nexusAPI.obtenerProductosLocal(currentCompanyId);
+                const api = window.nexusAPI;
+                const productosLocales = await api.obtenerProductosLocal(currentCompanyId);
                 const estadosLocales = {};
                 if (productosLocales) {
                     productosLocales.forEach(p => { estadosLocales[p.id] = p.estado_sync; });
                 }
 
-                let actualizados = 0;
                 let omitidos = 0;
+                const loteParaSincronizar = [];
 
                 for (const pServidor of productosServidor) {
                     const idServidor = pServidor.producto_ID || pServidor.id || pServidor.producto_id;
+                    if (!idServidor) continue;
                     const estadoLocal = estadosLocales[idServidor];
                     
                     if (estadoLocal === 0) {
@@ -849,49 +1119,60 @@ async function iniciarSincronizacionSilenciosa() {
                         datosParsed = pServidor.datos_json;
                     }
 
-                    const productoParaValidar = {
+                    loteParaSincronizar.push({
                         id: idServidor,
                         producto_ID: idServidor, 
                         company_id: currentCompanyId,
                         branch_id: datosParsed.branch_id || datosParsed.sucursal_ID || pServidor.sucursal_ID || 'sucursal_1',
                         codigo: String(datosParsed.codigo || pServidor.codigo || ''),
                         nombre: pServidor.nombre || datosParsed.nombre,
-                        precio: pServidor.precio_venta || datosParsed.precio_venta || datosParsed.precio || 0,
-                        precio_venta: pServidor.precio_venta || datosParsed.precio_venta || 0,
-                        precio_compra: datosParsed.precio_compra || 0,
-                        porcentaje_ganancia: datosParsed.porcentaje_ganancia || 0,
+                        precio: pServidor.precio_venta || pServidor.precio || datosParsed.precio_venta || datosParsed.precio || 0,
+                        precio_venta: pServidor.precio_venta || pServidor.precio || datosParsed.precio_venta || 0,
+                        precio_compra: pServidor.precio_compra || datosParsed.precio_compra || 0,
+                        porcentaje_ganancia: pServidor.porcentaje_ganancia || datosParsed.porcentaje_ganancia || 0,
                         ganancia: datosParsed.ganancia || 0,
-                        precios: pServidor.precios_json || datosParsed.precios || null,
+                        precios: pServidor.precios || pServidor.precios_json || datosParsed.precios || null,
                         moneda: datosParsed.moneda || datosParsed.currency || pServidor.moneda || 'USD',
-                        currency: datosParsed.currency || datosParsed.moneda || 'USD',
+                        currency: datosParsed.currency || datosParsed.moneda || pServidor.moneda || 'USD',
                         unit: datosParsed.unit || datosParsed.unidad || pServidor.unidad || 'UN',
                         tipo_alicuota: datosParsed.tipo_alicuota || pServidor.tipo_alicuota || '16',
-                        categoria: datosParsed.categoria || pServidor.categoria_id || 'Sin Cat.',
+                        categoria: datosParsed.categoria || pServidor.categoria || pServidor.categoria_id || 'Sin Cat.',
                         status: pServidor.status !== undefined ? pServidor.status : 1,
                         imagen: datosParsed.imagen || pServidor.imagen || '',
                         estado_sync: 1, 
                         datos_json: JSON.stringify(datosParsed),
-                        fecha_modificacion: pServidor.ultima_sincronizacion || (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})()
-                    };
+                        fecha_modificacion: pServidor.fecha_modificacion || pServidor.ultima_sincronizacion || ahoraCaracas
+                    });
+                }
 
-                    await window.nexusAPI.sincronizarProductoServidor(productoParaValidar);
-                    actualizados++;
+                let actualizados = 0;
+                if (loteParaSincronizar.length > 0) {
+                    if (api && typeof api.sincronizarProductosLote === 'function') {
+                        const resLote = await api.sincronizarProductosLote(loteParaSincronizar);
+                        actualizados = (resLote && resLote.success !== false)
+                            ? ((resLote.inserted || 0) + (resLote.updated || 0) || resLote.changes || 0)
+                            : 0;
+                    } else {
+                        for (const prod of loteParaSincronizar) {
+                            const resProd = await api.sincronizarProductoServidor(prod);
+                            if (resProd && resProd.changed) actualizados++;
+                        }
+                    }
                 }
 
                 if (actualizados > 0 || omitidos > 0) {
                     console.log(`📦 [SYNC CAJERA] ${actualizados} actualizados, ${omitidos} omitidos.`);
                     
                     if (actualizados > 0) {
-                        // 1. Avisamos vía Puente de Electron
-                        if (window.nexusAPI && window.nexusAPI.notificarCambioProductos) {
-                            window.nexusAPI.notificarCambioProductos();
+                        if (api && api.notificarCambioProductos) {
+                            api.notificarCambioProductos();
                         }
-                        // 🔥 2. ALARMA GLOBAL: Le gritamos a la vista hija (Ej: facturacion.html) que despierte
+                        // 🔥 ALARMA GLOBAL: Le gritamos a la vista hija (Ej: facturacion.html) que despierte
                         window.dispatchEvent(new CustomEvent('productosActualizadosBackground'));
                     }
                 }
 
-                localStorage.setItem(claveStorage, (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})());
+                localStorage.setItem(claveStorage, ahoraCaracas);
             }
         } catch (error) {
             console.log("⏸️ Sincronización de inventario en pausa.");
@@ -901,7 +1182,7 @@ async function iniciarSincronizacionSilenciosa() {
     }
 
     async function descargarActualizacionesDeCategorias() {
-        if ((!window.esCajaHija && !respaldoActivo) || !SERVER_URL || !currentCompanyId || window.descargandoCategorias) return;
+        if ((!window.esCajaHija && (!window.esServidorLocal || !respaldoActivo)) || !SERVER_URL || !currentCompanyId || window.descargandoCategorias) return;
 
         window.descargandoCategorias = true;
         try {
@@ -912,14 +1193,29 @@ async function iniciarSincronizacionSilenciosa() {
             });
 
             if (response.ok) {
-                const categoriasServidor = await response.json();
+                const rawCats = await response.json();
+                const categoriasServidor = Array.isArray(rawCats) ? rawCats : (rawCats && (rawCats.items || rawCats.data || rawCats.categorias) || []);
                 
                 if (categoriasServidor.length > 0) {
+                    const api = window.nexusAPI;
+                    const estadosCatLocal = {};
+                    try {
+                        if (api && api.obtenerCategoriasLocal) {
+                            const catsLoc = await api.obtenerCategoriasLocal(currentCompanyId);
+                            (Array.isArray(catsLoc) ? catsLoc : []).forEach(c => { estadosCatLocal[c.id] = c.estado_sync; });
+                        }
+                    } catch (_) {}
+
+                    const categoriasFiltradas = categoriasServidor.filter(c => {
+                        const cId = c && (c.categoria_id || c.id);
+                        return cId && estadosCatLocal[cId] !== 0;
+                    });
+
                     // Usamos el puente existente de tu main.js para guardar todo en lote (transacción)
-                    if (window.nexusAPI && window.nexusAPI.sincronizarCategoriasLocal) {
-                        const resultado = await window.nexusAPI.sincronizarCategoriasLocal(categoriasServidor);
+                    if (categoriasFiltradas.length > 0 && api && api.sincronizarCategoriasLocal) {
+                        const resultado = await api.sincronizarCategoriasLocal(categoriasFiltradas);
                         
-                        if (resultado.success) {
+                        if (resultado && resultado.success) {
                             // 🔥 ALARMA GLOBAL: Despierta a las vistas hijas
                             window.dispatchEvent(new CustomEvent('categoriasActualizadasBackground'));
                         }
@@ -930,6 +1226,443 @@ async function iniciarSincronizacionSilenciosa() {
             console.log("⏸️ Sincronización de categorías en pausa.");
         } finally {
             window.descargandoCategorias = false;
+        }
+    }
+
+    window.descargandoStockFondo = false;
+    async function descargarYValidarStockGlobal(companyId = currentCompanyId) {
+        const cId = companyId || currentCompanyId;
+        if (!window.esServidorLocal || window.esCajaHija || !navigator.onLine || !respaldoActivo || !SERVER_URL || !cId || window.descargandoStockFondo || sincronizando) return;
+
+        window.descargandoStockFondo = true;
+        try {
+            const api = window.nexusAPI;
+            if (api && typeof api.obtenerColaSincronizacion === 'function') {
+                const colaActual = await api.obtenerColaSincronizacion();
+                const tieneMovsPendientes = Array.isArray(colaActual) && colaActual.some(r => r.tabla === 'ventas_descuento_vps' || r.tabla === 'movimientos_stock');
+                if (tieneMovsPendientes) {
+                    window.stockDescargaEnStandby = true;
+                    console.log("⏸️ [STANDBY CAJERA MAESTRA] Descarga de stock en standby mientras se suben los pendientes al VPS...");
+                    window.descargandoStockFondo = false;
+                    await iniciarSincronizacionSilenciosa();
+                    return;
+                }
+            }
+
+            const claveStorage = `last_sync_stock_${cId}`;
+            const ultimaRevision = localStorage.getItem(claveStorage) || '2000-01-01T00:00:00.000Z';
+            const ahoraCaracas = (function(){let d=new Date();let c=new Date(d.getTime()+(d.getTimezoneOffset()*60000)-(4*3600000));let p=(n)=>String(n).padStart(2,'0');return c.getFullYear()+'-'+p(c.getMonth()+1)+'-'+p(c.getDate())+' '+p(c.getHours())+':'+p(c.getMinutes())+':'+p(c.getSeconds());})();
+            let cambiosReales = 0;
+
+            if (ultimaRevision === '2000-01-01T00:00:00.000Z') {
+                let sucursales = [];
+                try {
+                    if (api && api.obtenerSucursalesLocal) {
+                        sucursales = await api.obtenerSucursalesLocal(cId);
+                    }
+                } catch (_) {}
+
+                const listaSucursales = (Array.isArray(sucursales) && sucursales.length > 0) ? sucursales : [{ id: 'principal' }];
+                const loteStock = [];
+                let todasOk = true;
+
+                for (const s of listaSucursales) {
+                    const sId = s.id;
+                    try {
+                        const responseInv = await fetch(`${SERVER_URL}/api/maestro/inventario/stock?companyId=${encodeURIComponent(cId)}&sucursalId=${encodeURIComponent(sId)}`, {
+                            signal: AbortSignal.timeout(15000)
+                        });
+                        if (responseInv.ok) {
+                            const rawInv = await responseInv.json();
+                            const stockServidor = Array.isArray(rawInv) ? rawInv : (rawInv && (rawInv.items || rawInv.data) || []);
+                            for (const item of stockServidor) {
+                                const prodId = item && (item.producto_id || item.id);
+                                if (!prodId) continue;
+                                loteStock.push({
+                                    producto_id: prodId,
+                                    sucursal_id: sId,
+                                    company_id: cId,
+                                    cantidad_real: parseFloat(item.cantidad_real !== undefined ? item.cantidad_real : (item.stock || 0)),
+                                    estado_sync: 1
+                                });
+                            }
+                        } else if (responseInv.status !== 404) {
+                            todasOk = false;
+                        }
+                    } catch (eOne) {
+                        todasOk = false;
+                    }
+                }
+
+                let huboEnStandby = false;
+                if (loteStock.length > 0) {
+                    if (api && typeof api.sincronizarStockMaestroLote === 'function') {
+                        const resBatch = await api.sincronizarStockMaestroLote(loteStock);
+                        cambiosReales = (resBatch && resBatch.success !== false) ? (resBatch.applied || 0) : 0;
+                        if (resBatch && resBatch.standby > 0) huboEnStandby = true;
+                    } else {
+                        for (const st of loteStock) {
+                            const resStock = await api.guardarStockSucursal({
+                                productoId: st.producto_id,
+                                sucursalId: st.sucursal_id,
+                                companyId: st.company_id,
+                                cantidad: st.cantidad_real,
+                                operacion: 'FIJAR',
+                                datosStock: { estado_sync: 1 }
+                            });
+                            if (resStock && resStock.standby) huboEnStandby = true;
+                            if (resStock && resStock.changed) cambiosReales++;
+                        }
+                    }
+                }
+
+                if (todasOk && !huboEnStandby) {
+                    localStorage.setItem(claveStorage, ahoraCaracas);
+                } else if (huboEnStandby) {
+                    window.stockDescargaEnStandby = true;
+                }
+                if (cambiosReales > 0) {
+                    window.dispatchEvent(new CustomEvent('stock-actualizado-vps', { detail: { cantidad: cambiosReales } }));
+                }
+                return;
+            }
+
+            const response = await fetch(`${SERVER_URL}/api/maestro/stock/sincronizar?company_id=${encodeURIComponent(cId)}&desde=${encodeURIComponent(ultimaRevision)}`, {
+                signal: AbortSignal.timeout(15000)
+            });
+            if (!response.ok) return;
+
+            const rawDelta = await response.json();
+            const stockServidor = Array.isArray(rawDelta) ? rawDelta : (rawDelta && (rawDelta.items || rawDelta.data) || []);
+            if (!Array.isArray(stockServidor) || stockServidor.length === 0) {
+                localStorage.setItem(claveStorage, ahoraCaracas);
+                return;
+            }
+
+            const loteDelta = [];
+            for (const s of stockServidor) {
+                const prodId = s && (s.producto_id || s.id);
+                if (!prodId) continue;
+                loteDelta.push({
+                    producto_id: prodId,
+                    sucursal_id: s.sucursal_id || 'principal',
+                    company_id: s.company_id || cId,
+                    cantidad_real: parseFloat(s.cantidad_real !== undefined ? s.cantidad_real : (s.stock || 0)),
+                    estado_sync: 1
+                });
+            }
+
+            let huboEnStandby = false;
+            if (loteDelta.length > 0) {
+                if (api && typeof api.sincronizarStockMaestroLote === 'function') {
+                    const resBatch = await api.sincronizarStockMaestroLote(loteDelta);
+                    cambiosReales = (resBatch && resBatch.success !== false) ? (resBatch.applied || 0) : 0;
+                    if (resBatch && resBatch.standby > 0) huboEnStandby = true;
+                } else {
+                    for (const st of loteDelta) {
+                        const resStock = await api.guardarStockSucursal({
+                            productoId: st.producto_id,
+                            sucursalId: st.sucursal_id,
+                            companyId: st.company_id,
+                            cantidad: st.cantidad_real,
+                            operacion: 'FIJAR',
+                            datosStock: { estado_sync: 1 }
+                        });
+                        if (resStock && resStock.standby) huboEnStandby = true;
+                        if (resStock && resStock.changed) cambiosReales++;
+                    }
+                }
+            }
+
+            if (cambiosReales > 0) {
+                window.dispatchEvent(new CustomEvent('stock-actualizado-vps', { detail: { cantidad: cambiosReales } }));
+            }
+            if (!huboEnStandby) {
+                localStorage.setItem(claveStorage, ahoraCaracas);
+            } else {
+                window.stockDescargaEnStandby = true;
+            }
+        } catch (error) {
+            console.log("⏸️ Descarga de stock en pausa:", error.message);
+        } finally {
+            window.descargandoStockFondo = false;
+        }
+    }
+
+    window.hidratacionVpsOk = false;
+    window.hidratandoVps = false;
+    async function hidratarDesdeVPS(companyId = currentCompanyId) {
+        const cId = companyId || currentCompanyId;
+        if (!window.esServidorLocal || window.esCajaHija || !navigator.onLine || !respaldoActivo || !SERVER_URL || !cId || window.hidratandoVps) return;
+
+        window.hidratandoVps = true;
+        const api = window.nexusAPI;
+        const resumen = { sucursales: 0, categorias: 0, empaques: 0 };
+        let huboErrores = false;
+        const ahoraCaracas = () => {
+            const d = new Date();
+            const c = new Date(d.getTime() + (d.getTimezoneOffset() * 60000) - (4 * 3600000));
+            const p = (n) => String(n).padStart(2, '0');
+            return `${c.getFullYear()}-${p(c.getMonth() + 1)}-${p(c.getDate())} ${p(c.getHours())}:${p(c.getMinutes())}:${p(c.getSeconds())}`;
+        };
+
+        const colaIds = { sucursales: new Set(), categorias: new Set(), empaques: new Set() };
+        try {
+            const cola = (api && api.obtenerColaSincronizacion) ? await api.obtenerColaSincronizacion() : [];
+            (cola || []).forEach(r => {
+                try {
+                    const d = typeof r.datos === 'string' ? JSON.parse(r.datos) : r.datos;
+                    const id = r.id_registro || (d && (d.id || d.sucursal_id || d.sucursal_ID || d.categoria_id || d.categoria_ID || d.empaque_id || d.empaque_ID));
+                    if (!id) return;
+                    if (r.tabla === 'sucursales') colaIds.sucursales.add(id);
+                    if (r.tabla === 'categorias') colaIds.categorias.add(id);
+                    if (r.tabla === 'unidades_empaque' || r.tabla === 'empaques') colaIds.empaques.add(id);
+                } catch (_) {}
+            });
+        } catch (_) {}
+
+        try {
+            const res = await fetch(`${SERVER_URL}/api/maestro/sucursales/${encodeURIComponent(cId)}`, { signal: AbortSignal.timeout(15000) });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const rawSuc = await res.json();
+            const sucursalesVps = Array.isArray(rawSuc) ? rawSuc : (rawSuc && (rawSuc.items || rawSuc.data || rawSuc.sucursales) || []);
+            const locales = await api.obtenerSucursalesLocal(cId);
+            const mapaLocal = {};
+            (Array.isArray(locales) ? locales : []).forEach(s => { mapaLocal[s.id] = s; });
+
+            const loteSucursales = [];
+            for (const s of sucursalesVps) {
+                if (!s || !s.id || colaIds.sucursales.has(s.id)) continue;
+                const local = mapaLocal[s.id];
+                if (local && local.estado_sync === 0) continue;
+                loteSucursales.push({
+                    id: s.id,
+                    company_id: s.company_id || cId,
+                    nombre: s.nombre,
+                    direccion: s.direccion || '',
+                    telefono: s.telefono || '',
+                    estado_sync: 1,
+                    fecha_modificacion: s.fecha_modificacion ? new Date(s.fecha_modificacion).toISOString() : ahoraCaracas()
+                });
+            }
+            if (loteSucursales.length > 0) {
+                if (api.sincronizarSucursalesLote) {
+                    await api.sincronizarSucursalesLote(loteSucursales);
+                } else {
+                    for (const sLoc of loteSucursales) await api.guardarSucursalLocal(sLoc);
+                }
+                resumen.sucursales = loteSucursales.length;
+            }
+        } catch (e) {
+            huboErrores = true;
+            console.warn('[HIDRATACION CAJERA] Error descargando sucursales:', e.message);
+        }
+
+        try {
+            const res = await fetch(`${SERVER_URL}/api/maestro/categorias/${encodeURIComponent(cId)}`, { signal: AbortSignal.timeout(15000) });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const rawCat = await res.json();
+            const categoriasVps = Array.isArray(rawCat) ? rawCat : (rawCat && (rawCat.items || rawCat.data || rawCat.categorias) || []);
+            const estadosCatLocal = {};
+            try {
+                if (api.obtenerCategoriasLocal) {
+                    const catsLoc = await api.obtenerCategoriasLocal(cId);
+                    (Array.isArray(catsLoc) ? catsLoc : []).forEach(c => { estadosCatLocal[c.id] = c.estado_sync; });
+                }
+            } catch (_) {}
+
+            const loteCategorias = [];
+            for (const c of categoriasVps) {
+                const id = c && (c.categoria_id || c.id);
+                if (!id || colaIds.categorias.has(id) || estadosCatLocal[id] === 0) continue;
+                loteCategorias.push({
+                    id,
+                    company_id: c.company_id || cId,
+                    nombre: c.nombre,
+                    estado_sync: 1,
+                    fecha_modificacion: c.fecha_modificacion ? new Date(c.fecha_modificacion).toISOString() : ahoraCaracas()
+                });
+            }
+            if (loteCategorias.length > 0) {
+                if (api.sincronizarCategoriasLocal) {
+                    await api.sincronizarCategoriasLocal(loteCategorias);
+                } else {
+                    for (const cLoc of loteCategorias) await api.sincronizarCategoriaServidor(cLoc);
+                }
+                resumen.categorias = loteCategorias.length;
+            }
+        } catch (e) {
+            huboErrores = true;
+            console.warn('[HIDRATACION CAJERA] Error descargando categorías:', e.message);
+        }
+
+        try {
+            const res = await fetch(`${SERVER_URL}/api/maestro/empaque/${encodeURIComponent(cId)}`, { signal: AbortSignal.timeout(20000) });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const json = await res.json();
+            const lista = Array.isArray(json) ? json : (json && (json.items || json.data || json.empaques) || []);
+            const estadosEmpLocal = {};
+            try {
+                if (api.obtenerUnidadesEmpaqueLocal) {
+                    const empsLoc = await api.obtenerUnidadesEmpaqueLocal(cId);
+                    (Array.isArray(empsLoc) ? empsLoc : []).forEach(emp => { estadosEmpLocal[emp.id] = emp.estado_sync; });
+                }
+            } catch (_) {}
+
+            const lote = lista
+                .filter(e => e && e.id && !colaIds.empaques.has(e.id) && estadosEmpLocal[e.id] !== 0)
+                .map(e => ({
+                    id: e.id,
+                    company_id: e.company_id || cId,
+                    product_id: e.product_id || '',
+                    nombre_producto: e.nombre_producto || '',
+                    nombre_unidad: e.nombre_unidad || '',
+                    tipo_medida: e.tipo_medida || 'Unidades',
+                    factor_cantidad: parseFloat(e.factor_cantidad || 1),
+                    estado_sync: 1,
+                    fecha_modificacion: e.fecha_modificacion ? new Date(e.fecha_modificacion).toISOString() : ahoraCaracas(),
+                    ultima_sincronizacion: e.ultima_sincronizacion ? new Date(e.ultima_sincronizacion).toISOString() : ahoraCaracas()
+                }));
+            if (lote.length > 0) {
+                await api.sincronizarUnidadesEmpaqueLote(lote);
+                resumen.empaques = lote.length;
+            }
+        } catch (e) {
+            huboErrores = true;
+            console.warn('[HIDRATACION CAJERA] Error descargando empaques:', e.message);
+        }
+
+        window.hidratandoVps = false;
+        window.hidratacionVpsOk = !huboErrores;
+        window.dispatchEvent(new CustomEvent('datos-hidratados-vps', { detail: resumen }));
+    }
+
+    async function ejecutarCicloGrupoAMaestroVps(companyId = currentCompanyId) {
+        const cId = companyId || currentCompanyId;
+        if (!window.esServidorLocal || window.esCajaHija || !navigator.onLine || !respaldoActivo || !SERVER_URL || !cId) return;
+        const api = window.nexusAPI;
+        if (!api) return;
+        try {
+            await Promise.allSettled([
+                typeof api.sincronizarConfigTiendaVps === 'function' ? api.sincronizarConfigTiendaVps(cId) : Promise.resolve(),
+                typeof api.sincronizarSucursalesVps === 'function' ? api.sincronizarSucursalesVps(cId) : Promise.resolve(),
+                typeof api.sincronizarTasasVps === 'function' ? api.sincronizarTasasVps() : Promise.resolve(),
+                typeof api.sincronizarSalidasVps === 'function' ? api.sincronizarSalidasVps(cId) : Promise.resolve(),
+                typeof api.sincronizarCierresVps === 'function' ? api.sincronizarCierresVps(cId) : Promise.resolve(),
+                typeof api.sincronizarCuentasCobrar === 'function' ? api.sincronizarCuentasCobrar(cId) : Promise.resolve(),
+                typeof api.sincronizarCuentasPagar === 'function' ? api.sincronizarCuentasPagar(cId) : Promise.resolve(),
+                typeof api.sincronizarEmpleados === 'function' ? api.sincronizarEmpleados(cId) : Promise.resolve()
+            ]);
+        } catch (e) {
+            console.warn('[CAJERA MAESTRA SYNC GRUPO A] Error en ciclo secundario:', e.message);
+        }
+    }
+
+    window.reconciliacionVentasHecha = false;
+    window.ventasReconciliacionEnStandby = false;
+
+    async function reconciliarYValidarVentasGlobal(companyId = currentCompanyId) {
+        const cId = companyId || currentCompanyId;
+        if (!window.esServidorLocal || window.esCajaHija || !navigator.onLine || !respaldoActivo || !SERVER_URL || !cId || window.descargandoVentasFondo) return;
+        if (sincronizando) {
+            window.ventasReconciliacionEnStandby = true;
+            return;
+        }
+
+        const api = window.nexusAPI;
+        if (!api || typeof api.reconciliarVentasServidor !== 'function') {
+            window.reconciliacionVentasHecha = true;
+            return descargarYValidarVentasGlobal(cId);
+        }
+
+        window.descargandoVentasFondo = true;
+        try {
+            const res = await api.reconciliarVentasServidor({
+                companyId: cId,
+                batchSize: 50,
+                serverUrl: SERVER_URL
+            });
+
+            if (!res || res.omitido || res.enCurso) return;
+            if (res.noDisponible) {
+                window.reconciliacionVentasHecha = true;
+                return;
+            }
+            if (!res.exito) {
+                if (res.redCaida) {
+                    console.warn('[RECONCILIACION VENTAS CAJERA] Red/VPS en pausa durante escaneo previo:', res.error || '');
+                }
+                return;
+            }
+
+            window.reconciliacionVentasHecha = true;
+            const totalCambios = (res.insertadas || 0) + (res.actualizadas || 0);
+            if (totalCambios > 0) {
+                console.log(`🔍 [CAJERA RECONCILIACION VENTAS] Insertadas: ${res.insertadas || 0}, Actualizadas: ${res.actualizadas || 0}, Escudo local: ${res.omitidasEscudo || 0}, Errores: ${res.erroresCount || 0}`);
+                window.dispatchEvent(new CustomEvent('ventas-actualizadas-vps', { detail: res }));
+            }
+
+            const claveStorage = `last_sync_ventas_${cId}`;
+            if (res.ultimaMarca) {
+                localStorage.setItem(claveStorage, res.ultimaMarca);
+            } else if (!localStorage.getItem(claveStorage) && (res.erroresCount || 0) === 0) {
+                localStorage.setItem(claveStorage, new Date().toISOString());
+            }
+        } catch (error) {
+            console.log("⏸️ Reconciliación previa de ventas en pausa.");
+        } finally {
+            window.descargandoVentasFondo = false;
+        }
+    }
+
+    async function descargarYValidarVentasGlobal(companyId = currentCompanyId) {
+        const cId = companyId || currentCompanyId;
+        if (!window.esServidorLocal || window.esCajaHija || !navigator.onLine || !respaldoActivo || !SERVER_URL || !cId || window.descargandoVentasFondo) return;
+        if (sincronizando) {
+            window.ventasDescargaEnStandby = true;
+            return;
+        }
+
+        const api = window.nexusAPI;
+        if (!api || typeof api.descargarVentasServidor !== 'function') return;
+
+        window.descargandoVentasFondo = true;
+        try {
+            const claveStorage = `last_sync_ventas_${cId}`;
+            const ultimaRevision = localStorage.getItem(claveStorage) || '2000-01-01T00:00:00.000Z';
+
+            const res = await api.descargarVentasServidor({
+                companyId: cId,
+                desde: ultimaRevision,
+                limit: 100,
+                maxPaginas: 5,
+                serverUrl: SERVER_URL
+            });
+
+            if (!res || res.noDisponible || res.omitido || res.enCurso) return;
+
+            if (!res.exito) {
+                if (res.redCaida) {
+                    console.warn('[DOWNLOAD VENTAS CAJERA] Red/VPS en pausa durante descarga delta:', res.error || '');
+                }
+                return;
+            }
+
+            const totalCambios = (res.insertadas || 0) + (res.actualizadas || 0);
+            if (totalCambios > 0) {
+                console.log(`📥 [CAJERA DOWNLOAD VENTAS] Insertadas: ${res.insertadas || 0}, Actualizadas: ${res.actualizadas || 0}, Escudo local: ${res.omitidasEscudo || 0}, Rechazadas: ${res.erroresCount || 0}`);
+                window.dispatchEvent(new CustomEvent('ventas-actualizadas-vps', { detail: res }));
+            }
+
+            if (res.ultimaMarca) {
+                localStorage.setItem(claveStorage, res.ultimaMarca);
+            } else if (!localStorage.getItem(claveStorage) && (res.erroresCount || 0) === 0) {
+                localStorage.setItem(claveStorage, new Date().toISOString());
+            }
+        } catch (error) {
+            console.log("⏸️ Sincronización de descarga de ventas en pausa.");
+        } finally {
+            window.descargandoVentasFondo = false;
         }
     }
 
@@ -946,10 +1679,13 @@ async function inicializarDashboard() {
                 }
                 const ipSegura = ipMaestro || config.serverIP || config.serverIp;
                 
-                respaldoActivo = config.respaldo_datos === true || config.respaldo_datos === 'true' || config.respaldoActivo === true || config.respaldoActivo === 'true';
+                const quiereRespaldo = config.respaldo_datos === true || config.respaldo_datos === 'true' || config.respaldoActivo === true || config.respaldoActivo === 'true';
                 
-                window.esCajaHija = (config.isServer === false || config.isServer === 'false');
+                // 🔒 REGLA IMPENETRABLE: SOLO isServer === true sincroniza con el VPS
+                window.esServidorLocal = (config.isServer === true || config.isServer === 'true');
+                window.esCajaHija = !window.esServidorLocal;
                 window.SERVER_URL = null;
+                SERVER_URL = null;
                 
                 // 🔥 CAJA HIJA: Siempre se conecta al maestro por LAN en el puerto 3000 y DESACTIVA RESPALDO VPS
                 if (window.esCajaHija) {
@@ -960,14 +1696,17 @@ async function inicializarDashboard() {
                         console.log("📡 Servidor Maestro detectado en cajera hija (Respaldo VPS desactivado):", SERVER_URL);
                     }
                 } 
-                // 🔥 CAJA MAESTRA CON RESPALDO VPS
+                // 🔥 CAJA MAESTRA (isServer === true) CON RESPALDO VPS
                 else {
-                    respaldoActivo = config.respaldo_datos === true || config.respaldo_datos === 'true' || config.respaldoActivo === true || config.respaldoActivo === 'true';
-                    if (respaldoActivo && (config.vpsIp || config.serverIp)) {
-                        SERVER_URL = `http://${config.vpsIp || config.serverIp}:${config.vpsPort || 4010}`;
+                    respaldoActivo = quiereRespaldo;
+                    const vpsHost = config.vpsIp || config.serverIp || config.SERVER_IP;
+                    const vpsPort = config.vpsPort || config.serverPort || config.SERVER_PORT || 4010;
+                    if (respaldoActivo && vpsHost) {
+                        SERVER_URL = `http://${vpsHost}:${vpsPort}`;
                         window.SERVER_URL = SERVER_URL;
-                        console.log("📡 VPS configurado en caja maestra:", SERVER_URL);
+                        console.log("📡 VPS configurado en caja maestra (cajera principal):", SERVER_URL);
                     } else {
+                        SERVER_URL = null;
                         console.log("🔌 Operando en Modo Local estricto en caja maestra.");
                     }
                 }
@@ -999,12 +1738,19 @@ async function inicializarDashboard() {
                     appContainer.classList.remove('hidden');
                 }
 
+                let companyName = sesion.nombre_empresa || "NEXUS POS";
                 if (sesion.company_data) {
                     try {
-                        const data = JSON.parse(sesion.company_data);
-                        const companyDisplay = document.getElementById('company-name-display');
-                        if (companyDisplay) companyDisplay.textContent = data.nombre_empresa || data.name || "NEXUS POS";
+                        const data = typeof sesion.company_data === 'string' ? JSON.parse(sesion.company_data) : sesion.company_data;
+                        companyName = data.name || data.nombre_empresa || data.razon_social || companyName;
                     } catch (e) { console.error("Error parseando data de empresa:", e); }
+                }
+                const companyDisplay = document.getElementById('company-name-display');
+                if (companyDisplay) companyDisplay.textContent = companyName;
+                const sidebarCompany = document.getElementById('sidebar-company-name');
+                if (sidebarCompany) {
+                    sidebarCompany.textContent = companyName;
+                    sidebarCompany.setAttribute('title', companyName);
                 }
 
                 console.log("Cargando vista local index_cajera...");
@@ -1012,11 +1758,18 @@ async function inicializarDashboard() {
                 const homeLink = document.getElementById('home-link');
                 if (homeLink) homeLink.closest("li").classList.add("active");
 
-                // 🔥 ARRANQUE EN FRÍO INMEDIATO (Servidor Maestro o Caja Hija conectada a Maestro)
-                if (window.esCajaHija || respaldoActivo) {
-                    if (!window.esCajaHija) iniciarSincronizacionSilenciosa();
+                // 🔥 ARRANQUE EN FRÍO INMEDIATO (Servidor Maestro con respaldo VPS, o Caja Hija LAN :3000)
+                if (window.esCajaHija) {
                     descargarActualizacionesDeInventario();
                     descargarActualizacionesDeCategorias();
+                } else if (window.esServidorLocal && respaldoActivo && SERVER_URL) {
+                    iniciarSincronizacionSilenciosa();
+                    hidratarDesdeVPS(currentCompanyId);
+                    descargarActualizacionesDeInventario();
+                    descargarActualizacionesDeCategorias();
+                    descargarYValidarStockGlobal(currentCompanyId);
+                    reconciliarYValidarVentasGlobal(currentCompanyId);
+                    setTimeout(() => ejecutarCicloGrupoAMaestroVps(currentCompanyId), 3000);
                 }
                 fetchDollarRate();
                 
@@ -1184,6 +1937,8 @@ async function inicializarDashboard() {
                     modal.remove(); 
                     if (typeof mostrarLoading === 'function') mostrarLoading();
                     try {
+                        sessionStorage.removeItem('adminAccessKey');
+                        sessionStorage.removeItem('fiscalAccessKey');
                         localStorage.setItem('explicit_logout', 'true');
                         window.nexusAPI.cerrarYVolverAlLogin();
                     } catch (error) {
@@ -1211,13 +1966,15 @@ async function inicializarDashboard() {
             SERVER_URL = nuevaUrl; window.SERVER_URL = nuevaUrl;
             if (cambio || p.cambioIp || p.ipAnterior !== undefined) {
                 // Recuperamos datos perdidos durante la caída
-                try { descargarActualizacionesDeInventario(); descargarActualizacionesDeCategorias(); fetchDollarRate(); } catch (_) {}
+                try { descargarActualizacionesDeInventario(); descargarActualizacionesDeCategorias(); window.__cajeraFetchDollarRate(); } catch (_) {}
             }
         }
     });
 
     let contadorLatidos = 0; 
+    let contadorSubida = 0;
     let contadorDescargas = 0; 
+    let contadorDescargaVentas = 0;
     let contadorRate = 0; 
 
     setInterval(async () => {
@@ -1253,9 +2010,22 @@ async function inicializarDashboard() {
         }
 
         if (estadoConexion) {
-            if (window.esCajaHija || respaldoActivo) {
-                if (!window.esCajaHija && !sincronizando) {
-                    iniciarSincronizacionSilenciosa();
+            if (window.esCajaHija) {
+                // Caja Hija: Solo descarga LAN desde el Maestro (:3000), CERO sync VPS
+                contadorDescargas++;
+                if (contadorDescargas >= 5) {
+                    contadorDescargas = 0;
+                    descargarActualizacionesDeInventario();
+                    descargarActualizacionesDeCategorias();
+                }
+            } else if (window.esServidorLocal && respaldoActivo && SERVER_URL) {
+                // Caja Maestra (isServer === true): Respaldo bidireccional completo Grupo A con VPS
+                if (!sincronizando) {
+                    contadorSubida++;
+                    if (contadorSubida >= 10) {
+                        contadorSubida = 0;
+                        await iniciarSincronizacionSilenciosa();
+                    }
                 }
 
                 contadorDescargas++;
@@ -1264,12 +2034,27 @@ async function inicializarDashboard() {
                     descargarActualizacionesDeInventario();
                     descargarActualizacionesDeCategorias();
                 }
+
+                if (currentCompanyId) {
+                    contadorDescargaVentas++;
+                    if (contadorDescargaVentas >= 30) {
+                        contadorDescargaVentas = 0;
+                        if (!window.hidratacionVpsOk) hidratarDesdeVPS(currentCompanyId);
+                        descargarYValidarStockGlobal(currentCompanyId);
+                        if (!window.reconciliacionVentasHecha) {
+                            reconciliarYValidarVentasGlobal(currentCompanyId);
+                        } else {
+                            descargarYValidarVentasGlobal(currentCompanyId);
+                        }
+                        ejecutarCicloGrupoAMaestroVps(currentCompanyId);
+                    }
+                }
             }
 
             contadorRate++;
             if (contadorRate >= 10) {
                 contadorRate = 0;
-                fetchDollarRate();
+                window.__cajeraFetchDollarRate();
             }
         }
     }, 1000);

@@ -399,12 +399,38 @@
         ];
 
         fields.forEach(field => {
-            const req = field.required ? '<span class="required-mark">*</span>' : '';
-            const opts = headers.map(h => `<option value="${h}">${h}</option>`).join('');
             const div = document.createElement('div');
             div.className = 'excel-mapping-item';
-            div.innerHTML = `<label for="${field.id}">${field.label}${req}:</label>
-                             <select id="${field.id}"><option value="">-- Ignorar columna --</option>${opts}</select>`;
+
+            const label = document.createElement('label');
+            label.setAttribute('for', field.id);
+            label.appendChild(document.createTextNode(field.label));
+            if (field.required) {
+                const reqSpan = document.createElement('span');
+                reqSpan.className = 'required-mark';
+                reqSpan.textContent = '*';
+                label.appendChild(reqSpan);
+            }
+            label.appendChild(document.createTextNode(':'));
+
+            const select = document.createElement('select');
+            select.id = field.id;
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = '';
+            defaultOpt.textContent = '-- Ignorar columna --';
+            select.appendChild(defaultOpt);
+
+            (Array.isArray(headers) ? headers : []).forEach(h => {
+                const headerStr = h !== null && h !== undefined ? String(h) : '';
+                if (!headerStr) return;
+                const opt = document.createElement('option');
+                opt.value = headerStr;
+                opt.textContent = headerStr;
+                select.appendChild(opt);
+            });
+
+            div.appendChild(label);
+            div.appendChild(select);
             mappingSelectors.appendChild(div);
         });
 
